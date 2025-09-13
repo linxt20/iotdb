@@ -153,7 +153,7 @@ public class PatternMatchTableFunction implements TableFunction {
         (Double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(WIDTH_PARAM);
     Double heightLimit =
         (Double) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(HEIGHT_PARAM);
-    boolean isPatternFromOrigin =
+    boolean isSmoothOnPattern =
         (Boolean) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(SMOOTH_ON_PATTERN);
 
     QetchAlgorithm qetchAlgorithm = new QetchAlgorithm();
@@ -161,7 +161,7 @@ public class PatternMatchTableFunction implements TableFunction {
     qetchAlgorithm.setSmoothValue(smoothValue);
     qetchAlgorithm.setHeightLimit(heightLimit);
     qetchAlgorithm.setWidthLimit(widthLimit);
-    qetchAlgorithm.setIsPatternFromOrigin(isPatternFromOrigin);
+    qetchAlgorithm.setIsSmoothOnPattern(isSmoothOnPattern);
     qetchAlgorithm.parsePattern2Automaton(pattern);
 
     return new TableFunctionProcessorProvider() {

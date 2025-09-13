@@ -49,7 +49,7 @@ public class QetchAlgorithm {
   private double widthLimit = 0;
   private double heightLimit = 0;
 
-  private boolean isPatternFromOrigin = false;
+  private boolean isSmoothOnPattern = false;
 
   private Point lastPoint = null;
 
@@ -187,7 +187,7 @@ public class QetchAlgorithm {
     int lastSegmentIndex = 0;
     for (int i = 0; i < patternSegments.size(); i++) {
       if (!patternSegments.get(i).isConstantChar()) {
-        patternSegments.get(i).trans2SectionList(isPatternFromOrigin, smoothValue);
+        patternSegments.get(i).trans2SectionList(isSmoothOnPattern, smoothValue);
         if (i > lastSegmentIndex) {
           lastSegmentIndex = i;
         }
@@ -369,6 +369,8 @@ public class QetchAlgorithm {
         widthLimit,
         smoothValue,
         threshold)) { // claim that regexMatchState match is over
+      // only need to check the first section of dataSectionQueue and the first path of section
+      // easy to divide to two case, one is match over, other is not
       dataSectionQueue.poll();
       if (!regexMatchState.getMatchResult().isEmpty()) {
         regexMatchResult = regexMatchState;
@@ -668,8 +670,8 @@ public class QetchAlgorithm {
     this.heightLimit = heightLimit;
   }
 
-  public void setIsPatternFromOrigin(Boolean isPatternFromOrigin) {
-    this.isPatternFromOrigin = isPatternFromOrigin;
+  public void setIsSmoothOnPattern(Boolean isSmoothOnPattern) {
+    this.isSmoothOnPattern = isSmoothOnPattern;
   }
 
   public Integer getPointNum() {
