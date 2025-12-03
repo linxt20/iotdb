@@ -868,6 +868,67 @@ TableLogicalPlanner类介绍：
 
 `ExchangeNode`添加后，回到`TableDistributedPlanner.plan()`函数中，随后会调用`adjustUpstream()`函数，中转到`adjustUpStreamHelper()`，为`ExchangeNode`及其孩子操作之间添加`IdentitySinkNode`，每一个`ExchangeNode`仅对应一个`IdentitySinkNode`（目前有两种sink，一种是`ShuffleSink`，一种是`IdentitySink`）
 
+###### 2.2.3.3.1 分布式计划上的PlanNode类型
+
+分布式计划是在逻辑计划的基础上，经过分布式计划生成器（`TableDistributedPlanGenerator`）处理后得到的，包含了数据分区、数据交换等分布式执行相关的信息。分布式计划上的PlanNode主要包括以下类型：
+
+1. 数据扫描节点（Source Nodes）
+- `DeviceTableScanNode`：设备表扫描节点，用于扫描表模型中的设备数据
+- `TreeAlignedDeviceViewScanNode`：树模型对齐设备视图扫描节点，用于在表模型中访问树模型的对齐设备数据
+- `TreeNonAlignedDeviceViewScanNode`：树模型非对齐设备视图扫描节点，用于在表模型中访问树模型的非对齐设备数据
+- `InformationSchemaTableScanNode`：信息模式表扫描节点，用于扫描系统元数据表（如数据库、表、列等元数据信息）
+- `AggregationTableScanNode`：聚合表扫描节点，用于在表扫描阶段进行聚合操作（由优化规则下推聚合操作产生）
+
+2. 数据过滤和投影节点
+- `FilterNode`：过滤节点，用于WHERE和HAVING子句的过滤操作
+- `ProjectNode`：投影节点，用于SELECT子句的列投影和表达式计算
+
+3. 排序节点
+- `SortNode`：排序节点，用于ORDER BY子句的排序操作
+- `StreamSortNode`：流式排序节点，用于大数据量场景的流式排序
+- `MergeSortNode`：合并排序节点，用于合并多个有序数据流
+- `TopKNode`：TopK节点，用于Limit和Sort合并后的优化节点，维护大小为K的堆
+
+4. 限制节点
+- `LimitNode`：限制节点，用于LIMIT子句的限制操作
+- `OffsetNode`：偏移节点，用于OFFSET子句的偏移操作
+
+5. 聚合节点
+- `AggregationNode`：聚合节点，用于GROUP BY和聚合函数的聚合操作，支持PARTIAL和FINAL两阶段聚合
+
+6. 连接节点
+- `JoinNode`：连接节点，用于JOIN操作，支持INNER、LEFT、RIGHT、FULL等连接类型
+- `SemiJoinNode`：半连接节点，用于半连接操作
+
+7. 数据填充节点
+- `PreviousFillNode`：前值填充节点，用于PREVIOUS FILL子句的数据填充
+- `LinearFillNode`：线性填充节点，用于LINEAR FILL子句的数据填充
+- `ValueFillNode`：常量填充节点，用于VALUE FILL子句的数据填充
+- `GapFillNode`：间隙填充节点，用于GAP FILL子句的时间序列填充操作
+
+8. 数据交换节点
+- `ExchangeNode`：交换节点，用于不同分片之间的数据交换，是分布式计划中连接不同Fragment的关键节点
+- `CollectNode`：收集节点，用于收集多个子节点的数据
+
+9. 其他功能节点
+- `OutputNode`：输出节点，用于最终结果的输出映射
+- `EnforceSingleRowNode`：强制单行节点，用于确保子查询返回单行
+- `AssignUniqueId`：分配唯一ID节点，用于为数据分配唯一标识符
+- `MarkDistinctNode`：标记去重节点，用于标记重复数据
+- `PatternRecognitionNode`：模式识别节点，用于模式匹配操作
+- `WindowNode`：窗口节点，用于窗口函数操作
+- `UnionNode`：并集节点，用于UNION操作
+- `IntoNode`：插入节点，用于INSERT INTO操作
+- `ExplainAnalyzeNode`：执行计划分析节点，用于EXPLAIN ANALYZE语句的执行计划分析
+- `TableFunctionProcessorNode`：表函数处理节点，用于处理表函数操作
+
+10. Schema查询节点
+- `TableDeviceFetchNode`：设备获取节点，用于获取设备信息
+- `TableDeviceQueryScanNode`：设备查询扫描节点，用于扫描设备查询结果
+- `TableDeviceQueryCountNode`：设备查询计数节点，用于统计设备数量
+
+这些PlanNode在分布式计划中按照查询逻辑组织成树状结构，通过`ExchangeNode`和`CollectNode`等节点实现跨分区的数据交换和合并，最终形成可以在分布式环境中执行的查询计划。
+
 ##### 2.2.3.4 分布式计划的切分
 
 主要类路径：
