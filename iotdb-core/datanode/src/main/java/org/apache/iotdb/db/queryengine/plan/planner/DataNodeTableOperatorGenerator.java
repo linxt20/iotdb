@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
@@ -62,7 +63,9 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
@@ -1095,6 +1098,10 @@ public class DataNodeTableOperatorGenerator
   public Operator visitDeviceTableScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
 
+    if (canSplitDeviceTableScanIntoParallelPipelines(node, context)) {
+      return constructParallelDeviceTableScan(node, context);
+    }
+
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(node, context);
 
@@ -1111,6 +1118,104 @@ public class DataNodeTableOperatorGenerator
         DeviceTableScanNode.class.getSimpleName());
 
     return tableScanOperator;
+  }
+
+  /**
+   * Judge whether the DeviceTableScanNode can be split into multiple parallel scan pipelines
+   * (grouped by deviceEntries) within current fragment instance:
+   *
+   * <ul>
+   *   <li>the parent node has no ordering requirement on this scan (marked by distributed planner
+   *       when merging children via CollectNode);
+   *   <li>degree of parallelism is larger than 1 and there are at least 2 devices to be split;
+   *   <li>no global limit/offset (shared by all devices) is pushed down into this scan, otherwise
+   *       each split scan will apply the global limit/offset independently and produce wrong
+   *       result.
+   * </ul>
+   */
+  private boolean canSplitDeviceTableScanIntoParallelPipelines(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    boolean hasGlobalPushDownLimitOffset =
+        (node.getPushDownLimit() > 0 || node.getPushDownOffset() > 0)
+            && !node.isPushLimitToEachDevice();
+    return node.isAllowParallelScan()
+        && context.getDegreeOfParallelism() > 1
+        && node.getDeviceEntries() != null
+        && node.getDeviceEntries().size() > 1
+        && !hasGlobalPushDownLimitOffset;
+  }
+
+  /**
+   * Split one DeviceTableScanNode into min(dop, deviceCount) sub scan pipelines, each of which
+   * scans a subset of deviceEntries with a separate driver. The results of all sub pipelines are
+   * merged by a CollectOperator in current pipeline through local sink/source handle pairs (same
+   * way as OperatorTreeGenerator#createNewPipelineForChildNode). It's safe because parallel scan is
+   * only allowed when the parent has no ordering requirement on this scan.
+   */
+  private Operator constructParallelDeviceTableScan(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    final int deviceCount = deviceEntries.size();
+    final int pipelineNum = Math.min(context.getDegreeOfParallelism(), deviceCount);
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+
+    final List<Operator> exchangeOperators = new ArrayList<>(pipelineNum);
+    final int avgDeviceNum = deviceCount / pipelineNum;
+    final int remainder = deviceCount % pipelineNum;
+    int startIndex = 0;
+    for (int i = 0; i < pipelineNum; i++) {
+      final int endIndex = startIndex + avgDeviceNum + (i < remainder ? 1 : 0);
+      // construct a sub scan node which is same as the origin node except deviceEntries and
+      // planNodeId, the new planNodeId is only used in execution level (never serialized)
+      final DeviceTableScanNode subScanNode = node.clone();
+      subScanNode.setPlanNodeId(new PlanNodeId(node.getPlanNodeId().getId() + "-parallel-" + i));
+      subScanNode.setDeviceEntries(new ArrayList<>(deviceEntries.subList(startIndex, endIndex)));
+      startIndex = endIndex;
+
+      // each sub scan is executed by a new pipeline (a new driver)
+      final LocalExecutionPlanContext subContext = context.createSubContext();
+      final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+          constructAbstractTableScanOperatorParameter(subScanNode, subContext);
+      final TableScanOperator subScanOperator = new TableScanOperator(parameter);
+      addSource(
+          subScanOperator,
+          subContext,
+          subScanNode,
+          parameter.measurementColumnNames,
+          parameter.measurementSchemas,
+          parameter.allSensors,
+          DeviceTableScanNode.class.getSimpleName());
+
+      // connect the sub pipeline with current pipeline via local sink/source handle pair
+      final ISinkChannel localSinkChannel =
+          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
+              subContext.getDriverContext(), subScanNode.getPlanNodeId().getId());
+      subContext.setISink(localSinkChannel);
+      subContext.addPipelineDriverFactory(subScanOperator, subContext.getDriverContext(), 0);
+      subContext.constructPipelineMemoryEstimator(
+          subScanOperator, node.getPlanNodeId(), subScanNode, -1);
+
+      final ExchangeOperator exchangeOperator =
+          new ExchangeOperator(
+              context
+                  .getDriverContext()
+                  .addOperatorContext(
+                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                  ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
+                  context.getDriverContext()),
+              subScanNode.getPlanNodeId(),
+              subScanOperator.calculateMaxReturnSize());
+      context.addExchangeOperator(exchangeOperator);
+      exchangeOperators.add(exchangeOperator);
+    }
+    // one local exchange pair for each sub pipeline
+    context.addExchangeSumNum(pipelineNum);
+
+    final OperatorContext collectOperatorContext =
+        addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
+    return new CollectOperator(collectOperatorContext, exchangeOperators);
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(

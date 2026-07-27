@@ -78,6 +78,13 @@ public class DeviceTableScanNode extends TableScanNode {
 
   protected transient boolean containsNonAlignedDevice;
 
+  // Whether this scan node is allowed to be split into multiple parallel scan drivers (grouped by
+  // deviceEntries) during local execution planning. It is set to true only when the parent node
+  // has no ordering requirement on this scan (i.e. merged by CollectNode in distributed planning).
+  // Attention: this field is transient, it must NEVER be serialized/deserialized, so parallel scan
+  // only takes effect for the fragment instances dispatched locally.
+  protected transient boolean allowParallelScan = false;
+
   protected DeviceTableScanNode() {}
 
   public DeviceTableScanNode(
@@ -296,6 +303,14 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setTimeFilter(Filter timeFilter) {
     this.timeFilter = timeFilter;
+  }
+
+  public boolean isAllowParallelScan() {
+    return allowParallelScan;
+  }
+
+  public void setAllowParallelScan(boolean allowParallelScan) {
+    this.allowParallelScan = allowParallelScan;
   }
 
   public boolean containsNonAlignedDevice() {

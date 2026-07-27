@@ -1767,6 +1767,14 @@ public class TableDistributedPlanGenerator
     final CollectNode collectNode =
         new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
     childrenNodes.forEach(collectNode::addChild);
+    // since the parent has no ordering requirement on children, each DeviceTableScanNode child is
+    // allowed to be split into multiple parallel scan drivers during local execution planning
+    childrenNodes.forEach(
+        child -> {
+          if (child instanceof DeviceTableScanNode) {
+            ((DeviceTableScanNode) child).setAllowParallelScan(true);
+          }
+        });
     return collectNode;
   }
 

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.memory;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 
 public class PipelineMemoryEstimatorFactory {
 
@@ -36,7 +37,15 @@ public class PipelineMemoryEstimatorFactory {
   }
 
   public static boolean isConsumeChildrenOneByOneNode(final PlanNode node) {
-    switch (node.getType()) {
+    final PlanNodeType nodeType;
+    try {
+      nodeType = node.getType();
+    } catch (final UnsupportedOperationException e) {
+      // table model (relational) plan nodes do not support getType(), and none of them needs the
+      // ConsumeChildrenOneByOnePipelineMemoryEstimator, so we use the conservative one
+      return false;
+    }
+    switch (nodeType) {
       case SCHEMA_QUERY_MERGE:
       case COUNT_MERGE:
       case DEVICE_VIEW:
