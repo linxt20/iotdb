@@ -1343,8 +1343,14 @@ public class DataNodeTableOperatorGenerator
     boolean hasGlobalPushDownLimitOffset =
         (node.getPushDownLimit() > 0 || node.getPushDownOffset() > 0)
             && !node.isPushLimitToEachDevice();
+    // Parallel scan splits the in-memory deviceEntries list into disjoint subsets. When the device
+    // entries have been spilled to disk, they are represented by a single shared
+    // DeviceEntryDataSetHandle instead (and deviceEntries is empty), which cannot be safely split
+    // across parallel drivers (the segment source is stateful and deletes segments on read). So we
+    // deliberately fall back to a single scan stream in the spill scenario.
     return node.isAllowParallelScan()
         && context.getDegreeOfParallelism() > 1
+        && !node.getDeviceEntryDataSetHandle().isPresent()
         && node.getDeviceEntries() != null
         && node.getDeviceEntries().size() > 1
         && !hasGlobalPushDownLimitOffset;
@@ -1421,7 +1427,6 @@ public class DataNodeTableOperatorGenerator
     final OperatorContext collectOperatorContext =
         addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
     return new CollectOperator(collectOperatorContext, exchangeOperators);
-  }
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(

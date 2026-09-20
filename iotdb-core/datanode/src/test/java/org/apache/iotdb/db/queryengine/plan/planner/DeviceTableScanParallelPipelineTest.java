@@ -21,9 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -38,8 +40,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -61,6 +63,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -109,22 +112,21 @@ public class DeviceTableScanParallelPipelineTest {
 
       // 4 sub pipelines are created, each of them holds a TableScanOperator scanning 2 devices
       assertEquals(4, context.getPipelineNumber());
-      int totalPathNum = 0;
+      int totalDeviceNum = 0;
       for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
         assertEquals(TableScanOperator.class, driverFactory.getOperation().getClass());
         DataDriverContext dataDriverContext = (DataDriverContext) driverFactory.getDriverContext();
         assertTrue(dataDriverContext.isInputDriver());
         assertEquals(1, dataDriverContext.getSourceOperators().size());
-        assertEquals(2, dataDriverContext.getPaths().size());
-        totalPathNum += dataDriverContext.getPaths().size();
+        assertEquals(2, deviceNumberOf(driverFactory.getOperation()));
+        totalDeviceNum += deviceNumberOf(driverFactory.getOperation());
       }
-      assertEquals(8, totalPathNum);
+      assertEquals(8, totalDeviceNum);
 
-      // the source operators and paths are moved into sub driver contexts, the root driver
-      // context only holds the CollectOperator
+      // the source operators are moved into sub driver contexts, the root driver context only holds
+      // the CollectOperator
       DataDriverContext rootDriverContext = (DataDriverContext) context.getDriverContext();
       assertEquals(0, rootDriverContext.getSourceOperators().size());
-      assertEquals(0, rootDriverContext.getPaths().size());
 
       // one local exchange pair for each sub pipeline
       assertEquals(4, context.getExchangeSumNum());
@@ -154,7 +156,7 @@ public class DeviceTableScanParallelPipelineTest {
       assertEquals(3, context.getPipelineNumber());
       for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
         assertEquals(TableScanOperator.class, driverFactory.getOperation().getClass());
-        assertEquals(1, ((DataDriverContext) driverFactory.getDriverContext()).getPaths().size());
+        assertEquals(1, deviceNumberOf(driverFactory.getOperation()));
       }
       assertEquals(3, context.getExchangeSumNum());
     } finally {
@@ -186,7 +188,7 @@ public class DeviceTableScanParallelPipelineTest {
       DataDriverContext rootDriverContext = (DataDriverContext) context.getDriverContext();
       assertTrue(rootDriverContext.isInputDriver());
       assertEquals(1, rootDriverContext.getSourceOperators().size());
-      assertEquals(8, rootDriverContext.getPaths().size());
+      assertEquals(8, deviceNumberOf(root));
     } finally {
       closeQuietly(root);
     }
@@ -211,7 +213,7 @@ public class DeviceTableScanParallelPipelineTest {
       assertEquals(TableScanOperator.class, root.getClass());
       assertEquals(0, context.getPipelineNumber());
       assertEquals(0, context.getExchangeSumNum());
-      assertEquals(8, ((DataDriverContext) context.getDriverContext()).getPaths().size());
+      assertEquals(8, deviceNumberOf(root));
     } finally {
       closeQuietly(root);
     }
@@ -229,6 +231,38 @@ public class DeviceTableScanParallelPipelineTest {
     try {
       assertEquals(TableScanOperator.class, root.getClass());
       assertEquals(0, context.getPipelineNumber());
+    } finally {
+      closeQuietly(root);
+    }
+  }
+
+  /**
+   * The device entries have been spilled to disk (represented by a shared DeviceEntryDataSetHandle
+   * with an empty in-memory deviceEntries list). Expected result is that no split happens even
+   * though dop > 1 and allowParallelScan == true, otherwise the parallel sub scans would share one
+   * stateful segment source and read/delete each other's segments, producing wrong results.
+   */
+  @Test
+  public void testNoParallelScanWhenDeviceEntriesSpilled() throws Exception {
+    DeviceTableScanNode node = initDeviceTableScanNode(8);
+    node.setAllowParallelScan(true);
+    // switch the node to the spilled representation: an on-disk handle instead of inline entries
+    node.setDeviceEntryDataSetHandle(
+        new DeviceEntryDataSetHandle(
+            "parallel_scan_test_6",
+            node.getPlanNodeId(),
+            new TEndPoint("1.2.3.4", 9999),
+            /* segmentCount= */ 4,
+            /* entryCount= */ 8,
+            /* ordered= */ false));
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext("parallel_scan_test_6");
+    context.setDegreeOfParallelism(4);
+
+    Operator root = node.accept(generator, context);
+    try {
+      assertEquals(TableScanOperator.class, root.getClass());
+      assertEquals(0, context.getPipelineNumber());
+      assertEquals(0, context.getExchangeSumNum());
     } finally {
       closeQuietly(root);
     }
@@ -291,6 +325,17 @@ public class DeviceTableScanParallelPipelineTest {
         0,
         false,
         false);
+  }
+
+  /**
+   * The number of devices actually assigned to a scan operator, read from the operator statistics
+   * ({@code DEVICE_NUMBER}). Since upstream introduced the spillable batch device entry source, the
+   * device paths are no longer eagerly materialized into the driver context, so we rely on this
+   * recorded statistic instead of {@code DataDriverContext#getPaths}.
+   */
+  private int deviceNumberOf(Operator operator) {
+    return Integer.parseInt(
+        (String) operator.getOperatorContext().getSpecifiedInfo().get(DEVICE_NUMBER));
   }
 
   private void closeQuietly(Operator operator) {
