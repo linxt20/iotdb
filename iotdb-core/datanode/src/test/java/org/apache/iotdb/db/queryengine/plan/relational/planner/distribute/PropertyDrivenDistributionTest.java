@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -35,6 +37,7 @@ import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -86,6 +89,14 @@ import static org.junit.Assume.assumeFalse;
 public class PropertyDrivenDistributionTest {
 
   private static final String SINGLE_REGION_DB = "testdb";
+
+  private static final SessionInfo EXPLAIN_ADMIN_SESSION =
+      new SessionInfo(
+          0,
+          new UserEntity(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "localhost"),
+          SESSION_INFO.getZoneId(),
+          SESSION_INFO.getDatabaseName().orElse(null),
+          SESSION_INFO.getSqlDialect());
 
   /**
    * Every case below is run twice: once with the legacy heuristic and once with the property driven
@@ -376,7 +387,7 @@ public class PropertyDrivenDistributionTest {
   private static String memorySourceExplainText(String sql) {
     MPPQueryContext queryContext =
         new MPPQueryContext(
-            "EXPLAIN " + sql, new QueryId("explain_test"), SESSION_INFO, null, null);
+            "EXPLAIN " + sql, new QueryId("explain_test"), EXPLAIN_ADMIN_SESSION, null, null);
     Analysis analysis = analyzeSQL("EXPLAIN " + sql, TEST_MATADATA, queryContext);
     analysis.setDataPartitionInfo(
         MockTableModelDataPartition.constructSingleRegionDataPartition(SINGLE_REGION_DB));
