@@ -38,7 +38,7 @@ tool=research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster
 bash "$tool/prepare-benchmark-deployment.sh" \
   --root /root/iotdb-static-benchmark-20260921 \
   --distribution-root /root/iotdb-next-p0-server/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin/apache-iotdb-2.0.11-SNAPSHOT-all-bin \
-  --initial-dop 1 --query-cost-stat-window 30
+  --initial-dop 1 --query-cost-stat-window 30 --port-offset 16000
 ```
 
 For each matrix step, invoke `set-isolated-dop.sh` with the same explicitly named root. It stops
@@ -67,3 +67,8 @@ Pass a positive value only for a dedicated benchmark root when the normal-query 
 read the completed-query history. The value is written and verified in both DataNode configurations
 *before* their first start, then archived with the two configuration hashes. It does not turn CLI
 elapsed time into a metric, and it does not create query-scoped shuffle-byte metrics.
+
+`--port-offset` defaults to `0` and adds the same explicit offset to every isolated ConfigNode and
+DataNode port. It is recorded in the deployment manifest and is reloaded by every later
+start/stop/status/DOP command, so a new benchmark root can coexist with a correctness deployment
+without port reuse. The launcher rejects offsets over 26000 to keep all derived ports valid.

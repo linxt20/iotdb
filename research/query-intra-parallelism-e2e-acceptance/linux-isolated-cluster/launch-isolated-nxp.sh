@@ -19,14 +19,14 @@ readonly REPO_ROOT="$(cd -- "$SCRIPT_DIR/../../.." && pwd -P)"
 readonly MANIFEST='isolation-manifest.env'
 readonly CN_CLASS='org.apache.iotdb.confignode.service.ConfigNode'
 readonly DN_CLASS='org.apache.iotdb.db.service.DataNode'
-MODE='' ROOT='' DIST='' DEPLOYMENT=both TIMEOUT=120
+MODE='' ROOT='' DIST='' DEPLOYMENT=both TIMEOUT=120 PORT_OFFSET=0
 
-usage() { printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status|start-datanodes|stop-datanodes --root ROOT [--distribution-root DIST] [--deployment candidate|control|both]'; }
+usage() { printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status|start-datanodes|stop-datanodes --root ROOT [--distribution-root DIST] [--deployment candidate|control|both] [--port-offset NON_NEGATIVE_INTEGER]'; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 need() { [[ -n "${2:-}" ]] || die "Missing value for $1"; }
 while (($#)); do
   case "$1" in
-    --mode|--root|--distribution-root|--deployment|--startup-timeout-seconds) need "$1" "${2:-}"; key="${1#--}"; key="${key//-/_}"; case "$key" in mode) MODE="$2";; root) ROOT="$2";; distribution_root) DIST="$2";; deployment) DEPLOYMENT="$2";; startup_timeout_seconds) TIMEOUT="$2";; esac; shift 2 ;;
+    --mode|--root|--distribution-root|--deployment|--startup-timeout-seconds|--port-offset) need "$1" "${2:-}"; key="${1#--}"; key="${key//-/_}"; case "$key" in mode) MODE="$2";; root) ROOT="$2";; distribution_root) DIST="$2";; deployment) DEPLOYMENT="$2";; startup_timeout_seconds) TIMEOUT="$2";; port_offset) PORT_OFFSET="$2";; esac; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown argument: $1" ;;
   esac
@@ -35,21 +35,21 @@ done
 [[ -n "$ROOT" ]] || die '--root is required'
 [[ "$DEPLOYMENT" =~ ^(candidate|control|both)$ ]] || die '--deployment must be candidate, control, or both'
 [[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || die '--startup-timeout-seconds must be positive'
+[[ "$PORT_OFFSET" =~ ^[0-9]+$ ]] && ((PORT_OFFSET <= 26000)) || die '--port-offset must be a non-negative integer no greater than 26000'
 ROOT="$(realpath -m -- "$ROOT")"; [[ -z "$DIST" ]] || DIST="$(realpath -m -- "$DIST")"
 
 # deployment|name|role|rpc|internal|consensus|mpp|schema|data-consensus|metric
-nodes() { cat <<'EOF'
-candidate|confignode|ConfigNode|-|27110|27120|-|-|-|27901
-candidate|datanode-1|DataNode|27667|27130|-|27140|27150|27160|27902
-candidate|datanode-2|DataNode|28667|28130|-|28140|28150|28160|28902
-control|confignode|ConfigNode|-|37110|37120|-|-|-|37901
-control|datanode-1|DataNode|37667|37130|-|37140|37150|37160|37902
-control|datanode-2|DataNode|38667|38130|-|38140|38150|38160|38902
-EOF
+nodes() {
+  printf 'candidate|confignode|ConfigNode|-|%s|%s|-|-|-|%s\n' "$((27110 + PORT_OFFSET))" "$((27120 + PORT_OFFSET))" "$((27901 + PORT_OFFSET))"
+  printf 'candidate|datanode-1|DataNode|%s|%s|-|%s|%s|%s|%s\n' "$((27667 + PORT_OFFSET))" "$((27130 + PORT_OFFSET))" "$((27140 + PORT_OFFSET))" "$((27150 + PORT_OFFSET))" "$((27160 + PORT_OFFSET))" "$((27902 + PORT_OFFSET))"
+  printf 'candidate|datanode-2|DataNode|%s|%s|-|%s|%s|%s|%s\n' "$((28667 + PORT_OFFSET))" "$((28130 + PORT_OFFSET))" "$((28140 + PORT_OFFSET))" "$((28150 + PORT_OFFSET))" "$((28160 + PORT_OFFSET))" "$((28902 + PORT_OFFSET))"
+  printf 'control|confignode|ConfigNode|-|%s|%s|-|-|-|%s\n' "$((37110 + PORT_OFFSET))" "$((37120 + PORT_OFFSET))" "$((37901 + PORT_OFFSET))"
+  printf 'control|datanode-1|DataNode|%s|%s|-|%s|%s|%s|%s\n' "$((37667 + PORT_OFFSET))" "$((37130 + PORT_OFFSET))" "$((37140 + PORT_OFFSET))" "$((37150 + PORT_OFFSET))" "$((37160 + PORT_OFFSET))" "$((37902 + PORT_OFFSET))"
+  printf 'control|datanode-2|DataNode|%s|%s|-|%s|%s|%s|%s\n' "$((38667 + PORT_OFFSET))" "$((38130 + PORT_OFFSET))" "$((38140 + PORT_OFFSET))" "$((38150 + PORT_OFFSET))" "$((38160 + PORT_OFFSET))" "$((38902 + PORT_OFFSET))"
 }
 selected() { [[ "$DEPLOYMENT" == both ]] && nodes || nodes | awk -F'|' -v d="$DEPLOYMENT" '$1 == d'; }
-cn_internal() { [[ "$1" == candidate ]] && printf 27110 || printf 37110; }
-cn_consensus() { [[ "$1" == candidate ]] && printf 27120 || printf 37120; }
+cn_internal() { [[ "$1" == candidate ]] && printf '%s' "$((27110 + PORT_OFFSET))" || printf '%s' "$((37110 + PORT_OFFSET))"; }
+cn_consensus() { [[ "$1" == candidate ]] && printf '%s' "$((27120 + PORT_OFFSET))" || printf '%s' "$((37120 + PORT_OFFSET))"; }
 
 assert_dist() {
   [[ -d "$1/lib" && -f "$1/conf/iotdb-system.properties" && -f "$1/conf/logback-confignode.xml" && -f "$1/conf/logback-datanode.xml" ]] || die "Not an all-bin distribution: $1"
@@ -76,15 +76,15 @@ assert_datanode_ports_free() {
   done < <(selected)
 }
 write_manifest() {
-  { printf 'schema_version=1\n'; printf 'purpose=linux-isolated-1c2d-candidate-control-nxp-group-by\n'; printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; printf 'repository_git_sha=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unavailable)"; printf 'distribution_root=%q\n' "$DIST"; printf 'deployment_root=%q\n' "$ROOT"; printf 'distribution_jar_count=%s\n' "$(find "$DIST/lib" -maxdepth 1 -name '*.jar' -type f | wc -l | tr -d ' ')"; } > "$ROOT/$MANIFEST"
+  { printf 'schema_version=1\n'; printf 'purpose=linux-isolated-1c2d-candidate-control-nxp-group-by\n'; printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; printf 'repository_git_sha=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unavailable)"; printf 'distribution_root=%q\n' "$DIST"; printf 'deployment_root=%q\n' "$ROOT"; printf 'port_offset=%s\n' "$PORT_OFFSET"; printf 'distribution_jar_count=%s\n' "$(find "$DIST/lib" -maxdepth 1 -name '*.jar' -type f | wc -l | tr -d ' ')"; } > "$ROOT/$MANIFEST"
 }
-read_manifest() { [[ -f "$ROOT/$MANIFEST" ]] || die "No $MANIFEST below $ROOT; run prepare"; source "$ROOT/$MANIFEST"; [[ "${deployment_root:-}" == "$ROOT" ]] || die 'Manifest root mismatch'; DIST="$distribution_root"; }
+read_manifest() { [[ -f "$ROOT/$MANIFEST" ]] || die "No $MANIFEST below $ROOT; run prepare"; source "$ROOT/$MANIFEST"; [[ "${deployment_root:-}" == "$ROOT" ]] || die 'Manifest root mismatch'; DIST="$distribution_root"; PORT_OFFSET="${port_offset:-0}"; }
 
 write_config() {
   local d="$1" n="$2" role="$3" rpc="$4" internal="$5" consensus="$6" mpp="$7" schema="$8" data="$9" metric="${10}" root="$ROOT/$1/$2" conf="$ROOT/$1/$2/conf" enabled=false dn_rpc="$4" dn_internal="$5" dn_mpp="$7" dn_schema="$8" dn_data="$9" dn_metric="${10}"
   [[ "$d" == candidate ]] && enabled=true
   if [[ "$role" == ConfigNode ]]; then
-    if [[ "$d" == candidate ]]; then dn_rpc=27667; dn_internal=27130; dn_mpp=27140; dn_schema=27150; dn_data=27160; dn_metric=27902; else dn_rpc=37667; dn_internal=37130; dn_mpp=37140; dn_schema=37150; dn_data=37160; dn_metric=37902; fi
+    if [[ "$d" == candidate ]]; then dn_rpc=$((27667 + PORT_OFFSET)); dn_internal=$((27130 + PORT_OFFSET)); dn_mpp=$((27140 + PORT_OFFSET)); dn_schema=$((27150 + PORT_OFFSET)); dn_data=$((27160 + PORT_OFFSET)); dn_metric=$((27902 + PORT_OFFSET)); else dn_rpc=$((37667 + PORT_OFFSET)); dn_internal=$((37130 + PORT_OFFSET)); dn_mpp=$((37140 + PORT_OFFSET)); dn_schema=$((37150 + PORT_OFFSET)); dn_data=$((37160 + PORT_OFFSET)); dn_metric=$((37902 + PORT_OFFSET)); fi
   fi
   mkdir -p "$conf" "$root/data" "$root/logs"; cp -- "$DIST/conf/logback-confignode.xml" "$conf/"; cp -- "$DIST/conf/logback-datanode.xml" "$conf/"
   cat > "$conf/iotdb-system.properties" <<EOF
