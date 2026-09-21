@@ -22,9 +22,15 @@ bash "$tool" --mode stop --root /root/iotdb-isolated-nxp --deployment both
 ```
 
 Safety: `prepare` rejects a non-empty root and occupied assigned ports. The all-bin distribution
-is only read. `stop` reads only manifests below that root and refuses a PID unless `/proc` shows
-both the node root and expected IoTDB service class. It never deletes the root; preserve evidence
-before manually removing a verified root. The manifest captures git SHA and distribution jar count.
+is only read. Before both `prepare` and `start`, the launcher opens
+`iotdb-server-2.0.11-SNAPSHOT.jar` and requires the hash-channel-index guard in
+`TableDistributedPlanner`; this prevents a newer source checkout being paired with an old,
+pre-repair all-bin directory that can produce a superficially valid `EXPLAIN` but wrong N x P
+results. `stop` reads only manifests below that root and refuses a PID unless `/proc` shows both
+the node root and expected IoTDB service class. It never deletes the root; preserve evidence
+before manually removing a verified root. The version-2 manifest captures the source SHA, runtime
+jar count, server-jar SHA-256, and required guard marker. This check is intentionally limited to
+the experimental hash GROUP BY harness; it is not a general IoTDB distribution compatibility test.
 
 ## Dedicated fixed-DOP benchmark endpoint
 

@@ -19,6 +19,11 @@ readonly REPO_ROOT="$(cd -- "$SCRIPT_DIR/../../.." && pwd -P)"
 readonly MANIFEST='isolation-manifest.env'
 readonly CN_CLASS='org.apache.iotdb.confignode.service.ConfigNode'
 readonly DN_CLASS='org.apache.iotdb.db.service.DataNode'
+# This harness exercises the guarded N x P hash GROUP BY implementation rather than merely
+# creating an arbitrary table-model cluster.  A source checkout can be newer than a stale
+# all-bin directory, so validate the deployed class as well as the presence of runtime jars.
+readonly TABLE_DISTRIBUTED_PLANNER_CLASS='org/apache/iotdb/db/queryengine/plan/relational/planner/distribute/TableDistributedPlanner.class'
+readonly HASH_CHANNEL_GUARD_MARKER='hashChannelIndex'
 MODE='' ROOT='' DIST='' DEPLOYMENT=both TIMEOUT=120 PORT_OFFSET=0
 
 usage() { printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status|start-datanodes|stop-datanodes --root ROOT [--distribution-root DIST] [--deployment candidate|control|both] [--port-offset NON_NEGATIVE_INTEGER]'; }
@@ -54,6 +59,27 @@ cn_consensus() { [[ "$1" == candidate ]] && printf '%s' "$((27120 + PORT_OFFSET)
 assert_dist() {
   [[ -d "$1/lib" && -f "$1/conf/iotdb-system.properties" && -f "$1/conf/logback-confignode.xml" && -f "$1/conf/logback-datanode.xml" ]] || die "Not an all-bin distribution: $1"
   compgen -G "$1/lib/*.jar" >/dev/null || die "No runtime jars in $1/lib"
+  assert_hash_channel_guard "$1"
+}
+server_jar() {
+  local dist="$1"
+  local jar="$dist/lib/iotdb-server-2.0.11-SNAPSHOT.jar"
+  [[ -f "$jar" ]] || die "Missing table planner runtime jar: $jar"
+  printf '%s' "$jar"
+}
+assert_hash_channel_guard() {
+  local dist="$1" jar
+  jar="$(server_jar "$dist")"
+  command -v unzip >/dev/null || die 'Need unzip to verify the isolated hash GROUP BY runtime'
+  # Do not accept a jar selected only by its directory or timestamp: before the channel-index
+  # repair a multi-source/two-bucket plan can look valid in EXPLAIN yet duplicate one channel and
+  # omit the other at execution time. The marker is the private planner method guarded by the
+  # unit regression below; this harness is intentionally coupled to that experimental path.
+  unzip -p "$jar" "$TABLE_DISTRIBUTED_PLANNER_CLASS" | LC_ALL=C grep -aqF "$HASH_CHANNEL_GUARD_MARKER" || die "Distribution lacks the multi-source hash channel-index guard: $jar. Rebuild the all-bin distribution from the checked-out source before preparing or starting this harness."
+}
+sha256() {
+  command -v sha256sum >/dev/null || die 'Need sha256sum to write the isolated runtime manifest'
+  sha256sum "$1" | awk '{print $1}'
 }
 port_bound() {
   if command -v ss >/dev/null; then ss -H -ltn "sport = :$1" | grep -q .
@@ -76,7 +102,9 @@ assert_datanode_ports_free() {
   done < <(selected)
 }
 write_manifest() {
-  { printf 'schema_version=1\n'; printf 'purpose=linux-isolated-1c2d-candidate-control-nxp-group-by\n'; printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; printf 'repository_git_sha=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unavailable)"; printf 'distribution_root=%q\n' "$DIST"; printf 'deployment_root=%q\n' "$ROOT"; printf 'port_offset=%s\n' "$PORT_OFFSET"; printf 'distribution_jar_count=%s\n' "$(find "$DIST/lib" -maxdepth 1 -name '*.jar' -type f | wc -l | tr -d ' ')"; } > "$ROOT/$MANIFEST"
+  local jar
+  jar="$(server_jar "$DIST")"
+  { printf 'schema_version=2\n'; printf 'purpose=linux-isolated-1c2d-candidate-control-nxp-group-by\n'; printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; printf 'repository_git_sha=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unavailable)"; printf 'distribution_root=%q\n' "$DIST"; printf 'deployment_root=%q\n' "$ROOT"; printf 'port_offset=%s\n' "$PORT_OFFSET"; printf 'distribution_jar_count=%s\n' "$(find "$DIST/lib" -maxdepth 1 -name '*.jar' -type f | wc -l | tr -d ' ')"; printf 'distribution_server_jar_sha256=%s\n' "$(sha256 "$jar")"; printf 'distribution_hash_channel_guard=%q\n' "$HASH_CHANNEL_GUARD_MARKER"; } > "$ROOT/$MANIFEST"
 }
 read_manifest() { [[ -f "$ROOT/$MANIFEST" ]] || die "No $MANIFEST below $ROOT; run prepare"; source "$ROOT/$MANIFEST"; [[ "${deployment_root:-}" == "$ROOT" ]] || die 'Manifest root mismatch'; DIST="$distribution_root"; PORT_OFFSET="${port_offset:-0}"; }
 
