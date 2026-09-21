@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.HashPartitioningDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -81,6 +82,14 @@ public class TableHashPartitioningShuffleSinkNode extends ShuffleSinkNode {
             getPlanNodeId(), getDownStreamChannelLocationList(), partitioningDescriptor);
     newChildren.forEach(replacement::addChild);
     return replacement;
+  }
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    if (getChildren().size() != 1) {
+      throw new IllegalStateException();
+    }
+    return getChildren().get(0).getOutputSymbols();
   }
 
   public HashPartitioningDescriptor getPartitioningDescriptor() {
