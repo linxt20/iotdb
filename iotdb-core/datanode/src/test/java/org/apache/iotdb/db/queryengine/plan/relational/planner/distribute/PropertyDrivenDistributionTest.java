@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -42,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.After;
@@ -399,7 +399,9 @@ public class PropertyDrivenDistributionTest {
     }
   }
 
-  /** A RowNumber without ORDER BY has no synthetic SortNode below it and must still be plannable. */
+  /**
+   * A RowNumber without ORDER BY has no synthetic SortNode below it and must still be plannable.
+   */
   @Test
   public void unorderedRowNumberPlansWithoutSyntheticSort() {
     assertFalse(planAndCollectScans("SELECT row_number() OVER () FROM testdb.table1").isEmpty());
