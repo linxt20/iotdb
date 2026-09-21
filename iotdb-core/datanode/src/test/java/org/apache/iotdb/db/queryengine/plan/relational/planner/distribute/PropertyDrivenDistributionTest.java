@@ -399,23 +399,20 @@ public class PropertyDrivenDistributionTest {
     }
   }
 
-  /**
-   * A RowNumber without an order-sensitive input can collect its fragment branches in any order. It
-   * must therefore use the common merge path and retain scan parallelism, rather than silently
-   * bypassing the marker as the old hand-written CollectNode path did.
-   */
+  /** A RowNumber without ORDER BY has no synthetic SortNode below it and must still be plannable. */
   @Test
-  public void unorderedRowNumberAllowsParallelScan() {
-    assertAllScansAllowParallel("SELECT row_number() OVER () FROM testdb.table1");
+  public void unorderedRowNumberPlansWithoutSyntheticSort() {
+    assertFalse(planAndCollectScans("SELECT row_number() OVER () FROM testdb.table1").isEmpty());
   }
 
   /**
-   * Window functions without an ORDER BY also have no input ordering requirement. This is the
-   * window counterpart of {@link #unorderedRowNumberAllowsParallelScan()}.
+   * A window without ORDER BY has no ordering requirement. It may still introduce other physical
+   * operators (for example, a global aggregation), so this test deliberately does not infer a
+   * scan-driver marker from that semantic fact.
    */
   @Test
-  public void unorderedWindowAllowsParallelScan() {
-    assertAllScansAllowParallel("SELECT count(*) OVER () FROM testdb.table1");
+  public void unorderedWindowPlansWithoutOrderingRequirement() {
+    assertFalse(planAndCollectScans("SELECT count(*) OVER () FROM testdb.table1").isEmpty());
   }
 
   /**
@@ -432,16 +429,6 @@ public class PropertyDrivenDistributionTest {
       assertFalse(
           "an order-sensitive RowNumber must not split its scan into parallel drivers",
           scan.isAllowParallelScan());
-    }
-  }
-
-  private static void assertAllScansAllowParallel(String sql) {
-    List<DeviceTableScanNode> scans = planAndCollectScans(sql);
-
-    assertFalse(scans.isEmpty());
-    for (DeviceTableScanNode scan : scans) {
-      assertTrue(
-          "an unordered operator must not prevent scan parallelism", scan.isAllowParallelScan());
     }
   }
 

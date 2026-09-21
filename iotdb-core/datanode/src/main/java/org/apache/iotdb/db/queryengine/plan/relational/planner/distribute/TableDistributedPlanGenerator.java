@@ -3658,11 +3658,17 @@ public class TableDistributedPlanGenerator
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
     OrderingScheme requiredOrdering = null;
     if (!canSplitPushDown) {
-      SortNode sortNode = (SortNode) node.getChild();
-      if (node.isOrderSensitive()) {
-        requiredOrdering = sortNode.getOrderingScheme();
+      // An order-sensitive RowNumber is placed below a logical SortNode. An unordered
+      // row_number() OVER () is not: its child can be a scan (or any other unordered subtree).
+      // Do not assume the latter has the shape of the former, otherwise valid unordered window
+      // queries fail during distributed planning with ClassCastException.
+      if (node.getChild() instanceof SortNode) {
+        SortNode sortNode = (SortNode) node.getChild();
+        if (node.isOrderSensitive()) {
+          requiredOrdering = sortNode.getOrderingScheme();
+        }
+        node.setChild(sortNode.getChild());
       }
-      node.setChild(sortNode.getChild());
     }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
