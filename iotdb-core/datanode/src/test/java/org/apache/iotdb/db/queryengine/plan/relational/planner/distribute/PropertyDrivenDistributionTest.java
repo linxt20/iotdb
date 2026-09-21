@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -31,11 +34,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
@@ -44,6 +52,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 /**
  * Plan shape assertions for the property driven distribution rules. Nothing here starts the
@@ -54,13 +63,31 @@ import static org.junit.Assert.assertTrue;
  * an ExplainAnalyzeNode, which merged its child without ever marking the scan as parallelizable, so
  * every query observed that way ran with a single scan driver.
  */
+@RunWith(Parameterized.class)
 public class PropertyDrivenDistributionTest {
 
   private static final String SINGLE_REGION_DB = "testdb";
 
+  /**
+   * Every case below is run twice: once with the legacy heuristic and once with the property
+   * driven rules. Both have to produce the same answers, which is what makes turning the flag on a
+   * non event.
+   */
+  @Parameterized.Parameters(name = "enable_property_driven_planning={0}")
+  public static Object[] flagValues() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public boolean propertyDrivenPlanning;
+
   @BeforeClass
   public static void setUp() {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
+
+  @Before
+  public void applyFlag() {
+    setPropertyDrivenPlanning(propertyDrivenPlanning);
   }
 
   /** A plain query whose parent imposes no ordering: the scan may be split into parallel drivers. */
@@ -112,8 +139,116 @@ public class PropertyDrivenDistributionTest {
     }
   }
 
+  /**
+   * A LIMIT with an ORDER BY is planned as a TopK. A TopK sitting at the root has to see all rows
+   * in one branch, but a TopK is also pushed down below that root, and those pushed down copies do
+   * not converge their input. This locks in that shape, so that expressing the rules in terms of
+   * required properties does not turn the TopK requirement into a blanket Single that would
+   * needlessly serialize what is below it.
+   */
+  @Test
+  public void topKDoesNotConvergeItsOwnChildren() {
+    List<PlanNode> nodes = planAndCollectNodes("SELECT * FROM testdb.table1 ORDER BY time LIMIT 10");
+
+    List<PlanNode> topKs =
+        nodes.stream().filter(node -> node instanceof TopKNode).collect(Collectors.toList());
+    assertFalse("expected the query to be planned with a TopK", topKs.isEmpty());
+    for (PlanNode topK : topKs) {
+      for (PlanNode child : topK.getChildren()) {
+        assertFalse(
+            "a TopK merges its branches itself, it must not get a CollectNode/MergeSortNode below it",
+            child instanceof CollectNode || child instanceof MergeSortNode);
+      }
+    }
+  }
+
+  /** Plans the statement against a single data region and returns every node in the plan. */
+  private static List<PlanNode> planAndCollectNodes(String sql) {
+    List<PlanNode> nodes = new ArrayList<>();
+    plan(sql).getFragments().forEach(fragment -> collectAll(fragment.getPlanNodeTree(), nodes));
+    return nodes;
+  }
+
+  private static void collectAll(PlanNode node, List<PlanNode> nodes) {
+    if (node == null) {
+      return;
+    }
+    nodes.add(node);
+    node.getChildren().forEach(child -> collectAll(child, nodes));
+  }
+
+  /**
+   * The property driven rules are meant to reproduce the plans the old heuristic produced, so that
+   * turning the flag on is not a behaviour change. Rather than arguing that from the code, plan the
+   * same statements both ways and compare the resulting shapes.
+   */
+  @Test
+  public void propertyDrivenRulesProduceTheSamePlanAsTheHeuristic() {
+    // This case drives the flag itself, so it only needs to run once.
+    assumeFalse(propertyDrivenPlanning);
+
+    String[] statements = {
+      "SELECT * FROM testdb.table1",
+      "SELECT * FROM testdb.table1 ORDER BY time",
+      "SELECT * FROM testdb.table1 ORDER BY time LIMIT 10",
+      "SELECT * FROM testdb.table1 LIMIT 10",
+      "EXPLAIN ANALYZE SELECT * FROM testdb.table1",
+    };
+
+    for (String sql : statements) {
+      setPropertyDrivenPlanning(false);
+      String legacy = planShape(sql);
+      setPropertyDrivenPlanning(true);
+      String propertyDriven = planShape(sql);
+
+      assertEquals(
+          "turning on enable_property_driven_planning must not change the plan for: " + sql,
+          legacy,
+          propertyDriven);
+    }
+  }
+
+  @After
+  public void restoreFlag() {
+    setPropertyDrivenPlanning(false);
+  }
+
+  private static void setPropertyDrivenPlanning(boolean enabled) {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePropertyDrivenPlanning(enabled);
+  }
+
+  /** A textual rendering of the plan shape: node types, nesting, and scan parallelism. */
+  private static String planShape(String sql) {
+    StringBuilder shape = new StringBuilder();
+    plan(sql)
+        .getFragments()
+        .forEach(fragment -> appendShape(fragment.getPlanNodeTree(), 0, shape));
+    return shape.toString();
+  }
+
+  private static void appendShape(PlanNode node, int depth, StringBuilder shape) {
+    if (node == null) {
+      return;
+    }
+    for (int i = 0; i < depth; i++) {
+      shape.append("  ");
+    }
+    shape.append(node.getClass().getSimpleName());
+    if (node instanceof DeviceTableScanNode) {
+      shape.append("(parallel=").append(((DeviceTableScanNode) node).isAllowParallelScan()).append(')');
+    }
+    shape.append('\n');
+    node.getChildren().forEach(child -> appendShape(child, depth + 1, shape));
+  }
+
   /** Plans the statement against a single data region and returns every scan node in the plan. */
   private static List<DeviceTableScanNode> planAndCollectScans(String sql) {
+    List<DeviceTableScanNode> scans = new ArrayList<>();
+    plan(sql).getFragments().forEach(fragment -> collectScans(fragment.getPlanNodeTree(), scans));
+    return scans;
+  }
+
+  private static DistributedQueryPlan plan(String sql) {
     // A fresh context per plan: an MPPQueryContext remembers whether the statement it analyzed was
     // an EXPLAIN ANALYZE, so reusing one across these cases would make a plain query be planned as
     // if it were still explaining the previous one.
@@ -132,15 +267,9 @@ public class PropertyDrivenDistributionTest {
                 queryContext, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
             .plan(analysis);
 
-    DistributedQueryPlan distributedQueryPlan =
-        new TableDistributedPlanner(analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
-            .plan();
-
-    List<DeviceTableScanNode> scans = new ArrayList<>();
-    distributedQueryPlan
-        .getFragments()
-        .forEach(fragment -> collectScans(fragment.getPlanNodeTree(), scans));
-    return scans;
+    return new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null)
+        .plan();
   }
 
   private static void collectScans(PlanNode node, List<DeviceTableScanNode> scans) {

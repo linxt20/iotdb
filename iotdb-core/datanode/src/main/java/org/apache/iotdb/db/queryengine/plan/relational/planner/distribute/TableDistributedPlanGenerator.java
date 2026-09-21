@@ -184,6 +184,12 @@ public class TableDistributedPlanGenerator
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
+  /**
+   * One entry per property enforcement decision taken while building the plan, in the order they
+   * were taken. Only collected when {@code enable_property_driven_planning} is on; it is a
+   * reporting aid and never influences the plan itself.
+   */
+  private final List<String> ruleTrace = new ArrayList<>();
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
   private final ClusterTopology topology = ClusterTopology.getInstance();
 
@@ -2987,15 +2993,33 @@ public class TableDistributedPlanGenerator
         !childrenNodes.isEmpty(),
         DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_EMPTY_DOT_E5555FD9);
 
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
+      return legacyMerge(childOrdering, childrenNodes);
+    }
+
+    // Every caller of this method is a node that has to see all rows in one branch, i.e. it
+    // requires a Single distribution from its child; the only thing that varies is whether it also
+    // requires an ordering. Making that requirement explicit is what turns the decision below from
+    // a heuristic on "is childOrdering null" into a comparison of required against provided
+    // properties.
+    return enforce(PlanProperties.of(DistributionProperty.single(), childOrdering), childrenNodes);
+  }
+
+  /**
+   * The heuristic this class used before the properties were made explicit, kept as the behaviour
+   * obtained with {@code enable_property_driven_planning} turned off. {@link #enforce} is meant to
+   * produce exactly the same plan; keeping both lets that claim be checked by running a query both
+   * ways rather than by reading the code.
+   */
+  private PlanNode legacyMerge(
+      final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
     if (childrenNodes.size() == 1) {
       final PlanNode onlyChild = childrenNodes.get(0);
       // Even when the query only produces a single scan child (e.g. all data lives in one data
       // region), the scan can still be split into multiple parallel scan drivers during local
-      // execution planning, as long as the parent has no ordering requirement on it
-      // (childOrdering == null, mirroring the CollectNode branch below). The device partitioning
-      // done by the split is orthogonal to how many regions the data spans.
-      if (childOrdering == null && onlyChild instanceof DeviceTableScanNode) {
-        ((DeviceTableScanNode) onlyChild).setAllowParallelScan(true);
+      // execution planning, as long as the parent has no ordering requirement on it.
+      if (childOrdering == null) {
+        allowParallelScanOn(childrenNodes);
       }
       return onlyChild;
     }
@@ -3017,13 +3041,122 @@ public class TableDistributedPlanGenerator
     childrenNodes.forEach(collectNode::addChild);
     // since the parent has no ordering requirement on children, each DeviceTableScanNode child is
     // allowed to be split into multiple parallel scan drivers during local execution planning
+    allowParallelScanOn(childrenNodes);
+    return collectNode;
+  }
+
+  /**
+   * Makes the children of a node satisfy {@code required}, inserting a node that enforces it when
+   * they do not already.
+   *
+   * <p>The provided properties are read bottom up from the children: the distribution is {@code
+   * Single} when there is one branch and {@code Arbitrary} otherwise, and the ordering is the one
+   * the children recorded in {@code nodeOrderingMap}. When they already satisfy what the parent
+   * requires nothing is inserted, which is what lets a scan below stay split into parallel drivers.
+   * Otherwise an unordered requirement is enforced with a {@code CollectNode} and an ordered one
+   * with a {@code MergeSortNode}.
+   *
+   * <p>Note that a provided distribution of {@code Single} is a statement about the fragment level:
+   * the rows arrive on one branch of the distributed plan. It does not prevent the scan underneath
+   * from being split across several drivers at the pipeline level, which is precisely the two level
+   * structure this design relies on.
+   */
+  private PlanNode enforce(final PlanProperties required, final List<PlanNode> childrenNodes) {
+    final PlanProperties provided = propertiesOf(childrenNodes, required);
+
+    if (provided.satisfies(required)) {
+      // Nothing has to be merged. The children keep whatever parallelism they have, so a scan
+      // child may still be split into several parallel scan drivers during local execution
+      // planning - as long as no ordering has to be preserved across that split.
+      if (!required.isOrdered()) {
+        allowParallelScanOn(childrenNodes);
+      }
+      recordRuleHit(required, provided, childrenNodes, null);
+      return childrenNodes.get(0);
+    }
+
+    final PlanNode firstChild = childrenNodes.get(0);
+    final PlanNode glue;
+    if (required.isOrdered()) {
+      // An ordered Single result is enforced by merging the branches while preserving their order.
+      final MergeSortNode mergeSortNode =
+          new MergeSortNode(
+              queryId.genPlanNodeId(), required.getOrdering(), firstChild.getOutputSymbols());
+      childrenNodes.forEach(mergeSortNode::addChild);
+      nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), required.getOrdering());
+      glue = mergeSortNode;
+    } else {
+      // An unordered Single result is enforced by collecting the branches in any order, which in
+      // turn means the children are free to be parallel.
+      final CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      allowParallelScanOn(childrenNodes);
+      glue = collectNode;
+    }
+    recordRuleHit(required, provided, childrenNodes, glue);
+    return glue;
+  }
+
+  /**
+   * The properties a set of sibling branches actually provides.
+   *
+   * <p>The distribution is read bottom up from the branches themselves: one branch provides {@code
+   * Single}, several branches provide {@code Arbitrary}. This is the axis the enforcement decision
+   * actually turns on.
+   *
+   * <p>The ordering is taken from what the caller observed of its children rather than re-read from
+   * {@code nodeOrderingMap} here. Fifteen of the sixteen call sites look it up as
+   * {@code nodeOrderingMap.get(children.get(0).getPlanNodeId())}, which is exactly what re-reading
+   * would produce, but {@code visitJoin} looks it up on the join's original children rather than on
+   * the rewritten ones. Re-reading would silently change what a join considers ordered, so the
+   * caller's view is kept authoritative.
+   */
+  private PlanProperties propertiesOf(
+      final List<PlanNode> childrenNodes, final PlanProperties required) {
+    return PlanProperties.of(
+        childrenNodes.size() == 1
+            ? DistributionProperty.single()
+            : DistributionProperty.arbitrary(),
+        required.getOrdering());
+  }
+
+  private static void allowParallelScanOn(final List<PlanNode> childrenNodes) {
     childrenNodes.forEach(
         child -> {
           if (child instanceof DeviceTableScanNode) {
             ((DeviceTableScanNode) child).setAllowParallelScan(true);
           }
         });
-    return collectNode;
+  }
+
+  /**
+   * Records which enforcement decision was taken for one set of children, so that it can be shown
+   * next to the plan. {@code glue} is the node that was inserted, or null when the children already
+   * satisfied what the parent required.
+   */
+  private void recordRuleHit(
+      final PlanProperties required,
+      final PlanProperties provided,
+      final List<PlanNode> childrenNodes,
+      final PlanNode glue) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
+      return;
+    }
+    ruleTrace.add(
+        String.format(
+            "%s: required=%s provided=%s -> %s",
+            childrenNodes.get(0).getPlanNodeId(),
+            required,
+            provided,
+            glue == null
+                ? "satisfied, no enforcer"
+                : glue.getClass().getSimpleName() + " " + glue.getPlanNodeId()));
+  }
+
+  /** The enforcement decisions taken while building this plan, oldest first. */
+  public List<String> getRuleTrace() {
+    return Collections.unmodifiableList(ruleTrace);
   }
 
   private void processSortProperty(
