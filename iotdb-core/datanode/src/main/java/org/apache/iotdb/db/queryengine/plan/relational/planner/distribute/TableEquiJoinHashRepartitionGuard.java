@@ -76,8 +76,8 @@ final class TableEquiJoinHashRepartitionGuard {
     if (typeProvider != null) {
       for (JoinNode.EquiJoinClause clause : node.getCriteria()) {
         Type type = typeProvider.getTableModelType(clause.getLeft());
-        if (type.getTypeEnum() == org.apache.tsfile.enums.TSDataType.FLOAT
-            || type.getTypeEnum() == org.apache.tsfile.enums.TSDataType.DOUBLE) {
+        if (type.getTypeEnum() == org.apache.tsfile.read.common.type.TypeEnum.FLOAT
+            || type.getTypeEnum() == org.apache.tsfile.read.common.type.TypeEnum.DOUBLE) {
           return FallbackReason.FLOATING_POINT_HASH_SEMANTICS_UNSUPPORTED;
         }
         if (!isRepartitionSafeHashKeyType(type)) {
