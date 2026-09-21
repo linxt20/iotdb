@@ -793,7 +793,8 @@ public class TableDistributedPlanGenerator
         String.format(
             "%s: required=compatible Partitioned(joinKeys) on both inputs -> serial join fallback"
                 + " (%s)",
-            node.getPlanNodeId(), TableEquiJoinHashRepartitionGuard.getFallbackReason(node)));
+            node.getPlanNodeId(),
+            TableEquiJoinHashRepartitionGuard.getFallbackReason(node, symbolAllocator.getTypes())));
   }
 
   @Override
@@ -2136,7 +2137,8 @@ public class TableDistributedPlanGenerator
           new CollectNode(queryId.genPlanNodeId(), partialAggregations.get(0).getOutputSymbols());
       for (int sourceIndex = 0; sourceIndex < children.size(); sourceIndex++) {
         ExchangeNode exchangeNode =
-            new ExchangeNode(topology.getUpstreamExchangeNodeIdsForPartition(partition).get(sourceIndex));
+            new ExchangeNode(
+                topology.getUpstreamExchangeNodeIdsForPartition(partition).get(sourceIndex));
         exchangeNode.setOutputSymbols(partialAggregations.get(sourceIndex).getOutputSymbols());
         exchangeNode.setChild(hashSinks.get(sourceIndex));
         collectNode.addChild(exchangeNode);

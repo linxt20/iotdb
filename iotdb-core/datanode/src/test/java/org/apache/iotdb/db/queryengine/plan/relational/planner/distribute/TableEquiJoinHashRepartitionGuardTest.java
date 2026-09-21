@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 
 import com.google.common.collect.ImmutableList;
 import org.junit.Test;
@@ -30,6 +31,8 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.Optional;
 
+import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.junit.Assert.assertEquals;
 
 /** Unit tests for the join selection boundary, independent of fragment placement. */
@@ -50,13 +53,40 @@ public class TableEquiJoinHashRepartitionGuardTest {
         TableEquiJoinHashRepartitionGuard.getFallbackReason(createJoin(JoinNode.JoinType.LEFT)));
   }
 
+  @Test
+  public void floatingPointKeyFallsBackBeforeAnyHashExchangeIsBuilt() {
+    JoinNode join = createJoin(JoinNode.JoinType.INNER);
+    TypeProvider types = TypeProvider.empty();
+    types.putTableModelType(join.getCriteria().get(0).getLeft(), DOUBLE);
+    types.putTableModelType(join.getCriteria().get(0).getRight(), DOUBLE);
+
+    assertEquals(
+        TableEquiJoinHashRepartitionGuard.FallbackReason.FLOATING_POINT_HASH_SEMANTICS_UNSUPPORTED,
+        TableEquiJoinHashRepartitionGuard.getFallbackReason(join, types));
+  }
+
+  @Test
+  public void integerKeyRemainsEligibleButStillRequiresExecutorAndTopology() {
+    JoinNode join = createJoin(JoinNode.JoinType.INNER);
+    TypeProvider types = TypeProvider.empty();
+    types.putTableModelType(join.getCriteria().get(0).getLeft(), INT32);
+    types.putTableModelType(join.getCriteria().get(0).getRight(), INT32);
+
+    assertEquals(
+        TableEquiJoinHashRepartitionGuard.FallbackReason
+            .HASH_JOIN_EXECUTOR_AND_TWO_SIDED_BUCKET_TOPOLOGY_REQUIRED,
+        TableEquiJoinHashRepartitionGuard.getFallbackReason(join, types));
+  }
+
   private static JoinNode createJoin(JoinNode.JoinType joinType) {
     Symbol leftKey = new Symbol("left_key");
     Symbol rightKey = new Symbol("right_key");
     ValuesNode left =
-        new ValuesNode(new PlanNodeId("left_values"), ImmutableList.of(leftKey), Collections.emptyList());
+        new ValuesNode(
+            new PlanNodeId("left_values"), ImmutableList.of(leftKey), Collections.emptyList());
     ValuesNode right =
-        new ValuesNode(new PlanNodeId("right_values"), ImmutableList.of(rightKey), Collections.emptyList());
+        new ValuesNode(
+            new PlanNodeId("right_values"), ImmutableList.of(rightKey), Collections.emptyList());
     return new JoinNode(
         new PlanNodeId("join"),
         joinType,
