@@ -117,6 +117,44 @@ variable and are redacted from the archived command metadata.
 restart. The default sequence is `1,2,4,8,16,1`: the final DOP=1 is a cache-drift control,
 not a sixth independent setting. Keep every raw attempt even when it is an outlier.
 
+### Server time and DataNode resources
+
+`scripts/server_current_query_metrics.py` is the concrete server-side timing bridge for an
+isolated table-model endpoint. It first snapshots `information_schema.current_queries`, executes
+the supplied ordinary SQL once, and then accepts only a *new* `FINISHED` entry whose canonical
+SQL fingerprint matches. Its `cost_time` (server seconds) is exported as `query_ms`; CLI
+`It costs ...` / local elapsed time is neither parsed nor archived as a metric. The DataNode
+must start with `query_cost_stat_window` set to a positive number of minutes, otherwise IoTDB
+does not retain completed rows (the default is zero). Run one timed query at a time on the
+endpoint, retain the generated `query_id`, and keep the history snapshots in the attempt folder.
+
+For example, the query wrapper can be nested inside the resource collector (the SQL must already
+be fully qualified or otherwise not need a preceding `USE` statement):
+
+```bash
+python3 scripts/collect_datanode_proc.py \
+  --pids 142732,142733 --output /root/p0/attempt-01/proc -- \
+  python3 scripts/server_current_query_metrics.py \
+    --cli /root/iotdb-next-deploy/sbin/start-cli.sh --host 127.0.0.1 --port 21667 \
+    --sql-file /root/p0/attempt-01/query.sql --raw-dir /root/p0/attempt-01/server
+```
+
+`collect_datanode_proc.py` is Linux-only and read-only: it samples each named DataNode PID from
+`/proc/<pid>/stat` and `/proc/<pid>/status`, records raw JSONL, verifies the process start-time
+on every sample to reject PID reuse, and archives `cpu_core_pct` plus peak combined RSS. A value
+of 100 CPU percent means one full CPU core, not 100 percent of the host. The PIDs must come from
+the benchmark deployment manifest, not a broad `pgrep` that could capture another experiment.
+
+Prometheus is useful only for process-level corroboration. A dedicated deployment may enable
+`dn_metric_reporter_list=PROMETHEUS` and assign a different
+`dn_metric_prometheus_reporter_port` to every DataNode. Existing `query_execution`,
+`driver_scheduler`, and `data_exchange_*` metrics are process-cumulative and **not query-scoped**;
+they must not become `query_ms` or be attributed to a query while concurrent work exists.
+Existing `data_exchange_size` measures live-handle counts, and `data_exchange_cost/count` expose
+time/block-count information. This build has no exported cumulative **shuffle byte** counter, so
+`shuffle_bytes` remains unmeasured/null until a separately reviewed instrumentation change adds a
+byte counter at the actual remote TsBlock payload path. Do not report zero in its place.
+
 For a cold-cache pass, require an explicit, audited command that affects only the isolated
 deployment (for example, a deployment-local restart plus the lab-approved cache reset):
 
