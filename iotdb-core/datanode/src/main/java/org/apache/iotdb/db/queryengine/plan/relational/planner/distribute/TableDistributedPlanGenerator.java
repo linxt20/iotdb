@@ -723,6 +723,7 @@ public class TableDistributedPlanGenerator
 
     List<PlanNode> leftChildrenNodes = node.getLeftChild().accept(this, context);
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
+    recordEquiJoinHashRepartitionFallback(node);
     if (!node.isCrossJoin()) {
       // child of JoinNode(excluding CrossJoin) must be SortNode, so after rewritten, the child must
       // be MergeSortNode or
@@ -777,6 +778,22 @@ public class TableDistributedPlanGenerator
       }
     }
     return Collections.singletonList(node);
+  }
+
+  /**
+   * The group-by-only hash exchange must never be silently reused by a join. See {@link
+   * TableEquiJoinHashRepartitionGuard} for the execution and fragment-ownership requirements that
+   * remain before a join-specific path can be selected.
+   */
+  private void recordEquiJoinHashRepartitionFallback(JoinNode node) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
+      return;
+    }
+    ruleTrace.add(
+        String.format(
+            "%s: required=compatible Partitioned(joinKeys) on both inputs -> serial join fallback"
+                + " (%s)",
+            node.getPlanNodeId(), TableEquiJoinHashRepartitionGuard.getFallbackReason(node)));
   }
 
   @Override

@@ -553,16 +553,27 @@ public class PropertyDrivenDistributionTest {
    */
   @Test
   public void equiJoinDocumentsThePartitionedKeysFallback() {
-    List<PlanNode> nodes =
-        planAndCollectNodes(
-            "SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time");
-    assertTrue(nodes.stream().anyMatch(node -> node instanceof JoinNode));
-    assertTrue(
-        "merge-sort join must expose an ordering enforcer on at least one input",
-        nodes.stream().anyMatch(node -> node instanceof SortNode || node instanceof MergeSortNode));
-    assertAllScansForbidParallelism(
-        nodes,
-        "until Partitioned(joinKeys) is consumed by a hash exchange, equi-join scans stay serial");
+    // This deliberately enables the GROUP BY-only experimental switch. A join must not inherit
+    // that 1 x P implementation: it needs two independently routed inputs and one final join per
+    // bucket, while the current operator is merge-sort based.
+    IoTDBDescriptor.getInstance().getConfig().setEnableTableGroupByHashRepartition(true);
+    try {
+      List<PlanNode> nodes =
+          planAndCollectNodes(
+              "SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time");
+      assertTrue(nodes.stream().anyMatch(node -> node instanceof JoinNode));
+      assertTrue(
+          "merge-sort join must expose an ordering enforcer on at least one input",
+          nodes.stream().anyMatch(node -> node instanceof SortNode || node instanceof MergeSortNode));
+      assertFalse(
+          "a GROUP BY hash sink cannot be mistaken for a 2 x P equi-join implementation",
+          nodes.stream().anyMatch(node -> node instanceof TableHashPartitioningShuffleSinkNode));
+      assertAllScansForbidParallelism(
+          nodes,
+          "until Partitioned(joinKeys) is consumed by a hash exchange, equi-join scans stay serial");
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTableGroupByHashRepartition(false);
+    }
   }
 
   /**

@@ -174,3 +174,29 @@ Only after that gate passes can the fragment planner's existing per-fragment ins
 used to resolve every `(source, bucket)` channel. The remaining release gates are an actual
 two-DataNode result-equivalence run (including skew and null groups), per-channel shuffle
 accounting, and an explicit fallback assertion for every unsupported aggregate shape.
+
+## Equi-join consumer gate
+
+The restricted single-source GROUP BY slice does not transfer to an equi-join. Even the smallest
+two-input shape needs two independent source-to-bucket channel sets and one cloned final
+`JoinNode` per bucket:
+
+```text
+left source  -- hash(join-left-keys)  --> left exchange[p]  --+
+                                                           join[p] --> Collect
+right source -- hash(join-right-keys) --> right exchange[p] --+
+```
+
+This is a **2 x P** topology, not a reuse of the GROUP BY **1 x P** topology and not an N x N
+claim. More importantly, `TableOperatorGenerator#visitJoin` currently instantiates
+`MergeSortInnerJoinOperator`. Row hashing keeps equal values together but does not preserve the
+key order required by that operator. A correct first join slice must either add a local sort to
+both inputs of every bucket or implement and validate a table hash-join operator.
+
+`TableEquiJoinHashRepartitionGuard` therefore records an explicit fallback for every join when
+property tracing is enabled. An apparently eligible INNER equi-join is still rejected with
+`MERGE_SORT_OPERATOR_REQUIRES_BUCKET_ORDERING_AND_CLONED_FINAL_JOINS`; outer, cross, ASOF and
+residual-filter joins have stricter reasons. The planner test asserts no
+`TableHashPartitioningShuffleSinkNode` is emitted for joins. This guard may be removed only after
+the 2 x P fragment-ownership test, per-bucket sort/hash-join implementation, null/repeated-key
+result equivalence, and multi-DataNode shuffle accounting have all passed.
