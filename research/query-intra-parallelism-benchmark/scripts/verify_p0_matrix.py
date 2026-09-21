@@ -35,6 +35,8 @@ P0_DOPS = [1, 2, 4, 8, 16]
 P0_CACHE_MODES = ["warm", "cold"]
 P0_QUERIES = ["scan_filter", "filter_project", "ordered_scan", "top_k", "group_by", "self_join"]
 REQUIRED_METRICS = ["query_ms", "cpu_pct", "peak_rss_bytes", "shuffle_bytes"]
+MIN_WARMUPS_PER_CELL = 2
+MIN_MEASURED_SAMPLES_PER_CELL = 7
 
 
 def read_json(path: Path, problems: list[str]) -> dict[str, Any] | None:
@@ -69,6 +71,10 @@ def check_manifest(output: Path, problems: list[str]) -> None:
     queries = manifest.get("queries")
     if not isinstance(queries, list) or set(queries) != set(P0_QUERIES):
         problems.append("manifest queries must contain the six P0 workload classes")
+    if manifest.get("warmups") != MIN_WARMUPS_PER_CELL:
+        problems.append(f"manifest warmups must be exactly {MIN_WARMUPS_PER_CELL}")
+    if manifest.get("iterations") != MIN_MEASURED_SAMPLES_PER_CELL:
+        problems.append(f"manifest iterations must be exactly {MIN_MEASURED_SAMPLES_PER_CELL}")
 
 
 def check_environment(output: Path, problems: list[str]) -> None:
@@ -95,14 +101,14 @@ def check_attempts(output: Path, problems: list[str]) -> None:
     except OSError as error:
         problems.append(f"cannot read {attempts_path}: {error}")
         return
-    seen: set[tuple[str, int, str]] = set()
+    counts: dict[tuple[str, int, str], int] = {}
     for row_number, row in enumerate(rows, start=2):
         try:
             key = (row["query_id"], int(row["dop"]), row["cache_mode"])
         except (KeyError, ValueError):
             problems.append(f"{attempts_path}:{row_number} lacks a valid query_id/dop/cache_mode")
             continue
-        seen.add(key)
+        counts[key] = counts.get(key, 0) + 1
         for metric in REQUIRED_METRICS:
             if not numeric_metric(row.get(metric), metric):
                 problems.append(f"{attempts_path}:{row_number} has missing/invalid {metric}")
@@ -112,8 +118,14 @@ def check_attempts(output: Path, problems: list[str]) -> None:
     for query in P0_QUERIES:
         for dop in P0_DOPS:
             for mode in P0_CACHE_MODES:
-                if (query, dop, mode) not in seen:
+                count = counts.get((query, dop, mode), 0)
+                if count == 0:
                     problems.append(f"missing measured cell query={query}, dop={dop}, cache={mode}")
+                elif count < MIN_MEASURED_SAMPLES_PER_CELL:
+                    problems.append(
+                        f"insufficient measured samples query={query}, dop={dop}, cache={mode}: "
+                        f"expected at least {MIN_MEASURED_SAMPLES_PER_CELL}, got {count}"
+                    )
 
 
 def check_results(output: Path, problems: list[str]) -> None:
@@ -144,7 +156,8 @@ def self_test() -> int:
         (output / "validation").mkdir()
         (output / "manifest.json").write_text(json.dumps({
             "dop_sequence": [1, 2, 4, 8, 16, 1], "cache_modes": ["warm", "cold"],
-            "queries": P0_QUERIES,
+            "queries": P0_QUERIES, "warmups": MIN_WARMUPS_PER_CELL,
+            "iterations": MIN_MEASURED_SAMPLES_PER_CELL,
         }), encoding="utf-8")
         (output / "environment" / "environment.json").write_text(json.dumps({
             "git": {"head": {"exit_code": 0, "stdout": "0123456789abcdef\\n"}},
@@ -157,9 +170,10 @@ def self_test() -> int:
                     attempt = output / "raw" / query / str(dop) / mode
                     attempt.mkdir(parents=True)
                     (attempt / "record.json").write_text("{}", encoding="utf-8")
-                    rows.append({"query_id": query, "dop": dop, "cache_mode": mode,
-                                 "query_ms": "1", "cpu_pct": "0", "peak_rss_bytes": "0",
-                                 "shuffle_bytes": "0", "attempt_dir": str(attempt)})
+                    for iteration in range(MIN_MEASURED_SAMPLES_PER_CELL):
+                        rows.append({"query_id": query, "dop": dop, "cache_mode": mode,
+                                     "query_ms": "1", "cpu_pct": "0", "peak_rss_bytes": "0",
+                                     "shuffle_bytes": "0", "attempt_dir": str(attempt)})
         with (output / "summary" / "attempts.csv").open("w", newline="", encoding="utf-8") as target:
             writer = csv.DictWriter(target, fieldnames=rows[0])
             writer.writeheader()
@@ -173,6 +187,14 @@ def self_test() -> int:
             return 1
         (output / "validation" / "top_k" / "dop-16" / "report.json").write_text(
             '{"matched": false}', encoding="utf-8")
+        if verify(output)["accepted"]:
+            return 1
+        (output / "validation" / "top_k" / "dop-16" / "report.json").write_text(
+            '{"matched": true}', encoding="utf-8")
+        with (output / "summary" / "attempts.csv").open("w", newline="", encoding="utf-8") as target:
+            writer = csv.DictWriter(target, fieldnames=rows[0])
+            writer.writeheader()
+            writer.writerows(rows[:-1])
         if verify(output)["accepted"]:
             return 1
     print("verify_p0_matrix self-test passed")
