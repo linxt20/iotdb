@@ -36,10 +36,10 @@ import static org.junit.Assert.assertEquals;
 public class TableEquiJoinHashRepartitionGuardTest {
 
   @Test
-  public void supportedLookingInnerEquiJoinStillWaitsForBucketSortAndFinalJoinClones() {
+  public void supportedLookingInnerEquiJoinStillWaitsForHashJoinExecutorAndTwoSidedBuckets() {
     assertEquals(
         TableEquiJoinHashRepartitionGuard.FallbackReason
-            .MERGE_SORT_OPERATOR_REQUIRES_BUCKET_ORDERING_AND_CLONED_FINAL_JOINS,
+            .HASH_JOIN_EXECUTOR_AND_TWO_SIDED_BUCKET_TOPOLOGY_REQUIRED,
         TableEquiJoinHashRepartitionGuard.getFallbackReason(createJoin(JoinNode.JoinType.INNER)));
   }
 

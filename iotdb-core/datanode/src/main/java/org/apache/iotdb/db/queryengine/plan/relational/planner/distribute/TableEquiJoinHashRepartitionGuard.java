@@ -26,11 +26,11 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNod
  *
  * <p>Hashing both join inputs is not enough to make the existing table join executable. The
  * current {@code TableOperatorGenerator} creates a {@code MergeSortInnerJoinOperator}; a hash
- * shuffle destroys the input ordering it consumes. A future implementation must therefore clone
- * one final join per bucket, add a local sort (or a hash-join operator) on both bucket inputs, and
- * prove two-source fragment ownership before selecting the exchange. Until then this class makes
- * every fallback explicit instead of allowing an apparently compatible equi-join to accidentally
- * select the group-by-only exchange path.
+ * shuffle destroys the input ordering it consumes. A future implementation must therefore add a
+ * hash-join operator (or a local sort) and materialize {@link
+ * TableEquiJoinHashRepartitionTopology}'s two-input, P-bucket fragment shape before selecting the
+ * exchange. Until then this class makes every fallback explicit instead of allowing an apparently
+ * compatible equi-join to accidentally select the group-by-only exchange path.
  */
 final class TableEquiJoinHashRepartitionGuard {
 
@@ -49,7 +49,7 @@ final class TableEquiJoinHashRepartitionGuard {
     if (node.getFilter().isPresent()) {
       return FallbackReason.RESIDUAL_JOIN_FILTER;
     }
-    return FallbackReason.MERGE_SORT_OPERATOR_REQUIRES_BUCKET_ORDERING_AND_CLONED_FINAL_JOINS;
+    return FallbackReason.HASH_JOIN_EXECUTOR_AND_TWO_SIDED_BUCKET_TOPOLOGY_REQUIRED;
   }
 
   enum FallbackReason {
@@ -57,6 +57,6 @@ final class TableEquiJoinHashRepartitionGuard {
     NO_EQUI_JOIN_KEYS,
     ASOF_JOIN,
     RESIDUAL_JOIN_FILTER,
-    MERGE_SORT_OPERATOR_REQUIRES_BUCKET_ORDERING_AND_CLONED_FINAL_JOINS
+    HASH_JOIN_EXECUTOR_AND_TWO_SIDED_BUCKET_TOPOLOGY_REQUIRED
   }
 }
