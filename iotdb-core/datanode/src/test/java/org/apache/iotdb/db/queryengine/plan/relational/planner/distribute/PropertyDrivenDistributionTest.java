@@ -135,7 +135,8 @@ public class PropertyDrivenDistributionTest {
   }
 
   @Test
-  public void parallelScanPermissionSurvivesFragmentSerialization() throws Exception {
+  public void parallelScanPermissionSurvivesFragmentSerialization()
+      throws org.apache.iotdb.commons.exception.IllegalPathException {
     DeviceTableScanNode original =
         planAndCollectScans("SELECT * FROM testdb.table1 WHERE s1 > 1").get(0);
     assertTrue(original.isAllowParallelScan());
