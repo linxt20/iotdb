@@ -210,18 +210,17 @@ public class TableDistributedPlanGenerator
     if (res.size() == 1) {
       return res;
     } else if (res.size() > 1) {
+      // Deliberately not routed through enforce(): this merges with a CollectNode regardless of
+      // whether the children are ordered, whereas enforce() would insert a MergeSortNode for
+      // ordered children. Unifying the two would change the plan on the paths that reach here
+      // (visitCopyTo among them), which is out of scope for a rule set that has to reproduce the
+      // current behaviour exactly.
       final CollectNode collectNode =
           new CollectNode(queryId.genPlanNodeId(), res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
-      // Same reasoning as the CollectNode branch of mergeChildrenViaCollectOrMergeSort: merging
-      // through a CollectNode means no ordering is required from the children, so each scan child
-      // may be split into several parallel scan drivers during local execution planning.
-      res.forEach(
-          child -> {
-            if (child instanceof DeviceTableScanNode) {
-              ((DeviceTableScanNode) child).setAllowParallelScan(true);
-            }
-          });
+      // Merging through a CollectNode means no ordering is required from the children, so each
+      // scan child may be split into several parallel scan drivers during local execution planning.
+      allowParallelScanOn(res);
       return Collections.singletonList(collectNode);
     } else {
       throw new IllegalStateException(DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
