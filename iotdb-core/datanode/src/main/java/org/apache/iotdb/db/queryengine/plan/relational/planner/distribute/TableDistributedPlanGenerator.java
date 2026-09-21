@@ -2966,7 +2966,16 @@ public class TableDistributedPlanGenerator
         DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_EMPTY_DOT_E5555FD9);
 
     if (childrenNodes.size() == 1) {
-      return childrenNodes.get(0);
+      final PlanNode onlyChild = childrenNodes.get(0);
+      // Even when the query only produces a single scan child (e.g. all data lives in one data
+      // region), the scan can still be split into multiple parallel scan drivers during local
+      // execution planning, as long as the parent has no ordering requirement on it
+      // (childOrdering == null, mirroring the CollectNode branch below). The device partitioning
+      // done by the split is orthogonal to how many regions the data spans.
+      if (childOrdering == null && onlyChild instanceof DeviceTableScanNode) {
+        ((DeviceTableScanNode) onlyChild).setAllowParallelScan(true);
+      }
+      return onlyChild;
     }
 
     final PlanNode firstChild = childrenNodes.get(0);

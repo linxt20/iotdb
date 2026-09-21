@@ -151,6 +151,43 @@ public class MockTableModelDataPartition {
     return dataPartition;
   }
 
+  /**
+   * A DataPartition where every device (and every time partition) lives in a single DataRegionGroup.
+   * Used to verify that a table query confined to one data region still allows its single
+   * DeviceTableScanNode to be split into parallel scan drivers (M1) during local execution planning.
+   *
+   * <pre>
+   * device1..device6(startTime:0 and 100): DataRegionGroup_1
+   * </pre>
+   */
+  public static DataPartition constructSingleRegionDataPartition(String dbName) {
+    DataPartition dataPartition =
+        new DataPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dbPartitionMap = new HashMap<>();
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> devicePartitionMap =
+        new HashMap<>();
+
+    List<TRegionReplicaSet> onlyRegion = Collections.singletonList(DATA_REGION_GROUP_1);
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> dataRegionMap =
+        ImmutableMap.<TTimePartitionSlot, List<TRegionReplicaSet>>builder()
+            .put(new TTimePartitionSlot(0L), onlyRegion)
+            .put(new TTimePartitionSlot(100L), onlyRegion)
+            .build();
+    for (String device :
+        Arrays.asList(DEVICE_1, DEVICE_2, DEVICE_3, DEVICE_4, DEVICE_5, DEVICE_6)) {
+      devicePartitionMap.put(EXECUTOR.getSeriesPartitionSlot(device), dataRegionMap);
+    }
+
+    dbPartitionMap.put(dbName, devicePartitionMap);
+    dataPartition.setDataPartitionMap(dbPartitionMap);
+
+    return dataPartition;
+  }
+
   public static SchemaPartition constructSchemaPartition(String dbName) {
     final SchemaPartition schemaPartition =
         new SchemaPartition(

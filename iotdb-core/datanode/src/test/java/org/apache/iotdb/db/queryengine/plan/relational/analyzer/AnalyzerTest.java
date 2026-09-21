@@ -258,6 +258,60 @@ public class AnalyzerTest {
             instanceof CollectNode);
   }
 
+  /**
+   * When all data lives in a single data region, the query produces exactly one
+   * DeviceTableScanNode (no CollectNode is created to merge per-region children). This node must
+   * still be marked allowParallelScan == true, so it can be split into multiple parallel scan
+   * drivers during local execution planning (M1) just like the per-region children of a multi-region
+   * query. The device partitioning done by the split is orthogonal to how many regions the data
+   * spans.
+   */
+  @Test
+  public void singleRegionAllowsParallelScanTest() {
+    sql = "SELECT * FROM testdb.table1";
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+    // force all devices into a single data region
+    analysis.setDataPartitionInfo(
+        MockTableModelDataPartition.constructSingleRegionDataPartition("testdb"));
+    final SymbolAllocator symbolAllocator = new SymbolAllocator();
+    logicalQueryPlan =
+        new TableLogicalPlanner(
+                QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, symbolAllocator, DEFAULT_WARNING)
+            .plan(analysis);
+
+    distributionPlanner =
+        new TableDistributedPlanner(
+            analysis, symbolAllocator, logicalQueryPlan, TEST_MATADATA, null);
+    distributedQueryPlan = distributionPlanner.plan();
+
+    List<DeviceTableScanNode> scanNodes = new ArrayList<>();
+    List<CollectNode> collectNodes = new ArrayList<>();
+    for (int i = 0; i < distributedQueryPlan.getFragments().size(); i++) {
+      collectPlanNodes(
+          distributedQueryPlan.getFragments().get(i).getPlanNodeTree(), scanNodes, collectNodes);
+    }
+    // single region -> exactly one scan node, and no CollectNode merging per-region children
+    assertEquals(1, scanNodes.size());
+    assertTrue(collectNodes.isEmpty());
+    // the single-region scan is still allowed to be split into parallel scan drivers
+    assertTrue(scanNodes.get(0).isAllowParallelScan());
+  }
+
+  private void collectPlanNodes(
+      PlanNode node, List<DeviceTableScanNode> scanNodes, List<CollectNode> collectNodes) {
+    if (node == null) {
+      return;
+    }
+    if (node instanceof DeviceTableScanNode) {
+      scanNodes.add((DeviceTableScanNode) node);
+    } else if (node instanceof CollectNode) {
+      collectNodes.add((CollectNode) node);
+    }
+    for (PlanNode child : node.getChildren()) {
+      collectPlanNodes(child, scanNodes, collectNodes);
+    }
+  }
+
   @Test
   public void singleTableWithFilterTest1() {
     // only global time filter
