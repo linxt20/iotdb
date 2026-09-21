@@ -38,6 +38,17 @@ public class FragmentInstanceStatisticsDrawer {
   private final List<StatisticLine> planHeader = new ArrayList<>();
   private static final double NS_TO_MS_FACTOR = 1.0 / 1000000;
 
+  // Metric-tree values travel inside TOperatorStatistics.specifiedInfo so that no thrift schema
+  // change is needed.  Keys carrying these synthetic values are prefixed to keep them apart from
+  // operator-authored entries, and "__pipeline_" marks the per-driver snapshots of parallel
+  // sub-scan operators.
+  static final String INTERNAL_KEY_PREFIX = "__mt_";
+  static final String TS_BLOCK_COUNT_KEY = INTERNAL_KEY_PREFIX + "tsBlockOutputCount";
+  static final String PIPELINE_KEY_PREFIX = "__pipeline_";
+  // Infix used by DataNodeTableOperatorGenerator when it splits one DeviceTableScanNode into
+  // per-driver sub scans, producing planNodeIds of the form "<nodeId>-parallel-<i>".
+  public static final String PARALLEL_SUB_SCAN_INFIX = "-parallel-";
+
   public void renderPlanStatistics(MPPQueryContext context) {
     addLine(
         planHeader,
@@ -174,12 +185,30 @@ public class FragmentInstanceStatisticsDrawer {
               "ready queued time: %.3f ms, blocked queued time: %.3f ms",
               statistics.getReadyQueuedTime() * NS_TO_MS_FACTOR,
               statistics.getBlockQueuedTime() * NS_TO_MS_FACTOR));
+
+      // FI-level blocking ratio: the fraction of scheduling time the drivers spent blocked rather
+      // than ready, i.e. how much of their wait was backpressure instead of plain queueing.
+      // Rendered only when blocking actually happened — a "0.0%" line would be noise on every
+      // fragment instance and would just restate the "blocked queued time: 0.000 ms" line above.
+      if (statistics.getBlockQueuedTime() > 0) {
+        long totalQueueTime = statistics.getReadyQueuedTime() + statistics.getBlockQueuedTime();
+        double blockRatio = (double) statistics.getBlockQueuedTime() / totalQueueTime * 100.0;
+        addLine(singleFragmentInstanceArea, 1, String.format("blocking ratio: %.1f%%", blockRatio));
+      }
+
       renderQueryStatistics(statistics.getQueryStatistics(), singleFragmentInstanceArea, verbose);
 
       // render operator
       PlanNode planNodeTree = instance.getFragment().getPlanNodeTree();
       renderOperator(
           planNodeTree, statistics.getOperatorStatisticsMap(), singleFragmentInstanceArea, 2);
+
+      // render parallel sub-scan pipelines.  These are keyed as "__pipeline_<nodeId>-parallel-<i>"
+      // in the map (stashed before mergeOperatorStatisticsIfDuplicate removed the hyphenated keys)
+      // so the tree walker above cannot reach them.  Expand them here at the same indent level so
+      // the metric tree shows each pipeline's stats individually.
+      renderParallelSubScans(statistics.getOperatorStatisticsMap(), singleFragmentInstanceArea);
+
       table.addAll(singleFragmentInstanceArea);
     }
 
@@ -539,6 +568,18 @@ public class FragmentInstanceStatisticsDrawer {
           singleFragmentInstanceArea,
           indentNum + 2,
           String.format("output: %s rows", operatorStatistic.getOutputRows()));
+
+      // Throughput: rows per second based on CPU time. Shows how fast the operator produces
+      // rows when actually executing, which highlights bottlenecks in a parallel plan.
+      double cpuTimeMs = operatorStatistic.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR;
+      if (cpuTimeMs > EPSILON && operatorStatistic.getOutputRows() > 0) {
+        double throughput = operatorStatistic.getOutputRows() / (cpuTimeMs / 1000.0);
+        addLine(
+            singleFragmentInstanceArea,
+            indentNum + 2,
+            String.format("throughput: %.1f rows/s", throughput));
+      }
+
       addLine(
           singleFragmentInstanceArea,
           indentNum + 2,
@@ -554,7 +595,21 @@ public class FragmentInstanceStatisticsDrawer {
           operatorStatistic.getMemoryUsage());
 
       if (operatorStatistic.getSpecifiedInfoSize() != 0) {
-        for (Map.Entry<String, String> entry : operatorStatistic.getSpecifiedInfo().entrySet()) {
+        Map<String, String> specifiedInfo = operatorStatistic.getSpecifiedInfo();
+        // Metric-tree fields are transported inside specifiedInfo (no thrift schema change) but
+        // are rendered as first-class lines rather than raw "__mt_"-prefixed keys.
+        Long tsBlockCount = sumTsBlockOutputCount(specifiedInfo);
+        if (tsBlockCount != null) {
+          addLine(
+              singleFragmentInstanceArea,
+              indentNum + 2,
+              String.format("TsBlock output count: %d", tsBlockCount));
+        }
+
+        for (Map.Entry<String, String> entry : specifiedInfo.entrySet()) {
+          if (entry.getKey().startsWith(INTERNAL_KEY_PREFIX)) {
+            continue;
+          }
           addLine(
               singleFragmentInstanceArea,
               indentNum + 2,
@@ -566,6 +621,104 @@ public class FragmentInstanceStatisticsDrawer {
     for (PlanNode child : planNodeTree.getChildren()) {
       renderOperator(child, operatorStatistics, singleFragmentInstanceArea, indentNum + 1);
     }
+  }
+
+  /**
+   * Renders parallel sub-scan pipeline entries from the operator statistics map. These entries are
+   * stashed under a {@code "__pipeline_"} prefix before {@code mergeOperatorStatisticsIfDuplicate}
+   * removes the original hyphenated keys, so they survive the merge and reach this point intact.
+   * Each entry displays per-pipeline metrics (output rows, CPU time, throughput, TsBlock count)
+   * enabling observation of load balance across parallel scan drivers.
+   */
+  private void renderParallelSubScans(
+      Map<String, TOperatorStatistics> operatorStatistics,
+      List<StatisticLine> singleFragmentInstanceArea) {
+    boolean hasParallel =
+        operatorStatistics.keySet().stream().anyMatch(k -> k.startsWith(PIPELINE_KEY_PREFIX));
+    if (!hasParallel) {
+      return;
+    }
+
+    addBlankLine(singleFragmentInstanceArea);
+    addLine(singleFragmentInstanceArea, 2, "Parallel Pipelines (per-driver breakdown):");
+
+    // Sort by the original planNodeId so order is deterministic (e.g. parallel-0, parallel-1, …).
+    operatorStatistics.entrySet().stream()
+        .filter(e -> e.getKey().startsWith(PIPELINE_KEY_PREFIX))
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(
+            entry -> {
+              TOperatorStatistics op = entry.getValue();
+              String displayKey =
+                  entry
+                      .getKey()
+                      .substring(PIPELINE_KEY_PREFIX.length())
+                      .replaceFirst("_parallel_(\\d+)$", PARALLEL_SUB_SCAN_INFIX + "$1");
+              addLine(
+                  singleFragmentInstanceArea,
+                  3,
+                  String.format("[%s]: %s", displayKey, op.getOperatorType()));
+              addLine(
+                  singleFragmentInstanceArea,
+                  4,
+                  String.format(
+                      "CPU Time: %.3f ms", op.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR));
+              addLine(
+                  singleFragmentInstanceArea,
+                  4,
+                  String.format("output: %s rows", op.getOutputRows()));
+              double cpuTimeMs = op.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR;
+              if (cpuTimeMs > EPSILON && op.getOutputRows() > 0) {
+                double throughput = op.getOutputRows() / (cpuTimeMs / 1000.0);
+                addLine(
+                    singleFragmentInstanceArea,
+                    4,
+                    String.format("throughput: %.1f rows/s", throughput));
+              }
+              // Show TsBlock output count if present (injected via __mt_tsBlockOutputCount).
+              if (op.getSpecifiedInfo() != null) {
+                Long tsBlockCount = sumTsBlockOutputCount(op.getSpecifiedInfo());
+                if (tsBlockCount != null) {
+                  addLine(
+                      singleFragmentInstanceArea,
+                      4,
+                      String.format("TsBlock output count: %d", tsBlockCount));
+                }
+              }
+              // Show any user-visible specifiedInfo (skip internal __mt_ keys).
+              if (op.getSpecifiedInfoSize() != 0) {
+                for (Map.Entry<String, String> info : op.getSpecifiedInfo().entrySet()) {
+                  if (!info.getKey().startsWith(INTERNAL_KEY_PREFIX)) {
+                    addLine(
+                        singleFragmentInstanceArea,
+                        4,
+                        String.format("%s: %s", info.getKey(), info.getValue()));
+                  }
+                }
+              }
+            });
+  }
+
+  /**
+   * Sums the TsBlock output count carried in specifiedInfo, or returns {@code null} when absent.
+   * The value may hold several space-separated numbers after operators of the same type are merged
+   * (see {@code SpecifiedInfoMergerFactory}); the sum is what a merged operator should report. A
+   * non-numeric value yields {@code null} instead of failing the rendering.
+   */
+  private static Long sumTsBlockOutputCount(Map<String, String> specifiedInfo) {
+    String rawValue = specifiedInfo.get(TS_BLOCK_COUNT_KEY);
+    if (rawValue == null || rawValue.isEmpty()) {
+      return null;
+    }
+    long total = 0;
+    for (String part : rawValue.trim().split("\s+")) {
+      try {
+        total += Long.parseLong(part);
+      } catch (NumberFormatException e) {
+        return null;
+      }
+    }
+    return total;
   }
 
   public int getMaxLineLength() {

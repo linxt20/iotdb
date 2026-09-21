@@ -133,6 +133,16 @@ public class FragmentInstanceStatisticsJsonDrawer {
       fiJson.addProperty(
           "blockQueuedTimeMs", formatMs(statistics.getBlockQueuedTime() * NS_TO_MS_FACTOR));
 
+      // FI-level blocking ratio: share of scheduling time spent blocked rather than ready.  Only
+      // emitted when blocking actually happened, mirroring the text drawer's suppression of a
+      // meaningless "0.0%".
+      if (statistics.getBlockQueuedTime() > 0) {
+        long totalQueueTime = statistics.getReadyQueuedTime() + statistics.getBlockQueuedTime();
+        fiJson.addProperty(
+            "blockingRatioPercent",
+            formatMs((double) statistics.getBlockQueuedTime() / totalQueueTime * 100.0));
+      }
+
       // Query statistics
       JsonObject queryStats = renderQueryStatisticsJson(statistics.getQueryStatistics(), verbose);
       fiJson.add("queryStatistics", queryStats);
@@ -143,6 +153,14 @@ public class FragmentInstanceStatisticsJsonDrawer {
           renderOperatorJson(planNodeTree, statistics.getOperatorStatisticsMap());
       if (operatorTree != null) {
         fiJson.add("operators", operatorTree);
+      }
+
+      // Parallel sub-scan pipelines: per-driver breakdown of the parallel scan operators.  These
+      // entries live under a hyphen-free "__pipeline_" key so they survive
+      // mergeOperatorStatisticsIfDuplicate, which would otherwise fold them into their parent.
+      JsonArray pipelines = renderParallelPipelinesJson(statistics.getOperatorStatisticsMap());
+      if (pipelines.size() > 0) {
+        fiJson.add("parallelPipelines", pipelines);
       }
 
       fragmentInstancesArray.add(fiJson);
@@ -335,6 +353,15 @@ public class FragmentInstanceStatisticsJsonDrawer {
       operatorJson.addProperty(
           "cpuTimeMs", formatMs(opStats.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR));
       operatorJson.addProperty("outputRows", opStats.getOutputRows());
+
+      // Throughput in rows/s, derived from rows and CPU time (not wall time: CPU time is what this
+      // operator actually consumed, so the ratio is comparable across parallel drivers).
+      if (opStats.getTotalExecutionTimeInNanos() > 0 && opStats.getOutputRows() > 0) {
+        double cpuTimeMs = opStats.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR;
+        operatorJson.addProperty(
+            "throughputRowsPerSec", formatMs(opStats.getOutputRows() / (cpuTimeMs / 1000.0)));
+      }
+
       operatorJson.addProperty("hasNextCalledCount", opStats.hasNextCalledCount);
       operatorJson.addProperty("nextCalledCount", opStats.nextCalledCount);
       if (opStats.getMemoryUsage() != 0) {
@@ -342,11 +369,22 @@ public class FragmentInstanceStatisticsJsonDrawer {
       }
 
       if (opStats.getSpecifiedInfoSize() != 0) {
+        // The TsBlock count is carried inside specifiedInfo and promoted to its own field; the
+        // synthetic metric-tree keys are not leaked into the emitted specifiedInfo object.
+        addTsBlockOutputCount(
+            operatorJson,
+            opStats.getSpecifiedInfo().get(FragmentInstanceStatisticsDrawer.TS_BLOCK_COUNT_KEY));
+
         JsonObject specifiedInfo = new JsonObject();
         for (Map.Entry<String, String> entry : opStats.getSpecifiedInfo().entrySet()) {
+          if (entry.getKey().startsWith(FragmentInstanceStatisticsDrawer.INTERNAL_KEY_PREFIX)) {
+            continue;
+          }
           specifiedInfo.addProperty(entry.getKey(), entry.getValue());
         }
-        operatorJson.add("specifiedInfo", specifiedInfo);
+        if (specifiedInfo.size() > 0) {
+          operatorJson.add("specifiedInfo", specifiedInfo);
+        }
       }
     }
 
@@ -366,6 +404,91 @@ public class FragmentInstanceStatisticsJsonDrawer {
     }
 
     return operatorJson;
+  }
+
+  /**
+   * Renders the per-driver breakdown of parallel scan operators. These entries are stored under a
+   * hyphen-free {@code "__pipeline_"} key (see {@code FragmentInstanceExecution#buildStatistics})
+   * so that {@code mergeOperatorStatisticsIfDuplicate} — which folds every key containing "-" into
+   * its parent — cannot collapse them, letting EXPLAIN ANALYZE show how work is spread across the
+   * parallel scan drivers.
+   *
+   * @return a JSON array of per-pipeline objects, empty when no parallel scan took place
+   */
+  private JsonArray renderParallelPipelinesJson(
+      Map<String, TOperatorStatistics> operatorStatistics) {
+    JsonArray pipelines = new JsonArray();
+    operatorStatistics.entrySet().stream()
+        .filter(
+            entry ->
+                entry.getKey().startsWith(FragmentInstanceStatisticsDrawer.PIPELINE_KEY_PREFIX))
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(
+            entry -> {
+              TOperatorStatistics op = entry.getValue();
+              JsonObject pipeline = new JsonObject();
+              // Recover a readable "<nodeId>-parallel-<i>" id from the hyphen-free stash key.
+              String nodeId =
+                  entry
+                      .getKey()
+                      .substring(FragmentInstanceStatisticsDrawer.PIPELINE_KEY_PREFIX.length())
+                      .replaceFirst(
+                          "_parallel_(\\d+)$",
+                          FragmentInstanceStatisticsDrawer.PARALLEL_SUB_SCAN_INFIX + "$1");
+              pipeline.addProperty("planNodeId", nodeId);
+              pipeline.addProperty("operatorType", op.getOperatorType());
+              pipeline.addProperty(
+                  "cpuTimeMs", formatMs(op.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR));
+              pipeline.addProperty("outputRows", op.getOutputRows());
+              if (op.getTotalExecutionTimeInNanos() > 0 && op.getOutputRows() > 0) {
+                double cpuTimeMs = op.getTotalExecutionTimeInNanos() * NS_TO_MS_FACTOR;
+                pipeline.addProperty(
+                    "throughputRowsPerSec", formatMs(op.getOutputRows() / (cpuTimeMs / 1000.0)));
+              }
+              if (op.getMemoryUsage() != 0) {
+                pipeline.addProperty("estimatedMemorySize", op.getMemoryUsage());
+              }
+              if (op.getSpecifiedInfo() != null) {
+                addTsBlockOutputCount(
+                    pipeline,
+                    op.getSpecifiedInfo().get(FragmentInstanceStatisticsDrawer.TS_BLOCK_COUNT_KEY));
+                JsonObject specifiedInfo = new JsonObject();
+                for (Map.Entry<String, String> info : op.getSpecifiedInfo().entrySet()) {
+                  if (info.getKey()
+                      .startsWith(FragmentInstanceStatisticsDrawer.INTERNAL_KEY_PREFIX)) {
+                    continue;
+                  }
+                  specifiedInfo.addProperty(info.getKey(), info.getValue());
+                }
+                if (specifiedInfo.size() > 0) {
+                  pipeline.add("specifiedInfo", specifiedInfo);
+                }
+              }
+              pipelines.add(pipeline);
+            });
+    return pipelines;
+  }
+
+  /**
+   * Promotes the TsBlock count carried in specifiedInfo to its own {@code tsBlockOutputCount}
+   * field, summing the value when several entries were merged into one. Merging appends values with
+   * a space for sink and shuffle operators (see {@code SpecifiedInfoMergerFactory}), so the raw
+   * string can read {@code "10 10"}; the sum is what a merged operator should report. A value that
+   * cannot be parsed at all is skipped rather than failing the whole EXPLAIN ANALYZE.
+   */
+  private static void addTsBlockOutputCount(JsonObject target, String rawValue) {
+    if (rawValue == null || rawValue.isEmpty()) {
+      return;
+    }
+    long total = 0;
+    for (String part : rawValue.trim().split("\\s+")) {
+      try {
+        total += Long.parseLong(part);
+      } catch (NumberFormatException e) {
+        return;
+      }
+    }
+    target.addProperty("tsBlockOutputCount", total);
   }
 
   private static double formatMs(double ms) {

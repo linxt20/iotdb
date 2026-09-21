@@ -240,6 +240,16 @@ public class DataNodeTableOperatorGenerator
   /**
    * Amount of data a single scan driver is expected to work through before it is worth giving the
    * scan another driver (only used when {@code enable_dop_estimation} is on).
+   *
+   * <p><b>This is an upper bound on parallelism, not a target</b>: when the region holds less than
+   * one multiple of this many bytes, {@code estimatePipelineNumByDataSize} returns 1 and the scan is
+   * <em>not</em> split at all, regardless of {@code dop} or how many devices there are. This is
+   * intentional — on a small dataset the scheduling overhead of extra drivers is not worth paying
+   * for — but it means that turning {@code enable_dop_estimation} on can silently suppress the split
+   * that {@code enable_timepartition_morsel} or a plain high {@code dop} would otherwise produce.
+   * When running an experiment or a demo where the point is to <em>observe</em> parallel scan
+   * splitting, either turn this flag off, or use a dataset whose region holds at least {@code
+   * TARGET_BYTES_PER_SCAN_DRIVER} bytes (128 MiB) so the estimate does not collapse to 1.
    */
   private static final long TARGET_BYTES_PER_SCAN_DRIVER = 128L * 1024 * 1024;
 
@@ -1404,6 +1414,11 @@ public class DataNodeTableOperatorGenerator
    * <p>Returns {@code deviceCount} (i.e. "no opinion", which leaves the caller's default in place)
    * whenever the metadata is unavailable, which is the case for regions other than a plain data
    * region and for regions that hold no file at all.
+   *
+   * <p>When the region does hold files but they add up to less than {@link
+   * #TARGET_BYTES_PER_SCAN_DRIVER}, this legitimately returns 1 — see the caveat on that constant.
+   * On a small dataset (e.g. a quick functional demo) this flag alone will therefore suppress the
+   * split; observing parallel scan splitting on such a dataset requires this flag to stay off.
    */
   private int estimatePipelineNumByDataSize(
       final IDataRegionForQuery dataRegion, final int deviceCount) {
