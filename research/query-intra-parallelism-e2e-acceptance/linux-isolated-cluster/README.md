@@ -38,7 +38,7 @@ tool=research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster
 bash "$tool/prepare-benchmark-deployment.sh" \
   --root /root/iotdb-static-benchmark-20260921 \
   --distribution-root /root/iotdb-next-p0-server/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin/apache-iotdb-2.0.11-SNAPSHOT-all-bin \
-  --initial-dop 1
+  --initial-dop 1 --query-cost-stat-window 30
 ```
 
 For each matrix step, invoke `set-isolated-dop.sh` with the same explicitly named root. It stops
@@ -61,3 +61,9 @@ The benchmark matrix can retain each transition's stdout/stderr without a shell 
 This performs configuration and process-readiness verification only; it supplies no timing or
 speedup claim. The normal-query matrix and explicit server-side metric adapter remain responsible
 for performance evidence.
+
+`--query-cost-stat-window` is optional and defaults to `0`, preserving the normal IoTDB default.
+Pass a positive value only for a dedicated benchmark root when the normal-query timing adapter will
+read the completed-query history. The value is written and verified in both DataNode configurations
+*before* their first start, then archived with the two configuration hashes. It does not turn CLI
+elapsed time into a metric, and it does not create query-scoped shuffle-byte metrics.
