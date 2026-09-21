@@ -77,6 +77,16 @@ public class ExchangeNode extends SingleChildProcessNode {
   }
 
   @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    if (newChildren.size() != 1) {
+      throw new IllegalArgumentException();
+    }
+    ExchangeNode replacement = (ExchangeNode) clone();
+    replacement.setChild(newChildren.get(0));
+    return replacement;
+  }
+
+  @Override
   public List<String> getOutputColumnNames() {
     throw new UnsupportedOperationException();
   }
