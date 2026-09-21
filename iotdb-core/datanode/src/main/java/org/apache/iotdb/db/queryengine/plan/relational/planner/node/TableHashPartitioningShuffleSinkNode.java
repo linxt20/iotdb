@@ -74,6 +74,15 @@ public class TableHashPartitioningShuffleSinkNode extends ShuffleSinkNode {
         getPlanNodeId(), getDownStreamChannelLocationList(), partitioningDescriptor);
   }
 
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    TableHashPartitioningShuffleSinkNode replacement =
+        new TableHashPartitioningShuffleSinkNode(
+            getPlanNodeId(), getDownStreamChannelLocationList(), partitioningDescriptor);
+    newChildren.forEach(replacement::addChild);
+    return replacement;
+  }
+
   public HashPartitioningDescriptor getPartitioningDescriptor() {
     return partitioningDescriptor;
   }

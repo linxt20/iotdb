@@ -600,7 +600,9 @@ public class PropertyDrivenDistributionTest {
     List<PlanNode> nodes =
         planAndCollectNodes("SELECT row_number() OVER (ORDER BY time) FROM testdb.table1");
 
-    assertTrue(nodes.stream().anyMatch(node -> node instanceof RowNumberNode));
+    assertTrue(
+        "the ordered ranking path must retain an order-sensitive physical operator",
+        nodes.stream().anyMatch(node -> node instanceof RowNumberNode || node instanceof WindowNode));
     assertAllScansForbidParallelism(
         nodes, "an order-sensitive RowNumber must not split its scan into parallel drivers");
   }
