@@ -1534,7 +1534,7 @@ public class DataNodeTableOperatorGenerator
       subContext.setISink(localSinkChannel);
       subContext.addPipelineDriverFactory(localMergeOperator, subContext.getDriverContext(), 0);
       subContext.constructPipelineMemoryEstimator(
-          localMergeOperator, sortNode.getPlanNodeId(), localMergeId, -1);
+          localMergeOperator, sortNode.getPlanNodeId(), sortNode, -1);
 
       final ExchangeOperator exchangeOperator =
           new ExchangeOperator(
