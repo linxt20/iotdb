@@ -34,6 +34,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_WORKLOAD = ROOT / "workload"
 METRIC_COLUMNS = (
     "query_ms",
@@ -86,6 +87,8 @@ def extract_metrics(output: str) -> dict[str, Any]:
                 payload["query_ms"] = float(payload["query_ms"])
             except (TypeError, ValueError) as error:
                 raise ValueError("adapter query_ms must be numeric") from error
+            if not math.isfinite(payload["query_ms"]) or payload["query_ms"] <= 0:
+                raise ValueError("adapter query_ms must be finite and positive")
             return payload
     raise ValueError("adapter stdout must contain a JSON object with server-side query_ms")
 
@@ -205,7 +208,12 @@ def main() -> int:
     args = parser.parse_args()
 
     queries = parse_csv_values(args.queries)
-    dops = [int(value) for value in parse_csv_values(args.dops)]
+    try:
+        dops = [int(value) for value in parse_csv_values(args.dops)]
+    except ValueError as error:
+        parser.error(f"DOP values must be integers: {error}")
+    if any(dop <= 0 for dop in dops):
+        parser.error("all DOP values must be positive")
     cache_modes = parse_csv_values(args.cache_modes)
     if "cold" in cache_modes and not args.cold_cache_command:
         parser.error("--cold-cache-command is mandatory when cache mode includes cold")
@@ -225,6 +233,8 @@ def main() -> int:
             str(Path(__file__).with_name("capture_environment.py")),
             "--output",
             str(environment_dir),
+            "--git-root",
+            str(REPOSITORY_ROOT),
             *sum((["--config", str(path)] for path in args.config), []),
         ],
         check=False,
