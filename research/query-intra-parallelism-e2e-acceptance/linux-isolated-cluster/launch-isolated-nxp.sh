@@ -21,7 +21,7 @@ readonly CN_CLASS='org.apache.iotdb.confignode.service.ConfigNode'
 readonly DN_CLASS='org.apache.iotdb.db.service.DataNode'
 MODE='' ROOT='' DIST='' DEPLOYMENT=both TIMEOUT=120
 
-usage() { printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status --root ROOT [--distribution-root DIST] [--deployment candidate|control|both]'; }
+usage() { printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status|start-datanodes|stop-datanodes --root ROOT [--distribution-root DIST] [--deployment candidate|control|both]'; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 need() { [[ -n "${2:-}" ]] || die "Missing value for $1"; }
 while (($#)); do
@@ -31,7 +31,7 @@ while (($#)); do
     *) die "Unknown argument: $1" ;;
   esac
 done
-[[ "$MODE" =~ ^(prepare|start|stop|status)$ ]] || die '--mode must be prepare, start, stop, or status'
+[[ "$MODE" =~ ^(prepare|start|stop|status|start-datanodes|stop-datanodes)$ ]] || die '--mode must be prepare, start, stop, status, start-datanodes, or stop-datanodes'
 [[ -n "$ROOT" ]] || die '--root is required'
 [[ "$DEPLOYMENT" =~ ^(candidate|control|both)$ ]] || die '--deployment must be candidate, control, or both'
 [[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || die '--startup-timeout-seconds must be positive'
@@ -64,6 +64,15 @@ assert_ports_free() {
   local d n r rpc internal consensus mpp schema data metric p
   while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do
     for p in "$rpc" "$internal" "$consensus" "$mpp" "$schema" "$data" "$metric"; do [[ "$p" == - ]] || ! port_bound "$p" || die "Refusing occupied isolated port: $p"; done
+  done < <(selected)
+}
+assert_datanode_ports_free() {
+  local d n r rpc internal consensus mpp schema data metric p
+  while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do
+    [[ "$r" == DataNode ]] || continue
+    for p in "$rpc" "$internal" "$mpp" "$schema" "$data" "$metric"; do
+      ! port_bound "$p" || die "Refusing occupied isolated DataNode port: $p"
+    done
   done < <(selected)
 }
 write_manifest() {
@@ -140,6 +149,17 @@ start() {
   while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do [[ "$r" == DataNode ]] && start_node "$d" "$n" "$r" "$rpc" "$internal"; done < <(selected)
   printf 'Started %s below %s; archive evidence before stop.\n' "$DEPLOYMENT" "$ROOT"
 }
+start_datanodes() {
+  read_manifest; assert_dist "$DIST"; command -v java >/dev/null || die 'java is absent'
+  # ConfigNodes intentionally remain up during a fixed-DOP transition.  Checking their ports here
+  # would make a safe DataNode-only restart impossible; verify every selected DataNode port instead.
+  assert_datanode_ports_free
+  local d n r rpc internal consensus mpp schema data metric
+  while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do
+    [[ "$r" == DataNode ]] && start_node "$d" "$n" "$r" "$rpc" "$internal"
+  done < <(selected)
+  printf 'Started DataNodes for %s below %s.\n' "$DEPLOYMENT" "$ROOT"
+}
 stop_node() {
   local d="$1" n="$2" file="$ROOT/$1/$2/process.env" pid root class cmd
   [[ -f "$file" ]] || { printf '%s: no manifest\n' "$n"; return; }; source "$file"
@@ -148,5 +168,6 @@ stop_node() {
   kill "$pid"; local deadline=$((SECONDS+30)); while kill -0 "$pid" 2>/dev/null && ((SECONDS < deadline)); do sleep .2; done; kill -0 "$pid" 2>/dev/null && kill -KILL "$pid"; printf '%s: stopped PID %s\n' "$n" "$pid"
 }
 stop() { read_manifest; local d n r rpc internal consensus mpp schema data metric; while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do [[ "$r" == DataNode ]] && stop_node "$d" "$n"; done < <(selected); while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do [[ "$r" == ConfigNode ]] && stop_node "$d" "$n"; done < <(selected); }
+stop_datanodes() { read_manifest; local d n r rpc internal consensus mpp schema data metric; while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do [[ "$r" == DataNode ]] && stop_node "$d" "$n"; done < <(selected); }
 status() { read_manifest; local d n r rpc internal consensus mpp schema data metric file pid port running; while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do file="$ROOT/$d/$n/process.env"; pid=-; running=false; [[ -f "$file" ]] && { source "$file"; kill -0 "$pid" 2>/dev/null && running=true; }; port="$rpc"; [[ "$r" == ConfigNode ]] && port="$internal"; printf '%s\t%s\t%s\tpid=%s\trunning=%s\tport=%s\tlistening=%s\n' "$d" "$n" "$r" "$pid" "$running" "$port" "$(port_bound "$port" && printf true || printf false)"; done < <(selected); }
-case "$MODE" in prepare) prepare;; start) start;; stop) stop;; status) status;; esac
+case "$MODE" in prepare) prepare;; start) start;; stop) stop;; status) status;; start-datanodes) start_datanodes;; stop-datanodes) stop_datanodes;; esac

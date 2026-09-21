@@ -25,3 +25,39 @@ Safety: `prepare` rejects a non-empty root and occupied assigned ports. The all-
 is only read. `stop` reads only manifests below that root and refuses a PID unless `/proc` shows
 both the node root and expected IoTDB service class. It never deletes the root; preserve evidence
 before manually removing a verified root. The manifest captures git SHA and distribution jar count.
+
+## Dedicated fixed-DOP benchmark endpoint
+
+Use a new root solely for the server matrix; it is deliberately separate from the correctness
+candidate/control pair. `prepare-benchmark-deployment.sh` creates a candidate-only 1C2D endpoint,
+starts it, and makes its first audited transition to DOP 1. It never deletes or adopts an existing
+directory.
+
+```bash
+tool=research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster
+bash "$tool/prepare-benchmark-deployment.sh" \
+  --root /root/iotdb-static-benchmark-20260921 \
+  --distribution-root /root/iotdb-next-p0-server/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin/apache-iotdb-2.0.11-SNAPSHOT-all-bin \
+  --initial-dop 1
+```
+
+For each matrix step, invoke `set-isolated-dop.sh` with the same explicitly named root. It stops
+only the two DataNodes after `/proc` ownership checks, leaves the ConfigNode alive, rewrites exactly
+one DOP property per DataNode, restarts those DataNodes, verifies both listeners, and archives the
+before/after configurations, SHA-256 files, lifecycle output, and status under
+`<root>/benchmark-dop-audit/`.
+
+```bash
+bash "$tool/set-isolated-dop.sh" \
+  --root /root/iotdb-static-benchmark-20260921 --deployment candidate --dop 8
+```
+
+The benchmark matrix can retain each transition's stdout/stderr without a shell wrapper:
+
+```bash
+--dop-command 'bash /root/iotdb-next-p0-runner/research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/set-isolated-dop.sh --root /root/iotdb-static-benchmark-20260921 --deployment candidate --dop {dop}'
+```
+
+This performs configuration and process-readiness verification only; it supplies no timing or
+speedup claim. The normal-query matrix and explicit server-side metric adapter remain responsible
+for performance evidence.
