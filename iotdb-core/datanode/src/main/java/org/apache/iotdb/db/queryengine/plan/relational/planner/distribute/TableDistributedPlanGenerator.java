@@ -760,10 +760,8 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      CollectNode collectNode =
-          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-      childrenNodes.forEach(collectNode::addChild);
-      node.setChild(collectNode);
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(node.getOrderingScheme().orElse(null), childrenNodes));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
@@ -3552,10 +3550,9 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      CollectNode collectNode =
-          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-      childrenNodes.forEach(collectNode::addChild);
-      node.setChild(collectNode);
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              node.getSpecification().getOrderingScheme().orElse(null), childrenNodes));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
@@ -3574,18 +3571,20 @@ public class TableDistributedPlanGenerator
     }
 
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
+    OrderingScheme requiredOrdering = null;
     if (!canSplitPushDown) {
-      node.setChild(((SortNode) node.getChild()).getChild());
+      SortNode sortNode = (SortNode) node.getChild();
+      if (node.isOrderSensitive()) {
+        requiredOrdering = sortNode.getOrderingScheme();
+      }
+      node.setChild(sortNode.getChild());
     }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      CollectNode collectNode =
-          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-      childrenNodes.forEach(collectNode::addChild);
-      node.setChild(collectNode);
+      node.setChild(mergeChildrenViaCollectOrMergeSort(requiredOrdering, childrenNodes));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
@@ -3606,6 +3605,7 @@ public class TableDistributedPlanGenerator
         DataNodeQueryMessages
             .EXCEPTION_SIZE_OF_TOPKRANKINGNODE_CAN_ONLY_BE_1_IN_LOGICAL_PLAN_DOT_20D6A513);
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
+    OrderingScheme requiredOrdering = node.getSpecification().getOrderingScheme().orElse(null);
     if (!canSplitPushDown) {
       node.setChild(((SortNode) node.getChild()).getChild());
     }
@@ -3621,10 +3621,7 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      CollectNode collectNode =
-          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-      childrenNodes.forEach(collectNode::addChild);
-      node.setChild(collectNode);
+      node.setChild(mergeChildrenViaCollectOrMergeSort(requiredOrdering, childrenNodes));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);

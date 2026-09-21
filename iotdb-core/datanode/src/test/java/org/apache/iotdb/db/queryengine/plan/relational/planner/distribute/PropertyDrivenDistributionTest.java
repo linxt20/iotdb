@@ -314,6 +314,52 @@ public class PropertyDrivenDistributionTest {
     }
   }
 
+  /**
+   * A RowNumber without an order-sensitive input can collect its fragment branches in any order. It
+   * must therefore use the common merge path and retain scan parallelism, rather than silently
+   * bypassing the marker as the old hand-written CollectNode path did.
+   */
+  @Test
+  public void unorderedRowNumberAllowsParallelScan() {
+    assertAllScansAllowParallel("SELECT row_number() OVER () FROM testdb.table1");
+  }
+
+  /**
+   * Window functions without an ORDER BY also have no input ordering requirement. This is the
+   * window counterpart of {@link #unorderedRowNumberAllowsParallelScan()}.
+   */
+  @Test
+  public void unorderedWindowAllowsParallelScan() {
+    assertAllScansAllowParallel("SELECT count(*) OVER () FROM testdb.table1");
+  }
+
+  /**
+   * In contrast, a RowNumber whose result depends on the order of its input must keep the scan on
+   * one stream. This guards the order-sensitive side of the shared merge path.
+   */
+  @Test
+  public void orderedRowNumberForbidsParallelScan() {
+    List<DeviceTableScanNode> scans =
+        planAndCollectScans("SELECT row_number() OVER (ORDER BY time) FROM testdb.table1");
+
+    assertFalse(scans.isEmpty());
+    for (DeviceTableScanNode scan : scans) {
+      assertFalse(
+          "an order-sensitive RowNumber must not split its scan into parallel drivers",
+          scan.isAllowParallelScan());
+    }
+  }
+
+  private static void assertAllScansAllowParallel(String sql) {
+    List<DeviceTableScanNode> scans = planAndCollectScans(sql);
+
+    assertFalse(scans.isEmpty());
+    for (DeviceTableScanNode scan : scans) {
+      assertTrue(
+          "an unordered operator must not prevent scan parallelism", scan.isAllowParallelScan());
+    }
+  }
+
   /** Plans the statement against a single data region and returns every scan node in the plan. */
   private static List<DeviceTableScanNode> planAndCollectScans(String sql) {
     List<DeviceTableScanNode> scans = new ArrayList<>();
