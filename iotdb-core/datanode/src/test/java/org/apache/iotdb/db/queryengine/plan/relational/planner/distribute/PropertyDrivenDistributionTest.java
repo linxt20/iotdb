@@ -241,6 +241,41 @@ public class PropertyDrivenDistributionTest {
     node.getChildren().forEach(child -> appendShape(child, depth + 1, shape));
   }
 
+  /**
+   * The rule trace is what makes the decisions inspectable from SQL: EXPLAIN has to show which
+   * node required what, what its children provided, and which enforcer was inserted. It must only
+   * appear when the rules are actually in charge.
+   */
+  @Test
+  public void explainShowsThePropertyEnforcementTraceOnlyWhenEnabled() {
+    // This case drives the flag itself, so it only needs to run once.
+    assumeFalse(propertyDrivenPlanning);
+
+    setPropertyDrivenPlanning(false);
+    assertFalse(
+        "the legacy heuristic takes no property decisions, so it must not print a trace",
+        explainText("SELECT * FROM testdb.table1").contains("Property enforcement:"));
+
+    setPropertyDrivenPlanning(true);
+    String explained = explainText("SELECT * FROM testdb.table1");
+    assertTrue(
+        "EXPLAIN must show the property enforcement trace when the rules are enabled",
+        explained.contains("Property enforcement:"));
+    assertTrue(
+        "each traced decision must state what was required and what was provided, got:\n"
+            + explained,
+        explained.contains("required=") && explained.contains("provided="));
+  }
+
+  /** The EXPLAIN text of a statement, as a single string. */
+  private static String explainText(String sql) {
+    MPPQueryContext queryContext =
+        new MPPQueryContext(sql, new QueryId("explain_test"), SESSION_INFO, null, null);
+    queryContext.setExplainType(MPPQueryContext.ExplainType.EXPLAIN);
+    queryContext.setInnerTriggeredQuery(true);
+    return String.join("\n", plan(sql, queryContext).getPlanText());
+  }
+
   /** Plans the statement against a single data region and returns every scan node in the plan. */
   private static List<DeviceTableScanNode> planAndCollectScans(String sql) {
     List<DeviceTableScanNode> scans = new ArrayList<>();
@@ -252,9 +287,11 @@ public class PropertyDrivenDistributionTest {
     // A fresh context per plan: an MPPQueryContext remembers whether the statement it analyzed was
     // an EXPLAIN ANALYZE, so reusing one across these cases would make a plain query be planned as
     // if it were still explaining the previous one.
-    MPPQueryContext queryContext =
-        new MPPQueryContext(sql, new QueryId("property_driven_test"), SESSION_INFO, null, null);
+    return plan(
+        sql, new MPPQueryContext(sql, new QueryId("property_driven_test"), SESSION_INFO, null, null));
+  }
 
+  private static DistributedQueryPlan plan(String sql, MPPQueryContext queryContext) {
     Analysis analysis = analyzeSQL(sql, TEST_MATADATA, queryContext);
     // force all devices into a single data region, so that any parallelism observed comes from
     // splitting one scan rather than from having one scan per region

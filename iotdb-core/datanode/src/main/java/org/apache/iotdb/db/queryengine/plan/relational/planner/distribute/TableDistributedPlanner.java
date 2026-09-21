@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dis
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -67,6 +68,12 @@ public class TableDistributedPlanner {
   private final List<PlanOptimizer> optimizers;
   private final Metadata metadata;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+
+  /**
+   * The property enforcement decisions taken while generating the plan, shown under EXPLAIN. Empty
+   * unless property driven planning is enabled.
+   */
+  private List<String> ruleTrace = Collections.emptyList();
 
   @TestOnly
   public TableDistributedPlanner(
@@ -117,6 +124,16 @@ public class TableDistributedPlanner {
                 new PlanGraphPrinter(),
                 new PlanGraphPrinter.GraphContext(
                     mppQueryContext.getTypeProvider().getTemplatedInfo()));
+        // Show why the branches were converged where they were: which node, what it required of
+        // its children, what they provided, and which enforcer was inserted as a result. The trace
+        // is only collected when property driven planning is on, so this appends nothing otherwise.
+        if (!ruleTrace.isEmpty()) {
+          final List<String> withTrace = new ArrayList<>(planText);
+          withTrace.add("");
+          withTrace.add("Property enforcement:");
+          ruleTrace.forEach(line -> withTrace.add("  " + line));
+          planText = withTrace;
+        }
       }
     }
 
@@ -141,10 +158,12 @@ public class TableDistributedPlanner {
       TableDistributedPlanGenerator.PlanContext planContext) {
     // generate table model distributed plan
 
-    List<PlanNode> distributedPlanResult =
+    final TableDistributedPlanGenerator generator =
         new TableDistributedPlanGenerator(
-                mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier)
-            .genResult(logicalQueryPlan.getRootNode(), planContext);
+            mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier);
+    List<PlanNode> distributedPlanResult =
+        generator.genResult(logicalQueryPlan.getRootNode(), planContext);
+    ruleTrace = generator.getRuleTrace();
     checkArgument(
         distributedPlanResult.size() == 1,
         DataNodeQueryMessages.EXCEPTION_ROOT_NODE_MUST_RETURN_ONLY_ONE_FF42061C);
