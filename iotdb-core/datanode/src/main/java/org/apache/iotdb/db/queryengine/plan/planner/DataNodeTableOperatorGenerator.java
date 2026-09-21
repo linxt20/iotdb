@@ -149,7 +149,11 @@ import org.apache.iotdb.db.queryengine.udf.IoTDBLocalImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -227,6 +231,12 @@ public class DataNodeTableOperatorGenerator
 
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+
+  /**
+   * Amount of data a single scan driver is expected to work through before it is worth giving the
+   * scan another driver (only used when {@code enable_dop_estimation} is on).
+   */
+  private static final long TARGET_BYTES_PER_SCAN_DRIVER = 128L * 1024 * 1024;
 
   public DataNodeTableOperatorGenerator(Metadata metadata) {
     super(metadata);
@@ -1357,17 +1367,82 @@ public class DataNodeTableOperatorGenerator
   }
 
   /**
-   * Split one DeviceTableScanNode into min(dop, deviceCount) sub scan pipelines, each of which
-   * scans a subset of deviceEntries with a separate driver. The results of all sub pipelines are
-   * merged by a CollectOperator in current pipeline through local sink/source handle pairs (same
-   * way as OperatorTreeGenerator#createNewPipelineForChildNode). It's safe because parallel scan is
-   * only allowed when the parent has no ordering requirement on this scan.
+   * Decide how many parallel scan pipelines one DeviceTableScanNode is split into.
+   *
+   * <p>By default this is {@code min(dop, deviceCount)}: parallelism is capped by the configured
+   * degree of parallelism and by the number of devices there is something to read from. When {@code
+   * enable_dop_estimation} is on, the amount of data stored in the region is taken into account as
+   * well, so that a scan over a small region does not get the same number of drivers as a scan over
+   * a large one. The estimated value never exceeds the default cap: estimation can only make the
+   * split smaller, never larger, which keeps the feature conservative.
+   */
+  private int decideParallelScanPipelineNum(
+      LocalExecutionPlanContext context, final int deviceCount) {
+    final int defaultPipelineNum = Math.min(context.getDegreeOfParallelism(), deviceCount);
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation()) {
+      return defaultPipelineNum;
+    }
+    final int estimated =
+        estimatePipelineNumByDataSize(context.getInstanceContext().getDataRegion(), deviceCount);
+    return Math.max(1, Math.min(defaultPipelineNum, estimated));
+  }
+
+  /**
+   * Estimate a target number of scan drivers from the size of the data this region holds.
+   *
+   * <p>The metadata needed for the estimate is the time partition count and the average size of a
+   * TsFile, both reachable from the region the fragment instance is bound to. {@code
+   * getAllTsFileListForQuery(null, null)} deliberately passes a null time partition list: the query
+   * engine does not narrow the scan to particular partitions here (the time predicate is applied by
+   * the scan operator itself), so the estimate has to look at every file of the region.
+   *
+   * <p>Returns {@code deviceCount} (i.e. "no opinion", which leaves the caller's default in place)
+   * whenever the metadata is unavailable, which is the case for regions other than a plain data
+   * region and for regions that hold no file at all.
+   */
+  private int estimatePipelineNumByDataSize(
+      final IDataRegionForQuery dataRegion, final int deviceCount) {
+    if (!(dataRegion instanceof DataRegion)) {
+      return deviceCount;
+    }
+    final TsFileManager tsFileManager = ((DataRegion) dataRegion).getTsFileManager();
+    if (tsFileManager == null) {
+      return deviceCount;
+    }
+    final int timePartitionCount = tsFileManager.getTimePartitions().size();
+    if (timePartitionCount <= 0) {
+      return deviceCount;
+    }
+    final Pair<List<TsFileResource>, List<TsFileResource>> allTsFiles =
+        tsFileManager.getAllTsFileListForQuery(null, null);
+    final int fileCount = allTsFiles.left.size() + allTsFiles.right.size();
+    if (fileCount <= 0) {
+      return deviceCount;
+    }
+    long totalSize = 0L;
+    for (final TsFileResource resource : allTsFiles.left) {
+      totalSize += resource.getTsFileSize();
+    }
+    for (final TsFileResource resource : allTsFiles.right) {
+      totalSize += resource.getTsFileSize();
+    }
+    // One driver per TARGET_BYTES_PER_SCAN_DRIVER worth of data, rounded up, so that a region
+    // holding less than one target's worth still gets a single driver rather than none.
+    return (int) Math.ceil((double) totalSize / TARGET_BYTES_PER_SCAN_DRIVER);
+  }
+
+  /**
+   * Split one DeviceTableScanNode into a number of sub scan pipelines, each of which scans a subset
+   * of deviceEntries with a separate driver. The results of all sub pipelines are merged by a
+   * CollectOperator in current pipeline through local sink/source handle pairs (same way as
+   * OperatorTreeGenerator#createNewPipelineForChildNode). It's safe because parallel scan is only
+   * allowed when the parent has no ordering requirement on this scan.
    */
   private Operator constructParallelDeviceTableScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
     final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
     final int deviceCount = deviceEntries.size();
-    final int pipelineNum = Math.min(context.getDegreeOfParallelism(), deviceCount);
+    final int pipelineNum = decideParallelScanPipelineNum(context, deviceCount);
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
 

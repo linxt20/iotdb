@@ -44,7 +44,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetHandle;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -58,8 +62,10 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
@@ -325,6 +331,100 @@ public class DeviceTableScanParallelPipelineTest {
         0,
         false,
         false);
+  }
+
+  /**
+   * enable_dop_estimation = false (default). The split count must still be min(dop, deviceCount)
+   * regardless of what the data region says, so the flag acts as a gate and nothing else changes.
+   */
+  @Test
+  public void testDopEstimationDisabledFallsBackToMinDopDeviceCount() throws Exception {
+    // Arrange: flag off (default), 8 devices, dop 4.
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    DeviceTableScanNode node = initDeviceTableScanNode(8);
+    node.setAllowParallelScan(true);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext("dop_est_disabled");
+    context.setDegreeOfParallelism(4);
+
+    Operator root = node.accept(generator, context);
+    try {
+      // With the flag off the split is exactly min(4, 8) = 4 no matter what the region holds.
+      assertEquals(CollectOperator.class, root.getClass());
+      assertEquals(4, ((CollectOperator) root).getChildren().size());
+      assertEquals(4, context.getPipelineNumber());
+    } finally {
+      closeQuietly(root);
+      for (PipelineDriverFactory df : context.getPipelineDriverFactories()) {
+        closeQuietly(df.getOperation());
+      }
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    }
+  }
+
+  /**
+   * enable_dop_estimation = true. When the region holds enough data to justify more drivers than
+   * the estimation suggests, the result is clamped down to the estimated value.
+   *
+   * <p>Setup: 8 devices, dop 8. Two time partitions, four TsFiles each 64 MiB. Total = 256 MiB.
+   * TARGET_BYTES_PER_SCAN_DRIVER = 128 MiB → estimated = ceil(256 / 128) = 2. The final pipeline
+   * count is min(min(dop=8, deviceCount=8), estimated=2) = 2.
+   */
+  @Test
+  public void testDopEstimationClampsToDataSizeEstimate() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(true);
+    try {
+      // Build a mock TsFileManager that reports 2 time partitions and 4 × 64-MiB seq files.
+      TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+      Set<Long> twoPartitions = new java.util.HashSet<>(Arrays.asList(0L, 1L));
+      Mockito.when(tsFileManager.getTimePartitions()).thenReturn(twoPartitions);
+
+      final long FILE_SIZE = 64L * 1024 * 1024; // 64 MiB each
+      List<TsFileResource> seqFiles = new ArrayList<>();
+      for (int i = 0; i < 4; i++) {
+        TsFileResource r = Mockito.mock(TsFileResource.class);
+        Mockito.when(r.getTsFileSize()).thenReturn(FILE_SIZE);
+        seqFiles.add(r);
+      }
+      Mockito.when(
+              tsFileManager.getAllTsFileListForQuery(
+                  Mockito.isNull(), Mockito.isNull()))
+          .thenReturn(new org.apache.tsfile.utils.Pair<>(seqFiles, new ArrayList<>()));
+
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
+      Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+
+      // Build context, injecting the mock DataRegion into the FI context.
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(
+              new PlanFragmentId(new QueryId("dop_est_enabled"), 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      fragmentInstanceContext.setDataRegion(dataRegion);
+      LocalExecutionPlanContext context =
+          new LocalExecutionPlanContext(
+              new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));
+      context.setDegreeOfParallelism(8);
+
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+
+      // 256 MiB total / 128 MiB target = 2 drivers; min(min(8,8), 2) = 2
+      Operator root = node.accept(generator, context);
+      try {
+        assertEquals(CollectOperator.class, root.getClass());
+        assertEquals(2, ((CollectOperator) root).getChildren().size());
+        assertEquals(2, context.getPipelineNumber());
+      } finally {
+        closeQuietly(root);
+        for (PipelineDriverFactory df : context.getPipelineDriverFactories()) {
+          closeQuietly(df.getOperation());
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    }
   }
 
   /**
