@@ -76,10 +76,12 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.IChannelRoutingSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.TsBlockHashPartitioner;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
@@ -100,6 +102,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOper
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.sink.HashPartitioningSinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -122,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -146,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
@@ -387,6 +392,77 @@ public class DataNodeTableOperatorGenerator
           DataNodeQueryMessages
               .QUERY_EXCEPTION_IDENTITYSINKNODE_SHOULD_ONLY_HAVE_ONE_CHILD_IN_TABLE_MODEL_5E995EB3);
     }
+  }
+
+  @Override
+  public Operator visitShuffleSink(ShuffleSinkNode node, LocalExecutionPlanContext context) {
+    checkArgument(
+        node instanceof TableHashPartitioningShuffleSinkNode,
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B);
+    TableHashPartitioningShuffleSinkNode hashNode = (TableHashPartitioningShuffleSinkNode) node;
+    checkArgument(
+        node.getChildren().size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00);
+
+    context.addExchangeSumNum(1);
+    OperatorContext operatorContext =
+        addOperatorContext(
+            context, node.getPlanNodeId(), HashPartitioningSinkOperator.class.getSimpleName());
+    String downStreamPlanNodeIds =
+        node.getDownStreamChannelLocationList().stream()
+            .map(DownStreamChannelLocation::getRemotePlanNodeId)
+            .collect(Collectors.joining(DELIMITER_BETWEEN_ID));
+    if (!downStreamPlanNodeIds.isEmpty()) {
+      operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeIds);
+    }
+
+    checkArgument(
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
+    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
+    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    ISinkHandle sinkHandle =
+        MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+            node.getDownStreamChannelLocationList(),
+            downStreamChannelIndex,
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            localInstanceId.toThrift(),
+            node.getPlanNodeId().getId(),
+            context.getInstanceContext());
+    checkArgument(
+        sinkHandle instanceof IChannelRoutingSinkHandle,
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B);
+    IChannelRoutingSinkHandle channelRoutingSinkHandle = (IChannelRoutingSinkHandle) sinkHandle;
+    checkArgument(
+        channelRoutingSinkHandle.getChannelCount()
+            == hashNode.getPartitioningDescriptor().getPartitionCount(),
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B);
+
+    List<Symbol> sourceOutputSymbols = node.getChildren().get(0).getOutputSymbols();
+    int[] keyColumnIndexes =
+        hashNode.getPartitioningDescriptor().getPartitioningSymbols().stream()
+            .mapToInt(sourceOutputSymbols::indexOf)
+            .toArray();
+    for (int keyColumnIndex : keyColumnIndexes) {
+      checkArgument(
+          keyColumnIndex >= 0,
+          DataNodeQueryMessages
+              .EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F);
+    }
+
+    Operator child = node.getChildren().get(0).accept(this, context);
+    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    context.getDriverContext().setSink(sinkHandle);
+    return new HashPartitioningSinkOperator(
+        operatorContext,
+        child,
+        channelRoutingSinkHandle,
+        new TsBlockHashPartitioner(
+            hashNode.getPartitioningDescriptor().getPartitionCount(), keyColumnIndexes));
   }
 
   @Override

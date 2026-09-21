@@ -4675,5 +4675,14 @@ public final class DataNodeQueryMessages {
       "没有更多可用的 DeviceEntry 记录";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "只有 InMemoryDeviceEntryDataSet 支持获取内存中的设备条目";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
+          "表模型 hash 分区需要支持通道路由的 sink handle。";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
+          "表模型 hash 分区需要且仅需要一个源算子。";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
+          "表模型 hash 分区符号必须由源算子输出。";
 
 }

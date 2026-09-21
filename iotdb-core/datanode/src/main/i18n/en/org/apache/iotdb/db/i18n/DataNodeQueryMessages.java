@@ -3920,5 +3920,14 @@ public final class DataNodeQueryMessages {
       "No more DeviceEntry records are available";
   public static final String EXCEPTION_ONLY_INMEMORYDEVICEENTRYDATASET_SUPPORTS_GET_INLINE_DEVICE_ENTRIES_07A52CAB =
       "Only InMemoryDeviceEntryDataSet supports get inline device entries";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
+          "Table hash partitioning requires a channel-routing sink handle.";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
+          "Table hash partitioning needs exactly one source operator.";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
+          "Table hash partitioning symbols must be output by its source operator.";
 
 }

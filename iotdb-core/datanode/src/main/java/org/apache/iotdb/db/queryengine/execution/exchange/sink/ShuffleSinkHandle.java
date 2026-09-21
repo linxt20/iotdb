@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -40,7 +41,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
 
-public class ShuffleSinkHandle implements ISinkHandle {
+public class ShuffleSinkHandle implements IChannelRoutingSinkHandle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ShuffleSinkHandle.class);
 
@@ -123,6 +124,37 @@ public class ShuffleSinkHandle implements ISinkHandle {
 
   public ISinkChannel getChannel(int index) {
     return downStreamChannelList.get(index);
+  }
+
+  @Override
+  public int getChannelCount() {
+    return channelNum;
+  }
+
+  @Override
+  public synchronized void sendToChannel(int channelIndex, TsBlock tsBlock) {
+    long startTime = System.nanoTime();
+    try {
+      checkState();
+      if (closed) {
+        return;
+      }
+      tryOpenChannel(channelIndex);
+      downStreamChannelList.get(channelIndex).send(tsBlock);
+    } finally {
+      DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
+          SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+    }
+  }
+
+  @Override
+  public synchronized ListenableFuture<?> isAllChannelsNotFull() {
+    List<ListenableFuture<?>> channelFutures = new java.util.ArrayList<>(channelNum);
+    for (int channelIndex = 0; channelIndex < channelNum; channelIndex++) {
+      tryOpenChannel(channelIndex);
+      channelFutures.add(downStreamChannelList.get(channelIndex).isFull());
+    }
+    return Futures.allAsList(channelFutures);
   }
 
   @Override
