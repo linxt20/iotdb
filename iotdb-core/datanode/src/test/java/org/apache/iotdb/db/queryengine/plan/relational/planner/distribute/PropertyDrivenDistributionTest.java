@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDa
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -310,6 +311,28 @@ public class PropertyDrivenDistributionTest {
         "the EXPLAIN trace must describe a collect, not pretend that a hash repartition happened",
         generator.getRuleTrace().get(0).contains("Partitioned[group]"));
     assertTrue(generator.getRuleTrace().get(0).contains("CollectNode"));
+  }
+
+  /**
+   * A real grouped aggregation is the first intended consumer of {@code Partitioned(groupKeys)}.
+   * The contract and row partitioner alone are not enough to make that true: the table fragmenter
+   * still creates one identity sink for each exchange edge, whereas this shape needs every partial
+   * aggregation to have a channel to every final partition. Until that N-to-N topology and the
+   * hash-aware sink operator are both present, the planner must keep the existing final
+   * aggregation/Collect shape and must never emit the declarative hash-sink node.
+   */
+  @Test
+  public void groupedAggregationDoesNotSelectUnwiredHashExchange() {
+    List<PlanNode> nodes =
+        planAndCollectNodes("SELECT s1, count(*) FROM testdb.table1 GROUP BY s1");
+
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof AggregationNode));
+    assertFalse(
+        "a hash contract without N-to-N fragment wiring must not be selected for GROUP BY",
+        nodes.stream().anyMatch(node -> node instanceof TableHashPartitioningShuffleSinkNode));
+    assertAllScansForbidParallelism(
+        nodes,
+        "until the final grouping aggregation consumes Partitioned(groupKeys), GROUP BY stays on the Collect fallback");
   }
 
   /** Plans the statement against a single data region and returns every node in the plan. */
