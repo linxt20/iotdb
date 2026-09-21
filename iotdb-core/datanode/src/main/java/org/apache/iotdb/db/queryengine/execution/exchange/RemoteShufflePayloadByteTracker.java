@@ -96,7 +96,8 @@ public class RemoteShufflePayloadByteTracker {
     }
     if (!consumer.queryId.equals(producer.queryId)) {
       AUDIT_LOGGER.warn(
-          "{} version=1 direction=rejected_query_mismatch consumer_query_id={} producer_query_id={} consumer_fragment={} producer_fragment={} channel={}",
+          "{} version=1 direction=rejected_query_mismatch consumer_query_id={} "
+              + "producer_query_id={} consumer_fragment={} producer_fragment={} channel={}",
           AUDIT_MARKER,
           safe(consumer.queryId),
           safe(producer.queryId),
@@ -164,7 +165,8 @@ public class RemoteShufflePayloadByteTracker {
       int channelIndex,
       Payload payload) {
     AUDIT_LOGGER.info(
-        "{} version=1 direction={} query_id={} producer_fragment={} consumer_fragment={} channel={} payload_bytes={} payload_blocks={}",
+        "{} version=1 direction={} query_id={} producer_fragment={} consumer_fragment={} "
+            + "channel={} payload_bytes={} payload_blocks={}",
         AUDIT_MARKER,
         direction,
         safe(queryId),
