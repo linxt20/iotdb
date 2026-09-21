@@ -137,3 +137,40 @@ reason. Metrics should include rows and bytes per channel, largest/smallest buck
 sink time, source-handle wait time, and per-driver finish time. The general N-to-N feature flag
 must remain off until the multi-DataNode correctness gates above pass; joins remain separately
 gated.
+
+## Multi-source executable-shape gate
+
+The source-by-bucket matrix is now accompanied by
+`TableGroupByHashRepartitionTopology#validateFragmentOwnership`. It is deliberately a planning
+gate rather than a configuration switch. For a two-source, three-bucket GROUP BY, it accepts only
+the following ownership shape:
+
+```text
+partial-0: hash-sink-0 -> exchange-00, exchange-01, exchange-02
+partial-1: hash-sink-1 -> exchange-10, exchange-11, exchange-12
+final-0: exchange-00, exchange-10
+final-1: exchange-01, exchange-11
+final-2: exchange-02, exchange-12
+```
+
+It rejects three common false-positive shapes: missing source/destination fragments, exchanges
+for one bucket placed in different final fragments, and all bucket exchanges left under one serial
+final fragment. It also rejects a partial fragment reused as a final fragment. The unit suite has a
+positive 2 x 3 ownership proof and negative tests for the two error shapes that would otherwise
+silently overwrite or serialize the exchange graph.
+
+This gate documents an important current limitation. `SubPlanGenerator` de-duplicates a shared
+sink by id and cuts it into one child `SubPlan`; it does not clone the parent final aggregation into
+P `PlanFragment`s. The existing single-source experiment must remain unchanged while this is
+addressed. A multi-source implementation must first:
+
+1. build one source fragment per partial aggregation and one final fragment per bucket;
+2. put all source-specific exchanges for bucket `p` inside final fragment `p`;
+3. collect the independently executed final fragments only after their grouped aggregations; and
+4. invoke the ownership gate after fragment splitting, before `TableModelQueryFragmentPlanner`
+   assigns endpoints and fragment-instance ids.
+
+Only after that gate passes can the fragment planner's existing per-fragment instance selection be
+used to resolve every `(source, bucket)` channel. The remaining release gates are an actual
+two-DataNode result-equivalence run (including skew and null groups), per-channel shuffle
+accounting, and an explicit fallback assertion for every unsupported aggregate shape.

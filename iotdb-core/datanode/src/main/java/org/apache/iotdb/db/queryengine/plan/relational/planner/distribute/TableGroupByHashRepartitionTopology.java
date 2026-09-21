@@ -23,8 +23,11 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -122,6 +125,85 @@ public final class TableGroupByHashRepartitionTopology {
   public int getDownstreamChannelIndexForPartition(int partitionIndex) {
     checkPartitionIndex(partitionIndex);
     return partitionIndex;
+  }
+
+  /**
+   * Checks whether a split plan has the fragment ownership required to execute this topology.
+   *
+   * <p>A matrix is not executable merely because all of its sink-to-exchange edges exist. Every
+   * partial source must have its own source fragment. For each bucket, all source-specific
+   * exchanges must live in one final fragment, and final fragments for different buckets must be
+   * distinct. The latter condition is what prevents a planner from representing P final buckets
+   * as P branches of one serial fragment.
+   *
+   * <p>The caller supplies the plan-fragment identity for the source sinks and exchanges in this
+   * topology. It may include other plan nodes; they are ignored. This method deliberately does
+   * not inspect DataNode placement. Placement and result-equivalence are separate runtime gates.
+   */
+  public FragmentTopologyValidation validateFragmentOwnership(
+      Map<PlanNodeId, String> fragmentIdByNode) {
+    Objects.requireNonNull(fragmentIdByNode);
+    EnumSet<FragmentTopologyFailure> failures = EnumSet.noneOf(FragmentTopologyFailure.class);
+
+    Set<String> sourceFragmentIds = new HashSet<>();
+    for (PlanNodeId sourceSinkNodeId : sourceSinkNodeIds) {
+      String sourceFragmentId = fragmentIdByNode.get(sourceSinkNodeId);
+      if (sourceFragmentId == null) {
+        failures.add(FragmentTopologyFailure.MISSING_SOURCE_FRAGMENT);
+      } else if (!sourceFragmentIds.add(sourceFragmentId)) {
+        failures.add(FragmentTopologyFailure.SOURCES_SHARE_FRAGMENT);
+      }
+    }
+
+    Set<String> finalFragmentIds = new HashSet<>();
+    for (int partitionIndex = 0; partitionIndex < getPartitionCount(); partitionIndex++) {
+      String finalFragmentId = null;
+      for (PlanNodeId exchangeNodeId : getUpstreamExchangeNodeIdsForPartition(partitionIndex)) {
+        String exchangeFragmentId = fragmentIdByNode.get(exchangeNodeId);
+        if (exchangeFragmentId == null) {
+          failures.add(FragmentTopologyFailure.MISSING_DESTINATION_FRAGMENT);
+        } else if (finalFragmentId == null) {
+          finalFragmentId = exchangeFragmentId;
+        } else if (!finalFragmentId.equals(exchangeFragmentId)) {
+          failures.add(FragmentTopologyFailure.PARTITION_EXCHANGES_HAVE_DIFFERENT_FRAGMENTS);
+        }
+      }
+      if (finalFragmentId != null && !finalFragmentIds.add(finalFragmentId)) {
+        failures.add(FragmentTopologyFailure.PARTITIONS_SHARE_FINAL_FRAGMENT);
+      }
+    }
+
+    if (!Collections.disjoint(sourceFragmentIds, finalFragmentIds)) {
+      failures.add(FragmentTopologyFailure.SOURCE_AND_FINAL_SHARE_FRAGMENT);
+    }
+    return new FragmentTopologyValidation(failures);
+  }
+
+  /** Reasons why a source-by-bucket matrix cannot yet be scheduled as an N x P exchange. */
+  public enum FragmentTopologyFailure {
+    MISSING_SOURCE_FRAGMENT,
+    SOURCES_SHARE_FRAGMENT,
+    MISSING_DESTINATION_FRAGMENT,
+    PARTITION_EXCHANGES_HAVE_DIFFERENT_FRAGMENTS,
+    PARTITIONS_SHARE_FINAL_FRAGMENT,
+    SOURCE_AND_FINAL_SHARE_FRAGMENT
+  }
+
+  /** Immutable result of {@link #validateFragmentOwnership(Map)}. */
+  public static final class FragmentTopologyValidation {
+    private final Set<FragmentTopologyFailure> failures;
+
+    private FragmentTopologyValidation(Set<FragmentTopologyFailure> failures) {
+      this.failures = Collections.unmodifiableSet(EnumSet.copyOf(failures));
+    }
+
+    public boolean isExecutable() {
+      return failures.isEmpty();
+    }
+
+    public Set<FragmentTopologyFailure> getFailures() {
+      return failures;
+    }
   }
 
   private void checkPartitionIndex(int partitionIndex) {

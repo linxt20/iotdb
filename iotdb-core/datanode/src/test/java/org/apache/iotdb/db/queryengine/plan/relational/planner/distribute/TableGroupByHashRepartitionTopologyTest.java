@@ -25,10 +25,13 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class TableGroupByHashRepartitionTopologyTest {
 
@@ -98,15 +101,98 @@ public class TableGroupByHashRepartitionTopologyTest {
                     Arrays.asList(new PlanNodeId("exchange-0")))));
   }
 
+  @Test
+  public void testTwoSourcesAndThreeBucketsRequireDistinctFinalFragmentOwnership() {
+    TableGroupByHashRepartitionTopology topology = createTwoByThreeTopology();
+    Map<PlanNodeId, String> fragmentIdByNode = new HashMap<>();
+    fragmentIdByNode.put(new PlanNodeId("source-0"), "partial-0");
+    fragmentIdByNode.put(new PlanNodeId("source-1"), "partial-1");
+    fragmentIdByNode.put(new PlanNodeId("exchange-00"), "final-0");
+    fragmentIdByNode.put(new PlanNodeId("exchange-10"), "final-0");
+    fragmentIdByNode.put(new PlanNodeId("exchange-01"), "final-1");
+    fragmentIdByNode.put(new PlanNodeId("exchange-11"), "final-1");
+    fragmentIdByNode.put(new PlanNodeId("exchange-02"), "final-2");
+    fragmentIdByNode.put(new PlanNodeId("exchange-12"), "final-2");
+
+    TableGroupByHashRepartitionTopology.FragmentTopologyValidation validation =
+        topology.validateFragmentOwnership(fragmentIdByNode);
+
+    assertTrue(validation.isExecutable());
+    assertTrue(validation.getFailures().isEmpty());
+  }
+
+  @Test
+  public void testRejectsUnclonedFinalBucketsEvenWhenEveryMatrixEdgeExists() {
+    TableGroupByHashRepartitionTopology topology = createTwoByThreeTopology();
+    Map<PlanNodeId, String> fragmentIdByNode = new HashMap<>();
+    fragmentIdByNode.put(new PlanNodeId("source-0"), "partial-0");
+    fragmentIdByNode.put(new PlanNodeId("source-1"), "partial-1");
+    for (int source = 0; source < 2; source++) {
+      for (int partition = 0; partition < 3; partition++) {
+        fragmentIdByNode.put(
+            new PlanNodeId("exchange-" + source + partition), "one-serial-final-fragment");
+      }
+    }
+
+    TableGroupByHashRepartitionTopology.FragmentTopologyValidation validation =
+        topology.validateFragmentOwnership(fragmentIdByNode);
+
+    assertTrue(
+        validation
+            .getFailures()
+            .contains(
+                TableGroupByHashRepartitionTopology.FragmentTopologyFailure
+                    .PARTITIONS_SHARE_FINAL_FRAGMENT));
+  }
+
+  @Test
+  public void testRejectsFinalBucketWhoseSourcesLandInDifferentFragments() {
+    TableGroupByHashRepartitionTopology topology = createTwoByThreeTopology();
+    Map<PlanNodeId, String> fragmentIdByNode = new HashMap<>();
+    fragmentIdByNode.put(new PlanNodeId("source-0"), "partial-0");
+    fragmentIdByNode.put(new PlanNodeId("source-1"), "partial-1");
+    fragmentIdByNode.put(new PlanNodeId("exchange-00"), "final-0a");
+    fragmentIdByNode.put(new PlanNodeId("exchange-10"), "final-0b");
+    fragmentIdByNode.put(new PlanNodeId("exchange-01"), "final-1");
+    fragmentIdByNode.put(new PlanNodeId("exchange-11"), "final-1");
+    fragmentIdByNode.put(new PlanNodeId("exchange-02"), "final-2");
+    fragmentIdByNode.put(new PlanNodeId("exchange-12"), "final-2");
+
+    TableGroupByHashRepartitionTopology.FragmentTopologyValidation validation =
+        topology.validateFragmentOwnership(fragmentIdByNode);
+
+    assertTrue(
+        validation
+            .getFailures()
+            .contains(
+                TableGroupByHashRepartitionTopology.FragmentTopologyFailure
+                    .PARTITION_EXCHANGES_HAVE_DIFFERENT_FRAGMENTS));
+  }
+
   private static TableGroupByHashRepartitionTopology createThreeByTwoTopology() {
     return TableGroupByHashRepartitionTopology.create(
         descriptor(2),
         Arrays.asList(
             new PlanNodeId("source-0"), new PlanNodeId("source-1"), new PlanNodeId("source-2")),
+            Arrays.asList(
+                Arrays.asList(new PlanNodeId("exchange-00"), new PlanNodeId("exchange-01")),
+                Arrays.asList(new PlanNodeId("exchange-10"), new PlanNodeId("exchange-11")),
+                Arrays.asList(new PlanNodeId("exchange-20"), new PlanNodeId("exchange-21"))));
+  }
+
+  private static TableGroupByHashRepartitionTopology createTwoByThreeTopology() {
+    return TableGroupByHashRepartitionTopology.create(
+        descriptor(3),
+        Arrays.asList(new PlanNodeId("source-0"), new PlanNodeId("source-1")),
         Arrays.asList(
-            Arrays.asList(new PlanNodeId("exchange-00"), new PlanNodeId("exchange-01")),
-            Arrays.asList(new PlanNodeId("exchange-10"), new PlanNodeId("exchange-11")),
-            Arrays.asList(new PlanNodeId("exchange-20"), new PlanNodeId("exchange-21"))));
+            Arrays.asList(
+                new PlanNodeId("exchange-00"),
+                new PlanNodeId("exchange-01"),
+                new PlanNodeId("exchange-02")),
+            Arrays.asList(
+                new PlanNodeId("exchange-10"),
+                new PlanNodeId("exchange-11"),
+                new PlanNodeId("exchange-12"))));
   }
 
   private static HashPartitioningDescriptor descriptor(int partitionCount) {
