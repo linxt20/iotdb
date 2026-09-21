@@ -118,6 +118,33 @@ public class PropertyDrivenDistributionTest {
   }
 
   /**
+   * A regular field predicate is evaluated above the scan. It is transparent to the scan's row
+   * distribution, so it must not accidentally turn an otherwise unordered table scan serial.
+   */
+  @Test
+  public void filterQueryAllowsParallelScan() {
+    List<DeviceTableScanNode> scans =
+        planAndCollectScans("SELECT * FROM testdb.table1 WHERE s1 > 1");
+
+    assertEquals(1, scans.size());
+    assertTrue(
+        "a FilterNode must pass scan-splitting eligibility to its table scan",
+        scans.get(0).isAllowParallelScan());
+  }
+
+  /** A projection is another transparent wrapper and must preserve scan eligibility. */
+  @Test
+  public void projectQueryAllowsParallelScan() {
+    List<DeviceTableScanNode> scans =
+        planAndCollectScans("SELECT s1 + 1 AS projected_s1 FROM testdb.table1");
+
+    assertEquals(1, scans.size());
+    assertTrue(
+        "a ProjectNode must pass scan-splitting eligibility to its table scan",
+        scans.get(0).isAllowParallelScan());
+  }
+
+  /**
    * The same query wrapped in EXPLAIN ANALYZE must produce a scan with the same parallelism as the
    * plain query, otherwise EXPLAIN ANALYZE reports on a plan that is not the one a user gets.
    */

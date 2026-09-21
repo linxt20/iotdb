@@ -3368,12 +3368,31 @@ public class TableDistributedPlanGenerator
   }
 
   private static void allowParallelScanOn(final List<PlanNode> childrenNodes) {
-    childrenNodes.forEach(
-        child -> {
-          if (child instanceof DeviceTableScanNode) {
-            ((DeviceTableScanNode) child).setAllowParallelScan(true);
-          }
-        });
+    childrenNodes.forEach(TableDistributedPlanGenerator::allowParallelScanOn);
+  }
+
+  /**
+   * Marks the table scan below an order-preserving, cardinality-preserving wrapper as eligible for
+   * local scan splitting. A field predicate or projection commonly sits between the distributed
+   * merge point and the scan; treating only the direct child as eligible silently disabled data
+   * parallelism for those ordinary single-table queries.
+   *
+   * <p>This deliberately crosses only {@link FilterNode} and {@link ProjectNode}. In particular,
+   * it does not cross sort, limit, offset, aggregation, join, or window nodes: their existing
+   * rules and the scan-side global limit/offset guard retain their conservative semantics.
+   */
+  private static void allowParallelScanOn(final PlanNode node) {
+    if (node instanceof DeviceTableScanNode) {
+      ((DeviceTableScanNode) node).setAllowParallelScan(true);
+      return;
+    }
+    if ((node instanceof FilterNode || node instanceof ProjectNode)
+        && node instanceof SingleChildProcessNode) {
+      final PlanNode child = ((SingleChildProcessNode) node).getChild();
+      if (child != null) {
+        allowParallelScanOn(child);
+      }
+    }
   }
 
   /**
