@@ -55,6 +55,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -292,7 +293,14 @@ public class TableDistributedPlanner {
         // data path back into a serial/round-robin exchange. The ordinary exchange edges still get
         // their identity sinks below, including the root Collect that merges the disjoint groups.
         if (exchangeNode.getChild() instanceof TableHashPartitioningShuffleSinkNode) {
-          exchangeNode.setIndexOfUpstreamSinkHandle(0);
+          // A ShuffleSinkHandle owns one queue per downstream channel. The exchange must read the
+          // queue selected by its own plan-node id, rather than always queue 0. The latter happens
+          // to look correct for local channels (which are bound by the target plan node), but makes
+          // every remote bucket fetch channel 0: one bucket is duplicated and the remaining buckets
+          // are missing their remote partial results.
+          exchangeNode.setIndexOfUpstreamSinkHandle(
+              hashChannelIndex(
+                  exchangeNode, (TableHashPartitioningShuffleSinkNode) exchangeNode.getChild()));
           continue;
         }
 
@@ -313,5 +321,23 @@ public class TableDistributedPlanner {
         exchangeNode.setIndexOfUpstreamSinkHandle(identitySinkNode.getCurrentLastIndex());
       }
     }
+  }
+
+  private static int hashChannelIndex(
+      ExchangeNode exchangeNode, TableHashPartitioningShuffleSinkNode hashSink) {
+    String exchangeNodeId = exchangeNode.getPlanNodeId().toString();
+    return IntStream.range(0, hashSink.getDownStreamChannelLocationList().size())
+        .filter(
+            channelIndex ->
+                exchangeNodeId.equals(
+                    hashSink
+                        .getDownStreamChannelLocationList()
+                        .get(channelIndex)
+                        .getRemotePlanNodeId()))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Hash shuffle sink does not own exchange " + exchangeNodeId));
   }
 }

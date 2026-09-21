@@ -161,6 +161,30 @@ public class SingleSourceGroupByHashRepartitionPlanningTest {
             .collect(Collectors.toList());
     assertTrue(exchangeIds.stream().allMatch(ids -> ids.size() == descriptor.getPartitionCount()));
 
+    // Remote exchange transport fetches a ShuffleSinkHandle by its channel index. Verify every
+    // source-to-bucket exchange consumes the matching channel, not channel 0 for every bucket.
+    Map<PlanNodeId, ExchangeNode> exchangesById =
+        nodes.stream()
+            .filter(ExchangeNode.class::isInstance)
+            .map(ExchangeNode.class::cast)
+            .collect(Collectors.toMap(PlanNode::getPlanNodeId, exchange -> exchange));
+    for (TableHashPartitioningShuffleSinkNode hashSink : hashSinks) {
+      for (int channelIndex = 0;
+          channelIndex < hashSink.getDownStreamChannelLocationList().size();
+          channelIndex++) {
+        PlanNodeId exchangeId =
+            new PlanNodeId(
+                hashSink
+                    .getDownStreamChannelLocationList()
+                    .get(channelIndex)
+                    .getRemotePlanNodeId());
+        assertEquals(
+            "each final bucket must fetch its corresponding source shuffle channel",
+            channelIndex,
+            exchangesById.get(exchangeId).getIndexOfUpstreamSinkHandle());
+      }
+    }
+
     TableGroupByHashRepartitionTopology.FragmentTopologyValidation validation =
         TableGroupByHashRepartitionTopology.create(descriptor, sourceSinkIds, exchangeIds)
             .validateFragmentOwnership(fragmentIdByNode);
