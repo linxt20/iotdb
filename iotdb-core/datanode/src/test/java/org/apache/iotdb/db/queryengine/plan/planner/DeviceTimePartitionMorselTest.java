@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -100,6 +101,9 @@ import static org.junit.Assert.assertTrue;
 public class DeviceTimePartitionMorselTest {
 
   private static final long TP_INTERVAL = TimePartitionUtils.getTimePartitionInterval();
+
+  /** Matches TARGET_BYTES_PER_SCAN_DRIVER, so one file means exactly one estimated driver. */
+  private static final long TEST_FILE_SIZE = 128L * 1024 * 1024;
 
   private static ExecutorService instanceNotificationExecutor;
 
@@ -268,6 +272,59 @@ public class DeviceTimePartitionMorselTest {
       }
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+    }
+  }
+
+  /**
+   * Both flags on at once, which is the configuration the end-to-end comparison runs: the morsel
+   * path must honour the DOP estimate rather than always using the full dop. With 2 TsFiles of 128
+   * MiB the estimate is 2 drivers, so 8 devices × 2 partitions at dop = 4 collapses to Kt = 2,
+   * Kd = 1, i.e. 2 pipelines instead of the 4 the same setup yields with estimation off.
+   */
+  @Test
+  public void testDopEstimationConstrainsTpMorselSplit() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    try {
+      // Estimation off: dop = 4 spreads over both axes -> Kt = 2, Kd = 2 -> 4 pipelines.
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+      LocalExecutionPlanContext withoutEstimation =
+          createContext(
+              "tp_morsel_estimation_off",
+              dataRegionWithPartitionsAndFiles(2, 0L, 1L));
+      withoutEstimation.setDegreeOfParallelism(4);
+      Operator rootWithout = node.accept(generator, withoutEstimation);
+      try {
+        assertEquals(4, withoutEstimation.getPipelineNumber());
+      } finally {
+        closeQuietly(rootWithout);
+        closePipelineOperations(withoutEstimation);
+      }
+
+      // Estimation on: the same region estimates 2 drivers, capping the split at 2 pipelines.
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(true);
+      DeviceTableScanNode node2 = initDeviceTableScanNode(8);
+      node2.setAllowParallelScan(true);
+      LocalExecutionPlanContext withEstimation =
+          createContext("tp_morsel_estimation_on", dataRegionWithPartitionsAndFiles(2, 0L, 1L));
+      withEstimation.setDegreeOfParallelism(4);
+      Operator rootWith = node2.accept(generator, withEstimation);
+      try {
+        assertEquals(
+            "the DOP estimate must cap the morsel split, not just the device-only split",
+            2,
+            withEstimation.getPipelineNumber());
+
+        // Still a complete partition of the (device, partition) product, just with fewer drivers.
+        assertProductSplitIsComplete(withEstimation, 8, Arrays.asList(0L, 1L));
+      } finally {
+        closeQuietly(rootWith);
+        closePipelineOperations(withEstimation);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
     }
   }
 
@@ -536,11 +593,26 @@ public class DeviceTimePartitionMorselTest {
   }
 
   private DataRegion dataRegionWithPartitions(Long... tpIds) {
+    return dataRegionWithPartitionsAndFiles(0, tpIds);
+  }
+
+  /**
+   * A region reporting the given partitions and {@code fileCount} TsFiles of {@code fileSize} bytes
+   * each, so that DOP estimation has something to estimate from.
+   */
+  private DataRegion dataRegionWithPartitionsAndFiles(int fileCount, Long... tpIds) {
     Set<Long> partitions = new HashSet<>(Arrays.asList(tpIds));
+    List<TsFileResource> files = new ArrayList<>(fileCount);
+    for (int i = 0; i < fileCount; i++) {
+      TsFileResource resource = Mockito.mock(TsFileResource.class);
+      Mockito.when(resource.getTsFileSize())
+          .thenReturn(DeviceTimePartitionMorselTest.TEST_FILE_SIZE);
+      files.add(resource);
+    }
     TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
     Mockito.when(tsFileManager.getTimePartitions()).thenReturn(partitions);
     Mockito.when(tsFileManager.getAllTsFileListForQuery(Mockito.isNull(), Mockito.isNull()))
-        .thenReturn(new Pair<>(Collections.emptyList(), Collections.emptyList()));
+        .thenReturn(new Pair<>(files, Collections.emptyList()));
     DataRegion dataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
     return dataRegion;
