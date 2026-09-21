@@ -19,6 +19,23 @@
 
 # Isolated static-parallelism E2E acceptance
 
+## Static property-enforcement matrix
+
+`manifests/property-enforcement-matrix.json` is the machine-readable P0 contract for scan,
+filter, project, sort, top-k, window, row-number, aggregation, join, and union. It records each
+family's required and actually provided property, selected enforcer, and explicit reason for every
+serial or conditional path. Every row links to a concrete JUnit plan-shape assertion.
+
+Run its dependency-free integrity check before a server build:
+
+```bash
+python3 scripts/verify_property_enforcement_matrix.py
+```
+
+The matrix is a coverage index, not a performance claim. Its narrow GROUP BY row is conditional
+on the reviewed hash-repartition feature; its join row records the required two-sided partitioning
+contract and the current serial fallback.
+
 This is a correctness acceptance kit for an already running, isolated IoTDB deployment. It
 never starts, stops, reconfigures, clears, creates, or writes to a server. Its only server
 statements are `EXPLAIN`, `EXPLAIN ANALYZE`, and `SELECT`. Every endpoint and CLI executable
