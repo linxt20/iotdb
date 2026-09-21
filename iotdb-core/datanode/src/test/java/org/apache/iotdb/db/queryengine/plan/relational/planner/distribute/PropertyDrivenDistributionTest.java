@@ -29,6 +29,12 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -39,10 +45,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDa
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.After;
 import org.junit.Before;
@@ -307,20 +315,61 @@ public class PropertyDrivenDistributionTest {
     // This case drives the flag itself, so it only needs to run once.
     assumeFalse(propertyDrivenPlanning);
 
-    setPropertyDrivenPlanning(false);
-    assertFalse(
-        "the legacy heuristic takes no property decisions, so it must not print a trace",
-        memorySourceExplainText("SELECT * FROM testdb.table1").contains("Property enforcement:"));
+    final TsTable previousTable =
+        DataNodeTableCache.getInstance().getTable(SINGLE_REGION_DB, "table1", false);
+    try {
+      registerProductTableSchema();
 
-    setPropertyDrivenPlanning(true);
-    String explained = memorySourceExplainText("SELECT * FROM testdb.table1");
-    assertTrue(
-        "EXPLAIN must show the property enforcement trace when the rules are enabled",
-        explained.contains("Property enforcement:"));
-    assertTrue(
-        "each traced decision must state what was required and what was provided, got:\n"
-            + explained,
-        explained.contains("required=") && explained.contains("provided="));
+      setPropertyDrivenPlanning(false);
+      assertFalse(
+          "the legacy heuristic takes no property decisions, so it must not print a trace",
+          memorySourceExplainText("SELECT * FROM testdb.table1").contains("Property enforcement:"));
+
+      setPropertyDrivenPlanning(true);
+      String explained = memorySourceExplainText("SELECT * FROM testdb.table1");
+      assertTrue(
+          "EXPLAIN must show the property enforcement trace when the rules are enabled",
+          explained.contains("Property enforcement:"));
+      assertTrue(
+          "each traced decision must state what was required and what was provided, got:\n"
+              + explained,
+          explained.contains("required=") && explained.contains("provided="));
+    } finally {
+      restoreProductTableSchema(previousTable);
+    }
+  }
+
+  /**
+   * The memory-source visitor deliberately uses the production {@link DataNodeTableCache}, whereas
+   * the outer analysis in this test uses {@code TestMetadata}. Keep those two schemas equivalent so
+   * this exercises the real EXPLAIN entry point instead of a test-only planner overload.
+   */
+  private static void registerProductTableSchema() {
+    final TsTable table = new TsTable("table1");
+    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
+    table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("tag2", TSDataType.STRING));
+    table.addColumnSchema(new TagColumnSchema("tag3", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
+    table.addColumnSchema(new AttributeColumnSchema("attr2", TSDataType.STRING));
+    table.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    table.addColumnSchema(new FieldColumnSchema("s2", TSDataType.INT64));
+    table.addColumnSchema(new FieldColumnSchema("s3", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance().preUpdateTable(SINGLE_REGION_DB, table, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(SINGLE_REGION_DB, table.getTableName(), null);
+  }
+
+  private static void restoreProductTableSchema(final TsTable previousTable) {
+    if (previousTable == null) {
+      DataNodeTableCache.getInstance()
+          .preUpdateTable(SINGLE_REGION_DB, new PreDeleteTsTable("table1"), null);
+      DataNodeTableCache.getInstance().commitUpdateTable(SINGLE_REGION_DB, "table1", null);
+      return;
+    }
+    DataNodeTableCache.getInstance().preUpdateTable(SINGLE_REGION_DB, previousTable, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(SINGLE_REGION_DB, previousTable.getTableName(), null);
   }
 
   /** Exercises the table-model EXPLAIN memory-source path used by the product query flow. */
