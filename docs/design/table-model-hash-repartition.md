@@ -86,8 +86,9 @@ not enable planner selection until the corresponding execution and result tests 
    fragment and add all `P` downstream locations before `SubPlanGenerator` cuts the plan. Finally,
    `TableModelQueryFragmentPlanner#calculateNodeTopologyBetweenInstance` must resolve every
    `(source fragment, destination partition)` edge; its current `instanceMap.putIfAbsent` mapping
-   is only sufficient when one fragment has one instance. The planner flag remains off until this
-   topology is represented, serialized, and exercised on at least two DataNodes.
+   is only sufficient when one fragment has one instance. The general multi-source planner flag
+   remains off until this topology is represented, serialized, and exercised on at least two
+   DataNodes; the separate single-source 1 x P experiment is described below.
 4. **Make properties truthful.** Add a provided-distribution map beside the existing
    `nodeOrderingMap` in `TableDistributedPlanGenerator`.  A scan may report `Partitioned(keys)`
    only when its actual source assignment guarantees it; a new hash exchange reports exactly its
