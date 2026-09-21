@@ -1,0 +1,108 @@
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+
+# Table-model hash repartition: implementation boundary and plan
+
+`DistributionProperty.partitioned(keys)` is currently a planner algebra type, not a data-plane
+capability.  This is intentional: in the current implementation a partitioned requirement that
+does not already hold is conservatively enforced with a `CollectNode`, yielding one branch.  One
+branch keeps every equal-key group together, but it is not a repartition and must not be reported
+as a parallel acceleration.
+
+The executable guard for that boundary is
+`PropertyDrivenDistributionTest#partitionedRequirementConservativelyCollectsUntilHashExchangeExists`.
+It must be replaced by positive plan and result-equivalence tests only when every step below is
+implemented.
+
+## What exists, and why it cannot implement `Partitioned(keys)`
+
+| Area | Existing class | Current behaviour | Why it is insufficient |
+| --- | --- | --- | --- |
+| Table fragment boundary | `plan.relational.planner.node.ExchangeNode` | Each exchange has one upstream `IdentitySinkNode`. | It represents one input stream, not N hash buckets. |
+| Table distributed planner | `plan.relational.planner.distribute.AddExchangeNodes` and `TableDistributedPlanner#adjustUpStreamHelper` | Creates one `ExchangeNode` per child and then an `IdentitySinkNode`. | There is no mapping from a relational `Symbol` to a downstream partition/channel. |
+| Generic shuffle sink | `plan.planner.plan.node.sink.ShuffleSinkNode` and `OperatorTreeGenerator#visitShuffleSink` | Sends whole `TsBlock`s with `SIMPLE_ROUND_ROBIN`. | Round-robin sends equal keys in different blocks to different channels. |
+| Exchange handle | `execution.exchange.sink.ShuffleSinkHandle` | Supports only `PLAIN` and `SIMPLE_ROUND_ROBIN`. | It selects a channel per block, has no row key or row splitter. |
+| Table execution | `DataNodeTableOperatorGenerator#visitIdentitySink` | Always requests `ShuffleStrategyEnum.PLAIN`. | It cannot describe or execute hash distribution. |
+
+`CollectNode`, `MergeSortNode`, and a one-input `ExchangeNode` are therefore not valid evidence of
+hash repartitioning.  They may converge streams, but they cannot create parallel key ownership.
+
+## Required production changes
+
+The implementation should be one vertical slice, with group-by first and equi-join second.  Do
+not enable planner selection until the corresponding execution and result tests pass.
+
+1. **Represent the exchange contract.** Add a table-model `HashPartitionExchangeNode` (or extend
+   `ExchangeNode` with a serialised distribution descriptor) under
+   `plan.relational.planner.node`.  The descriptor needs ordered partition symbols, their input
+   column indices after projection, a stable null policy, a hash-function/version identifier, and
+   the downstream partition count.  It must be included in `clone`, equality, serialization,
+   `DataNodePlanNodeDeserializer`, `PlanVisitor`, and `PlanGraphPrinter`.
+2. **Split rows at the sink, not blocks.** Add a key-aware sink mode to
+   `ShuffleSinkHandle.ShuffleStrategyEnum`, configured by a new descriptor rather than bare enum
+   values.  The implementation needs a table-aware operator in
+   `DataNodeTableOperatorGenerator` which takes each input `TsBlock`, hashes every row over the
+   declared key columns, builds one output `TsBlock` per channel, and sends each bucket to its
+   assigned channel.  `SIMPLE_ROUND_ROBIN` must remain unchanged for tree-model users.
+3. **Build N-to-N fragment edges.** Generalize `AddExchangeNodes` and
+   `TableDistributedPlanner#adjustUpStreamHelper` so every upstream producing fragment has one
+   hash sink with a channel for every destination partition, and every destination fragment has
+   an exchange source for every upstream.  Assign downstream locations before serialisation and
+   keep the existing `indexOfUpstreamSinkHandle` ownership rules valid for every edge.
+4. **Make properties truthful.** Add a provided-distribution map beside the existing
+   `nodeOrderingMap` in `TableDistributedPlanGenerator`.  A scan may report `Partitioned(keys)`
+   only when its actual source assignment guarantees it; a new hash exchange reports exactly its
+   descriptor keys.  Projections must remap symbols, filters preserve distribution, and a generic
+   union is `Arbitrary` unless every input has the same partitioning descriptor.
+5. **First consumer: final grouped aggregation.** In `visitAggregation`, when a final aggregation
+   has non-empty grouping keys and the child does not satisfy `Partitioned(groupKeys)`, insert the
+   hash exchange between partial and final aggregation.  A global aggregation continues to require
+   `Single`; no behaviour change is allowed for non-streamable or distinct/masked cases until a
+   separate correctness proof exists.
+6. **Second consumer: equi-join.** In `visitJoin`, only an inner equi-join with supported equality
+   criteria may choose co-partitioning.  Both sides must use the same hash version, null policy,
+   partition count and compatible key order.  Cross join, non-equality/as-of join, outer join,
+   dynamic filters, and joins with non-deterministic expressions retain the current single/merge
+   fallback until individually implemented and tested.
+
+## Correctness gates
+
+Before flipping the planner feature flag, add the following tests.
+
+* Unit-test the hash descriptor: symbol-to-column resolution, key order, null handling, stable
+  hash values, and failures for missing/duplicate symbols.
+* Unit-test the sink with a multi-row, multi-`TsBlock` input: all rows with equal keys reach the
+  same channel; every input row appears exactly once; nulls and mixed scalar types have defined
+  behaviour; changing block boundaries does not change routing.
+* Plan-shape tests: a partial/final `GROUP BY` and supported equi-join each contain hash exchange
+  nodes on both inputs, and unsupported joins/groups contain no hash exchange.
+* Multi-DataNode integration tests: compare the sorted results and multiplicities of DOP=1 against
+  DOP>1 for skewed groups, repeated join keys, empty input, null keys, and key values spanning
+  regions.  Assert that every hash bucket receives only its owned keys.
+* Benchmark assertions: archive partition count, hash version, per-channel rows/bytes, spill or
+  backpressure time, and final result checksum.  Speedup without the checksum is not acceptance.
+
+## Rollout and observability
+
+Use a default-off `enable_table_hash_repartition` flag independent of
+`enable_property_driven_planning`.  EXPLAIN must identify the key list, hash version, partition
+count and every explicit fallback reason.  Metrics should include rows and bytes per channel,
+largest/smallest bucket ratio, blocked sink time, source-handle wait time, and per-driver finish
+time.  The flag may be enabled for grouped aggregation only after all corresponding correctness
+gates pass; joining remains separately gated.

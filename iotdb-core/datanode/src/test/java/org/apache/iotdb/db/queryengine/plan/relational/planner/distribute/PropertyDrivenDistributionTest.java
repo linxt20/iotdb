@@ -213,6 +213,51 @@ public class PropertyDrivenDistributionTest {
     assertEquals(unorderedChild, enforced.getChildren().get(0));
   }
 
+  /**
+   * A {@code Partitioned(keys)} requirement must not be advertised as parallel hash distribution
+   * until the exchange can route individual rows by those keys. The current safe enforcer is a
+   * {@link CollectNode}: it reduces the input to one branch, which trivially keeps every group
+   * together but deliberately does not claim a repartition speedup.
+   */
+  @Test
+  public void partitionedRequirementConservativelyCollectsUntilHashExchangeExists() {
+    assumeFalse(propertyDrivenPlanning);
+    setPropertyDrivenPlanning(true);
+
+    Symbol group = new Symbol("group");
+    ValuesNode left =
+        new ValuesNode(
+            new PlanNodeId("left_values"), ImmutableList.of(group), Collections.emptyList());
+    ValuesNode right =
+        new ValuesNode(
+            new PlanNodeId("right_values"), ImmutableList.of(group), Collections.emptyList());
+    TableDistributedPlanGenerator generator =
+        new TableDistributedPlanGenerator(
+            new MPPQueryContext(
+                "partitioned enforcement test",
+                new QueryId("partitioned_enforcement_test"),
+                SESSION_INFO,
+                null,
+                null),
+            null,
+            null,
+            null);
+
+    PlanNode enforced =
+        generator.enforce(
+            PlanProperties.of(DistributionProperty.partitioned(ImmutableList.of(group)), null),
+            ImmutableList.of(left, right),
+            null);
+
+    assertTrue(
+        "without a key-aware exchange, collecting is the only sound Partitioned(key) enforcer",
+        enforced instanceof CollectNode);
+    assertTrue(
+        "the EXPLAIN trace must describe a collect, not pretend that a hash repartition happened",
+        generator.getRuleTrace().get(0).contains("Partitioned[group]"));
+    assertTrue(generator.getRuleTrace().get(0).contains("CollectNode"));
+  }
+
   /** Plans the statement against a single data region and returns every node in the plan. */
   private static List<PlanNode> planAndCollectNodes(String sql) {
     List<PlanNode> nodes = new ArrayList<>();
