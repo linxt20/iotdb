@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "purpose": "Static table-model parallelism acceptance; this manifest separates executable static paths from the hash-repartition work still required for grouped aggregation and joins.",
+  "cases": [
+    {
+      "id": "scan_filter",
+      "family": "scan/filter",
+      "workload": "../../query-intra-parallelism-benchmark/workload/scan_filter.sql",
+      "validation": "../../query-intra-parallelism-benchmark/validation/scan_filter.sql",
+      "status": "static_parallel_candidate",
+      "required_dops": [1, 2, 4, 8, 16],
+      "comparison": "multiset",
+      "acceptance": "Retain DOP=1 versus DOP>1 result-equivalence reports and normal-query metrics. A lower latency is a measurement, not a predeclared result."
+    },
+    {
+      "id": "filter_project",
+      "family": "filter/project",
+      "workload": "../../query-intra-parallelism-benchmark/workload/filter_project.sql",
+      "validation": "../../query-intra-parallelism-benchmark/validation/filter_project.sql",
+      "status": "static_parallel_candidate",
+      "required_dops": [1, 2, 4, 8, 16],
+      "comparison": "multiset",
+      "acceptance": "This is an end-to-end downstream-cost control. Its plan must be retained because a computed project may take the safe serial fallback."
+    },
+    {
+      "id": "ordered_scan",
+      "family": "ordered scan",
+      "workload": "../../query-intra-parallelism-benchmark/workload/ordered_scan.sql",
+      "validation": "../../query-intra-parallelism-benchmark/validation/ordered_scan.sql",
+      "status": "static_parallel_candidate",
+      "required_dops": [1, 2, 4, 8, 16],
+      "comparison": "ordered",
+      "e2e_comparison": "ordered_merge_tree",
+      "acceptance": "The enabled plan must expose the reviewed TableMergeSortOperator marker and the fallback must preserve the complete row sequence."
+    },
+    {
+      "id": "top_k",
+      "family": "global order/limit",
+      "workload": "../../query-intra-parallelism-benchmark/workload/top_k.sql",
+      "validation": "../../query-intra-parallelism-benchmark/validation/top_k.sql",
+      "status": "required_fallback_control",
+      "required_dops": [1, 2, 4, 8, 16],
+      "comparison": "ordered",
+      "acceptance": "Retain EXPLAIN and results at every DOP as a global-order control. Do not report a scan-parallel speedup for this family unless a later reviewed plan proves a complete global Top-K implementation."
+    },
+    {
+      "id": "timepartition_morsel",
+      "family": "morsel scheduling",
+      "status": "static_parallel_candidate",
+      "required_dops": [1, 2, 4, 8, 16],
+      "comparison": "multiset",
+      "e2e_comparison": "timepartition_morsel",
+      "acceptance": "The enabled -morsel- plan and morsel-disabled fallback must return the same row multiset; retain per-driver observed wall time and LPT/equal-count evidence."
+    },
+    {
+      "id": "group_by",
+      "family": "grouped aggregation",
+      "workload": "../../query-intra-parallelism-benchmark/workload/group_by.sql",
+      "validation": "../../query-intra-parallelism-benchmark/validation/group_by.sql",
+      "status": "baseline_only_until_hash_repartition",
+      "required_dops": [1],
+      "comparison": "multiset",
+      "acceptance": "Collect a DOP=1 result and plan as a semantic baseline only. Partitioned(groupKeys), key shuffle, and a group-by acceleration claim remain prohibited until the real hash exchange is wired and accepted."
+    },
+    {
+      "id": "self_join",
+      "family": "equi-join",
+      "workload": "../../query-intra-parallelism-benchmark/workload/self_join.sql",
+      "validation": "../../query-intra-parallelism-benchmark/validation/self_join.sql",
+      "status": "baseline_only_until_hash_repartition",
+      "required_dops": [1],
+      "comparison": "multiset",
+      "acceptance": "Collect a DOP=1 result and plan as a semantic baseline only. Co-partitioned join, key shuffle, and a join acceleration claim remain prohibited until the real hash exchange is wired and accepted."
+    }
+  ]
+}
