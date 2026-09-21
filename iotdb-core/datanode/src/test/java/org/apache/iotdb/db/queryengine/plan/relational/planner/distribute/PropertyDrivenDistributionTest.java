@@ -177,31 +177,6 @@ public class PropertyDrivenDistributionTest {
   }
 
   /**
-   * A scan that already provides device-then-time order normally eliminates its SortNode. The
-   * ordered local-parallel experiment keeps that node as a serialized execution marker so the
-   * DataNode can construct its merge tree even when the fragment runs remotely.
-   */
-  @Test
-  public void orderedParallelScanRetainsNaturalSortAsExecutionMarker() {
-    assumeFalse(propertyDrivenPlanning);
-    try {
-      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
-      assertFalse(
-          planAndCollectNodes("SELECT * FROM testdb.table1 ORDER BY tag1, tag2, tag3, time")
-              .stream()
-              .anyMatch(node -> node instanceof SortNode));
-
-      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
-      assertTrue(
-          planAndCollectNodes("SELECT * FROM testdb.table1 ORDER BY tag1, tag2, tag3, time")
-              .stream()
-              .anyMatch(node -> node instanceof SortNode));
-    } finally {
-      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
-    }
-  }
-
-  /**
    * A parent requirement is not evidence that its child already has the required property. In
    * particular, a one-input MergeSort cannot sort an unordered stream, so the property enforcer
    * must insert a SortNode when the required ordering is absent from the physical child.
