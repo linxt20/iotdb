@@ -218,6 +218,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
               throw new TException(e);
             }
           }
+          REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER.recordSent(
+              req.getSourceFragmentInstanceId(), req.getIndex(), resp.getTsBlocks());
           return resp;
         }
         for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
@@ -232,6 +234,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             throw new TException(e);
           }
         }
+        REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER.recordSent(
+            req.getSourceFragmentInstanceId(), req.getIndex(), resp.getTsBlocks());
         return resp;
       } finally {
         DATA_EXCHANGE_COST_METRICS.recordDataExchangeCost(
@@ -690,6 +694,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   // region =========== MPPDataExchangeManager ===========
 
   private final LocalMemoryManager localMemoryManager;
+  private static final RemoteShufflePayloadByteTracker REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER =
+      RemoteShufflePayloadByteTracker.getInstance();
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
   private final IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>

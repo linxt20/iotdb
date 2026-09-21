@@ -22,8 +22,9 @@ the child commands, server-history observations, and raw ``/proc`` samples are k
 given attempt directory.
 
 It neither starts, stops, reconfigures, nor clears IoTDB. Exactly two explicit DataNode PIDs
-are required. ``shuffle_bytes`` is emitted as JSON null because this build has no query-scoped
-remote-payload byte counter; zero would be fabricated evidence.
+are required. When explicit non-overlapping DataNode audit logs are supplied, the remote payload
+extractor archives and verifies a query-scoped shuffle-byte value; otherwise ``shuffle_bytes`` is
+JSON null, never a fabricated zero.
 """
 
 from __future__ import annotations
@@ -36,12 +37,13 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Tuple
 
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_METRICS_SCRIPT = HERE / "server_current_query_metrics.py"
 DEFAULT_PROC_SCRIPT = HERE / "collect_datanode_proc.py"
+DEFAULT_SHUFFLE_AUDIT_SCRIPT = HERE / "extract_remote_shuffle_payload_bytes.py"
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -127,6 +129,46 @@ def metric_command(args: argparse.Namespace, server_dir: Path) -> list[str]:
     return command
 
 
+def remote_shuffle_metrics(
+    args: argparse.Namespace, raw_dir: Path, query_id: Optional[str]
+) -> Tuple[Optional[int], str, Optional[str]]:
+    """Archive the durable remote-payload audit only when the caller supplied all logs.
+
+    The extractor rejects a direction mismatch by default. This protects the matrix from silently
+    treating an incomplete two-DataNode log set as a query-scoped metric.
+    """
+
+    if not args.shuffle_audit_log:
+        return None, "unmeasured_no_query_scoped_remote_payload_audit_logs", None
+    if not query_id:
+        raise RuntimeError("server history did not return query_id for remote shuffle audit")
+    audit_dir = raw_dir / "remote-shuffle-audit"
+    if audit_dir.exists():
+        raise RuntimeError(f"remote shuffle audit directory already exists: {audit_dir}")
+    command = [
+        sys.executable, str(args.shuffle_audit_script), "--query-id", str(query_id),
+        "--raw-dir", str(audit_dir),
+    ]
+    for log in args.shuffle_audit_log:
+        command.extend(["--log", str(log)])
+    completed = subprocess.run(command, text=True, capture_output=True, check=False)
+    (raw_dir / "remote-shuffle-audit.stdout").write_text(completed.stdout, encoding="utf-8")
+    (raw_dir / "remote-shuffle-audit.stderr").write_text(completed.stderr, encoding="utf-8")
+    (raw_dir / "remote-shuffle-audit.command.json").write_text(
+        json.dumps(command, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    if completed.returncode:
+        raise RuntimeError(f"remote shuffle audit extractor failed: exit {completed.returncode}")
+    try:
+        payload = json.loads(completed.stdout)
+        shuffle_bytes = int(payload["shuffle_bytes"])
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise RuntimeError("remote shuffle audit extractor did not return a valid byte count") from error
+    if shuffle_bytes <= 0 or payload.get("direction_match") is not True:
+        raise RuntimeError("remote shuffle audit is not a complete non-zero bidirectional measurement")
+    return shuffle_bytes, str(payload.get("shuffle_bytes_source")), str(audit_dir / "remote-shuffle-payload-bytes.json")
+
+
 def run(args: argparse.Namespace) -> int:
     pids = (
         parse_two_pids(args.datanode_pids)
@@ -160,12 +202,16 @@ def run(args: argparse.Namespace) -> int:
         raise RuntimeError("collector summary reports a failed wrapped server metrics command")
     if proc.get("pid_starttime_verified") is not True:
         raise RuntimeError("collector did not verify DataNode PID identities")
+    shuffle_bytes, shuffle_status, shuffle_evidence = remote_shuffle_metrics(
+        args, args.raw_dir, server.get("query_id")
+    )
     result = {
         "query_ms": query_ms,
         "cpu_pct": cpu_pct,
         "peak_rss_bytes": int(peak_rss),
-        "shuffle_bytes": None,
-        "shuffle_bytes_status": "unmeasured_no_query_scoped_remote_payload_byte_counter",
+        "shuffle_bytes": shuffle_bytes,
+        "shuffle_bytes_status": shuffle_status,
+        "shuffle_bytes_evidence": shuffle_evidence,
         "query_ms_source": "information_schema.current_queries.cost_time",
         "cpu_pct_source": "two_datanode_proc_cpu_core_pct",
         "peak_rss_bytes_source": "two_datanode_proc_combined_peak_rss",
@@ -219,6 +265,14 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--metrics-script", type=Path, default=DEFAULT_METRICS_SCRIPT)
     parser.add_argument("--proc-script", type=Path, default=DEFAULT_PROC_SCRIPT)
+    parser.add_argument("--shuffle-audit-script", type=Path, default=DEFAULT_SHUFFLE_AUDIT_SCRIPT)
+    parser.add_argument(
+        "--shuffle-audit-log",
+        action="append",
+        type=Path,
+        default=[],
+        help="non-overlapping DataNode log; repeat once per participating DataNode",
+    )
     parser.add_argument("--cli", type=Path)
     parser.add_argument("--host")
     parser.add_argument("--port", type=int)
@@ -250,6 +304,8 @@ def main() -> int:
         parser.error("--cli and --sql-file must name existing files")
     if not args.metrics_script.is_file() or not args.proc_script.is_file():
         parser.error("--metrics-script and --proc-script must name existing files")
+    if args.shuffle_audit_log and not args.shuffle_audit_script.is_file():
+        parser.error("--shuffle-audit-script must name an existing file when audit logs are supplied")
     if not 1 <= args.port <= 65535:
         parser.error("--port must be in 1..65535")
     if args.history_timeout_seconds <= 0 or args.history_poll_seconds <= 0 or args.proc_interval_seconds <= 0:

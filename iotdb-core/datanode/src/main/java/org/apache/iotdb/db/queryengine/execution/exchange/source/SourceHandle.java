@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.queryengine.execution.exchange.RemoteShufflePayloadByteTracker;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
@@ -131,6 +132,8 @@ public class SourceHandle implements ISourceHandle {
       DataExchangeCostMetricSet.getInstance();
   private static final DataExchangeCountMetricSet DATA_EXCHANGE_COUNT_METRIC_SET =
       DataExchangeCountMetricSet.getInstance();
+  private static final RemoteShufflePayloadByteTracker REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER =
+      RemoteShufflePayloadByteTracker.getInstance();
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SourceHandle.class)
@@ -810,6 +813,11 @@ public class SourceHandle implements ISourceHandle {
         fragmentRequest.setStartSequenceId(fetchProgress.nextSequenceId);
         fragmentRequest.setOffset(fetchProgress.offset);
         TGetDataBlockResponse response = client.getDataBlock(fragmentRequest);
+        REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER.recordReceived(
+            localFragmentInstanceId,
+            remoteFragmentInstanceId,
+            indexOfUpstreamSinkHandle,
+            response.getTsBlocks());
         synchronized (SourceHandle.this) {
           if (aborted || closed) {
             fetchProgress.discard();
