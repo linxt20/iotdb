@@ -59,8 +59,9 @@ Generate the canonical deterministic input with only Python's standard library:
 python3 scripts/generate_fixture.py --output /root/bench-fixture
 ```
 
-It writes ten CSV shards with `Time,device_id,s1,s2` headers and a `fixture-manifest.json`.
-Create the schema first by rendering `workload/schema.sql`, then import each shard with the
+It writes ten CSV shards with `time,device_id,s1,s2` headers and a `fixture-manifest.json`.
+Create the schema first by rendering `workload/schema.sql` (which explicitly declares
+`time TIMESTAMP TIME` to match the CSV `Time` column), then import each shard with the
 isolated distribution's `import-data.sh` in table dialect (for example, `-sql_dialect table
 -ft csv -db benchdb -table bench -f <shard>`). Validate the exact CLI flags against the built
 distribution's `import-data.sh -help` before a full load; retain the manifest and importer

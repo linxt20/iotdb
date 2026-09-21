@@ -65,7 +65,9 @@ def main() -> int:
         with file_path.open("w", newline="", encoding="utf-8") as target:
             writer = csv.writer(target)
             # The bundled import-data tool requires Time as the first header and device_id second.
-            writer.writerow(("Time", "device_id", "s1", "s2"))
+            # IoTDB table import maps the time index by exact header name; unlike SQL identifiers,
+            # this CSV mapping is case-sensitive and requires lowercase ``time``.
+            writer.writerow(("time", "device_id", "s1", "s2"))
             partition_start = args.start_time_ms + partition * args.partition_interval_ms
             for device in range(args.devices):
                 device_id = f"d{device:03d}"
@@ -81,7 +83,7 @@ def main() -> int:
         "partitions": args.partitions,
         "rows_per_partition": rows_per_partition,
         "total_rows": total_rows,
-        "columns": ["Time", "device_id", "s1", "s2"],
+        "columns": ["time", "device_id", "s1", "s2"],
         "s1": "device * sum(rows_per_partition) + sum(rows_per_partition[:partition]) + row",
         "s2": "s1 + 0.5",
     }
