@@ -25,6 +25,12 @@ statements are `EXPLAIN`, `EXPLAIN ANALYZE`, and `SELECT`. Every endpoint and CL
 must be named explicitly on the command line, so the kit cannot accidentally target a
 pre-existing experiment cluster.
 
+For the six-query-family result/fallback gate (scan/filter, filter/project, ordered scan, top-k,
+GROUP BY, and equi-join), use the separate read-only
+[`MULTI_QUERY_CASE_ACCEPTANCE.md`](MULTI_QUERY_CASE_ACCEPTANCE.md) runner. It records exact
+result equivalence for static candidates while keeping GROUP BY and join as explicit
+fallback-only baselines; it does not report speedups.
+
 It proves three narrow claims for the current static implementation:
 
 1. Text-format `EXPLAIN` on the enabled endpoint contains the `Property enforcement:` trace.
