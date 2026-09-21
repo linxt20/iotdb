@@ -112,6 +112,12 @@ The summarizer rejects plans that lack morsel scheduling, assigned partition, or
 wall-time fields. It preserves every parsed per-driver record and reports maximum driver wall time
 and CPU time for both arms. It does not infer a speedup or whole-query latency from these records.
 
+For a deterministic skewed fixture that creates a visible equal-count versus LPT grouping
+decision, use the manual [morsel balance fixture](MORSEL_BALANCE_FIXTURE.md). It requires two
+fresh isolated endpoints, an explicit database `time_partition_interval`, and a flush after each
+partition shard so LPT has actual TsFile-byte metadata. Its tiny dataset validates the evidence
+pipeline only; it is not performance evidence.
+
 For a complete server-side archive, use the read-only balance runner after preparing two isolated,
 otherwise-identical deployments. The equal-count endpoint must set
 `enable_timepartition_morsel_size_weighting=false`; the LPT endpoint must set it to `true`.
