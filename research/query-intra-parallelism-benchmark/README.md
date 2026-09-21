@@ -1,0 +1,153 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
+# Query-intra-parallelism P0 benchmark kit
+
+This directory is the reproducible evidence kit for the static query-intra-parallelism
+prototype. It deliberately separates *workload definition*, *measurement adapter*,
+and *raw evidence*. Do not report a speedup until all three are archived.
+
+Scope is deliberately narrow: this kit evaluates fixed, static DOP only. It neither
+implements nor evaluates dynamic DOP, task stealing, pipeline fusion, SIMD, asynchronous
+prefetch, or other executor optimizations. It must not be used to make a universal
+speedup claim: every reported acceleration is scoped to its SQL, data shape, cache state,
+configuration, and observed parallel execution marker.
+
+It is designed for the isolated server deployment, not for the pre-existing experiment
+cluster. The kit never starts, stops, reconfigures, or clears a server by itself. Those
+potentially disruptive actions are explicit commands supplied by the operator.
+
+## Workload contract
+
+The SQL files use `${DATABASE}` and `${TABLE}` placeholders. The fixture is a table-model
+table with `device_id` as a TAG and `time`, `s1`, and `s2` columns. The intended fixture is
+64 devices x 10 time partitions x 100,000 rows per device/partition. `s1` must be an
+increasing integral sequence and `s2 = s1 + 0.5`.
+
+The six workload queries cover the promised classes:
+
+| Query | Purpose | Expected parallelism outcome |
+| --- | --- | --- |
+| `scan_filter` | Full scan with a non-prunable modulo predicate | scan/morsel acceleration candidate |
+| `filter_project` | Filter and project after scan | candidate; isolates downstream single-stream cost |
+| `ordered_scan` | device/time ordering | ordered merge-tree candidate only when its safety contract holds |
+| `top_k` | global order + limit | required fallback/control case |
+| `group_by` | aggregation by device | repartition/aggregation baseline; do not claim key-partition acceleration until it is implemented |
+| `self_join` | equality join on device/time | repartition/join baseline; do not claim key-partition acceleration until it is implemented |
+
+Generate the canonical deterministic input with only Python's standard library:
+
+```bash
+python3 scripts/generate_fixture.py --output /root/bench-fixture
+```
+
+It writes ten CSV shards with `Time,device_id,s1,s2` headers and a `fixture-manifest.json`.
+Create the schema first by rendering `workload/schema.sql`, then import each shard with the
+isolated distribution's `import-data.sh` in table dialect (for example, `-sql_dialect table
+-ft csv -db benchdb -table bench -f <shard>`). Validate the exact CLI flags against the built
+distribution's `import-data.sh -help` before a full load; retain the manifest and importer
+stdout/stderr alongside the benchmark output. A tiny fixture (for example `--devices 2
+--partitions 1 --rows-per-partition 10`) is the required import smoke test before generating
+the 64-million-row dataset.
+
+`validation/` contains result-producing forms of the same semantics. Export exactly one
+CSV per DOP and compare it with DOP=1 using `validate_results.py`. It compares complete
+rows and multiplicity, rather than an XOR digest; that detects even-count duplicates.
+
+## Measurement adapter
+
+`run_matrix.py` is intentionally database-client agnostic. The supplied `--query-command`
+must execute one rendered SQL file and print **one JSON object** to stdout. It receives these
+format variables: `{sql_file}`, `{query_id}`, `{dop}`, `{cache_mode}`, `{iteration}`, and
+`{attempt_dir}`. Its JSON object must contain server-side `query_ms`; it may additionally
+contain `planning_ms`, `execution_ms`, `result_rows`, `cpu_pct`, `peak_rss_bytes`, and
+`shuffle_bytes`.
+
+Using client wall-clock time as `query_ms` is prohibited: client transfer/deserialization
+can dominate this workload. The adapter should collect IoTDB server-side planning and
+FragmentInstance wall time, while using a normal query (not `EXPLAIN ANALYZE`) for the timed
+execution because EXPLAIN ANALYZE can alter the table-model plan.
+
+Example shape (the site-specific `query_adapter.py` is deliberately not versioned here):
+
+```bash
+python3 scripts/run_matrix.py \
+  --database benchdb --table benchdb.bench \
+  --query-command 'python3 /root/bench/query_adapter.py --sql {sql_file} --out {attempt_dir}' \
+  --dop-command '/root/iotdb-next-deploy/bin/set-isolated-dop.sh {dop}' \
+  --config /root/iotdb-next-deploy/conf/iotdb-system.properties \
+  --output /root/iotdb-next-artifacts/p0-$(date -u +%Y%m%dT%H%M%SZ)
+```
+
+`--dop-command` is run before each DOP step and must perform any required isolated-node
+restart. The default sequence is `1,2,4,8,16,1`: the final DOP=1 is a cache-drift control,
+not a sixth independent setting. Keep every raw attempt even when it is an outlier.
+
+For a cold-cache pass, require an explicit, audited command that affects only the isolated
+deployment (for example, a deployment-local restart plus the lab-approved cache reset):
+
+```bash
+  --cache-modes warm,cold \
+  --cold-cache-command '/root/iotdb-next-deploy/bin/reset-isolated-cache.sh'
+```
+
+The cold command is called before every measured cold attempt. If the operator cannot reset
+the cache safely, omit `cold` and record it as unmeasured; never label a warmed result cold.
+
+## Evidence layout
+
+Each invocation creates the following self-contained directory:
+
+```text
+<output>/
+  manifest.json                    # invocation, query/DOP protocol, git SHA
+  environment/                     # machine, git state, copied server config
+  raw/<step>/<query>/attempt-*/     # SQL, adapter stdout/stderr, one metrics JSON
+  summary/attempts.csv             # all raw numeric observations
+  summary/summary.csv              # P50/P95 and medians, never a replacement for raw data
+```
+
+Archive this directory unchanged with the thesis artifact. `shuffle_bytes`, CPU, and memory
+are nullable until the corresponding server metric is available; a blank value means
+**unmeasured**, never zero.
+
+## Result equivalence
+
+Have the adapter export validation SQL to CSV, then run:
+
+```bash
+python3 scripts/validate_results.py \
+  --baseline /root/results/dop1/ordered_scan.csv \
+  --candidate /root/results/dop16/ordered_scan.csv --ordered
+```
+
+Without `--ordered`, rows are canonically sorted before hashing and comparing, appropriate
+for unordered scans. With `--ordered`, row sequence is also checked. The command writes a
+JSON report and exits non-zero on a mismatch. Run it for every workload/DOP pair and retain
+the reports under `<output>/validation/`.
+
+## What this kit does not prove
+
+This kit is a test protocol, not a performance claim. A plan trace, an enabled flag, or a
+configured DOP is insufficient evidence. Record the normal-query execution marker that
+shows scan parallelism actually occurred; record fallback plans for top-k and unsupported
+ordered cases; and do not attribute group-by/join speedups to `Partitioned(keys)` before a
+real hash/exchange repartition consumes that property.
