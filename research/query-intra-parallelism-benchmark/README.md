@@ -61,13 +61,27 @@ python3 scripts/generate_fixture.py --output /root/bench-fixture
 
 It writes ten CSV shards with `time,device_id,s1,s2` headers and a `fixture-manifest.json`.
 Create the schema first by rendering `workload/schema.sql` (which explicitly declares
-`time TIMESTAMP TIME` to match the CSV `Time` column), then import each shard with the
+`time TIMESTAMP TIME` to match the CSV `time` column), then import each shard with the
 isolated distribution's `import-data.sh` in table dialect (for example, `-sql_dialect table
 -ft csv -db benchdb -table bench -f <shard>`). Validate the exact CLI flags against the built
 distribution's `import-data.sh -help` before a full load; retain the manifest and importer
 stdout/stderr alongside the benchmark output. A tiny fixture (for example `--devices 2
 --partitions 1 --rows-per-partition 10`) is the required import smoke test before generating
 the 64-million-row dataset.
+
+For the canonical schema, prefer the checked-in loader rather than treating an importer exit code
+as evidence. It creates the explicit time-index table, imports and flushes each shard separately,
+rejects textual importer errors (including a case-sensitive time-mapping failure), rejects failed
+records, and checks the server row count against the fixture manifest. It never drops or clears a
+database and refuses a nonempty artifact directory.
+
+```bash
+IOTDB_PASSWORD='...' bash scripts/load_table_fixture.sh \
+  --cli /root/iotdb-next-deploy/sbin/start-cli.sh \
+  --importer /root/iotdb-next-deploy/tools/import-data.sh \
+  --host 127.0.0.1 --port 11710 --database benchdb --table bench \
+  --input-dir /root/bench-fixture --artifact-dir /root/bench-artifacts/import-$(date -u +%Y%m%dT%H%M%SZ)
+```
 
 `validation/` contains result-producing forms of the same semantics. Export exactly one
 CSV per DOP and compare it with DOP=1 using `validate_results.py`. It compares complete
