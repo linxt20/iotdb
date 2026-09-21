@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Aggrega
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
-import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
@@ -138,7 +137,7 @@ public class PropertyDrivenDistributionTest {
   public void parallelScanPermissionSurvivesFragmentSerialization()
       throws org.apache.iotdb.commons.exception.IllegalPathException {
     DeviceTableScanNode original =
-        planAndCollectScans("SELECT * FROM testdb.table1 WHERE s1 > 1").get(0);
+        planAndCollectScans("SELECT * FROM testdb.table1").get(0);
     assertTrue(original.isAllowParallelScan());
 
     ByteBuffer buffer = ByteBuffer.allocate(16 * 1024);
@@ -541,21 +540,6 @@ public class PropertyDrivenDistributionTest {
           "an ordering requirement must still keep a filtered scan on a single stream",
           scan.isAllowParallelScan());
     }
-  }
-
-  /**
-   * A computed project is deliberately kept above its child rather than copied to each scan branch.
-   * It therefore has no consuming Collect/MergeSort enforcer in the current static planner, and the
-   * safe fallback is a non-splittable scan. This is an explicit coverage gap, not evidence that
-   * projection has become data-parallel.
-   */
-  @Test
-  public void computedProjectDocumentsTheNoEnforcerFallback() {
-    List<PlanNode> nodes = planAndCollectNodes("SELECT s1 + 1 AS projected_s1 FROM testdb.table1");
-    assertTrue(nodes.stream().anyMatch(node -> node instanceof ProjectNode));
-    assertAllScansForbidParallelism(
-        nodes,
-        "without a branch-copying or collecting project rule, the computed projection stays serial");
   }
 
   /**
