@@ -37,12 +37,14 @@ It proves three narrow claims for the current static implementation:
    bytes. This lets a reviewer compare equal-count and LPT-size grouping without treating the
    static estimate as observed work.
 
-It does **not** prove general multi-source hash repartition or join repartition. Those
-capabilities need their own physical-exchange acceptance once implemented. The separately scoped
-single-source GROUP BY experiment below is the only exception: it has a real 1 x P hash exchange,
-but must not be presented as a multi-source N x P or join result. Likewise, equality alone is not
-evidence that a path was used: the two `EXPLAIN ANALYZE` outputs are retained and each must
-contain its configured execution marker.
+It does **not** prove join repartition. The separately scoped single-source GROUP BY experiment
+below has a real 1 x P hash exchange. The guarded direct-scan multi-source GROUP BY rewrite has a
+separate, stricter N x P acceptance entry point in
+[`MULTISOURCE_HASH_GROUPBY_ACCEPTANCE.md`](MULTISOURCE_HASH_GROUPBY_ACCEPTANCE.md): it requires
+an isolated hash-on/control pair, a source-by-bucket plan proof, and result equivalence. Until an
+operator archives a successful run, it must not be presented as a cluster-accepted result. Likewise,
+equality alone is not evidence that a path was used: the raw `EXPLAIN` and `EXPLAIN ANALYZE`
+outputs are retained and each must contain its configured execution marker.
 
 ## Restricted hash GROUP BY acceptance
 
