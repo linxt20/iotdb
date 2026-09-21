@@ -1,0 +1,18 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.
+# See the NOTICE file distributed with this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0.
+# You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software distributed under the License is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and limitations under the License.
+
+# Copy these values only to the configuration of an isolated test deployment. The E2E runner does
+# not write this file and does not restart a process. Keep a copied version in the evidence output.
+degree_of_query_parallelism=4
+enable_dop_estimation=false
+enable_property_driven_planning=true
+
+# Enabled endpoint: both true. Ordered-fallback endpoint: set ordered false. Morsel-fallback
+# endpoint: set morsel false. Do not claim a feature path unless its corresponding endpoint is on.
+enable_timepartition_morsel=true
+enable_ordered_parallel_scan=true
