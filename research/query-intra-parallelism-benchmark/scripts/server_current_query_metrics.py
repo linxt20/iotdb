@@ -60,18 +60,21 @@ def sql_for_cli(sql: str) -> str:
 
 
 def cli_command(args: argparse.Namespace, sql: str) -> tuple[list[str], list[str]]:
-    password = os.environ.get(args.password_env)
-    if not password:
-        raise ValueError(f"password environment variable is unset: {args.password_env}")
     command = [
         str(args.cli), "-h", args.host, "-p", str(args.port), "-u", args.username,
-        "-pw", password, "-sql_dialect", "table", *args.cli_arg, "-e", sql,
     ]
+    if not args.omit_password_argument:
+        password = os.environ.get(args.password_env)
+        if not password:
+            raise ValueError(f"password environment variable is unset: {args.password_env}")
+        command.extend(["-pw", password])
+    command.extend(["-sql_dialect", "table", *args.cli_arg, "-e", sql])
     redacted = command.copy()
-    # Do not search by value: the default username and password can both be ``root``.
-    # The password is the argument following the CLI's explicit ``-pw`` flag.
-    password_index = redacted.index("-pw") + 1
-    redacted[password_index] = "<redacted-password>"
+    if not args.omit_password_argument:
+        # Do not search by value: the default username and password can both be ``root``.
+        # The password is the argument following the CLI's explicit ``-pw`` flag.
+        password_index = redacted.index("-pw") + 1
+        redacted[password_index] = "<redacted-password>"
     return command, redacted
 
 
@@ -215,13 +218,18 @@ def self_test() -> int:
     try:
         _, redacted = cli_command(argparse.Namespace(
             cli=Path("/example/start-cli.sh"), host="127.0.0.1", port=1, username="root",
-            password_env=variable, cli_arg=[]), "SELECT 1")
+            password_env=variable, omit_password_argument=False, cli_arg=[]), "SELECT 1")
     finally:
         if previous is None:
             os.environ.pop(variable, None)
         else:
             os.environ[variable] = previous
     if redacted[redacted.index("-u") + 1] != "root" or redacted[redacted.index("-pw") + 1] != "<redacted-password>":
+        return 1
+    _, no_password_command = cli_command(argparse.Namespace(
+        cli=Path("/example/start-cli.sh"), host="127.0.0.1", port=1, username="root",
+        password_env="UNSET", omit_password_argument=True, cli_arg=[]), "SELECT 1")
+    if "-pw" in no_password_command:
         return 1
     print("server_current_query_metrics self-test passed")
     return 0
@@ -235,6 +243,11 @@ def main() -> int:
     parser.add_argument("--port", type=int)
     parser.add_argument("--username", default="root")
     parser.add_argument("--password-env", default="IOTDB_PASSWORD")
+    parser.add_argument(
+        "--omit-password-argument",
+        action="store_true",
+        help="intentionally invoke CLI without -pw; use only where endpoint authentication permits it",
+    )
     parser.add_argument("--cli-arg", action="append", default=[])
     parser.add_argument("--sql-file", type=Path)
     parser.add_argument("--raw-dir", type=Path)

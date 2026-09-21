@@ -126,6 +126,8 @@ def metric_command(args: argparse.Namespace, server_dir: Path) -> list[str]:
     ]
     for cli_arg in args.cli_arg:
         command.extend(["--cli-arg", cli_arg])
+    if args.omit_password_argument:
+        command.append("--omit-password-argument")
     return command
 
 
@@ -278,6 +280,11 @@ def main() -> int:
     parser.add_argument("--port", type=int)
     parser.add_argument("--username", default="root")
     parser.add_argument("--password-env", default="IOTDB_PASSWORD")
+    parser.add_argument(
+        "--omit-password-argument",
+        action="store_true",
+        help="intentionally invoke CLI without -pw; use only where endpoint authentication permits it",
+    )
     parser.add_argument("--cli-arg", action="append", default=[])
     parser.add_argument("--sql-file", type=Path)
     parser.add_argument("--raw-dir", type=Path)
