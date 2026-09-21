@@ -195,6 +195,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -203,6 +204,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -247,13 +249,13 @@ public class DataNodeTableOperatorGenerator
    * scan another driver (only used when {@code enable_dop_estimation} is on).
    *
    * <p><b>This is an upper bound on parallelism, not a target</b>: when the region holds less than
-   * one multiple of this many bytes, {@code estimatePipelineNumByDataSize} returns 1 and the scan is
-   * <em>not</em> split at all, regardless of {@code dop} or how many devices there are. This is
+   * one multiple of this many bytes, {@code estimatePipelineNumByDataSize} returns 1 and the scan
+   * is <em>not</em> split at all, regardless of {@code dop} or how many devices there are. This is
    * intentional — on a small dataset the scheduling overhead of extra drivers is not worth paying
-   * for — but it means that turning {@code enable_dop_estimation} on can silently suppress the split
-   * that {@code enable_timepartition_morsel} or a plain high {@code dop} would otherwise produce.
-   * When running an experiment or a demo where the point is to <em>observe</em> parallel scan
-   * splitting, either turn this flag off, or use a dataset whose region holds at least {@code
+   * for — but it means that turning {@code enable_dop_estimation} on can silently suppress the
+   * split that {@code enable_timepartition_morsel} or a plain high {@code dop} would otherwise
+   * produce. When running an experiment or a demo where the point is to <em>observe</em> parallel
+   * scan splitting, either turn this flag off, or use a dataset whose region holds at least {@code
    * TARGET_BYTES_PER_SCAN_DRIVER} bytes (128 MiB) so the estimate does not collapse to 1.
    */
   private static final long TARGET_BYTES_PER_SCAN_DRIVER = 128L * 1024 * 1024;
@@ -1694,8 +1696,14 @@ public class DataNodeTableOperatorGenerator
     final int deviceGroupCount =
         Math.max(1, Math.min(deviceCount, targetParallelism / tpGroupCount));
 
-    // Contiguous, disjoint slices on both axes.
-    final List<List<Long>> tpGroups = partitionIntoGroups(sortedTpIds, tpGroupCount);
+    // File sizes make a much better static work estimate than the number of time partitions. This
+    // remains an optimization only: a missing or incomplete metadata snapshot falls back to the
+    // original contiguous, equal-count split, preserving its established behavior.
+    final TsFileManager tsFileManager =
+        ((DataRegion) context.getInstanceContext().getDataRegion()).getTsFileManager();
+    final List<List<Long>> tpGroups =
+        partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroupCount)
+            .orElseGet(() -> partitionIntoGroups(sortedTpIds, tpGroupCount));
     final List<List<DeviceEntry>> deviceGroups =
         partitionIntoGroups(deviceEntries, deviceGroupCount);
 
@@ -1787,6 +1795,137 @@ public class DataNodeTableOperatorGenerator
       start = end;
     }
     return result;
+  }
+
+  /**
+   * Partition time partitions by their TsFile sizes with deterministic largest-processing-time
+   * scheduling. A time partition remains indivisible, so this greedily assigns the next largest
+   * partition to the currently lightest group. For this static estimate, that is substantially less
+   * susceptible to a single large time partition than equal-count grouping.
+   *
+   * <p>The TsFile manager supplies an independent read-locked snapshot for every requested time
+   * partition. Size metadata is deliberately treated as optional: if a snapshot, its file lists, or
+   * a file size cannot be read, this method returns empty and the caller uses the legacy split.
+   * This never changes scan coverage or correctness; it only declines a scheduling optimization.
+   */
+  private static Optional<List<List<Long>>> partitionTimePartitionsBySize(
+      TsFileManager tsFileManager, List<Long> timePartitions, int groupCount) {
+    if (tsFileManager == null || timePartitions.isEmpty()) {
+      return Optional.empty();
+    }
+
+    final List<TimePartitionWeight> weights = new ArrayList<>(timePartitions.size());
+    long totalSize = 0L;
+    try {
+      for (final Long timePartition : timePartitions) {
+        final Pair<List<TsFileResource>, List<TsFileResource>> files =
+            tsFileManager.getTsFileListSnapshot(timePartition);
+        if (files == null || files.left == null || files.right == null) {
+          return Optional.empty();
+        }
+        long partitionSize = 0L;
+        for (final TsFileResource resource : files.left) {
+          if (resource == null) {
+            return Optional.empty();
+          }
+          final long fileSize = resource.getTsFileSize();
+          if (fileSize < 0) {
+            return Optional.empty();
+          }
+          partitionSize = LongMath.saturatedAdd(partitionSize, fileSize);
+        }
+        for (final TsFileResource resource : files.right) {
+          if (resource == null) {
+            return Optional.empty();
+          }
+          final long fileSize = resource.getTsFileSize();
+          if (fileSize < 0) {
+            return Optional.empty();
+          }
+          partitionSize = LongMath.saturatedAdd(partitionSize, fileSize);
+        }
+        totalSize = LongMath.saturatedAdd(totalSize, partitionSize);
+        weights.add(new TimePartitionWeight(timePartition, partitionSize));
+      }
+    } catch (RuntimeException ignored) {
+      // Metadata only guides scheduling. Retain the legacy split if a concurrent file lifecycle
+      // change makes a size unavailable rather than allowing it to affect query execution.
+      return Optional.empty();
+    }
+
+    // Empty or zero-byte snapshots do not contain useful work information. Keeping the original
+    // grouping also makes this indistinguishable-from-no-metadata case behaviorally stable.
+    if (totalSize == 0L) {
+      return Optional.empty();
+    }
+
+    weights.sort(
+        Comparator.comparingLong(TimePartitionWeight::size)
+            .reversed()
+            .thenComparingLong(TimePartitionWeight::timePartition));
+    final int groupNum = Math.max(1, Math.min(groupCount, timePartitions.size()));
+    final PriorityQueue<TimePartitionGroup> groups =
+        new PriorityQueue<>(
+            Comparator.comparingLong(TimePartitionGroup::size)
+                .thenComparingInt(TimePartitionGroup::index));
+    for (int i = 0; i < groupNum; i++) {
+      groups.add(new TimePartitionGroup(i));
+    }
+    for (final TimePartitionWeight weight : weights) {
+      final TimePartitionGroup group = groups.remove();
+      group.add(weight);
+      groups.add(group);
+    }
+
+    final List<TimePartitionGroup> orderedGroups = new ArrayList<>(groups);
+    orderedGroups.sort(Comparator.comparingInt(TimePartitionGroup::index));
+    final List<List<Long>> result = new ArrayList<>(groupNum);
+    for (final TimePartitionGroup group : orderedGroups) {
+      Collections.sort(group.timePartitions);
+      result.add(group.timePartitions);
+    }
+    return Optional.of(result);
+  }
+
+  private static final class TimePartitionWeight {
+    private final long timePartition;
+    private final long size;
+
+    private TimePartitionWeight(long timePartition, long size) {
+      this.timePartition = timePartition;
+      this.size = size;
+    }
+
+    private long timePartition() {
+      return timePartition;
+    }
+
+    private long size() {
+      return size;
+    }
+  }
+
+  private static final class TimePartitionGroup {
+    private final int index;
+    private final List<Long> timePartitions = new ArrayList<>();
+    private long size;
+
+    private TimePartitionGroup(int index) {
+      this.index = index;
+    }
+
+    private void add(TimePartitionWeight weight) {
+      timePartitions.add(weight.timePartition());
+      size = LongMath.saturatedAdd(size, weight.size());
+    }
+
+    private int index() {
+      return index;
+    }
+
+    private long size() {
+      return size;
+    }
   }
 
   /**

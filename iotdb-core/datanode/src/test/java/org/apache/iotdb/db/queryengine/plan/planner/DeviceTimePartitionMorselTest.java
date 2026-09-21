@@ -70,6 +70,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -244,6 +245,101 @@ public class DeviceTimePartitionMorselTest {
     }
   }
 
+  /** Missing per-partition snapshots preserve the original contiguous equal-count split. */
+  @Test
+  public void testMissingSizeMetadataKeepsEqualCountMorsels() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    try {
+      DeviceTableScanNode node = initDeviceTableScanNode(6);
+      node.setAllowParallelScan(true);
+      LocalExecutionPlanContext context =
+          createContext("tp_morsel_missing_sizes", dataRegionWithPartitions(0L, 2L, 4L, 6L));
+      context.setDegreeOfParallelism(2);
+
+      Operator root = node.accept(generator, context);
+      try {
+        assertEquals(
+            Arrays.asList(Arrays.asList(0L, 2L), Arrays.asList(4L, 6L)),
+            partitionGroupsByDriver(context));
+        assertProductSplitIsComplete(context, 6, Arrays.asList(0L, 2L, 4L, 6L));
+      } finally {
+        closeQuietly(root);
+        closePipelineOperations(context);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    }
+  }
+
+  /**
+   * File-size-aware partitioning uses the minimum-loaded group for every next-largest partition.
+   * Four equally-counted partitions can therefore have a very unequal workload: 70, 60, 10, and 10
+   * bytes are grouped as (70 + 10) and (60 + 10), instead of the contiguous (70 + 60) and (10 + 10)
+   * split. The product coverage assertion keeps this scheduling optimization honest.
+   */
+  @Test
+  public void testWeightedTimePartitionMorselsBalanceSkewAndPreserveCoverage() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    try {
+      Map<Long, Long> partitionSizes = new LinkedHashMap<>();
+      partitionSizes.put(0L, 70L);
+      partitionSizes.put(2L, 60L);
+      partitionSizes.put(4L, 10L);
+      partitionSizes.put(6L, 10L);
+
+      DeviceTableScanNode node = initDeviceTableScanNode(6);
+      node.setAllowParallelScan(true);
+      LocalExecutionPlanContext context =
+          createContext(
+              "tp_morsel_weighted_skew", dataRegionWithPartitionFileSizes(partitionSizes));
+      context.setDegreeOfParallelism(2);
+
+      Operator root = node.accept(generator, context);
+      try {
+        assertEquals(2, context.getPipelineNumber());
+        assertEquals(
+            Arrays.asList(Arrays.asList(0L, 6L), Arrays.asList(2L, 4L)),
+            partitionGroupsByDriver(context));
+        // The maximum group weight is 80 rather than 130 for a contiguous equal-count split.
+        assertEquals(80L, maxGroupWeight(partitionGroupsByDriver(context), partitionSizes));
+        assertProductSplitIsComplete(context, 6, new ArrayList<>(partitionSizes.keySet()));
+      } finally {
+        closeQuietly(root);
+        closePipelineOperations(context);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    }
+  }
+
+  /** The same metadata must always create the same driver-to-partition assignment. */
+  @Test
+  public void testWeightedTimePartitionMorselsAreDeterministic() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    try {
+      Map<Long, Long> partitionSizes = new LinkedHashMap<>();
+      partitionSizes.put(0L, 70L);
+      partitionSizes.put(2L, 60L);
+      partitionSizes.put(4L, 10L);
+      partitionSizes.put(6L, 10L);
+
+      List<List<Long>> first =
+          partitionGroupsForContext("tp_morsel_weighted_first", partitionSizes);
+      List<List<Long>> second =
+          partitionGroupsForContext("tp_morsel_weighted_second", partitionSizes);
+
+      assertEquals(first, second);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    }
+  }
+
   /**
    * A single time partition leaves nothing to split along that axis, so the split must fall back to
    * the plain device-only behaviour even with the flag on.
@@ -278,8 +374,8 @@ public class DeviceTimePartitionMorselTest {
   /**
    * Both flags on at once, which is the configuration the end-to-end comparison runs: the morsel
    * path must honour the DOP estimate rather than always using the full dop. With 2 TsFiles of 128
-   * MiB the estimate is 2 drivers, so 8 devices × 2 partitions at dop = 4 collapses to Kt = 2,
-   * Kd = 1, i.e. 2 pipelines instead of the 4 the same setup yields with estimation off.
+   * MiB the estimate is 2 drivers, so 8 devices × 2 partitions at dop = 4 collapses to Kt = 2, Kd =
+   * 1, i.e. 2 pipelines instead of the 4 the same setup yields with estimation off.
    */
   @Test
   public void testDopEstimationConstrainsTpMorselSplit() throws Exception {
@@ -290,9 +386,7 @@ public class DeviceTimePartitionMorselTest {
       DeviceTableScanNode node = initDeviceTableScanNode(8);
       node.setAllowParallelScan(true);
       LocalExecutionPlanContext withoutEstimation =
-          createContext(
-              "tp_morsel_estimation_off",
-              dataRegionWithPartitionsAndFiles(2, 0L, 1L));
+          createContext("tp_morsel_estimation_off", dataRegionWithPartitionsAndFiles(2, 0L, 1L));
       withoutEstimation.setDegreeOfParallelism(4);
       Operator rootWithout = node.accept(generator, withoutEstimation);
       try {
@@ -483,6 +577,49 @@ public class DeviceTimePartitionMorselTest {
     return ranges;
   }
 
+  private List<List<Long>> partitionGroupsByDriver(LocalExecutionPlanContext context) {
+    List<List<Long>> groups = new ArrayList<>();
+    for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
+      List<Long> partitions = new ArrayList<>();
+      Filter filter = timeFilterOf(driverFactory.getOperation());
+      assertNotNull("sub scan must carry a narrowed time filter", filter);
+      for (TimeRange range : filter.getTimeRanges()) {
+        partitions.add(TimePartitionUtils.getTimePartitionId(range.getMin()));
+      }
+      Collections.sort(partitions);
+      groups.add(partitions);
+    }
+    return groups;
+  }
+
+  private long maxGroupWeight(List<List<Long>> groups, Map<Long, Long> partitionSizes) {
+    long max = 0L;
+    for (List<Long> group : groups) {
+      long total = 0L;
+      for (Long partition : group) {
+        total += partitionSizes.get(partition);
+      }
+      max = Math.max(max, total);
+    }
+    return max;
+  }
+
+  private List<List<Long>> partitionGroupsForContext(String queryId, Map<Long, Long> partitionSizes)
+      throws Exception {
+    DeviceTableScanNode node = initDeviceTableScanNode(6);
+    node.setAllowParallelScan(true);
+    LocalExecutionPlanContext context =
+        createContext(queryId, dataRegionWithPartitionFileSizes(partitionSizes));
+    context.setDegreeOfParallelism(2);
+    Operator root = node.accept(generator, context);
+    try {
+      return partitionGroupsByDriver(context);
+    } finally {
+      closeQuietly(root);
+      closePipelineOperations(context);
+    }
+  }
+
   private Filter timeFilterOf(Operator operator) {
     try {
       Field field = AbstractTableScanOperator.class.getDeclaredField("seriesScanOptions");
@@ -613,6 +750,28 @@ public class DeviceTimePartitionMorselTest {
     Mockito.when(tsFileManager.getTimePartitions()).thenReturn(partitions);
     Mockito.when(tsFileManager.getAllTsFileListForQuery(Mockito.isNull(), Mockito.isNull()))
         .thenReturn(new Pair<>(files, Collections.emptyList()));
+    DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+    return dataRegion;
+  }
+
+  /** A region whose per-time-partition snapshots expose a deliberately skewed physical size. */
+  private DataRegion dataRegionWithPartitionFileSizes(Map<Long, Long> partitionSizes) {
+    TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+    Mockito.when(tsFileManager.getTimePartitions())
+        .thenReturn(new HashSet<>(partitionSizes.keySet()));
+    Mockito.when(tsFileManager.getTsFileListSnapshot(Mockito.anyLong()))
+        .thenAnswer(
+            invocation -> {
+              long partition = invocation.getArgument(0);
+              Long size = partitionSizes.get(partition);
+              if (size == null) {
+                return new Pair<>(Collections.emptyList(), Collections.emptyList());
+              }
+              TsFileResource resource = Mockito.mock(TsFileResource.class);
+              Mockito.when(resource.getTsFileSize()).thenReturn(size);
+              return new Pair<>(Collections.singletonList(resource), Collections.emptyList());
+            });
     DataRegion dataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
     return dataRegion;
