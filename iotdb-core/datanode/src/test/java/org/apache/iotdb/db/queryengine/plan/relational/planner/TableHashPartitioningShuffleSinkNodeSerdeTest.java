@@ -58,7 +58,32 @@ public class TableHashPartitioningShuffleSinkNodeSerdeTest {
     buffer.flip();
 
     PlanNode deserialized = PlanNodeDeserializeHelper.deserialize(buffer);
-    assertEquals(node, deserialized);
+    assertEquals(node.getType(), deserialized.getType());
+    assertEquals(node.getPlanNodeId(), deserialized.getPlanNodeId());
+    assertEquals(
+        node.getDownStreamChannelLocationList().size(),
+        ((TableHashPartitioningShuffleSinkNode) deserialized)
+            .getDownStreamChannelLocationList()
+            .size());
+    for (int index = 0; index < node.getDownStreamChannelLocationList().size(); index++) {
+      DownStreamChannelLocation expected = node.getDownStreamChannelLocationList().get(index);
+      DownStreamChannelLocation actual =
+          ((TableHashPartitioningShuffleSinkNode) deserialized)
+              .getDownStreamChannelLocationList()
+              .get(index);
+      assertEquals(expected.getRemoteEndpoint().getIp(), actual.getRemoteEndpoint().getIp());
+      assertEquals(expected.getRemoteEndpoint().getPort(), actual.getRemoteEndpoint().getPort());
+      assertEquals(
+          expected.getRemoteFragmentInstanceId().getQueryId(),
+          actual.getRemoteFragmentInstanceId().getQueryId());
+      assertEquals(
+          expected.getRemoteFragmentInstanceId().getFragmentId(),
+          actual.getRemoteFragmentInstanceId().getFragmentId());
+      assertEquals(
+          expected.getRemoteFragmentInstanceId().getInstanceId(),
+          actual.getRemoteFragmentInstanceId().getInstanceId());
+      assertEquals(expected.getRemotePlanNodeId(), actual.getRemotePlanNodeId());
+    }
     assertEquals(
         descriptor,
         ((TableHashPartitioningShuffleSinkNode) deserialized).getPartitioningDescriptor());
