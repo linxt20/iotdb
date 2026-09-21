@@ -205,6 +205,7 @@ public class FragmentInstanceExecution {
       Map<String, TOperatorStatistics> operatorStatisticsMap,
       Map<String, Integer> operatorCoutMap,
       Map<String, String> leadOverloadOperators,
+      Map<String, TOperatorStatistics> pipelineSnapshots,
       boolean needMerge) {
     for (OperatorContext operatorContext : contexts) {
       TOperatorStatistics operatorStatistics = new TOperatorStatistics();
@@ -212,6 +213,17 @@ public class FragmentInstanceExecution {
       if (operatorContext.getPlanNodeId() == null) continue;
 
       String operatorType = operatorContext.getOperatorType();
+      // Snapshot parallel sub-scan operators here, at creation time.  Taking a copy now (rather
+      // than reusing the map entry later) matters because merge() accumulates in place: if one of
+      // these operators happened to become the overload leader, its entry would be mutated into
+      // the aggregate of every sibling, and the per-driver breakdown would report the total.
+      String planNodeIdStr = operatorContext.getPlanNodeId().toString();
+      if (planNodeIdStr.contains("-parallel-")) {
+        setOperatorStatistics(operatorStatistics, operatorContext);
+        pipelineSnapshots.put(
+            "__pipeline_" + planNodeIdStr.replace('-', '_'),
+            copyOperatorStatistics(operatorStatistics));
+      }
       // If the operatorType is already overloaded, then merge all operatorStatistics with the
       // leadOverloadOperator
       if (needMerge) {
@@ -242,6 +254,22 @@ public class FragmentInstanceExecution {
     return needMerge;
   }
 
+  /** Shallow copy of an operator's statistics, including its specifiedInfo map. */
+  private TOperatorStatistics copyOperatorStatistics(TOperatorStatistics source) {
+    TOperatorStatistics copy = new TOperatorStatistics();
+    copy.setPlanNodeId(source.getPlanNodeId());
+    copy.setOperatorType(source.getOperatorType());
+    copy.setTotalExecutionTimeInNanos(source.getTotalExecutionTimeInNanos());
+    copy.setNextCalledCount(source.getNextCalledCount());
+    copy.setHasNextCalledCount(source.getHasNextCalledCount());
+    copy.setOutputRows(source.getOutputRows());
+    copy.setMemoryUsage(source.getMemoryUsage());
+    if (source.getSpecifiedInfo() != null) {
+      copy.setSpecifiedInfo(new HashMap<>(source.getSpecifiedInfo()));
+    }
+    return copy;
+  }
+
   private void setOperatorStatistics(
       TOperatorStatistics operatorStatistics, OperatorContext operatorContext) {
     operatorStatistics.setPlanNodeId(operatorContext.getPlanNodeId().toString());
@@ -250,7 +278,13 @@ public class FragmentInstanceExecution {
     operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
     operatorStatistics.setOutputRows(operatorContext.getOutputRows());
-    operatorStatistics.setSpecifiedInfo(convertSpecifiedInfo(operatorContext.getSpecifiedInfo()));
+    // Inject metric-tree fields into specifiedInfo so they survive thrift transport without
+    // requiring schema changes.  Keys are prefixed with "__mt_" to avoid collisions with
+    // operator-specific entries.
+    Map<String, Object> specifiedInfo = operatorContext.getSpecifiedInfo();
+    specifiedInfo.put(
+        "__mt_tsBlockOutputCount", Long.toString(operatorContext.getTsBlockOutputCount()));
+    operatorStatistics.setSpecifiedInfo(convertSpecifiedInfo(specifiedInfo));
     operatorStatistics.setMemoryUsage(operatorContext.getEstimatedMemorySize());
   }
 
@@ -277,6 +311,10 @@ public class FragmentInstanceExecution {
     Map<String, TOperatorStatistics> operatorStatisticsMap = new HashMap<>();
     Map<String, Integer> operatorCountMap = new HashMap<>();
     Map<String, String> leadOverloadOperators = new HashMap<>();
+    // Per-pipeline snapshots of the parallel sub-scan operators, taken at creation time below so
+    // they stay immune to the in-place accumulation done by merge() when an operator type
+    // overflows the explain-analyze merge threshold.
+    Map<String, TOperatorStatistics> pipelineSnapshots = new HashMap<>();
     boolean merge = false;
     // Currently, they should be the drivers for each pipeline
     for (IDriver driver : drivers) {
@@ -286,6 +324,7 @@ public class FragmentInstanceExecution {
               operatorStatisticsMap,
               operatorCountMap,
               leadOverloadOperators,
+              pipelineSnapshots,
               merge);
     }
 
@@ -298,6 +337,17 @@ public class FragmentInstanceExecution {
     } else {
       statistics.setOperatorStatisticsMap(operatorStatisticsMap);
     }
+
+    // Surface the per-pipeline snapshots in the statistics under a hyphen-free key.  Two reasons:
+    //
+    //   1. They arrive BEFORE mergeOperatorStatisticsIfDuplicate, which folds every key containing
+    //      "-" into its parent and would otherwise erase the per-driver breakdown of the parallel
+    //      sub-scan operators (their planNodeIds are "<nodeId>-parallel-<i>").  The fold would also
+    //      drop TableScanOperator's specifiedInfo, whose operator type maps to DEFAULT_MERGER, a
+    //      merger that returns an empty map.
+    //   2. The key must contain no "-", otherwise the merger would fold these stashed entries into
+    //      each other and collapse all drivers into a single row.
+    statistics.getOperatorStatisticsMap().putAll(pipelineSnapshots);
 
     mergeOperatorStatisticsIfDuplicate(statistics.getOperatorStatisticsMap());
 
