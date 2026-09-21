@@ -26,11 +26,12 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNod
  *
  * <p>Hashing both join inputs is not enough to make the existing table join executable. The
  * current {@code TableOperatorGenerator} creates a {@code MergeSortInnerJoinOperator}; a hash
- * shuffle destroys the input ordering it consumes. A future implementation must therefore add a
- * hash-join operator (or a local sort) and materialize {@link
- * TableEquiJoinHashRepartitionTopology}'s two-input, P-bucket fragment shape before selecting the
- * exchange. Until then this class makes every fallback explicit instead of allowing an apparently
- * compatible equi-join to accidentally select the group-by-only exchange path.
+ * shuffle destroys the input ordering it consumes. The calc layer has a deliberately unselected,
+ * local blocking hash-inner-join primitive, but it is not a distributed feature: planner selection,
+ * two-input bucket ownership, build-side memory admission/spill, and server E2E correctness are
+ * still required. Until those gates exist, this class makes every fallback explicit instead of
+ * allowing an apparently compatible equi-join to accidentally select the group-by-only exchange
+ * path.
  */
 final class TableEquiJoinHashRepartitionGuard {
 
