@@ -52,6 +52,11 @@ operator archives a successful run, it must not be presented as a cluster-accept
 equality alone is not evidence that a path was used: the raw `EXPLAIN` and `EXPLAIN ANALYZE`
 outputs are retained and each must contain its configured execution marker.
 
+For a repeatable Linux candidate/control deployment, use the
+[isolated 1C2D + 1C2D launcher](linux-isolated-cluster/README.md). It is intentionally separate
+from these read-only runners: setup changes only an explicitly supplied new root, and the runners
+still own the plan/result acceptance decision.
+
 ## Restricted hash GROUP BY acceptance
 
 For the default-off experimental setting
