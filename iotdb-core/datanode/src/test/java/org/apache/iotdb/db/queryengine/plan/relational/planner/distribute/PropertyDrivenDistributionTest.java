@@ -69,9 +69,9 @@ public class PropertyDrivenDistributionTest {
   private static final String SINGLE_REGION_DB = "testdb";
 
   /**
-   * Every case below is run twice: once with the legacy heuristic and once with the property
-   * driven rules. Both have to produce the same answers, which is what makes turning the flag on a
-   * non event.
+   * Every case below is run twice: once with the legacy heuristic and once with the property driven
+   * rules. Both have to produce the same answers, which is what makes turning the flag on a non
+   * event.
    */
   @Parameterized.Parameters(name = "enable_property_driven_planning={0}")
   public static Object[] flagValues() {
@@ -90,7 +90,9 @@ public class PropertyDrivenDistributionTest {
     setPropertyDrivenPlanning(propertyDrivenPlanning);
   }
 
-  /** A plain query whose parent imposes no ordering: the scan may be split into parallel drivers. */
+  /**
+   * A plain query whose parent imposes no ordering: the scan may be split into parallel drivers.
+   */
   @Test
   public void plainQueryAllowsParallelScan() {
     List<DeviceTableScanNode> scans = planAndCollectScans("SELECT * FROM testdb.table1");
@@ -148,7 +150,8 @@ public class PropertyDrivenDistributionTest {
    */
   @Test
   public void topKDoesNotConvergeItsOwnChildren() {
-    List<PlanNode> nodes = planAndCollectNodes("SELECT * FROM testdb.table1 ORDER BY time LIMIT 10");
+    List<PlanNode> nodes =
+        planAndCollectNodes("SELECT * FROM testdb.table1 ORDER BY time LIMIT 10");
 
     List<PlanNode> topKs =
         nodes.stream().filter(node -> node instanceof TopKNode).collect(Collectors.toList());
@@ -222,9 +225,7 @@ public class PropertyDrivenDistributionTest {
   /** A textual rendering of the plan shape: node types, nesting, and scan parallelism. */
   private static String planShape(String sql) {
     StringBuilder shape = new StringBuilder();
-    plan(sql)
-        .getFragments()
-        .forEach(fragment -> appendShape(fragment.getPlanNodeTree(), 0, shape));
+    plan(sql).getFragments().forEach(fragment -> appendShape(fragment.getPlanNodeTree(), 0, shape));
     return shape.toString();
   }
 
@@ -237,16 +238,19 @@ public class PropertyDrivenDistributionTest {
     }
     shape.append(node.getClass().getSimpleName());
     if (node instanceof DeviceTableScanNode) {
-      shape.append("(parallel=").append(((DeviceTableScanNode) node).isAllowParallelScan()).append(')');
+      shape
+          .append("(parallel=")
+          .append(((DeviceTableScanNode) node).isAllowParallelScan())
+          .append(')');
     }
     shape.append('\n');
     node.getChildren().forEach(child -> appendShape(child, depth + 1, shape));
   }
 
   /**
-   * The rule trace is what makes the decisions inspectable from SQL: EXPLAIN has to show which
-   * node required what, what its children provided, and which enforcer was inserted. It must only
-   * appear when the rules are actually in charge.
+   * The rule trace is what makes the decisions inspectable from SQL: EXPLAIN has to show which node
+   * required what, what its children provided, and which enforcer was inserted. It must only appear
+   * when the rules are actually in charge.
    */
   @Test
   public void explainShowsThePropertyEnforcementTraceOnlyWhenEnabled() {
@@ -322,7 +326,8 @@ public class PropertyDrivenDistributionTest {
     // an EXPLAIN ANALYZE, so reusing one across these cases would make a plain query be planned as
     // if it were still explaining the previous one.
     return plan(
-        sql, new MPPQueryContext(sql, new QueryId("property_driven_test"), SESSION_INFO, null, null));
+        sql,
+        new MPPQueryContext(sql, new QueryId("property_driven_test"), SESSION_INFO, null, null));
   }
 
   private static DistributedQueryPlan plan(String sql, MPPQueryContext queryContext) {

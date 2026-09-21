@@ -184,12 +184,14 @@ public class TableDistributedPlanGenerator
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
+
   /**
    * One entry per property enforcement decision taken while building the plan, in the order they
    * were taken. Only collected when {@code enable_property_driven_planning} is on; it is a
    * reporting aid and never influences the plan itself.
    */
   private final List<String> ruleTrace = new ArrayList<>();
+
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
   private final ClusterTopology topology = ClusterTopology.getInstance();
 
@@ -3121,11 +3123,11 @@ public class TableDistributedPlanGenerator
    * actually turns on.
    *
    * <p>The ordering is taken from what the caller observed of its children rather than re-read from
-   * {@code nodeOrderingMap} here. Fifteen of the sixteen call sites look it up as
-   * {@code nodeOrderingMap.get(children.get(0).getPlanNodeId())}, which is exactly what re-reading
-   * would produce, but {@code visitJoin} looks it up on the join's original children rather than on
-   * the rewritten ones. Re-reading would silently change what a join considers ordered, so the
-   * caller's view is kept authoritative.
+   * {@code nodeOrderingMap} here. Fifteen of the sixteen call sites look it up as {@code
+   * nodeOrderingMap.get(children.get(0).getPlanNodeId())}, which is exactly what re-reading would
+   * produce, but {@code visitJoin} looks it up on the join's original children rather than on the
+   * rewritten ones. Re-reading would silently change what a join considers ordered, so the caller's
+   * view is kept authoritative.
    */
   private PlanProperties propertiesOf(
       final List<PlanNode> childrenNodes, final PlanProperties required) {

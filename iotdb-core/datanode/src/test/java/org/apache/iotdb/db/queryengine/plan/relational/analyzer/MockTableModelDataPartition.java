@@ -152,9 +152,10 @@ public class MockTableModelDataPartition {
   }
 
   /**
-   * A DataPartition where every device (and every time partition) lives in a single DataRegionGroup.
-   * Used to verify that a table query confined to one data region still allows its single
-   * DeviceTableScanNode to be split into parallel scan drivers (M1) during local execution planning.
+   * A DataPartition where every device (and every time partition) lives in a single
+   * DataRegionGroup. Used to verify that a table query confined to one data region still allows its
+   * single DeviceTableScanNode to be split into parallel scan drivers (M1) during local execution
+   * planning.
    *
    * <pre>
    * device1..device6(startTime:0 and 100): DataRegionGroup_1

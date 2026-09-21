@@ -259,12 +259,11 @@ public class AnalyzerTest {
   }
 
   /**
-   * When all data lives in a single data region, the query produces exactly one
-   * DeviceTableScanNode (no CollectNode is created to merge per-region children). This node must
-   * still be marked allowParallelScan == true, so it can be split into multiple parallel scan
-   * drivers during local execution planning (M1) just like the per-region children of a multi-region
-   * query. The device partitioning done by the split is orthogonal to how many regions the data
-   * spans.
+   * When all data lives in a single data region, the query produces exactly one DeviceTableScanNode
+   * (no CollectNode is created to merge per-region children). This node must still be marked
+   * allowParallelScan == true, so it can be split into multiple parallel scan drivers during local
+   * execution planning (M1) just like the per-region children of a multi-region query. The device
+   * partitioning done by the split is orthogonal to how many regions the data spans.
    */
   @Test
   public void singleRegionAllowsParallelScanTest() {
