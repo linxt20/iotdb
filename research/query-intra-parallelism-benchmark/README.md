@@ -86,16 +86,32 @@ can dominate this workload. The adapter should collect IoTDB server-side plannin
 FragmentInstance wall time, while using a normal query (not `EXPLAIN ANALYZE`) for the timed
 execution because EXPLAIN ANALYZE can alter the table-model plan.
 
-Example shape (the site-specific `query_adapter.py` is deliberately not versioned here):
+`scripts/iotdb_cli_adapter.py` supplies the standard CLI bridge. It invokes an already-running
+isolated endpoint only; it never starts, stops, reconfigures, or clears anything. It archives
+the actual CLI stdout/stderr, a redacted command manifest, SQL/result hashes, and then prints
+the one JSON metrics object required by `run_matrix.py`. To prevent an accidental client-time
+claim, it requires an explicit regular expression for a **server-side** millisecond field that
+the deployed CLI or an operator-maintained server-metrics wrapper emits. If that field is not
+available, the command fails after retaining the raw CLI evidence rather than inventing
+`query_ms` from local elapsed time.
+
+Example measured matrix shape (replace the regex with the field documented by the isolated
+deployment):
 
 ```bash
 python3 scripts/run_matrix.py \
   --database benchdb --table benchdb.bench \
-  --query-command 'python3 /root/bench/query_adapter.py --sql {sql_file} --out {attempt_dir}' \
+  --query-command 'python3 scripts/iotdb_cli_adapter.py measure --cli /root/iotdb-next-deploy/sbin/start-cli.sh --host 127.0.0.1 --port 11710 --database benchdb --password-env IOTDB_PASSWORD --sql-file {sql_file} --raw-dir {attempt_dir} --server-query-ms-regex "server_query_ms=([0-9.]+)"' \
   --dop-command '/root/iotdb-next-deploy/bin/set-isolated-dop.sh {dop}' \
   --config /root/iotdb-next-deploy/conf/iotdb-system.properties \
   --output /root/iotdb-next-artifacts/p0-$(date -u +%Y%m%dT%H%M%SZ)
 ```
+
+The outer matrix captures the git SHA, copied configuration, CPU/memory/storage inventory,
+warm/cold label, DOP sequence, raw attempt directories, and P50/P95 summaries. The adapter
+adds endpoint/database/SQL provenance within every attempt. Pass any deployment-specific,
+non-secret CLI flag with repeated `--cli-arg`; secrets are read only from the named environment
+variable and are redacted from the archived command metadata.
 
 `--dop-command` is run before each DOP step and must perform any required isolated-node
 restart. The default sequence is `1,2,4,8,16,1`: the final DOP=1 is a cache-drift control,
@@ -138,6 +154,20 @@ python3 scripts/validate_results.py \
   --baseline /root/results/dop1/ordered_scan.csv \
   --candidate /root/results/dop16/ordered_scan.csv --ordered
 ```
+
+For an ordinary IoTDB CLI ASCII result table, create each of those CSVs without manually
+copying terminal output:
+
+```bash
+IOTDB_PASSWORD='...' python3 scripts/iotdb_cli_adapter.py export \
+  --cli /root/iotdb-next-deploy/sbin/start-cli.sh --host 127.0.0.1 --port 11710 \
+  --database benchdb --table benchdb.bench --sql-file validation/ordered_scan.sql \
+  --raw-dir /root/results/dop16/ordered_scan.raw --output /root/results/dop16/ordered_scan.csv
+```
+
+Run `python3 scripts/iotdb_cli_adapter.py --self-test` to check its metric and pipe-table
+parsers without connecting to a service. The exporter refuses malformed or ambiguous output;
+the unmodified CLI stdout/stderr remain in `*.raw` for diagnosis.
 
 Without `--ordered`, rows are canonically sorted before hashing and comparing, appropriate
 for unordered scans. With `--ordered`, row sequence is also checked. The command writes a
