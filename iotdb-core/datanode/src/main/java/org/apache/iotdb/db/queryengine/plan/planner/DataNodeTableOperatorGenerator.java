@@ -49,14 +49,18 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -157,6 +161,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.math.LongMath;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -1439,6 +1444,242 @@ public class DataNodeTableOperatorGenerator
    * allowed when the parent has no ordering requirement on this scan.
    */
   private Operator constructParallelDeviceTableScan(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorsel()
+        && context.getInstanceContext().getDataRegion() instanceof DataRegion) {
+      final Set<Long> tpIds =
+          ((DataRegion) context.getInstanceContext().getDataRegion())
+              .getTsFileManager()
+              .getTimePartitions();
+      if (tpIds.size() > 1) {
+        // Sort so that the groups the partitions are cut into are stable across runs; the set comes
+        // from a HashSet, whose iteration order is not specified.
+        final List<Long> sortedTpIds = new ArrayList<>(tpIds);
+        Collections.sort(sortedTpIds);
+        return constructParallelDeviceTpMorselScan(node, context, sortedTpIds);
+      }
+    }
+    return constructParallelDeviceScan(node, context);
+  }
+
+  /**
+   * Fan out over the cartesian product of (device-subset × timePartition).
+   *
+   * <p>The parallelism factor is decomposed as {@code K = Kt × Kd}: the time partitions are cut
+   * into {@code Kt} disjoint groups and the devices into {@code Kd} disjoint groups, and pipeline
+   * {@code (i, j)} scans exactly {@code deviceGroup(i) × tpGroup(j)}. Every (device, partition)
+   * pair therefore belongs to exactly one pipeline, which is what keeps the union of all pipelines
+   * equal to a single scan of the whole table.
+   *
+   * <p>Note that a scan node always reads a product: its device list and its time predicate are
+   * independent axes. Assigning each pipeline an <em>arbitrary</em> subset of the (device, tp)
+   * pairs would make it read pairs that were meant for another pipeline, i.e. duplicate rows —
+   * hence the product decomposition rather than a flat round-robin over the pairs.
+   *
+   * <p>This is the <em>safe version</em>: it relies only on per-scan-node predicate narrowing and
+   * the existing shared read-only {@code QueryDataSource}. No locks or file reference counts are
+   * touched.
+   *
+   * <p>Spill guard: {@link #canSplitDeviceTableScanIntoParallelPipelines} already refuses to split
+   * when a {@code DeviceEntryDataSetHandle} is present, so this path is only reached with in-memory
+   * device entries.
+   */
+  private Operator constructParallelDeviceTpMorselScan(
+      DeviceTableScanNode node, LocalExecutionPlanContext context, List<Long> sortedTpIds) {
+    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    final int deviceCount = deviceEntries.size();
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    final String timeColumnName = requireTimeColumnName(node);
+
+    // Decompose the target parallelism over the two axes as K = Kt × Kd, using the largest device
+    // group count that keeps the product within budget. Time partitions are spread over first: they
+    // are a natural, already-disjoint way to cut the work.
+    final int targetParallelism =
+        Math.min(
+            decideParallelScanPipelineNum(context, deviceCount), deviceCount * sortedTpIds.size());
+    final int tpGroupCount = Math.min(sortedTpIds.size(), targetParallelism);
+    final int deviceGroupCount =
+        Math.max(1, Math.min(deviceCount, targetParallelism / tpGroupCount));
+
+    // Contiguous, disjoint slices on both axes.
+    final List<List<Long>> tpGroups = partitionIntoGroups(sortedTpIds, tpGroupCount);
+    final List<List<DeviceEntry>> deviceGroups =
+        partitionIntoGroups(deviceEntries, deviceGroupCount);
+
+    final int pipelineNum = tpGroups.size() * deviceGroups.size();
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+
+    final List<Operator> exchangeOperators = new ArrayList<>(pipelineNum);
+    int morselIdx = 0;
+    for (final List<Long> tpGroup : tpGroups) {
+      for (final List<DeviceEntry> deviceGroup : deviceGroups) {
+        // A pipeline covering several partitions OR-s their ranges together, so that one scan can
+        // serve the whole group.
+        Expression tpPredicate =
+            buildTimePartitionRangePredicate(tpGroup.get(0), interval, timeColumnName);
+        for (int m = 1; m < tpGroup.size(); m++) {
+          tpPredicate =
+              LogicalExpression.or(
+                  tpPredicate,
+                  buildTimePartitionRangePredicate(tpGroup.get(m), interval, timeColumnName));
+        }
+
+        final DeviceTableScanNode subScanNode =
+            cloneSubScanNode(
+                node,
+                new PlanNodeId(node.getPlanNodeId().getId() + "-morsel-" + morselIdx),
+                new ArrayList<>(deviceGroup),
+                tpPredicate);
+        morselIdx++;
+
+        // Build a sub pipeline (driver) exactly as in the plain device-parallel case.
+        final LocalExecutionPlanContext subContext = context.createSubContext();
+        final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+            constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
+        final TableScanOperator subScanOperator = new TableScanOperator(parameter);
+        addSource(
+            subScanOperator,
+            subContext,
+            subScanNode,
+            parameter.measurementColumnNames,
+            parameter.measurementSchemas,
+            parameter.allSensors,
+            DeviceTableScanNode.class.getSimpleName());
+
+        final ISinkChannel localSinkChannel =
+            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
+                subContext.getDriverContext(), subScanNode.getPlanNodeId().getId());
+        subContext.setISink(localSinkChannel);
+        subContext.addPipelineDriverFactory(subScanOperator, subContext.getDriverContext(), 0);
+        subContext.constructPipelineMemoryEstimator(
+            subScanOperator, node.getPlanNodeId(), subScanNode, -1);
+
+        final ExchangeOperator exchangeOperator =
+            new ExchangeOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+                MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                    ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
+                    context.getDriverContext()),
+                subScanNode.getPlanNodeId(),
+                subScanOperator.calculateMaxReturnSize());
+        context.addExchangeOperator(exchangeOperator);
+        exchangeOperators.add(exchangeOperator);
+      }
+    }
+    context.addExchangeSumNum(pipelineNum);
+
+    final OperatorContext collectOperatorContext =
+        addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
+    return new CollectOperator(collectOperatorContext, exchangeOperators);
+  }
+
+  /**
+   * Split a list into {@code groupCount} contiguous, near-equal, disjoint slices. The slices are
+   * ordered and together cover the input exactly once, which is what makes the pipelines' scans
+   * partition the table instead of overlapping.
+   */
+  private static <T> List<List<T>> partitionIntoGroups(List<T> items, int groupCount) {
+    final int size = items.size();
+    final int groups = Math.max(1, Math.min(groupCount, size));
+    final int avg = size / groups;
+    final int remainder = size % groups;
+    final List<List<T>> result = new ArrayList<>(groups);
+    int start = 0;
+    for (int i = 0; i < groups; i++) {
+      final int end = start + avg + (i < remainder ? 1 : 0);
+      result.add(new ArrayList<>(items.subList(start, end)));
+      start = end;
+    }
+    return result;
+  }
+
+  /**
+   * Resolve the symbol name of the time column of a scan, i.e. the assignment entry whose column
+   * category is {@code TIME}. This mirrors how {@code CommonTableScanOperatorParameters} finds the
+   * time column, and avoids hardcoding the conventional name {@code time}, which a user is free to
+   * alias.
+   */
+  private static String requireTimeColumnName(DeviceTableScanNode node) {
+    for (final Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      if (entry.getValue().getColumnCategory() == TsTableColumnCategory.TIME) {
+        return entry.getKey().getName();
+      }
+    }
+    throw new IllegalStateException(
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COLUMN_CATEGORY_S_6E60A44E,
+            "no TIME column in " + node.getPlanNodeId()));
+  }
+
+  /**
+   * Build a time predicate {@code time >= tpStart AND time < tpEnd} narrowing a scan to one time
+   * partition. The time column is referenced the same way the analyzer does it, i.e. as a {@link
+   * SymbolReference}, so that the relational {@code ConvertPredicateToTimeFilterVisitor} recognises
+   * the comparison as a time filter.
+   *
+   * <p>Package-private so that {@code DeviceTimePartitionMorselTest} can assert directly on the
+   * ranges this produces — the morsel split is only meaningful if these ranges tile the partitions
+   * exactly once, which is not observable from the pipeline counts alone.
+   */
+  static Expression buildTimePartitionRangePredicate(
+      long tpId, long interval, String timeColumnName) {
+    final long lower = TimePartitionUtils.getStartTimeByPartitionId(tpId);
+    // Saturated so that the last, clamped partition does not wrap around to a negative bound and
+    // turn an upper bound into a lower one.
+    final long upper = LongMath.saturatedAdd(lower, interval);
+    final Expression timeColumn = new SymbolReference(timeColumnName);
+    return LogicalExpression.and(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+            timeColumn,
+            new LongLiteral(String.valueOf(lower))),
+        new ComparisonExpression(
+            ComparisonExpression.Operator.LESS_THAN,
+            timeColumn,
+            new LongLiteral(String.valueOf(upper))));
+  }
+
+  /**
+   * Clone a {@link DeviceTableScanNode}, narrowing it to a subset of devices and to a single time
+   * partition.
+   *
+   * <p>Delegates to {@link DeviceTableScanNode#clone()} first so that every field is carried over —
+   * including the transient ones ({@code topKRuntimeFilterSourceId}, {@code
+   * deviceEntryDataSetHandle}, {@code coordinatorDeviceEntryDataSet}) that {@code clone()} copies
+   * manually and that a hand-rolled constructor call would silently drop. Only afterwards are the
+   * id, the device subset and the time predicate replaced.
+   *
+   * <p>The partition predicate is <em>AND</em>-ed with whatever time predicate the query already
+   * had, never substituted for it: the original predicate encodes the user's own {@code WHERE}
+   * bound, which stays in force for every morsel.
+   */
+  private static DeviceTableScanNode cloneSubScanNode(
+      DeviceTableScanNode origin,
+      PlanNodeId newId,
+      List<DeviceEntry> newDeviceEntries,
+      Expression tpPredicate) {
+    final DeviceTableScanNode subScanNode = origin.clone();
+    subScanNode.setPlanNodeId(newId);
+    subScanNode.setTimePredicate(
+        origin
+            .getTimePredicate()
+            .map(original -> (Expression) LogicalExpression.and(original, tpPredicate))
+            .orElse(tpPredicate));
+    // setDeviceEntries also clears the spill handle, matching the invariant that an inline device
+    // list and an on-disk spill handle are never both set.
+    subScanNode.setDeviceEntries(newDeviceEntries);
+    return subScanNode;
+  }
+
+  /**
+   * Core device-parallel scan: split one {@link DeviceTableScanNode} into {@link
+   * #decideParallelScanPipelineNum} sub pipelines, each scanning a contiguous slice of the device
+   * entry list.
+   */
+  private Operator constructParallelDeviceScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
     final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
     final int deviceCount = deviceEntries.size();
