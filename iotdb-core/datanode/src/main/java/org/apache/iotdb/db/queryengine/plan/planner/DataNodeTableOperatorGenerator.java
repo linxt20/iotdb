@@ -1772,19 +1772,26 @@ public class DataNodeTableOperatorGenerator
     final int deviceGroupCount =
         Math.max(1, Math.min(deviceCount, targetParallelism / tpGroupCount));
 
-    // File sizes make a much better static work estimate than the number of time partitions. This
-    // remains an optimization only: a missing or incomplete metadata snapshot falls back to the
-    // original contiguous, equal-count split, preserving its established behavior.
+    // File sizes make a much better static work estimate than the number of time partitions. A
+    // missing or incomplete metadata snapshot falls back to the original contiguous, equal-count
+    // split, preserving its established behavior and leaving no estimate annotation behind.
     final TsFileManager tsFileManager =
         ((DataRegion) context.getInstanceContext().getDataRegion()).getTsFileManager();
-    final Optional<TimePartitionMorselSchedule> weightedSchedule =
+    // Read the same optional, read-only size snapshot for both scheduling arms. The equal-count
+    // control must retain its deterministic contiguous groups, but it still needs to expose the
+    // resulting group-byte estimates in EXPLAIN ANALYZE; otherwise the two arms cannot be compared
+    // for a skewed workload without reconstructing the plan externally.
+    final Optional<TimePartitionMorselSchedule> sizeSchedule =
+        partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroupCount);
+    final boolean useSizeWeightedSchedule =
         IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorselSizeWeighting()
-            ? partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroupCount)
-            : Optional.empty();
+            && sizeSchedule.isPresent();
     final List<List<Long>> tpGroups =
-        weightedSchedule
-            .map(TimePartitionMorselSchedule::groups)
-            .orElseGet(() -> partitionIntoGroups(sortedTpIds, tpGroupCount));
+        useSizeWeightedSchedule
+            ? sizeSchedule
+                .map(TimePartitionMorselSchedule::groups)
+                .orElseThrow(IllegalStateException::new)
+            : partitionIntoGroups(sortedTpIds, tpGroupCount);
     final List<List<DeviceEntry>> deviceGroups =
         partitionIntoGroups(deviceEntries, deviceGroupCount);
 
@@ -1822,8 +1829,8 @@ public class DataNodeTableOperatorGenerator
             parameter,
             tpGroup,
             deviceGroup.size(),
-            weightedSchedule.map(schedule -> schedule.estimatedBytes(tpGroup)).orElse(-1L),
-            weightedSchedule.isPresent());
+            sizeSchedule.map(schedule -> schedule.estimatedBytes(tpGroup)).orElse(-1L),
+            useSizeWeightedSchedule);
         final TableScanOperator subScanOperator = new TableScanOperator(parameter);
         addSource(
             subScanOperator,

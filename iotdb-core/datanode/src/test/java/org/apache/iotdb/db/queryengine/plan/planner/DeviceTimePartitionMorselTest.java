@@ -326,8 +326,9 @@ public class DeviceTimePartitionMorselTest {
 
   /**
    * The control arm keeps exactly the same safe morsel decomposition but forms time groups by
-   * count. Its per-driver EXPLAIN ANALYZE annotations make an equal-count versus LPT comparison
-   * reproducible without pretending that unavailable metadata is a zero-byte estimate.
+   * count. Its per-driver EXPLAIN ANALYZE annotations retain the observed metadata estimates, so
+   * an equal-count versus LPT comparison is reproducible without pretending that unavailable
+   * metadata is a zero-byte estimate.
    */
   @Test
   public void testEqualCountMorselsExposeControlEvidence() throws Exception {
@@ -353,9 +354,13 @@ public class DeviceTimePartitionMorselTest {
         assertEquals(
             Arrays.asList(Arrays.asList(0L, 2L), Arrays.asList(4L, 6L)),
             partitionGroupsByDriver(context));
+        // The control arm is intentionally less balanced on this skew: 130 versus 20 bytes. The
+        // important evidence is exported on the same individual driver contexts as the LPT arm,
+        // rather than inferred by a test-only helper after the query has completed.
+        assertEquals(130L, maxGroupWeight(partitionGroupsByDriver(context), partitionSizes));
         assertMorselEvidence(
             context,
-            Arrays.asList(-1L, -1L),
+            Arrays.asList(130L, 20L),
             "EQUAL_PARTITION_COUNT",
             Arrays.asList("[0, 2]", "[4, 6]"));
         assertProductSplitIsComplete(context, 6, new ArrayList<>(partitionSizes.keySet()));
