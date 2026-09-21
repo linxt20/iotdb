@@ -25,14 +25,14 @@ test gates, and deliberately unsupported paths. It is not a performance conclusi
 | Task | Current state | Evidence / boundary |
 | --- | --- | --- |
 | Static property matrix | **Implemented and reactor-validated** | Plan assertions cover scan, filter, project, sort, top-k, row number, window, aggregation, join, and union. Operator-specific fallbacks are explicit. |
-| `Partitioned(keys)` | **Partially executable** | A versioned descriptor, per-row `TABLE_HASH_V1` router, exact channel sink, and real default-off single-source GROUP BY 1 x P consumer exist. General multi-source N x P and join are gated off. |
-| Independent cluster E2E | **Partially accepted** | Static paths were accepted previously. A fresh isolated hash-on DataNode emitted `TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)` with two downstream exchanges; a hash-off isolated control produced the same canonical result rows. |
+| `Partitioned(keys)` | **Executable for guarded GROUP BY** | A versioned descriptor, per-row `TABLE_HASH_V1` router, exact channel sink, and default-off GROUP BY consumer exist. It materializes one partial source per input and one final aggregation per bucket (N x P); join remains gated off. |
+| Independent cluster E2E | **Partially accepted** | Static paths were accepted previously. A fresh isolated hash-on DataNode emitted `TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)` with two downstream exchanges; a hash-off isolated control produced the same canonical result rows. Multi-source N x P still needs its own isolated-cluster acceptance. |
 | Benchmark matrix | **Assets ready; no published speedup data** | The DOP/warm/cold runner, real CLI adapter, validators and environment capture exist. No P50/P95 or acceleration number may be reported until the fixed-DOP matrix completes on a suitably sized fixture. |
-| Multi-query cases | **Static cases and controls ready** | Scan/filter/project/ordered/top-k/morsel cases are staged. GROUP BY is a restricted one-source correctness case; join remains baseline-only. |
+| Multi-query cases | **Static cases and controls ready** | Scan/filter/project/ordered/top-k/morsel cases are staged. GROUP BY has guarded one-source and multi-source topology correctness cases; join remains baseline-only. |
 | Balance/backpressure | **Instrumentation and parser ready** | Morsel estimated/actual workload, driver wall time and LPT versus equal-count extraction are implemented. The complete skewed-data comparison remains an experiment gate. |
 | Reproducible assets | **Implemented** | Deterministic fixture generator, DOP runner, CLI adapter, result validator, E2E scripts, configuration/version capture, and raw JSON/CSV archive layout are present. |
 
-## Validated hash GROUP BY slice
+## Validated hash GROUP BY slices
 
 The enabled configuration is default-off in production and explicitly sets
 `enable_table_group_by_hash_repartition=true` with two partitions. The accepted query filters to
@@ -41,17 +41,18 @@ one physical device then groups on field `s1`. Its `EXPLAIN ANALYZE` shows one p
 exchange IDs, and two final aggregation instances. The hash-on and hash-off result-row files have
 the same SHA-256. This establishes physical property consumption for that narrow slice.
 
-It does not establish a general distributed GROUP BY: a query that creates multiple partial
-sources must stay on the Collect path until each bucket has an independently materialized final
-fragment and all source-to-bucket edges are resolved by the fragment-instance planner. The
-`TableGroupByHashRepartitionTopology` ownership tests reject the common false topology in which
-multiple bucket branches remain aliases in one parent fragment.
+For multiple direct table-scan sources, the guarded planner now creates one partial aggregation and
+one hash sink per source. Each bucket gets its own final aggregation over a `Collect` of the
+source-specific exchanges. `AddExchangeNodes` preserves these pre-built hash exchanges rather than
+wrapping them in ordinary exchanges. The ownership test verifies that every source has every
+bucket channel, all exchanges for a bucket reside in one final fragment, and different buckets use
+different final fragments. This proves planner materialization of the N x P topology; it does not
+yet prove runtime result equivalence on an isolated multi-DataNode deployment.
 
 ## Remaining critical path
 
-1. Materialize multi-source final bucket fragments and source x bucket channels in
-   `SubPlanGenerator`, exchange insertion and `TableModelQueryFragmentPlanner`; accept it across
-   at least two DataNodes.
+1. Accept guarded multi-source N x P GROUP BY across at least two isolated DataNodes, including
+   result equivalence, plan trace and channel/fragment evidence.
 2. Consume two compatible key partitions in a restricted equi-join, then add duplicate/null/skew
    result-equivalence tests before widening join eligibility.
 3. Run the benchmark matrix at DOP `1,2,4,8,16,1`, warm and cold cache, with a fixture large
