@@ -114,9 +114,9 @@ public class SingleSourceGroupByHashRepartitionPlanningTest {
 
     IoTDBDescriptor.getInstance().getConfig().setEnableTableGroupByHashRepartition(true);
     assertFalse(
-        "a Filter introduces a second planner shape; it must wait for the general N x N path",
+        "a computed grouping expression introduces a Project input and must wait for the general N x N path",
         planAndCollectNodes(
-                "SELECT s1, count(*) FROM testdb.table1 WHERE s1 > 1 GROUP BY s1")
+                "SELECT s1 + 1, count(*) FROM testdb.table1 GROUP BY s1 + 1")
             .stream()
             .anyMatch(TableHashPartitioningShuffleSinkNode.class::isInstance));
   }
