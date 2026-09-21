@@ -157,18 +157,20 @@ byte counter at the actual remote TsBlock payload path. Do not report zero in it
 
 For matrix use, prefer the one-command composition adapter
 `scripts/server_query_metrics_with_proc.py`. It runs the same normal SQL through
-`server_current_query_metrics.py`, wraps only that command in the `/proc` collector, requires
-**exactly two explicit DataNode PIDs**, archives both child evidence directories below the matrix
-attempt, and prints exactly one JSON line for `run_matrix.py`. It does not start, stop, change,
-or clear a node. `cpu_pct` is the collector's combined CPU-core percentage (100 = one full core),
-and `peak_rss_bytes` is the combined two-DataNode peak. `shuffle_bytes` is explicitly JSON
+`server_current_query_metrics.py`, wraps only that command in the `/proc` collector, and archives
+both child evidence directories below the matrix attempt. Provide either exactly two explicit
+DataNode PIDs for a one-off call, or (recommended for a matrix) `--deployment-root`: the adapter
+then reads the two launcher-owned `process.env` PID records immediately before every query, after
+the DOP step may have restarted those nodes. It does not start, stop, change, or clear a node.
+`cpu_pct` is the collector's combined CPU-core percentage (100 = one full core), and
+`peak_rss_bytes` is the combined two-DataNode peak. `shuffle_bytes` is explicitly JSON
 `null`, never `0`, until a query-scoped byte counter exists; therefore the P0 verifier will
 correctly reject a matrix as incomplete rather than allow an invented shuffle metric.
 
 ```bash
 python3 scripts/run_matrix.py \
   --database benchdb --table benchdb.bench \
-  --query-command 'python3 scripts/server_query_metrics_with_proc.py --cli /root/iotdb-next-deploy/sbin/start-cli.sh --host 127.0.0.1 --port 11710 --password-env IOTDB_PASSWORD --datanode-pids 142732,142733 --sql-file {sql_file} --raw-dir {attempt_dir}' \
+  --query-command 'python3 scripts/server_query_metrics_with_proc.py --cli /root/iotdb-next-deploy/sbin/start-cli.sh --host 127.0.0.1 --port 11710 --password-env IOTDB_PASSWORD --deployment-root /root/iotdb-static-benchmark-20260921 --sql-file {sql_file} --raw-dir {attempt_dir}' \
   --dop-command '/root/iotdb-next-deploy/bin/set-isolated-dop.sh {dop}' \
   --config /root/iotdb-next-deploy/conf/iotdb-system.properties \
   --output /root/iotdb-next-artifacts/p0-$(date -u +%Y%m%dT%H%M%SZ)

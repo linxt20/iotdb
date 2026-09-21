@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import subprocess
 import sys
 import tempfile
@@ -65,6 +66,30 @@ def parse_two_pids(value: str) -> list[int]:
     if len(pids) != 2 or len(set(pids)) != 2 or any(pid <= 0 for pid in pids):
         raise ValueError("--datanode-pids must name exactly two distinct positive DataNode PIDs")
     return pids
+
+
+def pids_from_deployment_root(root: Path, deployment: str) -> list[int]:
+    """Read only the two launcher-owned PID files immediately before a measurement.
+
+    Fixed-DOP matrix steps restart DataNodes, so a PID copied into the query-command template is
+    stale after the first transition.  The isolated launcher writes one small ``process.env`` for
+    each named DataNode.  Parse only its literal ``pid=<positive integer>`` assignment rather than
+    sourcing shell content from an experiment directory.
+    """
+
+    if deployment not in {"candidate", "control"}:
+        raise ValueError("--deployment must be candidate or control")
+    pids: list[int] = []
+    for node in ("datanode-1", "datanode-2"):
+        path = root / deployment / node / "process.env"
+        try:
+            matches = re.findall(r"(?m)^pid=([1-9][0-9]*)$", path.read_text(encoding="utf-8"))
+        except OSError as error:
+            raise ValueError(f"cannot read launcher DataNode PID manifest {path}: {error}") from error
+        if len(matches) != 1:
+            raise ValueError(f"expected exactly one literal pid assignment in {path}")
+        pids.append(int(matches[0]))
+    return parse_two_pids(",".join(map(str, pids)))
 
 
 def non_negative_number(value: Any, field: str) -> float:
@@ -103,7 +128,11 @@ def metric_command(args: argparse.Namespace, server_dir: Path) -> list[str]:
 
 
 def run(args: argparse.Namespace) -> int:
-    pids = parse_two_pids(args.datanode_pids)
+    pids = (
+        parse_two_pids(args.datanode_pids)
+        if args.datanode_pids
+        else pids_from_deployment_root(args.deployment_root, args.deployment)
+    )
     if not args.raw_dir.exists():
         args.raw_dir.mkdir(parents=True, exist_ok=False)
     if not args.raw_dir.is_dir():
@@ -141,6 +170,9 @@ def run(args: argparse.Namespace) -> int:
         "cpu_pct_source": "two_datanode_proc_cpu_core_pct",
         "peak_rss_bytes_source": "two_datanode_proc_combined_peak_rss",
         "datanode_pids": pids,
+        "datanode_pid_source": (
+            "explicit" if args.datanode_pids else f"launcher_process_env:{args.deployment_root}"
+        ),
         "pid_starttime_verified": True,
         "server_query_id": server.get("query_id"),
     }
@@ -171,6 +203,13 @@ def self_test() -> int:
             pass
         else:
             return 1
+        deployment = raw / "isolated"
+        for node, pid in (("datanode-1", 7), ("datanode-2", 8)):
+            path = deployment / "candidate" / node
+            path.mkdir(parents=True)
+            (path / "process.env").write_text(f"pid={pid}\nroot=/not-sourced\n", encoding="utf-8")
+        if pids_from_deployment_root(deployment, "candidate") != [7, 8]:
+            return 1
     print("server_query_metrics_with_proc self-test passed")
     return 0
 
@@ -188,16 +227,25 @@ def main() -> int:
     parser.add_argument("--cli-arg", action="append", default=[])
     parser.add_argument("--sql-file", type=Path)
     parser.add_argument("--raw-dir", type=Path)
-    parser.add_argument("--datanode-pids")
+    pid_source = parser.add_mutually_exclusive_group()
+    pid_source.add_argument("--datanode-pids", help="two explicit current DataNode PIDs")
+    pid_source.add_argument(
+        "--deployment-root",
+        type=Path,
+        help="isolated launcher root; current DataNode PIDs are read before every query",
+    )
+    parser.add_argument("--deployment", default="candidate", choices=("candidate", "control"))
     parser.add_argument("--history-timeout-seconds", type=float, default=5.0)
     parser.add_argument("--history-poll-seconds", type=float, default=0.1)
     parser.add_argument("--proc-interval-seconds", type=float, default=0.1)
     args = parser.parse_args()
     if args.self_test:
         return self_test()
-    required = ("cli", "host", "port", "sql_file", "raw_dir", "datanode_pids")
+    if args.datanode_pids is None and args.deployment_root is None:
+        parser.error("one of --datanode-pids or --deployment-root is required")
+    required = ("cli", "host", "port", "sql_file", "raw_dir")
     if any(getattr(args, field) is None for field in required):
-        parser.error("--cli, --host, --port, --sql-file, --raw-dir, and --datanode-pids are required")
+        parser.error("--cli, --host, --port, --sql-file, and --raw-dir are required")
     if not args.cli.is_file() or not args.sql_file.is_file():
         parser.error("--cli and --sql-file must name existing files")
     if not args.metrics_script.is_file() or not args.proc_script.is_file():
