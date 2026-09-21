@@ -124,16 +124,7 @@ public class TableDistributedPlanner {
                 new PlanGraphPrinter(),
                 new PlanGraphPrinter.GraphContext(
                     mppQueryContext.getTypeProvider().getTemplatedInfo()));
-        // Show why the branches were converged where they were: which node, what it required of
-        // its children, what they provided, and which enforcer was inserted as a result. The trace
-        // is only collected when property driven planning is on, so this appends nothing otherwise.
-        if (!ruleTrace.isEmpty()) {
-          final List<String> withTrace = new ArrayList<>(planText);
-          withTrace.add("");
-          withTrace.add("Property enforcement:");
-          ruleTrace.forEach(line -> withTrace.add("  " + line));
-          planText = withTrace;
-        }
+        planText = appendRuleTrace(planText);
       }
     }
 
@@ -199,6 +190,21 @@ public class TableDistributedPlanner {
         new AddExchangeNodes(mppQueryContext).addExchangeNodes(distributedPlan, planContext);
 
     return planWithExchange;
+  }
+
+  /**
+   * Adds the property enforcement decisions to a text EXPLAIN result. Both regular query planning
+   * and the memory-source EXPLAIN path use this method so they expose the same decisions.
+   */
+  public List<String> appendRuleTrace(final List<String> planText) {
+    if (ruleTrace.isEmpty()) {
+      return planText;
+    }
+    final List<String> withTrace = new ArrayList<>(planText);
+    withTrace.add("");
+    withTrace.add("Property enforcement:");
+    ruleTrace.forEach(line -> withTrace.add("  " + line));
+    return withTrace;
   }
 
   private DistributedQueryPlan generateDistributedPlan(

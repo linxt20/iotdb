@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -253,17 +255,17 @@ public class PropertyDrivenDistributionTest {
    * when the rules are actually in charge.
    */
   @Test
-  public void explainShowsThePropertyEnforcementTraceOnlyWhenEnabled() {
+  public void memorySourceExplainShowsThePropertyEnforcementTraceOnlyWhenEnabled() {
     // This case drives the flag itself, so it only needs to run once.
     assumeFalse(propertyDrivenPlanning);
 
     setPropertyDrivenPlanning(false);
     assertFalse(
         "the legacy heuristic takes no property decisions, so it must not print a trace",
-        explainText("SELECT * FROM testdb.table1").contains("Property enforcement:"));
+        memorySourceExplainText("SELECT * FROM testdb.table1").contains("Property enforcement:"));
 
     setPropertyDrivenPlanning(true);
-    String explained = explainText("SELECT * FROM testdb.table1");
+    String explained = memorySourceExplainText("SELECT * FROM testdb.table1");
     assertTrue(
         "EXPLAIN must show the property enforcement trace when the rules are enabled",
         explained.contains("Property enforcement:"));
@@ -273,13 +275,23 @@ public class PropertyDrivenDistributionTest {
         explained.contains("required=") && explained.contains("provided="));
   }
 
-  /** The EXPLAIN text of a statement, as a single string. */
-  private static String explainText(String sql) {
+  /** Exercises the table-model EXPLAIN memory-source path used by the product query flow. */
+  private static String memorySourceExplainText(String sql) {
     MPPQueryContext queryContext =
-        new MPPQueryContext(sql, new QueryId("explain_test"), SESSION_INFO, null, null);
-    queryContext.setExplainType(MPPQueryContext.ExplainType.EXPLAIN);
-    queryContext.setInnerTriggeredQuery(true);
-    return String.join("\n", plan(sql, queryContext).getPlanText());
+        new MPPQueryContext(
+            "EXPLAIN " + sql, new QueryId("explain_test"), SESSION_INFO, null, null);
+    Analysis analysis = analyzeSQL("EXPLAIN " + sql, TEST_MATADATA, queryContext);
+    analysis.setDataPartitionInfo(
+        MockTableModelDataPartition.constructSingleRegionDataPartition(SINGLE_REGION_DB));
+    TsBlock result = analysis.constructResultForMemorySource(queryContext);
+    StringBuilder explained = new StringBuilder();
+    for (int position = 0; position < result.getPositionCount(); position++) {
+      explained
+          .append(
+              result.getColumn(0).getBinary(position).getStringValue(TSFileConfig.STRING_CHARSET))
+          .append('\n');
+    }
+    return explained.toString();
   }
 
   /**
