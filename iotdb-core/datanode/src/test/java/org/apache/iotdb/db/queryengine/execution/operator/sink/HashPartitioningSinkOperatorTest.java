@@ -84,8 +84,8 @@ public class HashPartitioningSinkOperatorTest {
     Operator child = Mockito.mock(Operator.class);
     IChannelRoutingSinkHandle sinkHandle = Mockito.mock(IChannelRoutingSinkHandle.class);
     SettableFuture<Void> allChannelsAvailable = SettableFuture.create();
-    Mockito.when(child.isBlocked()).thenReturn(Futures.immediateVoidFuture());
-    Mockito.when(sinkHandle.isAllChannelsNotFull()).thenReturn(allChannelsAvailable);
+    Mockito.doReturn(Futures.immediateVoidFuture()).when(child).isBlocked();
+    Mockito.doReturn(allChannelsAvailable).when(sinkHandle).isAllChannelsNotFull();
     HashPartitioningSinkOperator operator =
         new HashPartitioningSinkOperator(
             Mockito.mock(OperatorContext.class),
