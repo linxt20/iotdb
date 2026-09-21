@@ -670,7 +670,14 @@ public class TableDistributedPlanGenerator
     }
 
     if (childrenNodes.size() == 1) {
-      node.setChild(childrenNodes.get(0));
+      // Merge rather than just attaching the child: with a single data region the scan is the only
+      // child, and attaching it directly would leave it unmarked, so a query with a WHERE clause
+      // could never be split into parallel scan drivers. Going through the merge keeps the
+      // ordering handling identical to the containsDiff branch below - an ordered child is still
+      // merged with a MergeSortNode, so nothing is reordered.
+      // The same shape exists in visitProject, which additionally carries the containAllSortItem
+      // bookkeeping; it is left alone here to keep this change small.
+      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
       return Collections.singletonList(node);
     }
 

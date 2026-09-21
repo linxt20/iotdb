@@ -192,6 +192,8 @@ public class PropertyDrivenDistributionTest {
       "SELECT * FROM testdb.table1 ORDER BY time",
       "SELECT * FROM testdb.table1 ORDER BY time LIMIT 10",
       "SELECT * FROM testdb.table1 LIMIT 10",
+      "SELECT * FROM testdb.table1 WHERE s1 > 1",
+      "SELECT * FROM testdb.table1 WHERE s1 > 1 ORDER BY time",
       "EXPLAIN ANALYZE SELECT * FROM testdb.table1",
     };
 
@@ -274,6 +276,38 @@ public class PropertyDrivenDistributionTest {
     queryContext.setExplainType(MPPQueryContext.ExplainType.EXPLAIN);
     queryContext.setInnerTriggeredQuery(true);
     return String.join("\n", plan(sql, queryContext).getPlanText());
+  }
+
+  /**
+   * A WHERE clause puts a FilterNode between the output and the scan. That must not cost the scan
+   * its parallelism: with a single data region the filter is the scan's only parent, so if it
+   * attached the scan directly instead of merging it, nothing would ever mark the scan as
+   * splittable and no filtered query could run in parallel.
+   */
+  @Test
+  public void filteredQueryAllowsParallelScan() {
+    List<DeviceTableScanNode> scans =
+        planAndCollectScans("SELECT * FROM testdb.table1 WHERE s1 > 1");
+
+    assertFalse(scans.isEmpty());
+    for (DeviceTableScanNode scan : scans) {
+      assertTrue(
+          "a WHERE clause must not prevent the scan from being split", scan.isAllowParallelScan());
+    }
+  }
+
+  /** The same, with an ordering requirement on top: the scan has to stay on a single stream. */
+  @Test
+  public void filteredOrderedQueryForbidsParallelScan() {
+    List<DeviceTableScanNode> scans =
+        planAndCollectScans("SELECT * FROM testdb.table1 WHERE s1 > 1 ORDER BY time");
+
+    assertFalse(scans.isEmpty());
+    for (DeviceTableScanNode scan : scans) {
+      assertFalse(
+          "an ordering requirement must still keep a filtered scan on a single stream",
+          scan.isAllowParallelScan());
+    }
   }
 
   /** Plans the statement against a single data region and returns every scan node in the plan. */
