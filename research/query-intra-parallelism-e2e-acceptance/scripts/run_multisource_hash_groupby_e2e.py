@@ -52,6 +52,12 @@ TOPOLOGY = re.compile(
     r"\s*\(N\s*x\s*P experimental path\)",
     re.IGNORECASE,
 )
+HASH_SINK_IDS = re.compile(
+    r"\[(?P<ids>\d+(?:\s*,\s*\d+)*)\]\s*:\s*required=Partitioned\[[^\]]+\]"
+    r"\s+provided=.*?TableHashPartitioningShuffleSinkNode\s+TABLE_HASH_V1",
+    re.IGNORECASE,
+)
+RENDERED_EXCHANGE_IDS = re.compile(r"\bExchange-\d+\b")
 
 
 def utc_now() -> str:
@@ -238,8 +244,18 @@ def validate_enabled_plan(path: Path, expected_sources: int, expected_buckets: i
             f"expected {expected_sources} x {expected_buckets}, saw sources={sorted(reported_sources)} "
             f"partitions={sorted(reported_buckets)}"
         )
-    hash_sinks = text.count("TableHashPartitioningShuffleSinkNode")
-    exchanges = text.count("ExchangeNode")
+    # The ASCII renderer prints the HashPartitioning sink class once in the
+    # property trace even when that trace describes several source fragments.
+    # Count its explicit fragment IDs rather than the rendered class name.
+    hash_sink_ids = {
+        int(identifier.strip())
+        for match in HASH_SINK_IDS.finditer(text)
+        for identifier in match.group("ids").split(",")
+    }
+    hash_sinks = len(hash_sink_ids)
+    # Compact ASCII plans render the node identity (for example ``Exchange-79``),
+    # while other explain formats retain the ``ExchangeNode`` class name.
+    exchanges = max(text.count("ExchangeNode"), len(set(RENDERED_EXCHANGE_IDS.findall(text))))
     required_exchanges = expected_sources * expected_buckets
     if hash_sinks < expected_sources:
         raise RuntimeError(
@@ -250,7 +266,34 @@ def validate_enabled_plan(path: Path, expected_sources: int, expected_buckets: i
             f"enabled plan has {exchanges} ExchangeNode markers, below required source x bucket edges "
             f"{expected_sources} x {expected_buckets} = {required_exchanges}"
         )
-    return {"hash_sink_markers": hash_sinks, "exchange_markers": exchanges, "required_exchange_edges": required_exchanges}
+    return {
+        "hash_sink_markers": hash_sinks,
+        "hash_sink_ids": sorted(hash_sink_ids),
+        "exchange_markers": exchanges,
+        "required_exchange_edges": required_exchanges,
+    }
+
+
+def validate_enabled_runtime(path: Path, expected_sources: int, expected_buckets: int) -> dict[str, int]:
+    """Validate the executed fragments, whose EXPLAIN ANALYZE format omits property text."""
+    text = path.read_text(encoding="utf-8")
+    hash_sinks = text.count("TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)")
+    exchanges = text.count("ExchangeNode(ExchangeOperator)")
+    required_exchanges = expected_sources * expected_buckets
+    if hash_sinks < expected_sources:
+        raise RuntimeError(
+            f"enabled runtime has {hash_sinks} hash sink operators, below required source count {expected_sources}"
+        )
+    if exchanges < required_exchanges:
+        raise RuntimeError(
+            f"enabled runtime has {exchanges} ExchangeNode operators, below required source x bucket edges "
+            f"{expected_sources} x {expected_buckets} = {required_exchanges}"
+        )
+    return {
+        "hash_sink_operators": hash_sinks,
+        "exchange_operators": exchanges,
+        "required_exchange_edges": required_exchanges,
+    }
 
 
 def validate_baseline_plan(path: Path) -> None:
@@ -319,7 +362,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
     enabled_explain = run_cli(args, "enabled", queries["enabled-explain"], raw_dir, password)
     explain_shape = validate_enabled_plan(enabled_explain, args.expected_sources, args.expected_buckets)
     enabled_analyze = run_cli(args, "enabled", queries["enabled-explain-analyze"], raw_dir, password)
-    analyze_shape = validate_enabled_plan(enabled_analyze, args.expected_sources, args.expected_buckets)
+    analyze_shape = validate_enabled_runtime(enabled_analyze, args.expected_sources, args.expected_buckets)
     baseline_analyze = run_cli(args, "baseline", queries["baseline-explain-analyze"], raw_dir, password)
     validate_baseline_plan(baseline_analyze)
 
@@ -353,6 +396,7 @@ def self_test() -> int:
         plan = root / "plan.stdout"
         plan.write_text(
             "Property enforcement:\n"
+            "[11, 12]: required=Partitioned[k] provided=Single -> "
             "TableHashPartitioningShuffleSinkNode TABLE_HASH_V1 sources=2 partitions=3 (N x P experimental path)\n"
             "TableHashPartitioningShuffleSinkNode TABLE_HASH_V1\n"
             + "\n".join("ExchangeNode" for _ in range(6)),
@@ -360,6 +404,18 @@ def self_test() -> int:
         )
         shape = validate_enabled_plan(plan, 2, 3)
         assert shape["required_exchange_edges"] == 6
+        runtime = root / "runtime.stdout"
+        runtime.write_text(
+            "\n".join(
+                [
+                    "TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)",
+                    "TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)",
+                ]
+                + ["ExchangeNode(ExchangeOperator)"] * 6
+            ),
+            encoding="utf-8",
+        )
+        assert validate_enabled_runtime(runtime, 2, 3)["exchange_operators"] == 6
         bad = root / "bad.stdout"
         bad.write_text("Property enforcement: TABLE_HASH_V1", encoding="utf-8")
         try:
