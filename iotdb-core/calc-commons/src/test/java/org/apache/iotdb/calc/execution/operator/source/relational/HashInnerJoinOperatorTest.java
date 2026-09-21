@@ -24,7 +24,6 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -40,7 +39,6 @@ import java.util.List;
 import static org.apache.iotdb.calc.plan.planner.CommonOperatorUtils.TIME_COLUMN_TEMPLATE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /** Tests the local primitive only; planner selection remains deliberately disabled. */
@@ -55,8 +53,7 @@ public class HashInnerJoinOperatorTest {
 
     List<String> actual = drain(operator);
 
-    assertEquals(
-        Arrays.asList("1,10,1,100", "1,10,1,101", "1,11,1,100", "1,11,1,101"), actual);
+    assertEquals(Arrays.asList("1,10,1,100", "1,10,1,101", "1,11,1,100", "1,11,1,101"), actual);
   }
 
   @Test

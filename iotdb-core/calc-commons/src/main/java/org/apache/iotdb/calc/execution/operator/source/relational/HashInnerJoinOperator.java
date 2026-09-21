@@ -218,11 +218,7 @@ public class HashInnerJoinOperator extends AbstractOperator {
   private void appendCurrentMatch() {
     RowReference buildRow = currentMatches.get(currentMatchPosition++);
     appendRow(cachedProbeBlock, probePosition, probeOutputSymbolIdx, 0);
-    appendRow(
-        buildRow.block,
-        buildRow.position,
-        buildOutputSymbolIdx,
-        probeOutputSymbolIdx.length);
+    appendRow(buildRow.block, buildRow.position, buildOutputSymbolIdx, probeOutputSymbolIdx.length);
     resultBuilder.declarePosition();
     if (currentMatchPosition == currentMatches.size()) {
       currentMatches = null;
