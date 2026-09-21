@@ -3411,6 +3411,16 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_LOCAL_MEMORY_MANAGER_CANNOT_BE_NULL_54701481 = "local memory manager cannot be null";
   public static final String EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_220C966B = "ExecutorService can not be null.";
   public static final String EXCEPTION_TSBLOCK_CANNOT_BE_NULL_E7EA3BDA = "TsBlock cannot be null";
+  public static final String EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923 =
+      "bucketCount must be positive";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_NULL_0D281214 =
+      "keyColumnIndexes must not be null";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41 =
+      "keyColumnIndexes must not be empty";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554 =
+      "keyColumnIndexes must not contain duplicates";
+  public static final String EXCEPTION_KEYCOLUMNINDEX_IS_OUT_OF_BOUNDS_EE53523F =
+      "keyColumnIndex is out of bounds";
   public static final String EXCEPTION_BYTESTORESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_56D15DE0 = "bytesToReserve should be greater than zero.";
   public static final String EXCEPTION_MAXBYTESCANRESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_E9F7D365 = "maxBytesCanReserve should be greater than zero.";
   public static final String EXCEPTION_MAX_BYTES_SHOULD_BE_GREATER_THAN_ZERO_COLON_ARG_EA1FB495 = "max bytes should be greater than zero: %d";

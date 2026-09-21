@@ -4096,6 +4096,15 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_220C966B =
       "ExecutorService 不能为空";
   public static final String EXCEPTION_TSBLOCK_CANNOT_BE_NULL_E7EA3BDA = "TsBlock 不能为空";
+  public static final String EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923 = "bucketCount 必须为正数";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_NULL_0D281214 =
+      "keyColumnIndexes 不能为空";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41 =
+      "keyColumnIndexes 不能为空列表";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554 =
+      "keyColumnIndexes 不能包含重复项";
+  public static final String EXCEPTION_KEYCOLUMNINDEX_IS_OUT_OF_BOUNDS_EE53523F =
+      "keyColumnIndex 越界";
   public static final String EXCEPTION_BYTESTORESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_56D15DE0 =
       "bytesToReserve 应大于 0";
   public static final String EXCEPTION_MAXBYTESCANRESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_E9F7D365 =
