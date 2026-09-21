@@ -12,6 +12,11 @@ degree_of_query_parallelism=4
 enable_dop_estimation=false
 enable_property_driven_planning=true
 
+# Narrow executable GROUP BY experiment: one direct table-scan source only.  Do not enable this
+# for multi-region GROUP BY until the source x bucket N x N topology has passed cluster acceptance.
+enable_table_group_by_hash_repartition=false
+table_group_by_hash_repartition_partition_count=2
+
 # Enabled endpoint: both true. Ordered-fallback endpoint: set ordered false. Morsel-fallback
 # endpoint: set morsel false. Do not claim a feature path unless its corresponding endpoint is on.
 enable_timepartition_morsel=true

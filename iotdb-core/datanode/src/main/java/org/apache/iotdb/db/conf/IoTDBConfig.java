@@ -363,6 +363,16 @@ public class IoTDBConfig {
   private boolean enablePropertyDrivenPlanning = false;
 
   /**
+   * Whether the experimental single-source GROUP BY path may split a partial aggregation by its
+   * grouping keys before the final aggregation. This remains off until the multi-source N x N
+   * topology is enabled separately.
+   */
+  private boolean enableTableGroupByHashRepartition = false;
+
+  /** Number of final GROUP BY partitions used by the experimental hash-repartition path. */
+  private int tableGroupByHashRepartitionPartitionCount = 2;
+
+  /**
    * Whether the number of parallel scan drivers is estimated from the amount of data in the region
    * instead of using the fixed degree of query parallelism. When false, the fixed value is used.
    */
@@ -2032,6 +2042,25 @@ public class IoTDBConfig {
 
   public boolean isEnablePropertyDrivenPlanning() {
     return enablePropertyDrivenPlanning;
+  }
+
+  public void setEnableTableGroupByHashRepartition(boolean enableTableGroupByHashRepartition) {
+    this.enableTableGroupByHashRepartition = enableTableGroupByHashRepartition;
+  }
+
+  public boolean isEnableTableGroupByHashRepartition() {
+    return enableTableGroupByHashRepartition;
+  }
+
+  public void setTableGroupByHashRepartitionPartitionCount(
+      int tableGroupByHashRepartitionPartitionCount) {
+    if (tableGroupByHashRepartitionPartitionCount > 1) {
+      this.tableGroupByHashRepartitionPartitionCount = tableGroupByHashRepartitionPartitionCount;
+    }
+  }
+
+  public int getTableGroupByHashRepartitionPartitionCount() {
+    return tableGroupByHashRepartitionPartitionCount;
   }
 
   public void setEnableDopEstimation(boolean enableDopEstimation) {

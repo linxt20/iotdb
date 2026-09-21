@@ -1283,6 +1283,18 @@ degree_of_query_parallelism=0
 # Datatype: boolean
 enable_property_driven_planning=false
 
+# Whether a direct single-source table GROUP BY may use the experimental hash repartition path.
+# The multi-source N x N topology is intentionally not enabled by this switch.
+# effectiveMode: restart
+# Datatype: boolean
+enable_table_group_by_hash_repartition=false
+
+# Number of final GROUP BY partitions for the experimental single-source hash repartition path.
+# Values less than two retain the default.
+# effectiveMode: restart
+# Datatype: int
+table_group_by_hash_repartition_partition_count=2
+
 # Whether the number of parallel scan drivers is estimated from the amount of data in the region
 # instead of using the fixed degree_of_query_parallelism above.
 # effectiveMode: restart

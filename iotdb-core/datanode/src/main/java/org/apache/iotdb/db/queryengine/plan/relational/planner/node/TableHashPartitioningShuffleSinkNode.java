@@ -38,9 +38,9 @@ import java.util.Objects;
 /**
  * A table-model shuffle sink with a declarative hash-partitioning contract.
  *
- * <p>This node is intentionally not selected by the distributed planner yet. The inherited shuffle
- * execution path is round-robin, so it must not be used for this node until the router consumes
- * {@link #partitioningDescriptor} row by row.
+ * <p>The table operator generator consumes {@link #partitioningDescriptor} row by row and routes
+ * each bucket to its matching downstream channel. Planner selection is deliberately restricted to
+ * the default-off, single-source GROUP BY experiment until the general N x N topology is ready.
  */
 public class TableHashPartitioningShuffleSinkNode extends ShuffleSinkNode {
 

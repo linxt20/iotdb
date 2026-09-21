@@ -123,9 +123,16 @@ Before flipping the planner feature flag, add the following tests.
 
 ## Rollout and observability
 
-Use a default-off `enable_table_hash_repartition` flag independent of
-`enable_property_driven_planning`.  EXPLAIN must identify the key list, hash version, partition
-count and every explicit fallback reason.  Metrics should include rows and bytes per channel,
-largest/smallest bucket ratio, blocked sink time, source-handle wait time, and per-driver finish
-time.  The flag may be enabled for grouped aggregation only after all corresponding correctness
-gates pass; joining remains separately gated.
+The current code exposes a default-off `enable_table_group_by_hash_repartition` flag independent
+of `enable_property_driven_planning`. It is deliberately narrower than the production N-to-N
+flag: it selects only a direct, non-streamable, non-distinct `GROUP BY` with one
+`DeviceTableScan` source. That restricted 1 x P shape is executable: one partial aggregation uses
+a `TableHashPartitioningShuffleSinkNode`, each bucket has a distinct final aggregation exchange,
+and the output Collect merges only disjoint groups. Filters, ordered/streamable grouping, complex
+grouping sets, global aggregations, and every multi-source plan retain the Collect fallback.
+
+EXPLAIN must identify the key list, hash version, partition count and every explicit fallback
+reason. Metrics should include rows and bytes per channel, largest/smallest bucket ratio, blocked
+sink time, source-handle wait time, and per-driver finish time. The general N-to-N feature flag
+must remain off until the multi-DataNode correctness gates above pass; joins remain separately
+gated.

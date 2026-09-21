@@ -582,6 +582,18 @@ public class IoTDBDescriptor {
                 "enable_property_driven_planning",
                 Boolean.toString(conf.isEnablePropertyDrivenPlanning()))));
 
+    conf.setEnableTableGroupByHashRepartition(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_table_group_by_hash_repartition",
+                Boolean.toString(conf.isEnableTableGroupByHashRepartition()))));
+
+    conf.setTableGroupByHashRepartitionPartitionCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "table_group_by_hash_repartition_partition_count",
+                Integer.toString(conf.getTableGroupByHashRepartitionPartitionCount()))));
+
     conf.setEnableDopEstimation(
         Boolean.parseBoolean(
             properties.getProperty(

@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
@@ -285,6 +286,15 @@ public class TableDistributedPlanner {
 
       if (child instanceof ExchangeNode) {
         ExchangeNode exchangeNode = (ExchangeNode) child;
+
+        // A hash exchange already owns the complete source x bucket channel matrix. Replacing it
+        // with an IdentitySinkNode would silently discard its partitioning descriptor and turn the
+        // data path back into a serial/round-robin exchange. The ordinary exchange edges still get
+        // their identity sinks below, including the root Collect that merges the disjoint groups.
+        if (exchangeNode.getChild() instanceof TableHashPartitioningShuffleSinkNode) {
+          exchangeNode.setIndexOfUpstreamSinkHandle(0);
+          continue;
+        }
 
         //        IdentitySinkNode identitySinkNode =
         //            regionNodeMap.computeIfAbsent(
