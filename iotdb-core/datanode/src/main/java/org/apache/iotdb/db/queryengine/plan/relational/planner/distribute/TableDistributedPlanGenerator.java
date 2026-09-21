@@ -1870,6 +1870,15 @@ public class TableDistributedPlanGenerator
       // Child has no Ordering and the device doesn't cross region, do nothing here because the
       // logical optimizer 'TransformAggregationToStreamable' will ensure the grouped property of
       // child
+      //
+      // Note that what is checked here is the ordering, not the distribution: there is no explicit
+      // comparison of the child's partitioning keys against the group by keys. A final aggregation
+      // with a group by requires Partitioned(groupKeys) from its child, and today that requirement
+      // is met indirectly - across regions by the deviceCrossRegion branch above, which gives up
+      // the streamable optimisation rather than risk splitting a group, and within a region by the
+      // logical optimizer named in the comment. Once the distribution axis carries partitioning
+      // keys, this should become an explicit Partitioned(groupKeys) comparison with a repartition
+      // enforcer inserted when it is not satisfied, which needs exchanges able to repartition.
     }
 
     //  push down aggregation if the child of aggregation node only has the union Node
