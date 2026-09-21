@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
-import org.apache.iotdb.commons.audit.UserEntity;
-import org.apache.iotdb.commons.queryengine.common.SessionInfo;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
@@ -31,13 +29,6 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSo
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
-import org.apache.iotdb.commons.schema.table.PreDeleteTsTable;
-import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -48,13 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDa
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -89,14 +76,6 @@ import static org.junit.Assume.assumeFalse;
 public class PropertyDrivenDistributionTest {
 
   private static final String SINGLE_REGION_DB = "testdb";
-
-  private static final SessionInfo EXPLAIN_ADMIN_SESSION =
-      new SessionInfo(
-          0,
-          new UserEntity(AuthorityChecker.SUPER_USER_ID, AuthorityChecker.SUPER_USER, "localhost"),
-          SESSION_INFO.getZoneId(),
-          SESSION_INFO.getDatabaseName().orElse(null),
-          SESSION_INFO.getSqlDialect());
 
   /**
    * Every case below is run twice: once with the legacy heuristic and once with the property driven
@@ -322,84 +301,33 @@ public class PropertyDrivenDistributionTest {
    * when the rules are actually in charge.
    */
   @Test
-  public void memorySourceExplainShowsThePropertyEnforcementTraceOnlyWhenEnabled() {
+  public void explainShowsThePropertyEnforcementTraceOnlyWhenEnabled() {
     // This case drives the flag itself, so it only needs to run once.
     assumeFalse(propertyDrivenPlanning);
 
-    final TsTable previousTable =
-        DataNodeTableCache.getInstance().getTable(SINGLE_REGION_DB, "table1", false);
-    try {
-      registerProductTableSchema();
+    setPropertyDrivenPlanning(false);
+    assertFalse(
+        "the legacy heuristic takes no property decisions, so it must not print a trace",
+        explainText("SELECT * FROM testdb.table1").contains("Property enforcement:"));
 
-      setPropertyDrivenPlanning(false);
-      assertFalse(
-          "the legacy heuristic takes no property decisions, so it must not print a trace",
-          memorySourceExplainText("SELECT * FROM testdb.table1").contains("Property enforcement:"));
-
-      setPropertyDrivenPlanning(true);
-      String explained = memorySourceExplainText("SELECT * FROM testdb.table1");
-      assertTrue(
-          "EXPLAIN must show the property enforcement trace when the rules are enabled",
-          explained.contains("Property enforcement:"));
-      assertTrue(
-          "each traced decision must state what was required and what was provided, got:\n"
-              + explained,
-          explained.contains("required=") && explained.contains("provided="));
-    } finally {
-      restoreProductTableSchema(previousTable);
-    }
+    setPropertyDrivenPlanning(true);
+    String explained = explainText("SELECT * FROM testdb.table1");
+    assertTrue(
+        "EXPLAIN must show the property enforcement trace when the rules are enabled",
+        explained.contains("Property enforcement:"));
+    assertTrue(
+        "each traced decision must state what was required and what was provided, got:\n"
+            + explained,
+        explained.contains("required=") && explained.contains("provided="));
   }
 
-  /**
-   * The memory-source visitor deliberately uses the production {@link DataNodeTableCache}, whereas
-   * the outer analysis in this test uses {@code TestMetadata}. Keep those two schemas equivalent so
-   * this exercises the real EXPLAIN entry point instead of a test-only planner overload.
-   */
-  private static void registerProductTableSchema() {
-    final TsTable table = new TsTable("table1");
-    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.TIMESTAMP));
-    table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
-    table.addColumnSchema(new TagColumnSchema("tag2", TSDataType.STRING));
-    table.addColumnSchema(new TagColumnSchema("tag3", TSDataType.STRING));
-    table.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
-    table.addColumnSchema(new AttributeColumnSchema("attr2", TSDataType.STRING));
-    table.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
-    table.addColumnSchema(new FieldColumnSchema("s2", TSDataType.INT64));
-    table.addColumnSchema(new FieldColumnSchema("s3", TSDataType.DOUBLE));
-    DataNodeTableCache.getInstance().preUpdateTable(SINGLE_REGION_DB, table, null);
-    DataNodeTableCache.getInstance()
-        .commitUpdateTable(SINGLE_REGION_DB, table.getTableName(), null);
-  }
-
-  private static void restoreProductTableSchema(final TsTable previousTable) {
-    if (previousTable == null) {
-      DataNodeTableCache.getInstance()
-          .preUpdateTable(SINGLE_REGION_DB, new PreDeleteTsTable("table1"), null);
-      DataNodeTableCache.getInstance().commitUpdateTable(SINGLE_REGION_DB, "table1", null);
-      return;
-    }
-    DataNodeTableCache.getInstance().preUpdateTable(SINGLE_REGION_DB, previousTable, null);
-    DataNodeTableCache.getInstance()
-        .commitUpdateTable(SINGLE_REGION_DB, previousTable.getTableName(), null);
-  }
-
-  /** Exercises the table-model EXPLAIN memory-source path used by the product query flow. */
-  private static String memorySourceExplainText(String sql) {
+  /** Tests the production planner trace attachment without requiring a running cluster. */
+  private static String explainText(String sql) {
     MPPQueryContext queryContext =
-        new MPPQueryContext(
-            "EXPLAIN " + sql, new QueryId("explain_test"), EXPLAIN_ADMIN_SESSION, null, null);
-    Analysis analysis = analyzeSQL("EXPLAIN " + sql, TEST_MATADATA, queryContext);
-    analysis.setDataPartitionInfo(
-        MockTableModelDataPartition.constructSingleRegionDataPartition(SINGLE_REGION_DB));
-    TsBlock result = analysis.constructResultForMemorySource(queryContext);
-    StringBuilder explained = new StringBuilder();
-    for (int position = 0; position < result.getPositionCount(); position++) {
-      explained
-          .append(
-              result.getColumn(0).getBinary(position).getStringValue(TSFileConfig.STRING_CHARSET))
-          .append('\n');
-    }
-    return explained.toString();
+        new MPPQueryContext(sql, new QueryId("explain_test"), SESSION_INFO, null, null);
+    queryContext.setExplainType(MPPQueryContext.ExplainType.EXPLAIN);
+    queryContext.setInnerTriggeredQuery(true);
+    return String.join("\n", plan(sql, queryContext).getPlanText());
   }
 
   /**
