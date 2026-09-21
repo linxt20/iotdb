@@ -127,6 +127,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggre
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
@@ -474,6 +475,8 @@ public class DataNodePlanNodeDeserializer extends CommonPlanNodeDeserializer {
         return AlignedAggregationTreeDeviceViewScanNode.deserialize(buffer);
       case 1042:
         return NonAlignedAggregationTreeDeviceViewScanNode.deserialize(buffer);
+      case 1046:
+        return TableHashPartitioningShuffleSinkNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
