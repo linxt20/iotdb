@@ -71,7 +71,10 @@ def command_for(args: argparse.Namespace, sql: str) -> tuple[list[str], list[str
     command.extend(args.cli_arg)
     command.extend(["-e", sql])
     redacted = command.copy()
-    redacted[redacted.index(password)] = "<redacted-password>"
+    # The default username and password may have the same text (for example ``root``),
+    # so redact by the option position rather than the first matching argument value.
+    password_index = redacted.index("-pw") + 1
+    redacted[password_index] = "<redacted-password>"
     return command, redacted
 
 
@@ -208,6 +211,20 @@ Total line number = 1
     if pipe_table_rows(sample) != [["a", "b"], ["1", "two"]]:
         return 1
     if extract_numeric_metric("server_query_ms=12.5", r"server_query_ms=([0-9.]+)") != 12.5:
+        return 1
+    variable = "IOTDB_CLI_ADAPTER_SELF_TEST_PASSWORD"
+    previous = os.environ.get(variable)
+    os.environ[variable] = "root"
+    try:
+        _, redacted = command_for(argparse.Namespace(
+            cli=Path("/example/start-cli.sh"), host="127.0.0.1", port=1, username="root",
+            password_env=variable, cli_arg=[]), "SELECT 1")
+    finally:
+        if previous is None:
+            os.environ.pop(variable, None)
+        else:
+            os.environ[variable] = previous
+    if redacted[redacted.index("-u") + 1] != "root" or redacted[redacted.index("-pw") + 1] != "<redacted-password>":
         return 1
     print("iotdb_cli_adapter self-test passed")
     return 0

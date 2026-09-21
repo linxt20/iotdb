@@ -56,7 +56,10 @@ def cli_command(args: argparse.Namespace, sql: str) -> tuple[list[str], list[str
         "-pw", password, "-sql_dialect", "table", *args.cli_arg, "-e", sql,
     ]
     redacted = command.copy()
-    redacted[redacted.index(password)] = "<redacted-password>"
+    # Do not search by value: the default username and password can both be ``root``.
+    # The password is the argument following the CLI's explicit ``-pw`` flag.
+    password_index = redacted.index("-pw") + 1
+    redacted[password_index] = "<redacted-password>"
     return command, redacted
 
 
@@ -187,6 +190,22 @@ def self_test() -> int:
         return 1
     match = find_match(rows, set(), canonical_sql("select 1"))
     if match is None or match["query_id"] != "q1":
+        return 1
+    # Regression: the default username/password can both be "root". The archived command
+    # must redact the value after -pw, not the first argument whose text happens to match it.
+    variable = "SERVER_CURRENT_QUERY_METRICS_SELF_TEST_PASSWORD"
+    previous = os.environ.get(variable)
+    os.environ[variable] = "root"
+    try:
+        _, redacted = cli_command(argparse.Namespace(
+            cli=Path("/example/start-cli.sh"), host="127.0.0.1", port=1, username="root",
+            password_env=variable, cli_arg=[]), "SELECT 1")
+    finally:
+        if previous is None:
+            os.environ.pop(variable, None)
+        else:
+            os.environ[variable] = previous
+    if redacted[redacted.index("-u") + 1] != "root" or redacted[redacted.index("-pw") + 1] != "<redacted-password>":
         return 1
     print("server_current_query_metrics self-test passed")
     return 0
