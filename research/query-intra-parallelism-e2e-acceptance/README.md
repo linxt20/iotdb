@@ -37,10 +37,32 @@ It proves three narrow claims for the current static implementation:
    bytes. This lets a reviewer compare equal-count and LPT-size grouping without treating the
    static estimate as observed work.
 
-It does **not** prove hash repartition, `Partitioned(keys)`, group-by repartition, or join
-repartition. Those capabilities need their own physical-exchange acceptance once implemented.
-Likewise, equality alone is not evidence that a path was used: the two `EXPLAIN ANALYZE` outputs
-are retained and each must contain its configured execution marker.
+It does **not** prove general multi-source hash repartition or join repartition. Those
+capabilities need their own physical-exchange acceptance once implemented. The separately scoped
+single-source GROUP BY experiment below is the only exception: it has a real 1 x P hash exchange,
+but must not be presented as a multi-source N x P or join result. Likewise, equality alone is not
+evidence that a path was used: the two `EXPLAIN ANALYZE` outputs are retained and each must
+contain its configured execution marker.
+
+## Restricted hash GROUP BY acceptance
+
+For the default-off experimental setting
+`enable_table_group_by_hash_repartition=true`, use a fresh isolated deployment and a query that
+maps to exactly one physical source. The helper scripts are intentionally mutating and therefore
+are not called by the read-only runner:
+
+```bash
+bash scripts/load_hash_groupby_fixture.sh <isolated-home> <artifact-dir> 26667
+bash scripts/run_hash_groupby_e2e.sh <isolated-home> <artifact-dir> 26667
+```
+
+The first script creates only the `p0e2e` fixture on the explicitly selected isolated endpoint.
+The second records an `EXPLAIN ANALYZE` and result for `device_id='d0' GROUP BY s1`. Accept it
+only when the raw plan contains both
+`TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)` and two downstream
+`ExchangeNode` instances. Run the same fixture/query on another isolated endpoint with the hash
+flag off, then compare canonicalized result rows. This verifies the selected 1 x P path's result
+equivalence; it does not justify a speedup claim on the small fixture.
 
 ## Deployment contract
 
