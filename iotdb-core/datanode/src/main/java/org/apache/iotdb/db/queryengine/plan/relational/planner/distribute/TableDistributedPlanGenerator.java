@@ -737,11 +737,19 @@ public class TableDistributedPlanGenerator
 
     OrderingScheme leftChildOrdering = nodeOrderingMap.get(node.getLeftChild().getPlanNodeId());
     OrderingScheme rightChildOrdering = nodeOrderingMap.get(node.getRightChild().getPlanNodeId());
+    OrderingScheme actualLeftChildOrdering =
+        nodeOrderingMap.get(leftChildrenNodes.get(0).getPlanNodeId());
+    OrderingScheme actualRightChildOrdering =
+        nodeOrderingMap.get(rightChildrenNodes.get(0).getPlanNodeId());
 
     // For CrossJoinNode, we need to merge children nodes(It's safe for other JoinNodes here since
     // the size of their children is always 1.)
-    node.setLeftChild(mergeChildrenViaCollectOrMergeSort(leftChildOrdering, leftChildrenNodes));
-    node.setRightChild(mergeChildrenViaCollectOrMergeSort(rightChildOrdering, rightChildrenNodes));
+    node.setLeftChild(
+        mergeChildrenViaCollectOrMergeSort(
+            leftChildOrdering, actualLeftChildOrdering, leftChildrenNodes));
+    node.setRightChild(
+        mergeChildrenViaCollectOrMergeSort(
+            rightChildOrdering, actualRightChildOrdering, rightChildrenNodes));
 
     // Now the join implement but CROSS is MergeSortJoin, so it can keep order
     if (!node.isCrossJoin() && !node.getAsofCriteria().isPresent()) {
@@ -3019,6 +3027,22 @@ public class TableDistributedPlanGenerator
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
       final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
+    return mergeChildrenViaCollectOrMergeSort(childOrdering, childOrdering, childrenNodes);
+  }
+
+  /**
+   * Merges branches while preserving the ordering required by the parent.
+   *
+   * <p>{@code requiredOrdering} and {@code actualChildOrdering} are usually identical: most callers
+   * get both from the rewritten child's {@code nodeOrderingMap} entry. They are separate
+   * deliberately, however. A node can require an ordering inherited from its logical input while
+   * the rewritten physical child no longer provides it. Treating the requirement as the provided
+   * property in that case skips a necessary sort and is unsound.
+   */
+  private PlanNode mergeChildrenViaCollectOrMergeSort(
+      final OrderingScheme requiredOrdering,
+      final OrderingScheme actualChildOrdering,
+      final List<PlanNode> childrenNodes) {
     checkArgument(
         childrenNodes != null,
         DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_NULL_DOT_0C93B063);
@@ -3027,7 +3051,9 @@ public class TableDistributedPlanGenerator
         DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_EMPTY_DOT_E5555FD9);
 
     if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
-      return legacyMerge(childOrdering, childrenNodes);
+      // The feature flag is a strict compatibility boundary. In particular, retain the legacy
+      // caller-provided ordering even when it differs from the physical child's property.
+      return legacyMerge(requiredOrdering, childrenNodes);
     }
 
     // Every caller of this method is a node that has to see all rows in one branch, i.e. it
@@ -3035,7 +3061,10 @@ public class TableDistributedPlanGenerator
     // requires an ordering. Making that requirement explicit is what turns the decision below from
     // a heuristic on "is childOrdering null" into a comparison of required against provided
     // properties.
-    return enforce(PlanProperties.of(DistributionProperty.single(), childOrdering), childrenNodes);
+    return enforce(
+        PlanProperties.of(DistributionProperty.single(), requiredOrdering),
+        childrenNodes,
+        actualChildOrdering);
   }
 
   /**
@@ -3094,8 +3123,11 @@ public class TableDistributedPlanGenerator
    * from being split across several drivers at the pipeline level, which is precisely the two level
    * structure this design relies on.
    */
-  private PlanNode enforce(final PlanProperties required, final List<PlanNode> childrenNodes) {
-    final PlanProperties provided = propertiesOf(childrenNodes, required);
+  PlanNode enforce(
+      final PlanProperties required,
+      final List<PlanNode> childrenNodes,
+      final OrderingScheme actualChildOrdering) {
+    final PlanProperties provided = propertiesOf(childrenNodes, actualChildOrdering);
 
     if (provided.satisfies(required)) {
       // Nothing has to be merged. The children keep whatever parallelism they have, so a scan
@@ -3111,13 +3143,41 @@ public class TableDistributedPlanGenerator
     final PlanNode firstChild = childrenNodes.get(0);
     final PlanNode glue;
     if (required.isOrdered()) {
-      // An ordered Single result is enforced by merging the branches while preserving their order.
-      final MergeSortNode mergeSortNode =
-          new MergeSortNode(
-              queryId.genPlanNodeId(), required.getOrdering(), firstChild.getOutputSymbols());
-      childrenNodes.forEach(mergeSortNode::addChild);
-      nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), required.getOrdering());
-      glue = mergeSortNode;
+      final List<PlanNode> orderedChildren;
+      if (required.getOrdering().equals(provided.getOrdering())) {
+        // The children already have the required local ordering. Only their distributions need to
+        // be converged, so MergeSort can preserve that order while merging the branches.
+        orderedChildren = childrenNodes;
+      } else {
+        // MergeSort merges sorted streams; it does not sort an unordered stream. Sort every
+        // physical child first, otherwise a required ordering could be incorrectly treated as
+        // provided merely because it was requested by the parent.
+        orderedChildren =
+            childrenNodes.stream()
+                .map(
+                    child -> {
+                      SortNode sortNode =
+                          new SortNode(
+                              queryId.genPlanNodeId(), child, required.getOrdering(), false, false);
+                      nodeOrderingMap.put(sortNode.getPlanNodeId(), required.getOrdering());
+                      return (PlanNode) sortNode;
+                    })
+                .collect(Collectors.toList());
+      }
+
+      if (orderedChildren.size() == 1) {
+        // A one-input MergeSort would still not sort anything. The local SortNode above is the
+        // actual enforcer in this case.
+        glue = orderedChildren.get(0);
+      } else {
+        // An ordered Single result is enforced by merging the now ordered branches.
+        final MergeSortNode mergeSortNode =
+            new MergeSortNode(
+                queryId.genPlanNodeId(), required.getOrdering(), firstChild.getOutputSymbols());
+        orderedChildren.forEach(mergeSortNode::addChild);
+        nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), required.getOrdering());
+        glue = mergeSortNode;
+      }
     } else {
       // An unordered Single result is enforced by collecting the branches in any order, which in
       // turn means the children are free to be parallel.
@@ -3138,20 +3198,27 @@ public class TableDistributedPlanGenerator
    * Single}, several branches provide {@code Arbitrary}. This is the axis the enforcement decision
    * actually turns on.
    *
-   * <p>The ordering is taken from what the caller observed of its children rather than re-read from
-   * {@code nodeOrderingMap} here. Fifteen of the sixteen call sites look it up as {@code
-   * nodeOrderingMap.get(children.get(0).getPlanNodeId())}, which is exactly what re-reading would
-   * produce, but {@code visitJoin} looks it up on the join's original children rather than on the
-   * rewritten ones. Re-reading would silently change what a join considers ordered, so the caller's
-   * view is kept authoritative.
+   * <p>The ordering is supplied explicitly from the physical children observed by the caller. It
+   * must never be copied from {@code required}: a required order describes what a parent needs,
+   * while this method reports only what the child actually provides. Callers normally obtain this
+   * value from {@code nodeOrderingMap} after rewriting the child.
    */
   private PlanProperties propertiesOf(
-      final List<PlanNode> childrenNodes, final PlanProperties required) {
+      final List<PlanNode> childrenNodes, final OrderingScheme actualChildOrdering) {
+    // A MergeSort may only claim an ordering when every input stream has that ordering. The first
+    // child is the caller's representative; check the rest against their own physical entries so
+    // a heterogeneous set of siblings is conservatively treated as unordered.
+    final boolean everyChildHasActualOrdering =
+        actualChildOrdering != null
+            && childrenNodes.stream()
+                .allMatch(
+                    child ->
+                        actualChildOrdering.equals(nodeOrderingMap.get(child.getPlanNodeId())));
     return PlanProperties.of(
         childrenNodes.size() == 1
             ? DistributionProperty.single()
             : DistributionProperty.arbitrary(),
-        required.getOrdering());
+        everyChildHasActualOrdering ? actualChildOrdering : null);
   }
 
   private static void allowParallelScanOn(final List<PlanNode> childrenNodes) {

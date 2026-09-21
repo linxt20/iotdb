@@ -20,10 +20,15 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -37,6 +42,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.block.TsBlock;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -45,6 +52,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -191,6 +199,45 @@ public class PropertyDrivenDistributionTest {
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
     }
+  }
+
+  /**
+   * A parent requirement is not evidence that its child already has the required property. In
+   * particular, a one-input MergeSort cannot sort an unordered stream, so the property enforcer
+   * must insert a SortNode when the required ordering is absent from the physical child.
+   */
+  @Test
+  public void orderedRequirementOnUnorderedChildInsertsSortEnforcer() {
+    assumeFalse(propertyDrivenPlanning);
+    setPropertyDrivenPlanning(true);
+
+    Symbol time = new Symbol("time");
+    OrderingScheme timeAscending =
+        new OrderingScheme(ImmutableList.of(time), ImmutableMap.of(time, SortOrder.ASC_NULLS_LAST));
+    ValuesNode unorderedChild =
+        new ValuesNode(
+            new PlanNodeId("unordered_values"), ImmutableList.of(time), Collections.emptyList());
+
+    PlanNode enforced =
+        new TableDistributedPlanGenerator(
+                new MPPQueryContext(
+                    "property enforcement test",
+                    new QueryId("property_enforcement_test"),
+                    SESSION_INFO,
+                    null,
+                    null),
+                null,
+                null,
+                null)
+            .enforce(
+                PlanProperties.of(DistributionProperty.single(), timeAscending),
+                Collections.singletonList(unorderedChild),
+                null);
+
+    assertTrue(
+        "an unordered physical child cannot satisfy an ordered requirement",
+        enforced instanceof SortNode);
+    assertEquals(unorderedChild, enforced.getChildren().get(0));
   }
 
   /** Plans the statement against a single data region and returns every node in the plan. */
