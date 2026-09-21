@@ -112,6 +112,30 @@ The summarizer rejects plans that lack morsel scheduling, assigned partition, or
 wall-time fields. It preserves every parsed per-driver record and reports maximum driver wall time
 and CPU time for both arms. It does not infer a speedup or whole-query latency from these records.
 
+For a complete server-side archive, use the read-only balance runner after preparing two isolated,
+otherwise-identical deployments. The equal-count endpoint must set
+`enable_timepartition_morsel_size_weighting=false`; the LPT endpoint must set it to `true`.
+The runner verifies those configurations before it connects, archives both plans and result sets,
+requires result-multiset equivalence, and fails rather than overwrite an existing artifact.
+
+```bash
+export IOTDB_E2E_PASSWORD='your-isolated-password'
+python3 scripts/run_morsel_balance_evidence.py \
+  --output /root/iotdb-next-artifacts/morsel-balance-$(date -u +%Y%m%dT%H%M%SZ) \
+  --plan-sql /root/morsel-sql/explain-analyze.sql \
+  --result-sql /root/morsel-sql/result.sql \
+  --equal-cli /root/iotdb-morsel-equal/sbin/start-cli.sh \
+  --equal-port 26667 --equal-config /root/iotdb-morsel-equal/conf/iotdb-system.properties \
+  --lpt-cli /root/iotdb-morsel-lpt/sbin/start-cli.sh \
+  --lpt-port 36667 --lpt-config /root/iotdb-morsel-lpt/conf/iotdb-system.properties
+```
+
+Both SQL files are read-only: the first must start with `EXPLAIN ANALYZE`; the second must be its
+corresponding `SELECT`. The resulting `morsel-balance-acceptance.json` records every parsed driver,
+the result hashes, copied configuration hashes, and explicit limitations. It does not attribute
+fragment-level backpressure to an individual morsel: the raw plans retain the fragment blocked
+queue fields until that instrumentation is implemented.
+
 Copy the relevant keys from `config/iotdb-system.properties.template` into each deployment's
 own `conf/iotdb-system.properties`; do not edit a shared production/baseline configuration. Pass
 those exact files through `--config` so they are copied into the evidence directory.
