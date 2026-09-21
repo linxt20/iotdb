@@ -21,12 +21,18 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -60,6 +66,7 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -272,6 +279,124 @@ public class DeviceTableScanParallelPipelineTest {
     }
   }
 
+  /**
+   * ORDER BY time is not safe with a CollectOperator: every table scan emits one device at a time.
+   * With the experiment enabled, each sub driver therefore merges its single-device scans first,
+   * and the root merges those already sorted streams. This asserts the operator-tree shape that
+   * protects that invariant rather than merely counting drivers.
+   */
+  @Test
+  public void testOrderedParallelScanBuildsTwoLevelMergeTree() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    DeviceTableScanNode scanNode = initDeviceTableScanNode(8);
+    Symbol time = new Symbol("time");
+    SortNode sortNode =
+        new SortNode(
+            new PlanNodeId("ordered-sort"),
+            scanNode,
+            new OrderingScheme(
+                Collections.singletonList(time),
+                Collections.singletonMap(time, SortOrder.ASC_NULLS_FIRST)),
+            false,
+            false);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext("ordered_parallel_scan");
+    context.setDegreeOfParallelism(4);
+
+    Operator root = sortNode.accept(generator, context);
+    try {
+      assertEquals(TableMergeSortOperator.class, root.getClass());
+      assertEquals("4", root.getOperatorContext().getSpecifiedInfo().get("Merge sort branches"));
+      assertEquals(4, context.getPipelineNumber());
+      assertEquals(4, context.getExchangeSumNum());
+      for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
+        assertEquals(TableMergeSortOperator.class, driverFactory.getOperation().getClass());
+        DataDriverContext dataDriverContext = (DataDriverContext) driverFactory.getDriverContext();
+        assertEquals(2, dataDriverContext.getSourceOperators().size());
+        assertEquals(
+            "2",
+            driverFactory
+                .getOperation()
+                .getOperatorContext()
+                .getSpecifiedInfo()
+                .get("Merge sort branches"));
+      }
+    } finally {
+      closeQuietly(root);
+      for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
+        closeQuietly(driverFactory.getOperation());
+      }
+      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
+    }
+  }
+
+  /** Device (TAG) then time has the same per-device source invariant as ORDER BY time. */
+  @Test
+  public void testOrderedParallelScanSupportsDeviceThenTime() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    DeviceTableScanNode scanNode = initDeviceTableScanNode(8);
+    Symbol tag = new Symbol("tag1");
+    Symbol time = new Symbol("time");
+    Map<Symbol, SortOrder> ordering = new HashMap<>();
+    ordering.put(tag, SortOrder.ASC_NULLS_FIRST);
+    ordering.put(time, SortOrder.ASC_NULLS_FIRST);
+    StreamSortNode sortNode =
+        new StreamSortNode(
+            new PlanNodeId("device-time-sort"),
+            scanNode,
+            new OrderingScheme(Arrays.asList(tag, time), ordering),
+            false,
+            true,
+            1);
+    LocalExecutionPlanContext context =
+        createLocalExecutionPlanContext("device_time_ordered_parallel_scan");
+    context.setDegreeOfParallelism(4);
+
+    Operator root = sortNode.accept(generator, context);
+    try {
+      assertEquals(TableMergeSortOperator.class, root.getClass());
+      assertEquals("4", root.getOperatorContext().getSpecifiedInfo().get("Merge sort branches"));
+      assertEquals(4, context.getPipelineNumber());
+      assertEquals(4, context.getExchangeSumNum());
+    } finally {
+      closeQuietly(root);
+      for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
+        closeQuietly(driverFactory.getOperation());
+      }
+      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
+    }
+  }
+
+  /** A field key has no per-device ordering guarantee and must retain the ordinary sort path. */
+  @Test
+  public void testOrderedParallelScanRejectsFieldOrdering() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    DeviceTableScanNode scanNode = initDeviceTableScanNode(8);
+    Symbol field = new Symbol("s1");
+    SortNode sortNode =
+        new SortNode(
+            new PlanNodeId("field-sort"),
+            scanNode,
+            new OrderingScheme(
+                Collections.singletonList(field),
+                Collections.singletonMap(field, SortOrder.ASC_NULLS_FIRST)),
+            false,
+            false);
+    LocalExecutionPlanContext context = createLocalExecutionPlanContext("field_ordered_scan");
+    context.setDegreeOfParallelism(4);
+
+    Operator root = sortNode.accept(generator, context);
+    try {
+      assertEquals(TableSortOperator.class, root.getClass());
+      assertEquals(0, context.getPipelineNumber());
+      assertEquals(0, context.getExchangeSumNum());
+    } finally {
+      closeQuietly(root);
+      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
+    }
+  }
+
   private LocalExecutionPlanContext createLocalExecutionPlanContext(String queryId) {
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(new QueryId(queryId), 0), "stub-instance");
@@ -282,8 +407,12 @@ public class DeviceTableScanParallelPipelineTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     fragmentInstanceContext.setDataRegion(dataRegion);
 
+    TypeProvider typeProvider = new TypeProvider();
+    typeProvider.putTableModelType(new Symbol("time"), TypeFactory.getType(TSDataType.TIMESTAMP));
+    typeProvider.putTableModelType(new Symbol("tag1"), TypeFactory.getType(TSDataType.STRING));
+    typeProvider.putTableModelType(new Symbol("s1"), TypeFactory.getType(TSDataType.INT32));
     return new LocalExecutionPlanContext(
-        new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));
+        typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
   }
 
   private DeviceTableScanNode initDeviceTableScanNode(int deviceNum) {

@@ -560,6 +560,17 @@ public class TableDistributedPlanGenerator
     if (childrenNodes.size() == 1) {
       if (canSortEliminated(
           node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
+        // The local execution planner normally drops this redundant SortNode because the scan is
+        // already in the requested order. With the guarded ordered-parallel-scan experiment on,
+        // retain it as an execution marker instead: DataNodeTableOperatorGenerator replaces the
+        // one DeviceTableScan child with a two-level local merge tree. If it decides the concrete
+        // scan cannot be split (e.g. spilled entries), the ordinary SortOperator remains a safe
+        // fallback. This marker is serialized with the fragment, unlike a transient scan flag.
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+            && childrenNodes.get(0) instanceof DeviceTableScanNode) {
+          node.setChild(childrenNodes.get(0));
+          return Collections.singletonList(node);
+        }
         return childrenNodes;
       } else {
         node.setChild(childrenNodes.get(0));
@@ -619,6 +630,13 @@ public class TableDistributedPlanGenerator
     if (childrenNodes.size() == 1) {
       if (canSortEliminated(
           node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
+        // See visitSort: retain the otherwise redundant node as the serialized marker consumed by
+        // the DataNode's guarded ordered-parallel merge-tree implementation.
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+            && childrenNodes.get(0) instanceof DeviceTableScanNode) {
+          node.setChild(childrenNodes.get(0));
+          return Collections.singletonList(node);
+        }
         return childrenNodes;
       } else {
         node.setChild(childrenNodes.get(0));

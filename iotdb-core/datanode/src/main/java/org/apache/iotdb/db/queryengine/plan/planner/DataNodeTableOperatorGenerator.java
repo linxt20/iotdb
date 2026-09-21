@@ -26,6 +26,7 @@ import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
@@ -46,8 +47,11 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
@@ -204,6 +208,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
@@ -1314,6 +1319,48 @@ public class DataNodeTableOperatorGenerator
     return tableScanOperator;
   }
 
+  /**
+   * Builds a two-level merge tree for an ORDER BY that every per-device scan already satisfies.
+   * Each extra driver merges its own device scans before publishing a sorted stream to the root,
+   * which then merges those streams. Keeping a plain {@code TableSortOperator} out of this path is
+   * important: a CollectOperator would destroy the ordering before that sort got a chance to see
+   * it.
+   *
+   * <p>The optimization is deliberately narrow. It accepts only device/attribute keys followed by
+   * the time column, whose direction must be the scan direction. Field sorting, a time key in the
+   * middle, spilled device entries and a globally pushed-down limit/offset retain the established
+   * single-stream sort path.
+   */
+  @Override
+  public Operator visitSort(SortNode node, LocalExecutionPlanContext context) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+        || !(node.getChild() instanceof DeviceTableScanNode)) {
+      return super.visitSort(node, context);
+    }
+
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
+        || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
+      return super.visitSort(node, context);
+    }
+    return constructParallelOrderedDeviceTableScan(scanNode, node, context);
+  }
+
+  @Override
+  public Operator visitStreamSort(StreamSortNode node, LocalExecutionPlanContext context) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+        || !(node.getChild() instanceof DeviceTableScanNode)) {
+      return super.visitStreamSort(node, context);
+    }
+
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
+        || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
+      return super.visitStreamSort(node, context);
+    }
+    return constructParallelOrderedDeviceTableScan(scanNode, node, context);
+  }
+
   @Override
   public Operator visitExternalTsFileScan(
       ExternalTsFileScanNode node, LocalExecutionPlanContext context) {
@@ -1365,6 +1412,13 @@ public class DataNodeTableOperatorGenerator
    */
   private boolean canSplitDeviceTableScanIntoParallelPipelines(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    return node.isAllowParallelScan()
+        && canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(node, context);
+  }
+
+  /** Conditions shared by unordered splits and ordered merge-tree splits. */
+  private boolean canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
     boolean hasGlobalPushDownLimitOffset =
         (node.getPushDownLimit() > 0 || node.getPushDownOffset() > 0)
             && !node.isPushLimitToEachDevice();
@@ -1373,12 +1427,136 @@ public class DataNodeTableOperatorGenerator
     // DeviceEntryDataSetHandle instead (and deviceEntries is empty), which cannot be safely split
     // across parallel drivers (the segment source is stateful and deletes segments on read). So we
     // deliberately fall back to a single scan stream in the spill scenario.
-    return node.isAllowParallelScan()
-        && context.getDegreeOfParallelism() > 1
+    return context.getDegreeOfParallelism() > 1
         && !node.getDeviceEntryDataSetHandle().isPresent()
         && node.getDeviceEntries() != null
         && node.getDeviceEntries().size() > 1
         && !hasGlobalPushDownLimitOffset;
+  }
+
+  /**
+   * A table scan consumes one device at a time, but its rows for that one device are naturally in
+   * scan-time order. Consequently a merge tree is safe precisely for constant per-device keys
+   * (TAG/ATTRIBUTE) followed by TIME. Anything else has to keep the regular TableSortOperator.
+   */
+  private static boolean isNaturallyMergeableDeviceScanOrder(
+      DeviceTableScanNode node, OrderingScheme orderingScheme) {
+    final List<Symbol> orderBy = orderingScheme.getOrderBy();
+    if (orderBy.isEmpty()) {
+      return false;
+    }
+    for (int i = 0; i < orderBy.size(); i++) {
+      final ColumnSchema column = node.getAssignments().get(orderBy.get(i));
+      if (column == null) {
+        return false;
+      }
+      if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
+        return i == orderBy.size() - 1
+            && (orderingScheme.getOrdering(orderBy.get(i)).isAscending()
+                == (node.getScanOrder() == Ordering.ASC));
+      }
+      if (column.getColumnCategory() != TsTableColumnCategory.TAG
+          && column.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Splits a naturally ordered table scan into independent driver-local merge trees and merges the
+   * resulting sorted streams in the root driver. A group contains one single-device source per
+   * device: grouping raw multi-device scans would be incorrect for ORDER BY time because such a
+   * scan emits all of one device before advancing to the next.
+   */
+  private Operator constructParallelOrderedDeviceTableScan(
+      DeviceTableScanNode node, SortNode sortNode, LocalExecutionPlanContext context) {
+    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    final int pipelineNum = decideParallelScanPipelineNum(context, deviceEntries.size());
+    final List<List<DeviceEntry>> deviceGroups = partitionIntoGroups(deviceEntries, pipelineNum);
+    final List<TSDataType> dataTypes =
+        getOutputColumnTypes(sortNode, context.getTableTypeProvider());
+    final List<Integer> sortItemIndexes =
+        new ArrayList<>(sortNode.getOrderingScheme().getOrderBy().size());
+    final List<TSDataType> sortItemDataTypes =
+        new ArrayList<>(sortNode.getOrderingScheme().getOrderBy().size());
+    genSortInformation(
+        sortNode.getOutputSymbols(),
+        sortNode.getOrderingScheme(),
+        sortItemIndexes,
+        sortItemDataTypes,
+        context.getTableTypeProvider());
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+    final List<Operator> exchangeOperators = new ArrayList<>(deviceGroups.size());
+    for (int groupIndex = 0; groupIndex < deviceGroups.size(); groupIndex++) {
+      final LocalExecutionPlanContext subContext = context.createSubContext();
+      final List<Operator> deviceScanOperators =
+          new ArrayList<>(deviceGroups.get(groupIndex).size());
+      for (int deviceIndex = 0; deviceIndex < deviceGroups.get(groupIndex).size(); deviceIndex++) {
+        final DeviceTableScanNode deviceScanNode = node.clone();
+        deviceScanNode.setPlanNodeId(
+            new PlanNodeId(
+                node.getPlanNodeId().getId() + "-ordered-" + groupIndex + "-" + deviceIndex));
+        deviceScanNode.setDeviceEntries(
+            Collections.singletonList(deviceGroups.get(groupIndex).get(deviceIndex)));
+        final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+            constructAbstractTableScanOperatorParameter(deviceScanNode, subContext, null);
+        final TableScanOperator deviceScanOperator = new TableScanOperator(parameter);
+        addSource(
+            deviceScanOperator,
+            subContext,
+            deviceScanNode,
+            parameter.measurementColumnNames,
+            parameter.measurementSchemas,
+            parameter.allSensors,
+            DeviceTableScanNode.class.getSimpleName());
+        deviceScanOperators.add(deviceScanOperator);
+      }
+
+      final PlanNodeId localMergeId =
+          new PlanNodeId(node.getPlanNodeId().getId() + "-ordered-local-merge-" + groupIndex);
+      final TableMergeSortOperator localMergeOperator =
+          new TableMergeSortOperator(
+              addOperatorContext(
+                  subContext, localMergeId, TableMergeSortOperator.class.getSimpleName()),
+              deviceScanOperators,
+              dataTypes,
+              getComparatorForTable(
+                  sortNode.getOrderingScheme().getOrderingList(),
+                  sortItemIndexes,
+                  sortItemDataTypes));
+      final ISinkChannel localSinkChannel =
+          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
+              subContext.getDriverContext(), localMergeId.getId());
+      subContext.setISink(localSinkChannel);
+      subContext.addPipelineDriverFactory(localMergeOperator, subContext.getDriverContext(), 0);
+      subContext.constructPipelineMemoryEstimator(
+          localMergeOperator, sortNode.getPlanNodeId(), localMergeId, -1);
+
+      final ExchangeOperator exchangeOperator =
+          new ExchangeOperator(
+              context
+                  .getDriverContext()
+                  .addOperatorContext(
+                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                  ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
+                  context.getDriverContext()),
+              localMergeId,
+              localMergeOperator.calculateMaxReturnSize());
+      context.addExchangeOperator(exchangeOperator);
+      exchangeOperators.add(exchangeOperator);
+    }
+    context.addExchangeSumNum(deviceGroups.size());
+
+    return new TableMergeSortOperator(
+        addOperatorContext(
+            context, sortNode.getPlanNodeId(), TableMergeSortOperator.class.getSimpleName()),
+        exchangeOperators,
+        dataTypes,
+        getComparatorForTable(
+            sortNode.getOrderingScheme().getOrderingList(), sortItemIndexes, sortItemDataTypes));
   }
 
   /**

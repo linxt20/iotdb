@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -164,6 +165,31 @@ public class PropertyDrivenDistributionTest {
             "a TopK merges its branches itself, it must not get a CollectNode/MergeSortNode below it",
             child instanceof CollectNode || child instanceof MergeSortNode);
       }
+    }
+  }
+
+  /**
+   * A scan that already provides device-then-time order normally eliminates its SortNode. The
+   * ordered local-parallel experiment keeps that node as a serialized execution marker so the
+   * DataNode can construct its merge tree even when the fragment runs remotely.
+   */
+  @Test
+  public void orderedParallelScanRetainsNaturalSortAsExecutionMarker() {
+    assumeFalse(propertyDrivenPlanning);
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
+      assertFalse(
+          planAndCollectNodes("SELECT * FROM testdb.table1 ORDER BY tag1, tag2, tag3, time")
+              .stream()
+              .anyMatch(node -> node instanceof SortNode));
+
+      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+      assertTrue(
+          planAndCollectNodes("SELECT * FROM testdb.table1 ORDER BY tag1, tag2, tag3, time")
+              .stream()
+              .anyMatch(node -> node instanceof SortNode));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
     }
   }
 

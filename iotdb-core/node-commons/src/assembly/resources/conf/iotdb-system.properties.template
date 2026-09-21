@@ -1295,6 +1295,12 @@ enable_dop_estimation=false
 # Datatype: boolean
 enable_timepartition_morsel=false
 
+# Whether table ORDER BY queries that can be produced by merging per-device time-ordered scans
+# may split one scan into local parallel drivers. Disabled by default while experimental.
+# effectiveMode: restart
+# Datatype: boolean
+enable_ordered_parallel_scan=false
+
 # The threshold of count map size when calculating the MODE aggregation function
 # effectiveMode: restart
 # Datatype: int

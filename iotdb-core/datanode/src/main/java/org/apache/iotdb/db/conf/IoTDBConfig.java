@@ -374,6 +374,13 @@ public class IoTDBConfig {
    */
   private boolean enableTimePartitionMorsel = false;
 
+  /**
+   * Whether a table ORDER BY whose keys are naturally ordered by per-device scans may use local
+   * merge trees to split one scan into several drivers. Disabled by default while the feature is
+   * experimental.
+   */
+  private boolean enableOrderedParallelScan = false;
+
   private int mergeThresholdOfExplainAnalyze = 10;
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
@@ -2034,6 +2041,14 @@ public class IoTDBConfig {
 
   public boolean isEnableTimePartitionMorsel() {
     return enableTimePartitionMorsel;
+  }
+
+  public void setEnableOrderedParallelScan(boolean enableOrderedParallelScan) {
+    this.enableOrderedParallelScan = enableOrderedParallelScan;
+  }
+
+  public boolean isEnableOrderedParallelScan() {
+    return enableOrderedParallelScan;
   }
 
   public void setMergeThresholdOfExplainAnalyze(int mergeThresholdOfExplainAnalyze) {
