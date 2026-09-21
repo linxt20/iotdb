@@ -355,6 +355,25 @@ public class IoTDBConfig {
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
+  /**
+   * Whether the distributed planner decides where to converge parallel branches by comparing the
+   * distribution/ordering properties required by a parent node against those provided by its
+   * children, instead of the legacy heuristics. When false, the legacy behaviour is used.
+   */
+  private boolean enablePropertyDrivenPlanning = false;
+
+  /**
+   * Whether the number of parallel scan drivers is estimated from the amount of data in the region
+   * instead of using the fixed degree of query parallelism. When false, the fixed value is used.
+   */
+  private boolean enableDopEstimation = false;
+
+  /**
+   * Whether a device table scan may be split along the device x time partition dimension instead of
+   * the device dimension only. When false, only the device dimension is used.
+   */
+  private boolean enableTimePartitionMorsel = false;
+
   private int mergeThresholdOfExplainAnalyze = 10;
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
@@ -1991,6 +2010,30 @@ public class IoTDBConfig {
 
   public int getDegreeOfParallelism() {
     return degreeOfParallelism;
+  }
+
+  public void setEnablePropertyDrivenPlanning(boolean enablePropertyDrivenPlanning) {
+    this.enablePropertyDrivenPlanning = enablePropertyDrivenPlanning;
+  }
+
+  public boolean isEnablePropertyDrivenPlanning() {
+    return enablePropertyDrivenPlanning;
+  }
+
+  public void setEnableDopEstimation(boolean enableDopEstimation) {
+    this.enableDopEstimation = enableDopEstimation;
+  }
+
+  public boolean isEnableDopEstimation() {
+    return enableDopEstimation;
+  }
+
+  public void setEnableTimePartitionMorsel(boolean enableTimePartitionMorsel) {
+    this.enableTimePartitionMorsel = enableTimePartitionMorsel;
+  }
+
+  public boolean isEnableTimePartitionMorsel() {
+    return enableTimePartitionMorsel;
   }
 
   public void setMergeThresholdOfExplainAnalyze(int mergeThresholdOfExplainAnalyze) {

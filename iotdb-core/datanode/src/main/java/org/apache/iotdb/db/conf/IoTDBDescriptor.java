@@ -576,6 +576,23 @@ public class IoTDBDescriptor {
       conf.setDegreeOfParallelism(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
+    conf.setEnablePropertyDrivenPlanning(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_property_driven_planning",
+                Boolean.toString(conf.isEnablePropertyDrivenPlanning()))));
+
+    conf.setEnableDopEstimation(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_dop_estimation", Boolean.toString(conf.isEnableDopEstimation()))));
+
+    conf.setEnableTimePartitionMorsel(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timepartition_morsel",
+                Boolean.toString(conf.isEnableTimePartitionMorsel()))));
+
     conf.setMergeThresholdOfExplainAnalyze(
         Integer.parseInt(
             properties.getProperty(

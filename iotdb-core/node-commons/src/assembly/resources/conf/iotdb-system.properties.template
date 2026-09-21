@@ -1276,6 +1276,25 @@ fragment_instance_dispatch_thread_count=0
 # Datatype: int
 degree_of_query_parallelism=0
 
+# Whether the distributed planner decides where to converge parallel branches by comparing the
+# distribution/ordering properties required by a parent node against those provided by its children.
+# When false, the legacy heuristics are used and the behaviour is unchanged.
+# effectiveMode: restart
+# Datatype: boolean
+enable_property_driven_planning=false
+
+# Whether the number of parallel scan drivers is estimated from the amount of data in the region
+# instead of using the fixed degree_of_query_parallelism above.
+# effectiveMode: restart
+# Datatype: boolean
+enable_dop_estimation=false
+
+# Whether a device table scan may be split along the device x time partition dimension instead of
+# the device dimension only.
+# effectiveMode: restart
+# Datatype: boolean
+enable_timepartition_morsel=false
+
 # The threshold of count map size when calculating the MODE aggregation function
 # effectiveMode: restart
 # Datatype: int
