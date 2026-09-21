@@ -207,6 +207,15 @@ public class TableDistributedPlanGenerator
       final CollectNode collectNode =
           new CollectNode(queryId.genPlanNodeId(), res.get(0).getOutputSymbols());
       res.forEach(collectNode::addChild);
+      // Same reasoning as the CollectNode branch of mergeChildrenViaCollectOrMergeSort: merging
+      // through a CollectNode means no ordering is required from the children, so each scan child
+      // may be split into several parallel scan drivers during local execution planning.
+      res.forEach(
+          child -> {
+            if (child instanceof DeviceTableScanNode) {
+              ((DeviceTableScanNode) child).setAllowParallelScan(true);
+            }
+          });
       return Collections.singletonList(collectNode);
     } else {
       throw new IllegalStateException(DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
@@ -235,13 +244,26 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitExplainAnalyze(
       final ExplainAnalyzeNode node, final PlanContext context) {
-    final List<PlanNode> children = genResult(node.getChild(), context);
-    node.setChild(children.get(0));
+    final List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    // EXPLAIN ANALYZE actually runs the query it wraps, so its child has to be merged the same way
+    // it would be under a plain OutputNode: going through genResult() instead would merge with a
+    // CollectNode even when the children are ordered, and would never mark a scan as parallelizable
+    // (the scan's parent here is this node, not the OutputNode above it). That made every query
+    // observed through EXPLAIN ANALYZE run with a single scan driver, i.e. the tool changed the
+    // plan it was meant to report on.
+    // Unlike dealWithPlainSingleChildNode, the child ordering is deliberately NOT recorded for this
+    // node: it outputs a single text column rather than the rows of its child, so no ordering of
+    // the child survives into the parent.
+    final OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
+    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
     return Collections.singletonList(node);
   }
 
   @Override
   public List<PlanNode> visitCopyTo(CopyToNode node, PlanContext context) {
+    // NOTE: this follows the same pattern visitExplainAnalyze used to have (merging through
+    // genResult rather than mergeChildrenViaCollectOrMergeSort). It is left as is on purpose to
+    // keep this fix small; it is a known shape, not an unnoticed one.
     final List<PlanNode> children = genResult(node.getChild(), context);
     node.setChild(children.get(0));
     return Collections.singletonList(node);
