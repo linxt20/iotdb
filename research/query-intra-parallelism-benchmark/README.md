@@ -172,7 +172,19 @@ the unmodified CLI stdout/stderr remain in `*.raw` for diagnosis.
 Without `--ordered`, rows are canonically sorted before hashing and comparing, appropriate
 for unordered scans. With `--ordered`, row sequence is also checked. The command writes a
 JSON report and exits non-zero on a mismatch. Run it for every workload/DOP pair and retain
-the reports under `<output>/validation/`.
+the reports under `<output>/validation/`. Use the stable layout
+`<output>/validation/<query_id>/dop-<dop>/report.json`, including the DOP=1 self-check.
+
+Before reporting a matrix, run the following read-only acceptance gate. It rejects incomplete
+DOP/cache cells, nullable CPU/RSS/shuffle fields, missing raw attempt records, missing captured
+SHA/configuration, and failed or absent result-equivalence reports:
+
+```bash
+python3 scripts/verify_p0_matrix.py --output /root/iotdb-next-artifacts/p0-<timestamp>
+```
+
+The gate does not contact the cluster and never changes the evidence directory. A failed gate
+means the run is incomplete evidence, not a zero or a successful performance result.
 
 ## What this kit does not prove
 
