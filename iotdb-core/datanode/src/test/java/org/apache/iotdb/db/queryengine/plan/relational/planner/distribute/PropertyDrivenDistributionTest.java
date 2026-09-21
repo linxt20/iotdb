@@ -24,10 +24,14 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -191,26 +195,76 @@ public class PropertyDrivenDistributionTest {
         new ValuesNode(
             new PlanNodeId("unordered_values"), ImmutableList.of(time), Collections.emptyList());
 
-    PlanNode enforced =
+    TableDistributedPlanGenerator generator =
         new TableDistributedPlanGenerator(
-                new MPPQueryContext(
-                    "property enforcement test",
-                    new QueryId("property_enforcement_test"),
-                    SESSION_INFO,
-                    null,
-                    null),
+            new MPPQueryContext(
+                "property enforcement test",
+                new QueryId("property_enforcement_test"),
+                SESSION_INFO,
                 null,
-                null,
-                null)
-            .enforce(
-                PlanProperties.of(DistributionProperty.single(), timeAscending),
-                Collections.singletonList(unorderedChild),
-                null);
+                null),
+            null,
+            null,
+            null);
+    PlanNode enforced =
+        generator.enforce(
+            PlanProperties.of(DistributionProperty.single(), timeAscending),
+            Collections.singletonList(unorderedChild),
+            null);
 
     assertTrue(
         "an unordered physical child cannot satisfy an ordered requirement",
         enforced instanceof SortNode);
     assertEquals(unorderedChild, enforced.getChildren().get(0));
+    assertTrue(
+        "the trace must distinguish the ordered requirement from the unordered physical input",
+        generator.getRuleTrace().get(0).contains("required=Single+Ordered"));
+    assertTrue(generator.getRuleTrace().get(0).contains("provided=Single"));
+    assertTrue(generator.getRuleTrace().get(0).contains("SortNode"));
+  }
+
+  /**
+   * A two-branch unordered consumer makes the distribution decision explicit: Arbitrary inputs do
+   * not satisfy a Single requirement, so CollectNode is the enforcer. This is the minimal
+   * executable regression for the required/provided/enforcer vocabulary used by the SQL trace.
+   */
+  @Test
+  public void unorderedBranchesRecordArbitraryToSingleCollectEnforcement() {
+    assumeFalse(propertyDrivenPlanning);
+    setPropertyDrivenPlanning(true);
+
+    Symbol value = new Symbol("value");
+    TableDistributedPlanGenerator generator =
+        new TableDistributedPlanGenerator(
+            new MPPQueryContext(
+                "property enforcement collect test",
+                new QueryId("property_enforcement_collect_test"),
+                SESSION_INFO,
+                null,
+                null),
+            null,
+            null,
+            null);
+    PlanNode enforced =
+        generator.enforce(
+            PlanProperties.singleUnordered(),
+            ImmutableList.of(
+                new ValuesNode(
+                    new PlanNodeId("first_values"),
+                    ImmutableList.of(value),
+                    Collections.emptyList()),
+                new ValuesNode(
+                    new PlanNodeId("second_values"),
+                    ImmutableList.of(value),
+                    Collections.emptyList())),
+            null);
+
+    assertTrue(enforced instanceof CollectNode);
+    assertEquals(2, enforced.getChildren().size());
+    String trace = generator.getRuleTrace().get(0);
+    assertTrue(trace.contains("required=Single"));
+    assertTrue(trace.contains("provided=Arbitrary"));
+    assertTrue(trace.contains("CollectNode"));
   }
 
   /**
@@ -408,6 +462,73 @@ public class PropertyDrivenDistributionTest {
   }
 
   /**
+   * A computed project is deliberately kept above its child rather than copied to each scan branch.
+   * It therefore has no consuming Collect/MergeSort enforcer in the current static planner, and the
+   * safe fallback is a non-splittable scan. This is an explicit coverage gap, not evidence that
+   * projection has become data-parallel.
+   */
+  @Test
+  public void computedProjectDocumentsTheNoEnforcerFallback() {
+    List<PlanNode> nodes = planAndCollectNodes("SELECT s1 + 1 AS projected_s1 FROM testdb.table1");
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof ProjectNode));
+    assertAllScansForbidParallelism(
+        nodes,
+        "without a branch-copying or collecting project rule, the computed projection stays serial");
+  }
+
+  /**
+   * A scalar aggregation is a global consumer. Its final aggregation is the serialization point;
+   * unlike a filter/project it therefore cannot promise scan-driver parallelism in the current
+   * static plan. This documents the intentional fallback until partial/final aggregation gains a
+   * consumed Partitioned(keys) property.
+   */
+  @Test
+  public void scalarAggregationUsesAForcedSerializationFallback() {
+    List<PlanNode> nodes = planAndCollectNodes("SELECT count(*) FROM testdb.table1");
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof AggregationNode));
+    assertAllScansForbidParallelism(
+        nodes, "a scalar final aggregation must keep its input on one logical stream");
+  }
+
+  /**
+   * UNION ALL is not an ordering-preserving convergence point. It keeps branches separate, so no
+   * Collect/MergeSort enforcer is inserted below the union and the static planner does not mark
+   * either scan as locally splittable.
+   */
+  @Test
+  public void unionKeepsBranchSerializationUntilAnExplicitConsumer() {
+    List<PlanNode> nodes =
+        planAndCollectNodes("SELECT s1 FROM testdb.table1 UNION ALL SELECT s1 FROM testdb.table1");
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof UnionNode));
+    assertFalse(
+        "Union itself must not manufacture a global Collect/MergeSort enforcer",
+        nodes.stream()
+            .anyMatch(node -> node instanceof CollectNode || node instanceof MergeSortNode));
+    assertAllScansForbidParallelism(
+        nodes, "without an explicit consuming enforcer union branches retain the safe fallback");
+  }
+
+  /**
+   * Equi-join inputs are sorted/merged by the existing merge-sort join path. The scans must stay
+   * serial in this P0 implementation because Partitioned(joinKeys) is still not executable: there
+   * is no hash repartition exchange yet. The assertion is intentionally a guardrail, not a claim
+   * that joins have already become data-parallel.
+   */
+  @Test
+  public void equiJoinDocumentsThePartitionedKeysFallback() {
+    List<PlanNode> nodes =
+        planAndCollectNodes(
+            "SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time");
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof JoinNode));
+    assertTrue(
+        "merge-sort join must expose an ordering enforcer on at least one input",
+        nodes.stream().anyMatch(node -> node instanceof SortNode || node instanceof MergeSortNode));
+    assertAllScansForbidParallelism(
+        nodes,
+        "until Partitioned(joinKeys) is consumed by a hash exchange, equi-join scans stay serial");
+  }
+
+  /**
    * A RowNumber without ORDER BY has no synthetic SortNode below it and must still be plannable.
    */
   @Test
@@ -484,5 +605,15 @@ public class PropertyDrivenDistributionTest {
       scans.add((DeviceTableScanNode) node);
     }
     node.getChildren().forEach(child -> collectScans(child, scans));
+  }
+
+  private static void assertAllScansForbidParallelism(List<PlanNode> nodes, String message) {
+    List<DeviceTableScanNode> scans =
+        nodes.stream()
+            .filter(DeviceTableScanNode.class::isInstance)
+            .map(DeviceTableScanNode.class::cast)
+            .collect(Collectors.toList());
+    assertFalse("expected a table scan", scans.isEmpty());
+    scans.forEach(scan -> assertFalse(message, scan.isAllowParallelScan()));
   }
 }
