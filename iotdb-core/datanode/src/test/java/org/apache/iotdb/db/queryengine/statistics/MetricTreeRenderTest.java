@@ -493,6 +493,43 @@ public class MetricTreeRenderTest {
   }
 
   /**
+   * Time-partition morsels use their own plan-node suffix and must survive the pipeline snapshot.
+   */
+  @Test
+  public void testJsonRendersMorselPipelineWithPlanningAndCompletionEvidence() {
+    PlanNodeId rootId = new PlanNodeId("morselScan");
+    FragmentInstance instance = buildInstance(rootId);
+    TOperatorStatistics morsel = new TOperatorStatistics();
+    morsel.setOperatorType("TableScanOperator");
+    morsel.setTotalExecutionTimeInNanos(2_000_000L);
+    morsel.setOutputRows(123);
+    Map<String, String> specifiedInfo = new HashMap<>();
+    specifiedInfo.put("MORSEL_SCHEDULING", "LPT_TSFILE_BYTES");
+    specifiedInfo.put("MORSEL_ESTIMATED_TSFILE_BYTES", "80");
+    specifiedInfo.put("MORSEL_DRIVER_WALL_TIME_MS", "7");
+    morsel.setSpecifiedInfo(specifiedInfo);
+    Map<String, TOperatorStatistics> operatorStatistics = new HashMap<>();
+    operatorStatistics.put("__pipeline_morselScan_morsel_0", morsel);
+
+    Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStats = new HashMap<>();
+    allStats.put(instance.getId(), buildFiStats(0L, 0L, operatorStatistics));
+
+    com.google.gson.JsonObject fi = firstFi(renderJson(instance, allStats));
+    com.google.gson.JsonObject pipeline =
+        fi.getAsJsonArray("parallelPipelines").get(0).getAsJsonObject();
+    assertEquals("morselScan-morsel-0", pipeline.get("planNodeId").getAsString());
+    assertEquals(
+        "80",
+        pipeline
+            .getAsJsonObject("specifiedInfo")
+            .get("MORSEL_ESTIMATED_TSFILE_BYTES")
+            .getAsString());
+    assertEquals(
+        "7",
+        pipeline.getAsJsonObject("specifiedInfo").get("MORSEL_DRIVER_WALL_TIME_MS").getAsString());
+  }
+
+  /**
    * Merging appends specifiedInfo values with a space for sink and shuffle operators, so the
    * injected TsBlock count can arrive as "10 5". Both drawers must report the sum (15) rather than
    * echoing the raw string or throwing.

@@ -1701,8 +1701,13 @@ public class DataNodeTableOperatorGenerator
     // original contiguous, equal-count split, preserving its established behavior.
     final TsFileManager tsFileManager =
         ((DataRegion) context.getInstanceContext().getDataRegion()).getTsFileManager();
+    final Optional<TimePartitionMorselSchedule> weightedSchedule =
+        IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorselSizeWeighting()
+            ? partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroupCount)
+            : Optional.empty();
     final List<List<Long>> tpGroups =
-        partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroupCount)
+        weightedSchedule
+            .map(TimePartitionMorselSchedule::groups)
             .orElseGet(() -> partitionIntoGroups(sortedTpIds, tpGroupCount));
     final List<List<DeviceEntry>> deviceGroups =
         partitionIntoGroups(deviceEntries, deviceGroupCount);
@@ -1737,6 +1742,12 @@ public class DataNodeTableOperatorGenerator
         final LocalExecutionPlanContext subContext = context.createSubContext();
         final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
             constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
+        annotateTimePartitionMorsel(
+            parameter,
+            tpGroup,
+            deviceGroup.size(),
+            weightedSchedule.map(schedule -> schedule.estimatedBytes(tpGroup)).orElse(-1L),
+            weightedSchedule.isPresent());
         final TableScanOperator subScanOperator = new TableScanOperator(parameter);
         addSource(
             subScanOperator,
@@ -1798,6 +1809,28 @@ public class DataNodeTableOperatorGenerator
   }
 
   /**
+   * Attach plan-time work estimates to each morsel's own scan context. The normal operator
+   * statistics pipeline carries this information through EXPLAIN ANALYZE beside actual output rows
+   * and CPU time, which makes the scheduling decision and its observed long tail comparable from a
+   * single exported plan.
+   */
+  private static void annotateTimePartitionMorsel(
+      AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter,
+      List<Long> timePartitions,
+      int deviceCount,
+      long estimatedBytes,
+      boolean sizeWeighted) {
+    parameter.context.recordSpecifiedInfo(
+        "MORSEL_SCHEDULING", sizeWeighted ? "LPT_TSFILE_BYTES" : "EQUAL_PARTITION_COUNT");
+    parameter.context.recordSpecifiedInfo("MORSEL_TIME_PARTITIONS", timePartitions.toString());
+    parameter.context.recordSpecifiedInfo("MORSEL_DEVICE_COUNT", Integer.toString(deviceCount));
+    if (estimatedBytes >= 0) {
+      parameter.context.recordSpecifiedInfo(
+          "MORSEL_ESTIMATED_TSFILE_BYTES", Long.toString(estimatedBytes));
+    }
+  }
+
+  /**
    * Partition time partitions by their TsFile sizes with deterministic largest-processing-time
    * scheduling. A time partition remains indivisible, so this greedily assigns the next largest
    * partition to the currently lightest group. For this static estimate, that is substantially less
@@ -1808,7 +1841,7 @@ public class DataNodeTableOperatorGenerator
    * a file size cannot be read, this method returns empty and the caller uses the legacy split.
    * This never changes scan coverage or correctness; it only declines a scheduling optimization.
    */
-  private static Optional<List<List<Long>>> partitionTimePartitionsBySize(
+  private static Optional<TimePartitionMorselSchedule> partitionTimePartitionsBySize(
       TsFileManager tsFileManager, List<Long> timePartitions, int groupCount) {
     if (tsFileManager == null || timePartitions.isEmpty()) {
       return Optional.empty();
@@ -1884,7 +1917,35 @@ public class DataNodeTableOperatorGenerator
       Collections.sort(group.timePartitions);
       result.add(group.timePartitions);
     }
-    return Optional.of(result);
+    final Map<Long, Long> sizeByTimePartition = new HashMap<>(weights.size());
+    for (TimePartitionWeight weight : weights) {
+      sizeByTimePartition.put(weight.timePartition(), weight.size());
+    }
+    return Optional.of(new TimePartitionMorselSchedule(result, sizeByTimePartition));
+  }
+
+  private static final class TimePartitionMorselSchedule {
+    private final List<List<Long>> groups;
+    private final Map<Long, Long> sizeByTimePartition;
+
+    private TimePartitionMorselSchedule(
+        List<List<Long>> groups, Map<Long, Long> sizeByTimePartition) {
+      this.groups = groups;
+      this.sizeByTimePartition = sizeByTimePartition;
+    }
+
+    private List<List<Long>> groups() {
+      return groups;
+    }
+
+    private long estimatedBytes(List<Long> timePartitions) {
+      long estimatedBytes = 0L;
+      for (Long timePartition : timePartitions) {
+        estimatedBytes =
+            LongMath.saturatedAdd(estimatedBytes, sizeByTimePartition.get(timePartition));
+      }
+      return estimatedBytes;
+    }
   }
 
   private static final class TimePartitionWeight {

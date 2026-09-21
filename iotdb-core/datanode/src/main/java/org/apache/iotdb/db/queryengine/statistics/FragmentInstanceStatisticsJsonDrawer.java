@@ -432,9 +432,7 @@ public class FragmentInstanceStatisticsJsonDrawer {
                   entry
                       .getKey()
                       .substring(FragmentInstanceStatisticsDrawer.PIPELINE_KEY_PREFIX.length())
-                      .replaceFirst(
-                          "_parallel_(\\d+)$",
-                          FragmentInstanceStatisticsDrawer.PARALLEL_SUB_SCAN_INFIX + "$1");
+                      .replaceFirst("_(parallel|morsel)_(\\d+)$", "-$1-$2");
               pipeline.addProperty("planNodeId", nodeId);
               pipeline.addProperty("operatorType", op.getOperatorType());
               pipeline.addProperty(

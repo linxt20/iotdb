@@ -32,6 +32,10 @@ It proves three narrow claims for the current static implementation:
    headers and row sequence.
 3. An enabled time-partition morsel candidate and its morsel-disabled fallback return the same
    headers and row multiset (including duplicate counts).
+4. The saved morsel `EXPLAIN ANALYZE` contains per-driver actual output, CPU time, TsBlock count,
+   elapsed driver wall time, its assigned time partitions, and (for the LPT arm) estimated TsFile
+   bytes. This lets a reviewer compare equal-count and LPT-size grouping without treating the
+   static estimate as observed work.
 
 It does **not** prove hash repartition, `Partitioned(keys)`, group-by repartition, or join
 repartition. Those capabilities need their own physical-exchange acceptance once implemented.
@@ -50,6 +54,28 @@ fixed-DOP acceptance.
 | enabled | property planning, time-partition morsels, and ordered scans enabled | candidate path and EXPLAIN trace |
 | ordered fallback | `enable_ordered_parallel_scan=false` | ordered correctness control |
 | morsel fallback | `enable_timepartition_morsel=false` | morsel correctness control |
+
+For the P1 balance experiment, run a fourth isolated endpoint with
+`enable_timepartition_morsel=true` and `enable_timepartition_morsel_size_weighting=false`. Compare
+its exported `EXPLAIN ANALYZE` against an otherwise identical endpoint where the weighting flag is
+true. Retain both raw plans and compare the `MORSEL_*` fields per `-morsel-` pipeline: estimated
+TsFile bytes are planning evidence, while output rows, CPU time, TsBlock count, and driver wall
+time are observed execution evidence. The maximum driver wall time is the scan-stage long-tail
+proxy; it is not a whole-query latency claim.
+
+After preserving the two raw `EXPLAIN ANALYZE` stdout files, generate a reviewable comparison
+without accessing the server again:
+
+```bash
+python3 scripts/summarize_morsel_evidence.py \
+  --lpt-plan raw/lpt-morsel-plan.stdout \
+  --equal-count-plan raw/equal-count-morsel-plan.stdout \
+  --output morsel-balance.json
+```
+
+The summarizer rejects plans that lack morsel scheduling, assigned partition, or actual driver
+wall-time fields. It preserves every parsed per-driver record and reports maximum driver wall time
+and CPU time for both arms. It does not infer a speedup or whole-query latency from these records.
 
 Copy the relevant keys from `config/iotdb-system.properties.template` into each deployment's
 own `conf/iotdb-system.properties`; do not edit a shared production/baseline configuration. Pass

@@ -48,6 +48,7 @@ public class FragmentInstanceStatisticsDrawer {
   // Infix used by DataNodeTableOperatorGenerator when it splits one DeviceTableScanNode into
   // per-driver sub scans, producing planNodeIds of the form "<nodeId>-parallel-<i>".
   public static final String PARALLEL_SUB_SCAN_INFIX = "-parallel-";
+  public static final String MORSEL_SUB_SCAN_INFIX = "-morsel-";
 
   public void renderPlanStatistics(MPPQueryContext context) {
     addLine(
@@ -653,7 +654,7 @@ public class FragmentInstanceStatisticsDrawer {
                   entry
                       .getKey()
                       .substring(PIPELINE_KEY_PREFIX.length())
-                      .replaceFirst("_parallel_(\\d+)$", PARALLEL_SUB_SCAN_INFIX + "$1");
+                      .replaceFirst("_(parallel|morsel)_(\\d+)$", "-$1-$2");
               addLine(
                   singleFragmentInstanceArea,
                   3,

@@ -79,6 +79,7 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -283,6 +284,7 @@ public class DeviceTimePartitionMorselTest {
   public void testWeightedTimePartitionMorselsBalanceSkewAndPreserveCoverage() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorselSizeWeighting(true);
     try {
       Map<Long, Long> partitionSizes = new LinkedHashMap<>();
       partitionSizes.put(0L, 70L);
@@ -305,6 +307,11 @@ public class DeviceTimePartitionMorselTest {
             partitionGroupsByDriver(context));
         // The maximum group weight is 80 rather than 130 for a contiguous equal-count split.
         assertEquals(80L, maxGroupWeight(partitionGroupsByDriver(context), partitionSizes));
+        assertMorselEvidence(
+            context,
+            Arrays.asList(80L, 70L),
+            "LPT_TSFILE_BYTES",
+            Arrays.asList("[0, 6]", "[2, 4]"));
         assertProductSplitIsComplete(context, 6, new ArrayList<>(partitionSizes.keySet()));
       } finally {
         closeQuietly(root);
@@ -313,6 +320,53 @@ public class DeviceTimePartitionMorselTest {
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
       IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorselSizeWeighting(true);
+    }
+  }
+
+  /**
+   * The control arm keeps exactly the same safe morsel decomposition but forms time groups by
+   * count. Its per-driver EXPLAIN ANALYZE annotations make an equal-count versus LPT comparison
+   * reproducible without pretending that unavailable metadata is a zero-byte estimate.
+   */
+  @Test
+  public void testEqualCountMorselsExposeControlEvidence() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorselSizeWeighting(false);
+    try {
+      Map<Long, Long> partitionSizes = new LinkedHashMap<>();
+      partitionSizes.put(0L, 70L);
+      partitionSizes.put(2L, 60L);
+      partitionSizes.put(4L, 10L);
+      partitionSizes.put(6L, 10L);
+
+      DeviceTableScanNode node = initDeviceTableScanNode(6);
+      node.setAllowParallelScan(true);
+      LocalExecutionPlanContext context =
+          createContext(
+              "tp_morsel_equal_count_evidence", dataRegionWithPartitionFileSizes(partitionSizes));
+      context.setDegreeOfParallelism(2);
+
+      Operator root = node.accept(generator, context);
+      try {
+        assertEquals(
+            Arrays.asList(Arrays.asList(0L, 2L), Arrays.asList(4L, 6L)),
+            partitionGroupsByDriver(context));
+        assertMorselEvidence(
+            context,
+            Arrays.asList(-1L, -1L),
+            "EQUAL_PARTITION_COUNT",
+            Arrays.asList("[0, 2]", "[4, 6]"));
+        assertProductSplitIsComplete(context, 6, new ArrayList<>(partitionSizes.keySet()));
+      } finally {
+        closeQuietly(root);
+        closePipelineOperations(context);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorselSizeWeighting(true);
     }
   }
 
@@ -607,6 +661,30 @@ public class DeviceTimePartitionMorselTest {
       max = Math.max(max, total);
     }
     return max;
+  }
+
+  private void assertMorselEvidence(
+      LocalExecutionPlanContext context,
+      List<Long> expectedBytes,
+      String expectedScheduling,
+      List<String> expectedPartitions) {
+    for (int i = 0; i < context.getPipelineDriverFactories().size(); i++) {
+      Map<String, Object> specifiedInfo =
+          context
+              .getPipelineDriverFactories()
+              .get(i)
+              .getOperation()
+              .getOperatorContext()
+              .getSpecifiedInfo();
+      assertEquals(expectedScheduling, specifiedInfo.get("MORSEL_SCHEDULING"));
+      assertEquals(expectedPartitions.get(i), specifiedInfo.get("MORSEL_TIME_PARTITIONS"));
+      if (expectedBytes.get(i) < 0) {
+        assertFalse(specifiedInfo.containsKey("MORSEL_ESTIMATED_TSFILE_BYTES"));
+      } else {
+        assertEquals(
+            expectedBytes.get(i).toString(), specifiedInfo.get("MORSEL_ESTIMATED_TSFILE_BYTES"));
+      }
+    }
   }
 
   private List<List<Long>> partitionGroupsForContext(String queryId, Map<Long, Long> partitionSizes)

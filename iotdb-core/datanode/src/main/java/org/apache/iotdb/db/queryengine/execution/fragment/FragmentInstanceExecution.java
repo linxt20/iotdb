@@ -218,7 +218,7 @@ public class FragmentInstanceExecution {
       // these operators happened to become the overload leader, its entry would be mutated into
       // the aggregate of every sibling, and the per-driver breakdown would report the total.
       String planNodeIdStr = operatorContext.getPlanNodeId().toString();
-      if (planNodeIdStr.contains("-parallel-")) {
+      if (isParallelSubScan(planNodeIdStr)) {
         setOperatorStatistics(operatorStatistics, operatorContext);
         pipelineSnapshots.put(
             "__pipeline_" + planNodeIdStr.replace('-', '_'),
@@ -252,6 +252,10 @@ public class FragmentInstanceExecution {
       }
     }
     return needMerge;
+  }
+
+  private static boolean isParallelSubScan(String planNodeId) {
+    return planNodeId.contains("-parallel-") || planNodeId.contains("-morsel-");
   }
 
   /** Shallow copy of an operator's statistics, including its specifiedInfo map. */

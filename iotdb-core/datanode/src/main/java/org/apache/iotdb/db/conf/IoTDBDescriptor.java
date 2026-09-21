@@ -593,6 +593,12 @@ public class IoTDBDescriptor {
                 "enable_timepartition_morsel",
                 Boolean.toString(conf.isEnableTimePartitionMorsel()))));
 
+    conf.setEnableTimePartitionMorselSizeWeighting(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timepartition_morsel_size_weighting",
+                Boolean.toString(conf.isEnableTimePartitionMorselSizeWeighting()))));
+
     conf.setEnableOrderedParallelScan(
         Boolean.parseBoolean(
             properties.getProperty(

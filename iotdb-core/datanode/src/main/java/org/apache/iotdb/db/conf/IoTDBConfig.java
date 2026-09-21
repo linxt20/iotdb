@@ -375,6 +375,13 @@ public class IoTDBConfig {
   private boolean enableTimePartitionMorsel = false;
 
   /**
+   * Whether a time-partition morsel uses TsFile sizes to form its groups with largest-processing-
+   * time scheduling. When false, the same morsel path uses deterministic equal-count groups, which
+   * provides the control arm for load-balance evidence.
+   */
+  private boolean enableTimePartitionMorselSizeWeighting = true;
+
+  /**
    * Whether a table ORDER BY whose keys are naturally ordered by per-device scans may use local
    * merge trees to split one scan into several drivers. Disabled by default while the feature is
    * experimental.
@@ -2041,6 +2048,15 @@ public class IoTDBConfig {
 
   public boolean isEnableTimePartitionMorsel() {
     return enableTimePartitionMorsel;
+  }
+
+  public void setEnableTimePartitionMorselSizeWeighting(
+      boolean enableTimePartitionMorselSizeWeighting) {
+    this.enableTimePartitionMorselSizeWeighting = enableTimePartitionMorselSizeWeighting;
+  }
+
+  public boolean isEnableTimePartitionMorselSizeWeighting() {
+    return enableTimePartitionMorselSizeWeighting;
   }
 
   public void setEnableOrderedParallelScan(boolean enableOrderedParallelScan) {

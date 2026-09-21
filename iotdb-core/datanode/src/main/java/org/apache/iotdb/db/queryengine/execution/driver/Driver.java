@@ -75,6 +75,7 @@ public abstract class Driver implements IDriver {
   protected final DriverLock exclusiveLock = new DriverLock();
 
   private boolean isHighestPriority;
+  private long firstProcessNanos = -1;
 
   protected enum State {
     ALIVE,
@@ -139,6 +140,9 @@ public abstract class Driver implements IDriver {
             () -> {
               // only keep doing query processing if driver state is still alive
               if (state.get() == State.ALIVE) {
+                if (firstProcessNanos < 0) {
+                  firstProcessNanos = System.nanoTime();
+                }
                 long start = System.nanoTime();
                 // initialization may be time-consuming, so we keep it in the processFor method
                 // in normal case, it won't cause deadlock and should finish soon, otherwise it will
@@ -434,6 +438,7 @@ public abstract class Driver implements IDriver {
       // record operator execution statistics to metrics
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
       for (OperatorContext operatorContext : operatorContexts) {
+        recordTimePartitionMorselCompletion(operatorContext);
         String operatorType = operatorContext.getOperatorType();
         long[] value = operatorType2TotalCost.computeIfAbsent(operatorType, k -> new long[2]);
         value[0] += operatorContext.getTotalExecutionTimeInNanos();
@@ -462,6 +467,21 @@ public abstract class Driver implements IDriver {
       }
     }
     return inFlightException;
+  }
+
+  /**
+   * A time-partition morsel marks its scan context at planning time. Capture the elapsed wall time
+   * from its first scheduled processing slice through driver close so EXPLAIN ANALYZE can expose a
+   * real per-driver completion tail alongside the static TsFile-size estimate.
+   */
+  private void recordTimePartitionMorselCompletion(OperatorContext operatorContext) {
+    if (firstProcessNanos < 0
+        || !operatorContext.getSpecifiedInfo().containsKey("MORSEL_SCHEDULING")) {
+      return;
+    }
+    operatorContext.recordSpecifiedInfo(
+        "MORSEL_DRIVER_WALL_TIME_MS",
+        Long.toString(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - firstProcessNanos)));
   }
 
   private void cleanTmpFile() {

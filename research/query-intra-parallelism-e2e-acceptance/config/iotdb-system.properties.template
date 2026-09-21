@@ -15,4 +15,7 @@ enable_property_driven_planning=true
 # Enabled endpoint: both true. Ordered-fallback endpoint: set ordered false. Morsel-fallback
 # endpoint: set morsel false. Do not claim a feature path unless its corresponding endpoint is on.
 enable_timepartition_morsel=true
+# Use true for the LPT-by-TsFile-size candidate and false for the equal-count control. Keep the
+# data, DOP and every other setting identical; archive both EXPLAIN ANALYZE exports.
+enable_timepartition_morsel_size_weighting=true
 enable_ordered_parallel_scan=true
