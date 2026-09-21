@@ -29,10 +29,12 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Collect
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -177,6 +179,9 @@ public class PropertyDrivenDistributionTest {
             child instanceof CollectNode || child instanceof MergeSortNode);
       }
     }
+    assertAllScansForbidParallelism(
+        nodes,
+        "a global TopK is order-sensitive, so this static path must not split its scan drivers");
   }
 
   /**
@@ -367,6 +372,15 @@ public class PropertyDrivenDistributionTest {
       "SELECT * FROM testdb.table1 LIMIT 10",
       "SELECT * FROM testdb.table1 WHERE s1 > 1",
       "SELECT * FROM testdb.table1 WHERE s1 > 1 ORDER BY time",
+      "SELECT s1 + 1 AS projected_s1 FROM testdb.table1",
+      "SELECT count(*) FROM testdb.table1",
+      "SELECT s1, count(*) FROM testdb.table1 GROUP BY s1",
+      "SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time",
+      "SELECT s1 FROM testdb.table1 UNION ALL SELECT s1 FROM testdb.table1",
+      "SELECT row_number() OVER () FROM testdb.table1",
+      "SELECT row_number() OVER (ORDER BY time) FROM testdb.table1",
+      "SELECT count(*) OVER () FROM testdb.table1",
+      "SELECT count(s1) OVER (ORDER BY time) FROM testdb.table1",
       "EXPLAIN ANALYZE SELECT * FROM testdb.table1",
     };
 
@@ -556,7 +570,11 @@ public class PropertyDrivenDistributionTest {
    */
   @Test
   public void unorderedRowNumberPlansWithoutSyntheticSort() {
-    assertFalse(planAndCollectScans("SELECT row_number() OVER () FROM testdb.table1").isEmpty());
+    List<PlanNode> nodes = planAndCollectNodes("SELECT row_number() OVER () FROM testdb.table1");
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof RowNumberNode));
+    assertFalse(
+        "row_number() OVER () must not invent an ordering enforcer",
+        nodes.stream().anyMatch(node -> node instanceof SortNode || node instanceof MergeSortNode));
   }
 
   /**
@@ -566,7 +584,11 @@ public class PropertyDrivenDistributionTest {
    */
   @Test
   public void unorderedWindowPlansWithoutOrderingRequirement() {
-    assertFalse(planAndCollectScans("SELECT count(*) OVER () FROM testdb.table1").isEmpty());
+    List<PlanNode> nodes = planAndCollectNodes("SELECT count(*) OVER () FROM testdb.table1");
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof WindowNode));
+    assertFalse(
+        "an order-free window must not invent a SortNode/MergeSortNode",
+        nodes.stream().anyMatch(node -> node instanceof SortNode || node instanceof MergeSortNode));
   }
 
   /**
@@ -575,15 +597,27 @@ public class PropertyDrivenDistributionTest {
    */
   @Test
   public void orderedRowNumberForbidsParallelScan() {
-    List<DeviceTableScanNode> scans =
-        planAndCollectScans("SELECT row_number() OVER (ORDER BY time) FROM testdb.table1");
+    List<PlanNode> nodes =
+        planAndCollectNodes("SELECT row_number() OVER (ORDER BY time) FROM testdb.table1");
 
-    assertFalse(scans.isEmpty());
-    for (DeviceTableScanNode scan : scans) {
-      assertFalse(
-          "an order-sensitive RowNumber must not split its scan into parallel drivers",
-          scan.isAllowParallelScan());
-    }
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof RowNumberNode));
+    assertAllScansForbidParallelism(
+        nodes, "an order-sensitive RowNumber must not split its scan into parallel drivers");
+  }
+
+  /**
+   * An ordered aggregate window is subject to the same ordering contract as ordered RowNumber.
+   * The physical source may satisfy that order directly or through a SortNode, so the invariant is
+   * the WindowNode and its non-splittable scan rather than an implementation-specific glue shape.
+   */
+  @Test
+  public void orderedWindowForbidsParallelScan() {
+    List<PlanNode> nodes =
+        planAndCollectNodes("SELECT count(s1) OVER (ORDER BY time) FROM testdb.table1");
+
+    assertTrue(nodes.stream().anyMatch(node -> node instanceof WindowNode));
+    assertAllScansForbidParallelism(
+        nodes, "an ordered window must not split its scan into parallel drivers");
   }
 
   /** Plans the statement against a single data region and returns every scan node in the plan. */
