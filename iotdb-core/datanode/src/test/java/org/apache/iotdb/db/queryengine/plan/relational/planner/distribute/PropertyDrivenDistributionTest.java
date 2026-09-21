@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -57,6 +58,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.util.ArrayList;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -130,6 +132,21 @@ public class PropertyDrivenDistributionTest {
     assertTrue(
         "a FilterNode must pass scan-splitting eligibility to its table scan",
         scans.get(0).isAllowParallelScan());
+  }
+
+  @Test
+  public void parallelScanPermissionSurvivesFragmentSerialization() throws Exception {
+    DeviceTableScanNode original =
+        planAndCollectScans("SELECT * FROM testdb.table1 WHERE s1 > 1").get(0);
+    assertTrue(original.isAllowParallelScan());
+
+    ByteBuffer buffer = ByteBuffer.allocate(16 * 1024);
+    original.serialize(buffer);
+    buffer.flip();
+
+    DeviceTableScanNode restored =
+        (DeviceTableScanNode) PlanNodeDeserializeHelper.deserialize(buffer);
+    assertTrue(restored.isAllowParallelScan());
   }
 
   /** A projection is another transparent wrapper and must preserve scan eligibility. */
