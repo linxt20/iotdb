@@ -86,6 +86,19 @@ port_bound() {
   elif command -v lsof >/dev/null; then lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1
   else die 'Need ss or lsof for mandatory isolated-port safety checks'; fi
 }
+listener_pid() {
+  local port="$1" values
+  if command -v ss >/dev/null; then
+    values="$(ss -H -ltnp "sport = :$port" 2>/dev/null | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' | sort -u)"
+  elif command -v lsof >/dev/null; then
+    values="$(lsof -nP -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | sort -u)"
+  else
+    die 'Need ss or lsof to bind an isolated node PID to its listener'
+  fi
+  [[ "$(printf '%s\n' "$values" | sed '/^$/d' | wc -l | tr -d ' ')" == 1 && "$values" =~ ^[1-9][0-9]*$ ]] \
+    || return 1
+  printf '%s' "$values"
+}
 assert_ports_free() {
   local d n r rpc internal consensus mpp schema data metric p
   while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do
@@ -164,11 +177,21 @@ prepare() {
 classpath() { local j; shopt -s nullglob; local jars=("$DIST"/lib/*.jar); shopt -u nullglob; (IFS=:; printf '%s' "${jars[*]}"); }
 wait_port() { local p="$1" deadline=$((SECONDS + TIMEOUT)); while ((SECONDS < deadline)); do port_bound "$p" && return; sleep .5; done; return 1; }
 start_node() {
-  local d="$1" n="$2" role="$3" rpc="$4" internal="$5" root="$ROOT/$1/$2" conf="$ROOT/$1/$2/conf" logs="$ROOT/$1/$2/logs" data="$ROOT/$1/$2/data" class="$DN_CLASS" prefix=IOTDB log="$ROOT/$1/$2/conf/logback-datanode.xml" port="$4"
+  local d="$1" n="$2" role="$3" rpc="$4" internal="$5" root="$ROOT/$1/$2" conf="$ROOT/$1/$2/conf" logs="$ROOT/$1/$2/logs" data="$ROOT/$1/$2/data" class="$DN_CLASS" prefix=IOTDB log="$ROOT/$1/$2/conf/logback-datanode.xml" port="$4" pid listener cmd
   [[ "$role" == ConfigNode ]] && { class="$CN_CLASS"; prefix=CONFIGNODE; log="$conf/logback-confignode.xml"; port="$internal"; }
   nohup java --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED "-Dlogback.configurationFile=$log" "-D${prefix}_HOME=$DIST" "-D${prefix}_DATA_HOME=$data" "-D${prefix}_CONF=$conf" "-D${prefix}_LOGS=$logs" "-D${prefix}_LOG_DIR=$logs" "-DTSFILE_HOME=$DIST" "-DTSFILE_CONF=$conf" -Dfile.encoding=UTF-8 -Diotdb-foreground=yes -Xms256m -Xmx512m -cp "$(classpath)" "$class" -s >"$logs/stdout.log" 2>"$logs/stderr.log" &
-  local pid=$!; { printf 'pid=%s\nroot=%q\nclass=%q\nstarted_at_utc=%s\n' "$pid" "$root" "$class" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; } > "$root/process.env"
+  pid=$!
   wait_port "$port" || { kill -0 "$pid" 2>/dev/null && kill "$pid" || true; die "Timed out waiting for $n on $port; inspect $logs"; }
+  listener="$(listener_pid "$port")" || {
+    kill -0 "$pid" 2>/dev/null && kill "$pid" || true
+    die "Cannot bind $n to exactly one listener PID on port $port; inspect $logs"
+  }
+  cmd="$(tr '\0' ' ' < "/proc/$listener/cmdline" 2>/dev/null || true)"
+  [[ "$cmd" == *"$root"* && "$cmd" == *"$class"* ]] || {
+    kill -0 "$pid" 2>/dev/null && kill "$pid" || true
+    die "Listener PID $listener on port $port is not isolated node $n"
+  }
+  { printf 'pid=%s\nroot=%q\nclass=%q\nstarted_at_utc=%s\n' "$listener" "$root" "$class" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; } > "$root/process.env"
 }
 start() {
   read_manifest; assert_dist "$DIST"; command -v java >/dev/null || die 'java is absent'; assert_ports_free
