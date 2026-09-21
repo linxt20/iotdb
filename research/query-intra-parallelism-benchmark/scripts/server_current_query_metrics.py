@@ -47,6 +47,18 @@ def canonical_sql(sql: str) -> str:
     return re.sub(r"\s+", " ", sql).strip().rstrip(";").strip().lower()
 
 
+def sql_for_cli(sql: str) -> str:
+    """Remove whole-line comments before passing a workload file through ``start-cli.sh -e``.
+
+    The CLI transport may flatten newlines in an ``-e`` argument.  A file header such as the
+    Apache ``-- Licensed ...`` comment would then comment out the following SELECT.  Do not try
+    to parse arbitrary inline comments or string literals here: workload files only need their
+    standalone header/comment lines removed, while the original text remains archived.
+    """
+
+    return "\n".join(line for line in sql.splitlines() if not re.match(r"^\s*--", line)).strip()
+
+
 def cli_command(args: argparse.Namespace, sql: str) -> tuple[list[str], list[str]]:
     password = os.environ.get(args.password_env)
     if not password:
@@ -122,7 +134,8 @@ def write_json(path: Path, value: Any) -> None:
 
 
 def run_measure(args: argparse.Namespace) -> int:
-    sql = args.sql_file.read_text(encoding="utf-8")
+    original_sql = args.sql_file.read_text(encoding="utf-8")
+    sql = sql_for_cli(original_sql)
     fingerprint = canonical_sql(sql)
     if not fingerprint:
         raise ValueError("SQL file is empty after canonicalization")
@@ -131,7 +144,8 @@ def run_measure(args: argparse.Namespace) -> int:
     args.raw_dir.mkdir(parents=True, exist_ok=True)
     write_json(args.raw_dir / "request.json", {
         "started_at_utc": utc_now(), "endpoint": {"host": args.host, "port": args.port},
-        "sql_file": str(args.sql_file), "sql_sha256": sha256_text(sql),
+        "sql_file": str(args.sql_file), "sql_sha256": sha256_text(original_sql),
+        "submitted_sql_sha256": sha256_text(sql),
         "canonical_sql_sha256": sha256_text(fingerprint), "history_sql": HISTORY_SQL,
         "measurement": "server current_queries.cost_time * 1000", "client_elapsed_used": False,
     })
@@ -183,6 +197,8 @@ def run_measure(args: argparse.Namespace) -> int:
 
 def self_test() -> int:
     if canonical_sql(" SELECT /* x */ A -- tail\n FROM T; ") != "select a from t":
+        return 1
+    if sql_for_cli("-- license\n  -- second comment\nSELECT 1;\n") != "SELECT 1;":
         return 1
     sample = "+--+\n| query_id | state | statement |\n+--+\n| q1 | FINISHED | SELECT 1 |\n+--+\n"
     rows = pipe_rows(sample)
