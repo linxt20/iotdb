@@ -40,7 +40,7 @@ import static org.junit.Assert.assertThrows;
 public class TableHashPartitioningShuffleSinkNodeSerdeTest {
 
   @Test
-  public void testSerializeAndDeserializeHashPartitioningContract() {
+  public void testSerializeAndDeserializeHashPartitioningContract() throws Exception {
     HashPartitioningDescriptor descriptor =
         new HashPartitioningDescriptor(
             List.of(Symbol.of("city"), Symbol.of("device")),
