@@ -26,11 +26,11 @@ test gates, and deliberately unsupported paths. It is not a performance conclusi
 | --- | --- | --- |
 | Static property matrix | **Implemented and reactor-validated** | Plan assertions cover scan, filter, project, sort, top-k, row number, window, aggregation, join, and union. Operator-specific fallbacks are explicit. |
 | `Partitioned(keys)` | **Executable for guarded GROUP BY** | A versioned descriptor, per-row `TABLE_HASH_V1` router, exact channel sink, and default-off GROUP BY consumer exist. It materializes one partial source per input and one final aggregation per bucket (N x P); join remains gated off. |
-| Independent cluster E2E | **Partially accepted** | Static paths were accepted previously. A fresh isolated hash-on DataNode emitted `TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)` with two downstream exchanges; a hash-off isolated control produced the same canonical result rows. Multi-source N x P still needs its own isolated-cluster acceptance. |
+| Independent cluster E2E | **Partially accepted; multi-source runner ready** | Static paths were accepted previously. A fresh isolated hash-on DataNode emitted `TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)` with two downstream exchanges; a hash-off isolated control produced the same canonical result rows. The multi-source runner archives two explicit endpoints and rejects a missing N x P trace, sink/exchange matrix, or result multiset mismatch; it still needs a real isolated-cluster run. |
 | Benchmark matrix | **Assets ready; no published speedup data** | The DOP/warm/cold runner, real CLI adapter, validators and environment capture exist. No P50/P95 or acceleration number may be reported until the fixed-DOP matrix completes on a suitably sized fixture. |
 | Multi-query cases | **Static cases and controls ready** | Scan/filter/project/ordered/top-k/morsel cases are staged. GROUP BY has guarded one-source and multi-source topology correctness cases; join remains baseline-only. |
 | Balance/backpressure | **Instrumentation and parser ready** | Morsel estimated/actual workload, driver wall time and LPT versus equal-count extraction are implemented. The complete skewed-data comparison remains an experiment gate. |
-| Reproducible assets | **Implemented** | Deterministic fixture generator, DOP runner, CLI adapter, result validator, E2E scripts, configuration/version capture, and raw JSON/CSV archive layout are present. |
+| Reproducible assets | **Implemented** | Deterministic fixture generator, DOP runner, CLI adapter, result validator, single- and multi-source E2E scripts, configuration/version capture, and raw JSON/CSV archive layout are present. |
 
 ## Validated hash GROUP BY slices
 
@@ -51,8 +51,8 @@ yet prove runtime result equivalence on an isolated multi-DataNode deployment.
 
 ## Remaining critical path
 
-1. Accept guarded multi-source N x P GROUP BY across at least two isolated DataNodes, including
-   result equivalence, plan trace and channel/fragment evidence.
+1. Run the guarded multi-source N x P GROUP BY acceptance kit across its two explicit isolated
+   endpoints, including result equivalence, plan trace and channel/fragment evidence.
 2. Consume two compatible key partitions in a restricted equi-join, then add duplicate/null/skew
    result-equivalence tests before widening join eligibility.
 3. Run the benchmark matrix at DOP `1,2,4,8,16,1`, warm and cold cache, with a fixture large
