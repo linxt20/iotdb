@@ -549,14 +549,19 @@ public class DeviceTimePartitionMorselTest {
     assertPairwiseDisjoint(distinct);
     assertCoversPartitionsExactlyOnce(distinct, tpIds);
 
-    int totalDeviceScans = 0;
+    int totalDevicePartitionPairs = 0;
     for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
-      totalDeviceScans += deviceNumberOf(driverFactory.getOperation());
+      // A table-scan operator may hold several disjoint partition ranges. Its device number alone
+      // is therefore only the number of device iterators, not the number of (device, partition)
+      // work items. This distinction matters when time partitions are grouped into a morsel.
+      totalDevicePartitionPairs +=
+          deviceNumberOf(driverFactory.getOperation())
+              * timeFilterOf(driverFactory.getOperation()).getTimeRanges().size();
     }
     assertEquals(
         "every (device, partition) pair must be scanned exactly once",
         deviceCount * tpIds.size(),
-        totalDeviceScans);
+        totalDevicePartitionPairs);
   }
 
   /**
