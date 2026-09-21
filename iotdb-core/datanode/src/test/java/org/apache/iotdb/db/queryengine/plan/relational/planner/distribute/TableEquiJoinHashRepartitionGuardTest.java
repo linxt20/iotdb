@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Optional;
 
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -56,7 +57,7 @@ public class TableEquiJoinHashRepartitionGuardTest {
   @Test
   public void floatingPointKeyFallsBackBeforeAnyHashExchangeIsBuilt() {
     JoinNode join = createJoin(JoinNode.JoinType.INNER);
-    TypeProvider types = TypeProvider.empty();
+    TypeProvider types = TypeProvider.viewOf(new HashMap<>());
     types.putTableModelType(join.getCriteria().get(0).getLeft(), DOUBLE);
     types.putTableModelType(join.getCriteria().get(0).getRight(), DOUBLE);
 
@@ -68,7 +69,7 @@ public class TableEquiJoinHashRepartitionGuardTest {
   @Test
   public void integerKeyRemainsEligibleButStillRequiresExecutorAndTopology() {
     JoinNode join = createJoin(JoinNode.JoinType.INNER);
-    TypeProvider types = TypeProvider.empty();
+    TypeProvider types = TypeProvider.viewOf(new HashMap<>());
     types.putTableModelType(join.getCriteria().get(0).getLeft(), INT32);
     types.putTableModelType(join.getCriteria().get(0).getRight(), INT32);
 
