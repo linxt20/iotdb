@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -38,7 +40,9 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
@@ -121,6 +125,51 @@ public class SingleSourceGroupByHashRepartitionPlanningTest {
             .anyMatch(TableHashPartitioningShuffleSinkNode.class::isInstance));
   }
 
+  @Test
+  public void directMultiSourceGroupByBuildsExecutableSourceByBucketFragments() {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePropertyDrivenPlanning(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableTableGroupByHashRepartition(true);
+
+    DistributedQueryPlan plan =
+        plan(
+            "SELECT s1, count(*) FROM testdb.table1 GROUP BY s1",
+            MockTableModelDataPartition.constructDataPartition(SINGLE_REGION_DB));
+    List<PlanNode> nodes = new ArrayList<>();
+    Map<PlanNodeId, String> fragmentIdByNode = new HashMap<>();
+    plan.getFragments()
+        .forEach(
+            fragment ->
+                collectAll(
+                    fragment.getPlanNodeTree(), nodes, fragmentIdByNode, fragment.getId().toString()));
+    List<TableHashPartitioningShuffleSinkNode> hashSinks =
+        nodes.stream()
+            .filter(TableHashPartitioningShuffleSinkNode.class::isInstance)
+            .map(TableHashPartitioningShuffleSinkNode.class::cast)
+            .collect(Collectors.toList());
+
+    assertTrue("the multi-region fixture must produce more than one partial source", hashSinks.size() > 1);
+    HashPartitioningDescriptor descriptor = hashSinks.get(0).getPartitioningDescriptor();
+    List<PlanNodeId> sourceSinkIds =
+        hashSinks.stream().map(PlanNode::getPlanNodeId).collect(Collectors.toList());
+    List<List<PlanNodeId>> exchangeIds =
+        hashSinks.stream()
+            .map(
+                sink ->
+                    sink.getDownStreamChannelLocationList().stream()
+                        .map(channel -> new PlanNodeId(channel.getRemotePlanNodeId()))
+                        .collect(Collectors.toList()))
+            .collect(Collectors.toList());
+    assertTrue(exchangeIds.stream().allMatch(ids -> ids.size() == descriptor.getPartitionCount()));
+
+    TableGroupByHashRepartitionTopology.FragmentTopologyValidation validation =
+        TableGroupByHashRepartitionTopology.create(descriptor, sourceSinkIds, exchangeIds)
+            .validateFragmentOwnership(fragmentIdByNode);
+    assertTrue(
+        "every source/bucket edge must terminate in a distinct materialized final fragment: "
+            + validation.getFailures(),
+        validation.isExecutable());
+  }
+
   private static List<PlanNode> planAndCollectNodes(String sql) {
     List<PlanNode> nodes = new ArrayList<>();
     plan(sql).getFragments().forEach(fragment -> collectAll(fragment.getPlanNodeTree(), nodes));
@@ -128,12 +177,15 @@ public class SingleSourceGroupByHashRepartitionPlanningTest {
   }
 
   private static DistributedQueryPlan plan(String sql) {
+    return plan(sql, MockTableModelDataPartition.constructSingleRegionDataPartition(SINGLE_REGION_DB));
+  }
+
+  private static DistributedQueryPlan plan(String sql, DataPartition dataPartition) {
     MPPQueryContext queryContext =
         new MPPQueryContext(
             sql, new QueryId("single_source_group_by_hash"), SESSION_INFO, null, null);
     Analysis analysis = analyzeSQL(sql, TEST_MATADATA, queryContext);
-    analysis.setDataPartitionInfo(
-        MockTableModelDataPartition.constructSingleRegionDataPartition(SINGLE_REGION_DB));
+    analysis.setDataPartitionInfo(dataPartition);
     SymbolAllocator symbolAllocator = new SymbolAllocator();
     LogicalQueryPlan logicalQueryPlan =
         new TableLogicalPlanner(
@@ -150,5 +202,16 @@ public class SingleSourceGroupByHashRepartitionPlanningTest {
     }
     nodes.add(node);
     node.getChildren().forEach(child -> collectAll(child, nodes));
+  }
+
+  private static void collectAll(
+      PlanNode node, List<PlanNode> nodes, Map<PlanNodeId, String> fragmentIdByNode, String fragmentId) {
+    if (node == null) {
+      return;
+    }
+    nodes.add(node);
+    fragmentIdByNode.put(node.getPlanNodeId(), fragmentId);
+    node.getChildren()
+        .forEach(child -> collectAll(child, nodes, fragmentIdByNode, fragmentId));
   }
 }

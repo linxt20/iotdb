@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CopyToNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
@@ -192,6 +193,22 @@ public class AddExchangeNodes
       return newNode;
     }
 
+    // A grouped hash repartition has already constructed one Exchange per source for this bucket.
+    // Preserve those edges so the sink's hash-channel index still addresses the final bucket
+    // exchange directly. Adding a second ordinary Exchange here would cause adjustUpStream to
+    // replace the inner hash edge with an IdentitySinkNode and silently discard the partitioning
+    // contract.
+    if (node.getChildren().stream().allMatch(AddExchangeNodes::isHashPartitionExchange)) {
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      context.hasExchangeNode = true;
+      context.nodeDistributionMap.put(
+          node.getPlanNodeId(),
+          new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
+      return newNode;
+    }
+
     for (PlanNode child : node.getChildren()) {
       PlanNode rewriteNode = child.accept(this, context);
       ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
@@ -208,6 +225,11 @@ public class AddExchangeNodes
         new NodeDistribution(DIFFERENT_FROM_ALL_CHILDREN, DataPartition.NOT_ASSIGNED));
 
     return newNode;
+  }
+
+  private static boolean isHashPartitionExchange(PlanNode node) {
+    return node instanceof ExchangeNode
+        && ((ExchangeNode) node).getChild() instanceof TableHashPartitioningShuffleSinkNode;
   }
 
   @Override

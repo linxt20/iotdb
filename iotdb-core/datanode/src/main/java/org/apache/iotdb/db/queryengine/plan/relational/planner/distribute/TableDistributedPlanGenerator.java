@@ -1933,11 +1933,12 @@ public class TableDistributedPlanGenerator
       // enforcer inserted when it is not satisfied, which needs exchanges able to repartition.
     }
 
+    if (canUseGroupByHashRepartition(node, childrenNodes)) {
+      return buildGroupByHashRepartition(node, childrenNodes);
+    }
+
     //  push down aggregation if the child of aggregation node only has the union Node
     if (childrenNodes.size() == 1) {
-      if (canUseSingleSourceGroupByHashRepartition(node, childrenNodes.get(0))) {
-        return buildSingleSourceGroupByHashRepartition(node, childrenNodes.get(0));
-      }
       node.setChild(childrenNodes.get(0));
       AggregationNode physicalAggregation = withRateFunctionInputOrdering(node, childOrdering);
 
@@ -2045,20 +2046,19 @@ public class TableDistributedPlanGenerator
   }
 
   /**
-   * The first executable consumer of {@code Partitioned(groupKeys)}.
+   * The executable consumer of {@code Partitioned(groupKeys)}.
    *
-   * <p>This deliberately accepts exactly one direct table-scan source. The existing fragment
-   * planner has one fragment instance per source fragment, so expanding a multi-source GROUP BY
-   * here would draw an N x N graph without actually materializing its final fragments. A single
-   * source, on the other hand, is a complete source x bucket exchange: the one partial aggregation
-   * owns one hash-routed channel to each independent final aggregation fragment.
+   * <p>The rewrite only accepts direct scan sources and grouping shapes whose partial and final
+   * aggregation contract is known to be safe. Every source gets a distinct hash sink and every
+   * bucket gets a distinct final aggregation whose Collect owns one exchange per source. This is
+   * therefore a materialized N x P topology, not P aliases of a serial CollectNode.
    */
-  private boolean canUseSingleSourceGroupByHashRepartition(
-      AggregationNode node, PlanNode child) {
+  private boolean canUseGroupByHashRepartition(AggregationNode node, List<PlanNode> children) {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnableTableGroupByHashRepartition()) {
       return false;
     }
-    if (!(child instanceof DeviceTableScanNode)
+    if (children.isEmpty()
+        || children.stream().anyMatch(child -> !(child instanceof DeviceTableScanNode))
         || node.getStep() != SINGLE
         || node.getGroupingKeys().isEmpty()
         || node.getGroupingSetCount() != 1
@@ -2070,32 +2070,23 @@ public class TableDistributedPlanGenerator
         || node.getGroupIdSymbol().isPresent()) {
       return false;
     }
-    return child.getOutputSymbols().containsAll(node.getGroupingKeys());
+    return children.stream()
+        .allMatch(child -> child.getOutputSymbols().containsAll(node.getGroupingKeys()));
   }
 
   /**
-   * Builds one partial aggregation source and one final aggregation for every hash bucket.
+   * Builds one partial aggregation source per input and one final aggregation for every hash
+   * bucket.
    *
-   * <p>The source sink is intentionally shared by the bucket exchanges. {@link SubPlanGenerator}
-   * deduplicates that sink by id and {@link TableModelQueryFragmentPlanner} resolves every channel
-   * to its own final-fragment exchange, so this is a real 1 x P topology rather than P aliases of
-   * a serial CollectNode.
+   * <p>Each source sink is intentionally shared by the exchanges for its buckets. {@link
+   * SubPlanGenerator} deduplicates a sink by id and {@link TableModelQueryFragmentPlanner} resolves
+   * every source-to-bucket channel to the exchange in that bucket's final fragment.
    */
-  private List<PlanNode> buildSingleSourceGroupByHashRepartition(
-      AggregationNode node, PlanNode child) {
+  private List<PlanNode> buildGroupByHashRepartition(
+      AggregationNode node, List<PlanNode> children) {
     Pair<AggregationNode, AggregationNode> splitResult = split(node, symbolAllocator, queryId);
     AggregationNode finalTemplate = splitResult.left;
     AggregationNode intermediateTemplate = splitResult.right;
-    AggregationNode partialAggregation =
-        new AggregationNode(
-            queryId.genPlanNodeId(),
-            child,
-            intermediateTemplate.getAggregations(),
-            intermediateTemplate.getGroupingSets(),
-            intermediateTemplate.getPreGroupedSymbols(),
-            intermediateTemplate.getStep(),
-            intermediateTemplate.getHashSymbol(),
-            intermediateTemplate.getGroupIdSymbol());
 
     int partitionCount =
         IoTDBDescriptor.getInstance().getConfig().getTableGroupByHashRepartitionPartitionCount();
@@ -2105,47 +2096,73 @@ public class TableDistributedPlanGenerator
             HashPartitioningDescriptor.HashVersion.TABLE_HASH_V1,
             HashPartitioningDescriptor.NullRouting.HASH_NULL,
             partitionCount);
-    PlanNodeId sourceSinkId = queryId.genPlanNodeId();
-    List<PlanNodeId> exchangeIds = new ArrayList<>(partitionCount);
-    for (int partition = 0; partition < partitionCount; partition++) {
-      exchangeIds.add(queryId.genPlanNodeId());
+    List<AggregationNode> partialAggregations = new ArrayList<>(children.size());
+    List<PlanNodeId> sourceSinkIds = new ArrayList<>(children.size());
+    List<List<PlanNodeId>> exchangeIds = new ArrayList<>(children.size());
+    for (PlanNode child : children) {
+      partialAggregations.add(
+          new AggregationNode(
+              queryId.genPlanNodeId(),
+              child,
+              intermediateTemplate.getAggregations(),
+              intermediateTemplate.getGroupingSets(),
+              intermediateTemplate.getPreGroupedSymbols(),
+              intermediateTemplate.getStep(),
+              intermediateTemplate.getHashSymbol(),
+              intermediateTemplate.getGroupIdSymbol()));
+      sourceSinkIds.add(queryId.genPlanNodeId());
+      List<PlanNodeId> sourceExchangeIds = new ArrayList<>(partitionCount);
+      for (int partition = 0; partition < partitionCount; partition++) {
+        sourceExchangeIds.add(queryId.genPlanNodeId());
+      }
+      exchangeIds.add(sourceExchangeIds);
     }
     TableGroupByHashRepartitionTopology topology =
-        TableGroupByHashRepartitionTopology.create(
-            descriptor,
-            Collections.singletonList(sourceSinkId),
-            Collections.singletonList(exchangeIds));
-    TableHashPartitioningShuffleSinkNode hashSink =
-        new TableHashPartitioningShuffleSinkNode(
-            sourceSinkId, topology.getDownstreamChannelsForSource(0), descriptor);
-    hashSink.addChild(partialAggregation);
+        TableGroupByHashRepartitionTopology.create(descriptor, sourceSinkIds, exchangeIds);
+    List<TableHashPartitioningShuffleSinkNode> hashSinks = new ArrayList<>(children.size());
+    for (int sourceIndex = 0; sourceIndex < children.size(); sourceIndex++) {
+      TableHashPartitioningShuffleSinkNode hashSink =
+          new TableHashPartitioningShuffleSinkNode(
+              sourceSinkIds.get(sourceIndex),
+              topology.getDownstreamChannelsForSource(sourceIndex),
+              descriptor);
+      hashSink.addChild(partialAggregations.get(sourceIndex));
+      hashSinks.add(hashSink);
+    }
 
     List<PlanNode> finalAggregations = new ArrayList<>(partitionCount);
     for (int partition = 0; partition < partitionCount; partition++) {
-      ExchangeNode exchangeNode = new ExchangeNode(exchangeIds.get(partition));
-      exchangeNode.setOutputSymbols(partialAggregation.getOutputSymbols());
-      exchangeNode.setChild(hashSink);
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), partialAggregations.get(0).getOutputSymbols());
+      for (int sourceIndex = 0; sourceIndex < children.size(); sourceIndex++) {
+        ExchangeNode exchangeNode =
+            new ExchangeNode(topology.getUpstreamExchangeNodeIdsForPartition(partition).get(sourceIndex));
+        exchangeNode.setOutputSymbols(partialAggregations.get(sourceIndex).getOutputSymbols());
+        exchangeNode.setChild(hashSinks.get(sourceIndex));
+        collectNode.addChild(exchangeNode);
+      }
       finalAggregations.add(
           AggregationNode.builderFrom(finalTemplate)
               .setId(partition == 0 ? finalTemplate.getPlanNodeId() : queryId.genPlanNodeId())
-              .setSource(exchangeNode)
+              .setSource(collectNode)
               .build());
     }
-    recordSingleSourceHashRepartition(descriptor, sourceSinkId);
+    recordHashRepartition(descriptor, sourceSinkIds);
     return finalAggregations;
   }
 
-  private void recordSingleSourceHashRepartition(
-      HashPartitioningDescriptor descriptor, PlanNodeId sourceSinkId) {
+  private void recordHashRepartition(
+      HashPartitioningDescriptor descriptor, List<PlanNodeId> sourceSinkIds) {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
       return;
     }
     ruleTrace.add(
         String.format(
             "%s: required=Partitioned%s provided=Single -> TableHashPartitioningShuffleSinkNode"
-                + " TABLE_HASH_V1 partitions=%s (single-source experimental path)",
-            sourceSinkId,
+                + " TABLE_HASH_V1 sources=%s partitions=%s (N x P experimental path)",
+            sourceSinkIds,
             descriptor.getPartitioningSymbols(),
+            sourceSinkIds.size(),
             descriptor.getPartitionCount()));
   }
 
