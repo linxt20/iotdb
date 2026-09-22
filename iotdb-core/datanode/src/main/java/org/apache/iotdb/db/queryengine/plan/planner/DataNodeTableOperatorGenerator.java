@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
@@ -1357,6 +1358,50 @@ public class DataNodeTableOperatorGenerator
         topKRuntimeFilter);
   }
 
+  /**
+   * Keep a transparent WHERE filter in each unordered time-partition morsel instead of collecting
+   * every scanned row into one root {@link FilterAndProjectOperator}. This is deliberately narrow:
+   * only a mappable, non-template WHERE directly above a scan that was already proved safe to split
+   * is moved. Global order, limit/offset, spilled device entries and non-mappable expressions
+   * retain the established root-filter path.
+   */
+  @Override
+  public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
+    if (!canPushTransparentFilterIntoParallelMorsels(node, context)) {
+      return super.visitFilter(node, context);
+    }
+
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    final DataRegion dataRegion = (DataRegion) context.getInstanceContext().getDataRegion();
+    final List<Long> timePartitions = new ArrayList<>(dataRegion.getTsFileManager().getTimePartitions());
+    Collections.sort(timePartitions);
+    return constructParallelDeviceTpMorselScan(scanNode, context, timePartitions, node);
+  }
+
+  private boolean canPushTransparentFilterIntoParallelMorsels(
+      FilterNode node, LocalExecutionPlanContext context) {
+    if (!(node.getChild() instanceof DeviceTableScanNode)
+        || !(context.getInstanceContext().getDataRegion() instanceof DataRegion)) {
+      return false;
+    }
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    // The distributed planner's allowParallelScan bit is attached to the Scan before a direct
+    // Filter is considered. It can therefore remain false even though this branch is semantically
+    // unordered: any order/limit above the Filter is applied after this complete filtered result.
+    // Keep the shared safety checks for device entries and global push-down limit/offset.
+    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
+        || !IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorsel()
+        || ((DataRegion) context.getInstanceContext().getDataRegion())
+                .getTsFileManager()
+                .getTimePartitions()
+                .size()
+            <= 1) {
+      return false;
+    }
+
+    return true;
+  }
+
   @Override
   public Operator visitTreeDeviceViewScan(
       TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
@@ -1727,7 +1772,7 @@ public class DataNodeTableOperatorGenerator
         // from a HashSet, whose iteration order is not specified.
         final List<Long> sortedTpIds = new ArrayList<>(tpIds);
         Collections.sort(sortedTpIds);
-        return constructParallelDeviceTpMorselScan(node, context, sortedTpIds);
+        return constructParallelDeviceTpMorselScan(node, context, sortedTpIds, null);
       }
     }
     return constructParallelDeviceScan(node, context);
@@ -1756,7 +1801,10 @@ public class DataNodeTableOperatorGenerator
    * device entries.
    */
   private Operator constructParallelDeviceTpMorselScan(
-      DeviceTableScanNode node, LocalExecutionPlanContext context, List<Long> sortedTpIds) {
+      DeviceTableScanNode node,
+      LocalExecutionPlanContext context,
+      List<Long> sortedTpIds,
+      FilterNode transparentFilter) {
     final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
     final int deviceCount = deviceEntries.size();
     final long interval = TimePartitionUtils.getTimePartitionInterval();
@@ -1841,13 +1889,30 @@ public class DataNodeTableOperatorGenerator
             parameter.allSensors,
             DeviceTableScanNode.class.getSimpleName());
 
+        final Operator pipelineRoot =
+            transparentFilter == null
+                ? subScanOperator
+                : constructTransparentMorselFilter(transparentFilter, subScanOperator, subContext);
+        if (transparentFilter != null) {
+          // Per-driver EXPLAIN snapshots are keyed by the sub-scan PlanNodeId. The filter retains
+          // its original id so its aggregate statistics remain attached to the logical FilterNode;
+          // carry the physical pipeline root alongside the scan snapshot to make the fusion visible.
+          subScanOperator
+              .getOperatorContext()
+              .getSpecifiedInfo()
+              .put("MORSEL_PIPELINE_ROOT", FilterAndProjectOperator.class.getSimpleName());
+        }
+
         final ISinkChannel localSinkChannel =
             MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
                 subContext.getDriverContext(), subScanNode.getPlanNodeId().getId());
         subContext.setISink(localSinkChannel);
-        subContext.addPipelineDriverFactory(subScanOperator, subContext.getDriverContext(), 0);
+        subContext.addPipelineDriverFactory(pipelineRoot, subContext.getDriverContext(), 0);
         subContext.constructPipelineMemoryEstimator(
-            subScanOperator, node.getPlanNodeId(), subScanNode, -1);
+            pipelineRoot,
+            transparentFilter == null ? node.getPlanNodeId() : transparentFilter.getPlanNodeId(),
+            subScanNode,
+            -1);
 
         final ExchangeOperator exchangeOperator =
             new ExchangeOperator(
@@ -1859,7 +1924,7 @@ public class DataNodeTableOperatorGenerator
                     ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
                     context.getDriverContext()),
                 subScanNode.getPlanNodeId(),
-                subScanOperator.calculateMaxReturnSize());
+                pipelineRoot.calculateMaxReturnSize());
         context.addExchangeOperator(exchangeOperator);
         exchangeOperators.add(exchangeOperator);
       }
@@ -1869,6 +1934,20 @@ public class DataNodeTableOperatorGenerator
     final OperatorContext collectOperatorContext =
         addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
     return new CollectOperator(collectOperatorContext, exchangeOperators);
+  }
+
+  private Operator constructTransparentMorselFilter(
+      FilterNode filterNode, Operator scanOperator, LocalExecutionPlanContext context) {
+    return constructFilterAndProjectOperator(
+        Optional.of(filterNode.getPredicate()),
+        scanOperator,
+        filterNode.getOutputSymbols().stream()
+            .map(Symbol::toSymbolReference)
+            .toArray(Expression[]::new),
+        getInputColumnTypes(filterNode, context.getTableTypeProvider()),
+        makeLayout(filterNode.getChildren()),
+        filterNode.getPlanNodeId(),
+        context);
   }
 
   /**
