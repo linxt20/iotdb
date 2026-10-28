@@ -437,8 +437,8 @@ public abstract class Driver implements IDriver {
       Map<String, long[]> operatorType2TotalCost = new HashMap<>();
       // record operator execution statistics to metrics
       List<OperatorContext> operatorContexts = driverContext.getOperatorContexts();
+      recordMorselCompletionStatistics();
       for (OperatorContext operatorContext : operatorContexts) {
-        recordTimePartitionMorselCompletion(operatorContext);
         String operatorType = operatorContext.getOperatorType();
         long[] value = operatorType2TotalCost.computeIfAbsent(operatorType, k -> new long[2]);
         value[0] += operatorContext.getTotalExecutionTimeInNanos();
@@ -469,14 +469,30 @@ public abstract class Driver implements IDriver {
     return inFlightException;
   }
 
+  @Override
+  public void recordMorselCompletionStatistics() {
+    for (OperatorContext operatorContext : driverContext.getOperatorContexts()) {
+      recordTimePartitionMorselCompletion(operatorContext);
+    }
+  }
+
   /**
    * A time-partition morsel marks its scan context at planning time. Capture the elapsed wall time
-   * from its first scheduled processing slice through driver close so EXPLAIN ANALYZE can expose a
-   * real per-driver completion tail alongside the static TsFile-size estimate.
+   * from its first scheduled processing slice so EXPLAIN ANALYZE can expose a real per-driver
+   * completion tail alongside the static TsFile-size estimate.
+   *
+   * <p>The write happens once. Two call sites record it: {@link #closeAndDestroyOperators} for a
+   * driver that finishes during scheduling, and the fragment instance's state-change listener for a
+   * driver it closes itself. Recording the first measurement rather than the latest keeps the value
+   * a property of the driver's own finish point instead of of whichever call site happened to run
+   * last, and it stops the later site from publishing a larger number for the same interval.
    */
   private void recordTimePartitionMorselCompletion(OperatorContext operatorContext) {
     if (firstProcessNanos < 0
         || !operatorContext.getSpecifiedInfo().containsKey("MORSEL_SCHEDULING")) {
+      return;
+    }
+    if (operatorContext.getSpecifiedInfo().containsKey("MORSEL_DRIVER_WALL_TIME_MS")) {
       return;
     }
     operatorContext.recordSpecifiedInfo(

@@ -186,22 +186,55 @@ public class TableDistributedPlanGenerator
   private final Analysis analysis;
   private final SymbolAllocator symbolAllocator;
   private final Map<PlanNodeId, OrderingScheme> nodeOrderingMap = new HashMap<>();
+  private final PlanPropertyProvider propertyProvider;
+  private final PropertyEnforcer propertyEnforcer;
 
   /**
    * One entry per property enforcement decision taken while building the plan, in the order they
    * were taken. Only collected when {@code enable_property_driven_planning} is on; it is a
    * reporting aid and never influences the plan itself.
    */
-  private final List<String> ruleTrace = new ArrayList<>();
+  private final List<PropertyEnforcementDecision> propertyEnforcementDecisions = new ArrayList<>();
 
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
   private final ClusterTopology topology = ClusterTopology.getInstance();
+
+  /**
+   * Every grouped hash exchange this generator committed to, in build order.
+   *
+   * <p>{@link TableDistributedPlanner} checks each entry against the fragments {@link
+   * SubPlanGenerator} actually produced. The check exists because a matrix is not executable merely
+   * because its sink-to-exchange edges exist: the split has to give every partial source its own
+   * fragment, put the exchanges of one bucket in one final fragment, and give different buckets
+   * different final fragments. Only the split assigns fragments, so only a check after the split
+   * can see whether that held.
+   */
+  private final List<TableGroupByHashRepartitionTopology> builtGroupByTopologies =
+      new ArrayList<>();
 
   public TableDistributedPlanGenerator(
       final MPPQueryContext queryContext,
       final Analysis analysis,
       final SymbolAllocator symbolAllocator,
       final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+    this(
+        queryContext,
+        analysis,
+        symbolAllocator,
+        dataNodeLocationSupplier,
+        new PlanPropertyProvider(),
+        new PropertyEnforcer());
+  }
+
+  public TableDistributedPlanGenerator(
+      final MPPQueryContext queryContext,
+      final Analysis analysis,
+      final SymbolAllocator symbolAllocator,
+      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier,
+      final PlanPropertyProvider propertyProvider,
+      final PropertyEnforcer propertyEnforcer) {
+    this.propertyProvider = Objects.requireNonNull(propertyProvider);
+    this.propertyEnforcer = Objects.requireNonNull(propertyEnforcer);
     this.queryContext = queryContext;
     this.queryId = queryContext.getQueryId();
     this.analysis = analysis;
@@ -209,9 +242,19 @@ public class TableDistributedPlanGenerator
     this.dataNodeLocationSupplier = dataNodeLocationSupplier;
   }
 
+  /**
+   * The grouped hash exchanges committed to so far, in build order. Empty when the grouped hash
+   * rewrite never fired, which is the case for every query today because the flag is off by
+   * default.
+   */
+  public List<TableGroupByHashRepartitionTopology> getBuiltGroupByTopologies() {
+    return builtGroupByTopologies;
+  }
+
   public List<PlanNode> genResult(final PlanNode node, final PlanContext context) {
     final List<PlanNode> res = node.accept(this, context);
     if (res.size() == 1) {
+      recordSpecializedOutputs(res.get(0));
       return res;
     } else if (res.size() > 1) {
       // Deliberately not routed through enforce(): this merges with a CollectNode regardless of
@@ -225,10 +268,53 @@ public class TableDistributedPlanGenerator
       // Merging through a CollectNode means no ordering is required from the children, so each
       // scan child may be split into several parallel scan drivers during local execution planning.
       allowParallelScanOn(res);
+      recordSpecializedOutputs(collectNode);
       return Collections.singletonList(collectNode);
     } else {
       throw new IllegalStateException(DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
     }
+  }
+
+  /** Captures output evidence for retained specialized builders without adding enforcement. */
+  private void recordSpecializedOutputs(PlanNode root) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
+      return;
+    }
+    Set<PlanNode> seen = Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+    recordSpecializedOutputs(root, seen);
+  }
+
+  private void recordSpecializedOutputs(PlanNode node, Set<PlanNode> seen) {
+    if (!seen.add(node)) {
+      return;
+    }
+    if (node instanceof CollectNode
+        || node instanceof SortNode
+        || node instanceof MergeSortNode
+        || node instanceof TopKNode
+        || node instanceof UnionNode
+        || node instanceof GroupNode) {
+      PlanPropertyProvider.ProvidedProperties output =
+          propertyProvider.providedBy(node, nodeOrderingMap);
+      propertyEnforcementDecisions.add(
+          PropertyEnforcementDecision.specialized(
+              "specialized-output:" + node.getClass().getSimpleName(),
+              PropertyEnforcementDecision.Event.SPECIALIZED,
+              PlanProperties.any(),
+              output.getProperties(),
+              output.getProperties(),
+              node.getChildren().stream().map(PlanNode::getPlanNodeId).collect(Collectors.toList()),
+              Collections.singletonList(node.getPlanNodeId()),
+              PropertyEnforcer.EnforcerKind.NONE,
+              output.getFallbackReason() == null
+                  ? PropertyEnforcer.Outcome.SATISFIED
+                  : PropertyEnforcer.Outcome.FALLBACK,
+              output.getFallbackReason(),
+              List.of(),
+              List.of(),
+              List.of()));
+    }
+    node.getChildren().forEach(child -> recordSpecializedOutputs(child, seen));
   }
 
   @Override
@@ -264,7 +350,9 @@ public class TableDistributedPlanGenerator
     // node: it outputs a single text column rather than the rows of its child, so no ordering of
     // the child survives into the parent.
     final OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    node.setChild(
+        mergeChildrenViaCollectOrMergeSort(
+            childOrdering, childrenNodes, "visitExplainAnalyze:input"));
     return Collections.singletonList(node);
   }
 
@@ -286,7 +374,8 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
 
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    node.setChild(
+        mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes, "visitOutput:input"));
     return Collections.singletonList(node);
   }
 
@@ -311,7 +400,8 @@ public class TableDistributedPlanGenerator
               node.getRowCountSymbol());
       resultNodeList.add(subIntoNode);
     }
-    PlanNode collectNode = mergeChildrenViaCollectOrMergeSort(null, resultNodeList);
+    PlanNode collectNode =
+        mergeChildrenViaCollectOrMergeSort(null, resultNodeList, "visitInto:result");
 
     // prepare aggregation map
     Map<Symbol, AggregationNode.Aggregation> aggregations = new LinkedHashMap<>();
@@ -450,7 +540,9 @@ public class TableDistributedPlanGenerator
       if (containAllSortItem) {
         nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
       }
-      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              childOrdering, childrenNodes, "visitProject:centralized"));
       return Collections.singletonList(node);
     }
 
@@ -699,12 +791,15 @@ public class TableDistributedPlanGenerator
       // merged with a MergeSortNode, so nothing is reordered.
       // The same shape exists in visitProject, which additionally carries the containAllSortItem
       // bookkeeping; it is left alone here to keep this change small.
-      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              childOrdering, childrenNodes, "visitFilter:expanded-condition"));
       return Collections.singletonList(node);
     }
 
     if (containsDiff) {
-      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes, "visitFilter:diff"));
       return Collections.singletonList(node);
     }
 
@@ -723,7 +818,6 @@ public class TableDistributedPlanGenerator
 
     List<PlanNode> leftChildrenNodes = node.getLeftChild().accept(this, context);
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
-    recordEquiJoinHashRepartitionFallback(node);
     if (!node.isCrossJoin()) {
       // child of JoinNode(excluding CrossJoin) must be SortNode, so after rewritten, the child must
       // be MergeSortNode or
@@ -749,10 +843,10 @@ public class TableDistributedPlanGenerator
     // the size of their children is always 1.)
     node.setLeftChild(
         mergeChildrenViaCollectOrMergeSort(
-            leftChildOrdering, actualLeftChildOrdering, leftChildrenNodes));
+            leftChildOrdering, actualLeftChildOrdering, leftChildrenNodes, "visitJoin:left"));
     node.setRightChild(
         mergeChildrenViaCollectOrMergeSort(
-            rightChildOrdering, actualRightChildOrdering, rightChildrenNodes));
+            rightChildOrdering, actualRightChildOrdering, rightChildrenNodes, "visitJoin:right"));
 
     // Now the join implement but CROSS is MergeSortJoin, so it can keep order
     if (!node.isCrossJoin() && !node.getAsofCriteria().isPresent()) {
@@ -777,6 +871,7 @@ public class TableDistributedPlanGenerator
               DataNodeQueryMessages.UNSUPPORTED_JOIN_TYPE + node.getJoinType());
       }
     }
+    recordEquiJoinHashRepartitionFallback(node);
     return Collections.singletonList(node);
   }
 
@@ -789,12 +884,32 @@ public class TableDistributedPlanGenerator
     if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
       return;
     }
-    ruleTrace.add(
-        String.format(
-            "%s: required=compatible Partitioned(joinKeys) on both inputs -> serial join fallback"
-                + " (%s)",
-            node.getPlanNodeId(),
-            TableEquiJoinHashRepartitionGuard.getFallbackReason(node, symbolAllocator.getTypes())));
+    FallbackReason reason =
+        TableEquiJoinHashRepartitionGuard.getFallbackReason(node, symbolAllocator.getTypes());
+    PlanProperties before =
+        propertyProvider
+            .providedByBranches(node.getChildren(), null, nodeOrderingMap)
+            .getProperties();
+    propertyEnforcementDecisions.add(
+        PropertyEnforcementDecision.specialized(
+            "visitJoin:hash-fallback",
+            PropertyEnforcementDecision.Event.JOIN_HASH_FALLBACK,
+            PlanProperties.requirementFor(
+                DistributionProperty.partitioned(
+                    node.getCriteria().stream()
+                        .map(JoinNode.EquiJoinClause::getLeft)
+                        .collect(Collectors.toList())),
+                null),
+            before,
+            propertyProvider.providedBy(node, nodeOrderingMap).getProperties(),
+            node.getChildren().stream().map(PlanNode::getPlanNodeId).collect(Collectors.toList()),
+            List.of(node.getPlanNodeId()),
+            PropertyEnforcer.EnforcerKind.NONE,
+            PropertyEnforcer.Outcome.FALLBACK,
+            reason,
+            List.of(),
+            List.of(),
+            List.of()));
   }
 
   @Override
@@ -807,7 +922,10 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
       node.setChild(
-          mergeChildrenViaCollectOrMergeSort(node.getOrderingScheme().orElse(null), childrenNodes));
+          mergeChildrenViaCollectOrMergeSort(
+              node.getOrderingScheme().orElse(null),
+              childrenNodes,
+              "visitPatternRecognition:input"));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
@@ -954,7 +1072,9 @@ public class TableDistributedPlanGenerator
         propertyContext -> applySortProperty(node, result, propertyContext, false));
     if (needFinalAggregation) {
       OrderingScheme childOrdering = nodeOrderingMap.get(result.get(0).getPlanNodeId());
-      finalAggregation.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, result));
+      finalAggregation.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              childOrdering, result, "visitExternalTsFileAggregationScan:final"));
       return Collections.singletonList(finalAggregation);
     }
     return result;
@@ -1934,7 +2054,20 @@ public class TableDistributedPlanGenerator
       // enforcer inserted when it is not satisfied, which needs exchanges able to repartition.
     }
 
-    if (canUseGroupByHashRepartition(node, childrenNodes)) {
+    GroupByHashRepartitionAdmission admission = evaluateGroupByHashRepartition(node, childrenNodes);
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
+      propertyEnforcementDecisions.add(
+          PropertyEnforcementDecision.groupByAdmission(
+              "visitAggregation:admission",
+              PlanProperties.requirementFor(
+                  DistributionProperty.partitioned(node.getGroupingKeys()), null),
+              propertyProvider
+                  .providedByBranches(childrenNodes, childOrdering, nodeOrderingMap)
+                  .getProperties(),
+              childrenNodes,
+              admission));
+    }
+    if (admission.isAdmitted()) {
       return buildGroupByHashRepartition(node, childrenNodes);
     }
 
@@ -1944,8 +2077,7 @@ public class TableDistributedPlanGenerator
       AggregationNode physicalAggregation = withRateFunctionInputOrdering(node, childOrdering);
 
       if (childrenNodes.get(0) instanceof UnionNode
-          && physicalAggregation.getAggregations().values().stream()
-              .noneMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
+          && !hasDistinctOrMaskedAggregation(physicalAggregation)) {
         UnionNode unionNode = (UnionNode) childrenNodes.get(0);
         List<PlanNode> children = unionNode.getChildren();
 
@@ -2007,11 +2139,12 @@ public class TableDistributedPlanGenerator
     // We cannot do multi-stage Aggregate if any aggregation-function is distinct.
     // For Aggregation with mask, there is no need to do multi-stage Aggregate because the
     // MarkDistinctNode will merge all data from different child.
-    if (node.getAggregations().values().stream()
-        .anyMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask())) {
+    if (hasDistinctOrMaskedAggregation(node)) {
       PlanNode physicalChild =
           mergeChildrenViaCollectOrMergeSort(
-              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes);
+              nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()),
+              childrenNodes,
+              "visitAggregation:distinct-or-masked");
       node.setChild(physicalChild);
       return Collections.singletonList(
           withRateFunctionInputOrdering(node, nodeOrderingMap.get(physicalChild.getPlanNodeId())));
@@ -2042,37 +2175,187 @@ public class TableDistributedPlanGenerator
             .collect(Collectors.toList());
     splitResult.left.setChild(
         mergeChildrenViaCollectOrMergeSort(
-            nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()), childrenNodes));
+            nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()),
+            childrenNodes,
+            "visitAggregation:final"));
     return Collections.singletonList(splitResult.left);
+  }
+
+  /**
+   * Whether any aggregation function in {@code node} is distinct or carries a mask.
+   *
+   * <p>Both cases forbid a two-stage aggregation split: {@code Util.split()} keeps {@code
+   * isDistinct} on the intermediate aggregation and clears it on the final one, so a partial and a
+   * final stage would not compose; a masked aggregation is already merged by {@code
+   * MarkDistinctNode}, so splitting it would double count.
+   */
+  private static boolean hasDistinctOrMaskedAggregation(AggregationNode node) {
+    return node.getAggregations().values().stream()
+        .anyMatch(aggregation -> aggregation.isDistinct() || aggregation.hasMask());
   }
 
   /**
    * The executable consumer of {@code Partitioned(groupKeys)}.
    *
-   * <p>The rewrite only accepts direct scan sources and grouping shapes whose partial and final
+   * <p>The rewrite only accepts single-scan sources and grouping shapes whose partial and final
    * aggregation contract is known to be safe. Every source gets a distinct hash sink and every
    * bucket gets a distinct final aggregation whose Collect owns one exchange per source. This is
    * therefore a materialized N x P topology, not P aliases of a serial CollectNode.
    */
-  private boolean canUseGroupByHashRepartition(AggregationNode node, List<PlanNode> children) {
+  GroupByHashRepartitionAdmission evaluateGroupByHashRepartition(
+      AggregationNode node, List<PlanNode> children) {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnableTableGroupByHashRepartition()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.GROUP_BY_HASH_DISABLED);
+    }
+    if (children.isEmpty()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.EMPTY_HASH_SOURCES);
+    }
+    if (children.stream().anyMatch(child -> !isHashRepartitionSource(child))) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.UNSUPPORTED_HASH_SOURCE);
+    }
+    if (node.getStep() != SINGLE) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.UNSUPPORTED_AGGREGATION_STEP);
+    }
+    if (node.getGroupingKeys().isEmpty()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.EMPTY_GROUPING_KEYS);
+    }
+    if (node.getGroupingSetCount() != 1) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.MULTIPLE_GROUPING_SETS);
+    }
+    if (node.hasEmptyGroupingSet()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.EMPTY_GROUPING_SET);
+    }
+    if (!node.getPreGroupedSymbols().isEmpty()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.PRE_GROUPED_AGGREGATION);
+    }
+    if (node.isStreamable()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.STREAMABLE_AGGREGATION);
+    }
+    if (node.hasOrderings()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.ORDERED_AGGREGATION);
+    }
+    if (node.getHashSymbol().isPresent()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.PREEXISTING_HASH_SYMBOL);
+    }
+    if (node.getGroupIdSymbol().isPresent()) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.GROUP_ID_PRESENT);
+    }
+    if (hasDistinctOrMaskedAggregation(node)) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.DISTINCT_OR_MASKED_AGGREGATION);
+    }
+    if (children.stream()
+        .anyMatch(child -> !child.getOutputSymbols().containsAll(node.getGroupingKeys()))) {
+      return GroupByHashRepartitionAdmission.rejected(
+          GroupByHashRepartitionAdmission.RejectionReason.MISSING_GROUPING_KEY_OUTPUT);
+    }
+    return GroupByHashRepartitionAdmission.admitted();
+  }
+
+  /** Admission preserves the first failing baseline predicate, independently of enforcement. */
+  public static final class GroupByHashRepartitionAdmission {
+    public enum RejectionReason {
+      GROUP_BY_HASH_DISABLED,
+      EMPTY_HASH_SOURCES,
+      UNSUPPORTED_HASH_SOURCE,
+      UNSUPPORTED_AGGREGATION_STEP,
+      EMPTY_GROUPING_KEYS,
+      MULTIPLE_GROUPING_SETS,
+      EMPTY_GROUPING_SET,
+      PRE_GROUPED_AGGREGATION,
+      STREAMABLE_AGGREGATION,
+      ORDERED_AGGREGATION,
+      PREEXISTING_HASH_SYMBOL,
+      GROUP_ID_PRESENT,
+      DISTINCT_OR_MASKED_AGGREGATION,
+      MISSING_GROUPING_KEY_OUTPUT
+    }
+
+    private final RejectionReason rejectionReason;
+
+    private GroupByHashRepartitionAdmission(RejectionReason rejectionReason) {
+      this.rejectionReason = rejectionReason;
+    }
+
+    static GroupByHashRepartitionAdmission admitted() {
+      return new GroupByHashRepartitionAdmission(null);
+    }
+
+    static GroupByHashRepartitionAdmission rejected(RejectionReason reason) {
+      return new GroupByHashRepartitionAdmission(Objects.requireNonNull(reason));
+    }
+
+    public boolean isAdmitted() {
+      return rejectionReason == null;
+    }
+
+    public RejectionReason getRejectionReason() {
+      return rejectionReason;
+    }
+
+    public FallbackReason toFallbackReason() {
+      if (rejectionReason == RejectionReason.DISTINCT_OR_MASKED_AGGREGATION) {
+        return FallbackReason.DISTINCT_OR_MASKED_AGGREGATION;
+      }
+      if (rejectionReason == RejectionReason.MULTIPLE_GROUPING_SETS) {
+        return FallbackReason.MULTIPLE_GROUPING_SETS;
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Whether one distributed child can serve as a hash repartition source.
+   *
+   * <p>The sink goes above the partial aggregation, so the only thing the routing step needs from a
+   * source is the grouping keys in its output, and that is checked separately. What this adds is
+   * the other half of the contract: a source stands for one scan region, so the subtree has to be a
+   * pipeline over exactly one scan leaf, with nothing in between that changes how many scans feed
+   * the source or groups the rows first.
+   *
+   * <p>{@link FilterNode} and {@link ProjectNode} are the two pass-throughs the planner produces
+   * between a scan and an aggregation. A filter drops rows and a project renames or computes
+   * symbols, so each input row still yields exactly one output row and the subtree stays a single
+   * source. Both shapes are reachable in practice: a predicate that cannot be pushed into the scan
+   * becomes a {@link FilterNode} above it, and a grouping key that is a computed expression becomes
+   * a {@link ProjectNode}. Neither shape changes the routing answer, because the sink hashes the
+   * partial aggregation's output rather than the scan's.
+   *
+   * <p>{@link AggregationTableScanNode} is excluded by name. It is a {@link DeviceTableScanNode},
+   * so a type test alone admits it, and it reaches this planner with {@code step=FINAL} and
+   * non-empty pre-grouped symbols, meaning the tag path merges by device order instead of
+   * collecting. That is a different execution contract from the one the ownership gate checks.
+   *
+   * <p>As of 2026-10-26 this exclusion is redundant. The measured reason the tag query is refused
+   * is the {@code step}, {@code preGroupedSymbols} and {@code streamable} conditions in the caller,
+   * and no reachable query clears all three while keeping an {@link AggregationTableScanNode}
+   * child. The exclusion is kept because those three conditions describe the aggregation rather
+   * than the source, so relaxing any of them would admit the tag path without this method
+   * objecting.
+   */
+  private static boolean isHashRepartitionSource(PlanNode node) {
+    if (node instanceof AggregationTableScanNode) {
       return false;
     }
-    if (children.isEmpty()
-        || children.stream().anyMatch(child -> !(child instanceof DeviceTableScanNode))
-        || node.getStep() != SINGLE
-        || node.getGroupingKeys().isEmpty()
-        || node.getGroupingSetCount() != 1
-        || node.hasEmptyGroupingSet()
-        || !node.getPreGroupedSymbols().isEmpty()
-        || node.isStreamable()
-        || node.hasOrderings()
-        || node.getHashSymbol().isPresent()
-        || node.getGroupIdSymbol().isPresent()) {
-      return false;
+    if (node instanceof DeviceTableScanNode) {
+      return true;
     }
-    return children.stream()
-        .allMatch(child -> child.getOutputSymbols().containsAll(node.getGroupingKeys()));
+    if (node instanceof FilterNode || node instanceof ProjectNode) {
+      return node.getChildren().size() == 1 && isHashRepartitionSource(node.getChildren().get(0));
+    }
+    return false;
   }
 
   /**
@@ -2120,6 +2403,7 @@ public class TableDistributedPlanGenerator
     }
     TableGroupByHashRepartitionTopology topology =
         TableGroupByHashRepartitionTopology.create(descriptor, sourceSinkIds, exchangeIds);
+    builtGroupByTopologies.add(topology);
     List<TableHashPartitioningShuffleSinkNode> hashSinks = new ArrayList<>(children.size());
     for (int sourceIndex = 0; sourceIndex < children.size(); sourceIndex++) {
       TableHashPartitioningShuffleSinkNode hashSink =
@@ -2149,23 +2433,42 @@ public class TableDistributedPlanGenerator
               .setSource(collectNode)
               .build());
     }
-    recordHashRepartition(descriptor, sourceSinkIds);
+    recordHashRepartition(descriptor, sourceSinkIds, exchangeIds, finalAggregations);
     return finalAggregations;
   }
 
   private void recordHashRepartition(
-      HashPartitioningDescriptor descriptor, List<PlanNodeId> sourceSinkIds) {
+      HashPartitioningDescriptor descriptor,
+      List<PlanNodeId> sourceSinkIds,
+      List<List<PlanNodeId>> exchangeIds,
+      List<PlanNode> finalAggregations) {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
       return;
     }
-    ruleTrace.add(
-        String.format(
-            "%s: required=Partitioned%s provided=Single -> TableHashPartitioningShuffleSinkNode"
-                + " TABLE_HASH_V1 sources=%s partitions=%s (N x P experimental path)",
+    List<PlanNodeId> buckets =
+        finalAggregations.stream().map(PlanNode::getPlanNodeId).collect(Collectors.toList());
+    PlanProperties partitioned =
+        PlanProperties.requirementFor(
+            DistributionProperty.partitioned(descriptor.getPartitioningSymbols()), null);
+    propertyEnforcementDecisions.add(
+        PropertyEnforcementDecision.specialized(
+            "visitAggregation:hash-topology",
+            PropertyEnforcementDecision.Event.HASH_REPARTITION,
+            partitioned,
+            PlanProperties.of(
+                sourceSinkIds.size() == 1
+                    ? DistributionProperty.single()
+                    : DistributionProperty.arbitrary(),
+                null),
+            partitioned,
             sourceSinkIds,
-            descriptor.getPartitioningSymbols(),
-            sourceSinkIds.size(),
-            descriptor.getPartitionCount()));
+            buckets,
+            PropertyEnforcer.EnforcerKind.NONE,
+            PropertyEnforcer.Outcome.ENFORCED,
+            null,
+            sourceSinkIds,
+            buckets,
+            exchangeIds));
   }
 
   private static AggregationNode withRateFunctionInputOrdering(
@@ -2288,7 +2591,8 @@ public class TableDistributedPlanGenerator
         OrderingScheme childOrdering =
             nodeOrderingMap.get(resultTableScanNodeList.get(0).getPlanNodeId());
         finalAggregation.setChild(
-            mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
+            mergeChildrenViaCollectOrMergeSort(
+                childOrdering, resultTableScanNodeList, "visitAggregationTableScan:final"));
       } else {
         throw new IllegalStateException(
             DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
@@ -2450,7 +2754,9 @@ public class TableDistributedPlanGenerator
       } else {
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(
-                nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
+                nodeOrderingMap.get(result.get(0).getPlanNodeId()),
+                result,
+                "constructSpilledAggregationTableScanByRegionReplicaSet:final"));
       }
       return Collections.singletonList(finalAggregation);
     }
@@ -2664,7 +2970,10 @@ public class TableDistributedPlanGenerator
         OrderingScheme childOrdering =
             nodeOrderingMap.get(resultTableScanNodeList.get(0).getPlanNodeId());
         finalAggregation.setChild(
-            mergeChildrenViaCollectOrMergeSort(childOrdering, resultTableScanNodeList));
+            mergeChildrenViaCollectOrMergeSort(
+                childOrdering,
+                resultTableScanNodeList,
+                "visitAggregationTreeDeviceViewScan:final"));
       } else {
         throw new IllegalStateException(
             DataNodeQueryMessages.LIST_PLANNODE_SIZE_SHOULD_1_BUT_NOW_IS);
@@ -2853,7 +3162,9 @@ public class TableDistributedPlanGenerator
       } else {
         finalAggregation.setChild(
             mergeChildrenViaCollectOrMergeSort(
-                nodeOrderingMap.get(result.get(0).getPlanNodeId()), result));
+                nodeOrderingMap.get(result.get(0).getPlanNodeId()),
+                result,
+                "constructSpilledAggregationTreeDeviceViewScanByRegionReplicaSet:final"));
       }
       return Collections.singletonList(finalAggregation);
     }
@@ -3071,7 +3382,11 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
     }
 
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    node.setChild(
+        mergeChildrenViaCollectOrMergeSort(
+            childOrdering,
+            childrenNodes,
+            "dealWithPlainSingleChildNode:" + node.getClass().getSimpleName()));
     return Collections.singletonList(node);
   }
 
@@ -3100,7 +3415,9 @@ public class TableDistributedPlanGenerator
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
       OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
-      node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              childOrdering, childrenNodes, "visitTableFunctionProcessor:input"));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
@@ -3172,8 +3489,11 @@ public class TableDistributedPlanGenerator
   }
 
   private PlanNode mergeChildrenViaCollectOrMergeSort(
-      final OrderingScheme childOrdering, final List<PlanNode> childrenNodes) {
-    return mergeChildrenViaCollectOrMergeSort(childOrdering, childOrdering, childrenNodes);
+      final OrderingScheme childOrdering,
+      final List<PlanNode> childrenNodes,
+      final String ruleSource) {
+    return mergeChildrenViaCollectOrMergeSort(
+        childOrdering, childOrdering, childrenNodes, ruleSource);
   }
 
   /**
@@ -3188,7 +3508,8 @@ public class TableDistributedPlanGenerator
   private PlanNode mergeChildrenViaCollectOrMergeSort(
       final OrderingScheme requiredOrdering,
       final OrderingScheme actualChildOrdering,
-      final List<PlanNode> childrenNodes) {
+      final List<PlanNode> childrenNodes,
+      final String ruleSource) {
     checkArgument(
         childrenNodes != null,
         DataNodeQueryMessages.EXCEPTION_CHILDRENNODES_SHOULD_NOT_BE_NULL_DOT_0C93B063);
@@ -3208,9 +3529,10 @@ public class TableDistributedPlanGenerator
     // a heuristic on "is childOrdering null" into a comparison of required against provided
     // properties.
     return enforce(
-        PlanProperties.of(DistributionProperty.single(), requiredOrdering),
+        PlanProperties.requirementFor(DistributionProperty.single(), requiredOrdering),
         childrenNodes,
-        actualChildOrdering);
+        actualChildOrdering,
+        ruleSource);
   }
 
   /**
@@ -3273,98 +3595,35 @@ public class TableDistributedPlanGenerator
       final PlanProperties required,
       final List<PlanNode> childrenNodes,
       final OrderingScheme actualChildOrdering) {
-    final PlanProperties provided = propertiesOf(childrenNodes, actualChildOrdering);
-
-    if (provided.satisfies(required)) {
-      // Nothing has to be merged. The children keep whatever parallelism they have, so a scan
-      // child may still be split into several parallel scan drivers during local execution
-      // planning - as long as no ordering has to be preserved across that split.
-      if (!required.isOrdered()) {
-        allowParallelScanOn(childrenNodes);
-      }
-      recordRuleHit(required, provided, childrenNodes, null);
-      return childrenNodes.get(0);
-    }
-
-    final PlanNode firstChild = childrenNodes.get(0);
-    final PlanNode glue;
-    if (required.isOrdered()) {
-      final List<PlanNode> orderedChildren;
-      if (required.getOrdering().equals(provided.getOrdering())) {
-        // The children already have the required local ordering. Only their distributions need to
-        // be converged, so MergeSort can preserve that order while merging the branches.
-        orderedChildren = childrenNodes;
-      } else {
-        // MergeSort merges sorted streams; it does not sort an unordered stream. Sort every
-        // physical child first, otherwise a required ordering could be incorrectly treated as
-        // provided merely because it was requested by the parent.
-        orderedChildren =
-            childrenNodes.stream()
-                .map(
-                    child -> {
-                      SortNode sortNode =
-                          new SortNode(
-                              queryId.genPlanNodeId(), child, required.getOrdering(), false, false);
-                      nodeOrderingMap.put(sortNode.getPlanNodeId(), required.getOrdering());
-                      return (PlanNode) sortNode;
-                    })
-                .collect(Collectors.toList());
-      }
-
-      if (orderedChildren.size() == 1) {
-        // A one-input MergeSort would still not sort anything. The local SortNode above is the
-        // actual enforcer in this case.
-        glue = orderedChildren.get(0);
-      } else {
-        // An ordered Single result is enforced by merging the now ordered branches.
-        final MergeSortNode mergeSortNode =
-            new MergeSortNode(
-                queryId.genPlanNodeId(), required.getOrdering(), firstChild.getOutputSymbols());
-        orderedChildren.forEach(mergeSortNode::addChild);
-        nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), required.getOrdering());
-        glue = mergeSortNode;
-      }
-    } else {
-      // An unordered Single result is enforced by collecting the branches in any order, which in
-      // turn means the children are free to be parallel.
-      final CollectNode collectNode =
-          new CollectNode(queryId.genPlanNodeId(), firstChild.getOutputSymbols());
-      childrenNodes.forEach(collectNode::addChild);
-      allowParallelScanOn(childrenNodes);
-      glue = collectNode;
-    }
-    recordRuleHit(required, provided, childrenNodes, glue);
-    return glue;
+    return enforce(required, childrenNodes, actualChildOrdering, "direct-enforcement");
   }
 
-  /**
-   * The properties a set of sibling branches actually provides.
-   *
-   * <p>The distribution is read bottom up from the branches themselves: one branch provides {@code
-   * Single}, several branches provide {@code Arbitrary}. This is the axis the enforcement decision
-   * actually turns on.
-   *
-   * <p>The ordering is supplied explicitly from the physical children observed by the caller. It
-   * must never be copied from {@code required}: a required order describes what a parent needs,
-   * while this method reports only what the child actually provides. Callers normally obtain this
-   * value from {@code nodeOrderingMap} after rewriting the child.
-   */
-  private PlanProperties propertiesOf(
-      final List<PlanNode> childrenNodes, final OrderingScheme actualChildOrdering) {
-    // A MergeSort may only claim an ordering when every input stream has that ordering. The first
-    // child is the caller's representative; check the rest against their own physical entries so
-    // a heterogeneous set of siblings is conservatively treated as unordered.
-    final boolean everyChildHasActualOrdering =
-        actualChildOrdering != null
-            && childrenNodes.stream()
-                .allMatch(
-                    child ->
-                        actualChildOrdering.equals(nodeOrderingMap.get(child.getPlanNodeId())));
-    return PlanProperties.of(
-        childrenNodes.size() == 1
-            ? DistributionProperty.single()
-            : DistributionProperty.arbitrary(),
-        everyChildHasActualOrdering ? actualChildOrdering : null);
+  private PlanNode enforce(
+      final PlanProperties required,
+      final List<PlanNode> childrenNodes,
+      final OrderingScheme actualChildOrdering,
+      final String ruleSource) {
+    PlanPropertyProvider.ProvidedProperties provided =
+        propertyProvider.providedByBranches(childrenNodes, actualChildOrdering, nodeOrderingMap);
+    PropertyEnforcer.PropertyEnforcementResult result =
+        propertyEnforcer.enforce(required, childrenNodes, provided, queryId, nodeOrderingMap);
+    checkArgument(
+        result.getBranches().size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_PROPERTY_ENFORCEMENT_REQUIRES_EXACTLY_ONE_OUTPUT_BRANCH_4C5CCDDF);
+    // Scan eligibility belongs to the generator and retains its proven Filter/Project recursion.
+    if (!required.isOrdered() && provided.getCoverage() == PlanPropertyProvider.Coverage.KNOWN) {
+      allowParallelScanOn(childrenNodes);
+    }
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
+      propertyEnforcementDecisions.add(
+          PropertyEnforcementDecision.enforcement(ruleSource, required, childrenNodes, result));
+    }
+    return result.getBranches().get(0);
+  }
+
+  public List<PropertyEnforcementDecision> getPropertyEnforcementDecisions() {
+    return List.copyOf(propertyEnforcementDecisions);
   }
 
   private static void allowParallelScanOn(final List<PlanNode> childrenNodes) {
@@ -3377,9 +3636,9 @@ public class TableDistributedPlanGenerator
    * merge point and the scan; treating only the direct child as eligible silently disabled data
    * parallelism for those ordinary single-table queries.
    *
-   * <p>This deliberately crosses only {@link FilterNode} and {@link ProjectNode}. In particular,
-   * it does not cross sort, limit, offset, aggregation, join, or window nodes: their existing
-   * rules and the scan-side global limit/offset guard retain their conservative semantics.
+   * <p>This deliberately crosses only {@link FilterNode} and {@link ProjectNode}. In particular, it
+   * does not cross sort, limit, offset, aggregation, join, or window nodes: their existing rules
+   * and the scan-side global limit/offset guard retain their conservative semantics.
    */
   private static void allowParallelScanOn(final PlanNode node) {
     if (node instanceof DeviceTableScanNode) {
@@ -3395,33 +3654,11 @@ public class TableDistributedPlanGenerator
     }
   }
 
-  /**
-   * Records which enforcement decision was taken for one set of children, so that it can be shown
-   * next to the plan. {@code glue} is the node that was inserted, or null when the children already
-   * satisfied what the parent required.
-   */
-  private void recordRuleHit(
-      final PlanProperties required,
-      final PlanProperties provided,
-      final List<PlanNode> childrenNodes,
-      final PlanNode glue) {
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnablePropertyDrivenPlanning()) {
-      return;
-    }
-    ruleTrace.add(
-        String.format(
-            "%s: required=%s provided=%s -> %s",
-            childrenNodes.get(0).getPlanNodeId(),
-            required,
-            provided,
-            glue == null
-                ? "satisfied, no enforcer"
-                : glue.getClass().getSimpleName() + " " + glue.getPlanNodeId()));
-  }
-
-  /** The enforcement decisions taken while building this plan, oldest first. */
+  /** Immutable text values for callers that still use the trace compatibility API. */
   public List<String> getRuleTrace() {
-    return Collections.unmodifiableList(ruleTrace);
+    return propertyEnforcementDecisions.stream()
+        .map(PropertyEnforcementDecision::render)
+        .collect(Collectors.toUnmodifiableList());
   }
 
   private void processSortProperty(
@@ -3802,7 +4039,9 @@ public class TableDistributedPlanGenerator
     } else if (!canSplitPushDown) {
       node.setChild(
           mergeChildrenViaCollectOrMergeSort(
-              node.getSpecification().getOrderingScheme().orElse(null), childrenNodes));
+              node.getSpecification().getOrderingScheme().orElse(null),
+              childrenNodes,
+              "visitWindowFunction:input"));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
@@ -3840,7 +4079,9 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      node.setChild(mergeChildrenViaCollectOrMergeSort(requiredOrdering, childrenNodes));
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              requiredOrdering, childrenNodes, "visitRowNumber:input"));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);
@@ -3877,7 +4118,9 @@ public class TableDistributedPlanGenerator
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
-      node.setChild(mergeChildrenViaCollectOrMergeSort(requiredOrdering, childrenNodes));
+      node.setChild(
+          mergeChildrenViaCollectOrMergeSort(
+              requiredOrdering, childrenNodes, "visitTopKRanking:input"));
       return Collections.singletonList(node);
     } else {
       return splitForEachChild(node, childrenNodes);

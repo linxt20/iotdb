@@ -241,6 +241,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_NO_VALUE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
@@ -444,10 +445,16 @@ public class DataNodeTableOperatorGenerator
             .EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B);
 
     List<Symbol> sourceOutputSymbols = node.getChildren().get(0).getOutputSymbols();
+    List<Symbol> partitioningSymbols =
+        hashNode.getPartitioningDescriptor().getPartitioningSymbols();
     int[] keyColumnIndexes =
-        hashNode.getPartitioningDescriptor().getPartitioningSymbols().stream()
-            .mapToInt(sourceOutputSymbols::indexOf)
-            .toArray();
+        partitioningSymbols.stream().mapToInt(sourceOutputSymbols::indexOf).toArray();
+    // The router hashes the SQL type the planner resolved, not the physical column encoding. See
+    // HashKeyCanonicalizer for why the two must not be allowed to drift apart.
+    Type[] keyColumnTypes =
+        partitioningSymbols.stream()
+            .map(symbol -> context.getTypeProvider().getTableModelType(symbol))
+            .toArray(Type[]::new);
     for (int keyColumnIndex : keyColumnIndexes) {
       checkArgument(
           keyColumnIndex >= 0,
@@ -463,7 +470,9 @@ public class DataNodeTableOperatorGenerator
         child,
         channelRoutingSinkHandle,
         new TsBlockHashPartitioner(
-            hashNode.getPartitioningDescriptor().getPartitionCount(), keyColumnIndexes));
+            hashNode.getPartitioningDescriptor().getPartitionCount(),
+            keyColumnIndexes,
+            keyColumnTypes));
   }
 
   @Override
@@ -1373,7 +1382,8 @@ public class DataNodeTableOperatorGenerator
 
     final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
     final DataRegion dataRegion = (DataRegion) context.getInstanceContext().getDataRegion();
-    final List<Long> timePartitions = new ArrayList<>(dataRegion.getTsFileManager().getTimePartitions());
+    final List<Long> timePartitions =
+        new ArrayList<>(dataRegion.getTsFileManager().getTimePartitions());
     Collections.sort(timePartitions);
     return constructParallelDeviceTpMorselScan(scanNode, context, timePartitions, node);
   }
@@ -1385,12 +1395,16 @@ public class DataNodeTableOperatorGenerator
       return false;
     }
     final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
-    // The distributed planner's allowParallelScan bit is attached to the Scan before a direct
-    // Filter is considered. It can therefore remain false even though this branch is semantically
-    // unordered: any order/limit above the Filter is applied after this complete filtered result.
-    // Keep the shared safety checks for device entries and global push-down limit/offset.
-    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
+    // Splitting this scan is only safe when nothing above it needs the rows in the scan's own
+    // order. The distributed planner encodes exactly that in the allowParallelScan bit: it sets
+    // the bit only where the required properties are unordered, and it leaves the bit clear both
+    // when a SortNode has to be kept above and when it proved the scan's own ordering already
+    // satisfies the parent and therefore dropped that SortNode. Reading the bit, instead of only
+    // the device-entry and push-down-limit checks, keeps this path exactly as conservative as the
+    // plain unordered device-parallel path in visitDeviceTableScan.
+    if (!canSplitDeviceTableScanIntoParallelPipelines(scanNode, context)
         || !IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorsel()
+        || containsDiffFunction(node.getPredicate())
         || ((DataRegion) context.getInstanceContext().getDataRegion())
                 .getTsFileManager()
                 .getTimePartitions()
@@ -1896,7 +1910,8 @@ public class DataNodeTableOperatorGenerator
         if (transparentFilter != null) {
           // Per-driver EXPLAIN snapshots are keyed by the sub-scan PlanNodeId. The filter retains
           // its original id so its aggregate statistics remain attached to the logical FilterNode;
-          // carry the physical pipeline root alongside the scan snapshot to make the fusion visible.
+          // carry the physical pipeline root alongside the scan snapshot to make the fusion
+          // visible.
           subScanOperator
               .getOperatorContext()
               .getSpecifiedInfo()

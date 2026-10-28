@@ -30,6 +30,8 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -54,7 +56,8 @@ public class HashPartitioningSinkOperatorTest {
             Mockito.mock(OperatorContext.class),
             child,
             sinkHandle,
-            new TsBlockHashPartitioner(7, new int[] {0}));
+            new TsBlockHashPartitioner(
+                7, new int[] {0}, new Type[] {TypeFactory.getType(TSDataType.INT32)}));
 
     assertNull(operator.next());
 
@@ -72,7 +75,8 @@ public class HashPartitioningSinkOperatorTest {
         assertTrue(channel >= 0 && channel < 7);
         assertTrue(
             channel
-                == new TsBlockHashPartitioner(7, new int[] {0})
+                == new TsBlockHashPartitioner(
+                        7, new int[] {0}, new Type[] {TypeFactory.getType(TSDataType.INT32)})
                     .getBucket(partitionedBlock, position));
       }
     }
@@ -91,7 +95,8 @@ public class HashPartitioningSinkOperatorTest {
             Mockito.mock(OperatorContext.class),
             child,
             sinkHandle,
-            new TsBlockHashPartitioner(2, new int[] {0}));
+            new TsBlockHashPartitioner(
+                2, new int[] {0}, new Type[] {TypeFactory.getType(TSDataType.INT32)}));
 
     ListenableFuture<?> blocked = operator.isBlocked();
 

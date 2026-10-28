@@ -73,7 +73,8 @@ public class AnnotationTest {
                   CanBeAnnotated.Predicates.annotatedWith(TestOnly.class)); // see next section
 
       rule.check(productionClasses);
-    } catch (OutOfMemoryError ignored) {
+    } catch (OutOfMemoryError error) {
+      throw new AssertionError("Architecture check could not complete", error);
     }
   }
 
@@ -127,7 +128,8 @@ public class AnnotationTest {
       if (!failures.isEmpty()) {
         throw new AssertionError(String.join("\n", failures));
       }
-    } catch (OutOfMemoryError ignored) {
+    } catch (OutOfMemoryError error) {
+      throw new AssertionError("Architecture check could not complete", error);
     }
   }
 }

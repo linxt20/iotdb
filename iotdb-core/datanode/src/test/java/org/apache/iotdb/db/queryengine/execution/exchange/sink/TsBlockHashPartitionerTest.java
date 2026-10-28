@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 
@@ -40,7 +42,9 @@ public class TsBlockHashPartitionerTest {
 
   @Test
   public void testEqualKeysUseTheSameBucketAcrossBlocksAndNullsAreDeterministic() {
-    TsBlockHashPartitioner partitioner = new TsBlockHashPartitioner(7, new int[] {0});
+    TsBlockHashPartitioner partitioner =
+        new TsBlockHashPartitioner(
+            7, new int[] {0}, new Type[] {TypeFactory.getType(TSDataType.INT32)});
     TsBlock firstBlock = buildBlock(new Integer[] {1, 2, null, 1}, new int[] {10, 20, 30, 11});
     TsBlock secondBlock = buildBlock(new Integer[] {null, 2, 3, 1}, new int[] {31, 21, 40, 12});
 
@@ -55,7 +59,13 @@ public class TsBlockHashPartitionerTest {
 
   @Test
   public void testCompositeKeyControlsRoutingAndAllRowsArePreservedOnce() {
-    TsBlockHashPartitioner partitioner = new TsBlockHashPartitioner(5, new int[] {0, 1});
+    TsBlockHashPartitioner partitioner =
+        new TsBlockHashPartitioner(
+            5,
+            new int[] {0, 1},
+            new Type[] {
+              TypeFactory.getType(TSDataType.INT32), TypeFactory.getType(TSDataType.INT32)
+            });
     TsBlock input = buildCompositeBlock();
 
     List<TsBlockHashPartitioner.Partition> partitions = partitioner.partition(input);
@@ -84,8 +94,7 @@ public class TsBlockHashPartitionerTest {
     }
 
     Set<String> expectedRows =
-        new HashSet<>(
-            Arrays.asList("0:1:10:100", "1:1:20:200", "2:2:10:300", "3:1:10:101"));
+        new HashSet<>(Arrays.asList("0:1:10:100", "1:1:20:200", "2:2:10:300", "3:1:10:101"));
     assertEquals(expectedRows, actualRows);
     assertEquals(3, bucketByKey.size());
     assertEquals(partitioner.getBucket(input, 0), partitioner.getBucket(input, 3));
@@ -93,7 +102,8 @@ public class TsBlockHashPartitionerTest {
 
   @Test
   public void testScalarAndBinaryColumnObjectHashesAreStableAcrossBlocks() {
-    TsBlockHashPartitioner partitioner = new TsBlockHashPartitioner(11, new int[] {0});
+    // One partitioner per case. The constructor takes the SQL type of each key column, so a single
+    // partitioner cannot be fed every physical type any more: that is the point of the contract.
     Object[][] cases =
         new Object[][] {
           {TSDataType.BOOLEAN, true},
@@ -111,7 +121,11 @@ public class TsBlockHashPartitionerTest {
     for (Object[] testCase : cases) {
       TSDataType dataType = (TSDataType) testCase[0];
       Object value = testCase[1];
+      Type keyType = TypeFactory.getType(dataType);
+      TsBlockHashPartitioner partitioner =
+          new TsBlockHashPartitioner(11, new int[] {0}, new Type[] {keyType});
       assertEquals(
+          dataType.name(),
           partitioner.getBucket(buildSingleValueBlock(dataType, value), 0),
           partitioner.getBucket(buildSingleValueBlock(dataType, copyValue(value)), 0));
     }
@@ -121,17 +135,81 @@ public class TsBlockHashPartitionerTest {
   public void testRejectsTimeColumnAsPartitionKey() {
     TsBlock input = buildBlock(new Integer[] {1}, new int[] {10});
 
-    new TsBlockHashPartitioner(2, new int[] {-1}).partition(input);
+    new TsBlockHashPartitioner(
+            2, new int[] {-1}, new Type[] {TypeFactory.getType(TSDataType.INT32)})
+        .partition(input);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testRejectsEmptyKeyList() {
-    new TsBlockHashPartitioner(2, new int[0]);
+    new TsBlockHashPartitioner(2, new int[0], new Type[0]);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testRejectsDuplicateKeyIndexes() {
-    new TsBlockHashPartitioner(2, new int[] {0, 0});
+    new TsBlockHashPartitioner(
+        2,
+        new int[] {0, 0},
+        new Type[] {TypeFactory.getType(TSDataType.INT32), TypeFactory.getType(TSDataType.INT32)});
+  }
+
+
+  @Test
+  public void testEmptyBlockRoutesNoRows() {
+    TsBlockHashPartitioner partitioner =
+        new TsBlockHashPartitioner(
+            3, new int[] {0}, new Type[] {TypeFactory.getType(TSDataType.INT32)});
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32));
+
+    assertTrue(partitioner.partition(builder.build()).isEmpty());
+  }
+
+  /**
+   * The scale case the routing contract has to hold at: 120 distinct keys times 50 rows each, with
+   * the keys interleaved rather than sorted. A partitioner that grouped by position instead of by key
+   * would show up as a split key, not as a wrong row count, which is why the per-key assertion comes
+   * before the row-count one.
+   */
+  @Test
+  public void testRepeatedKeysAcrossASixThousandRowBlockKeepEveryKeyInOneBucket() {
+    int bucketCount = 3;
+    int distinctKeys = 120;
+    int rowsPerKey = 50;
+    TsBlockHashPartitioner partitioner =
+        new TsBlockHashPartitioner(
+            bucketCount, new int[] {0}, new Type[] {TypeFactory.getType(TSDataType.INT32)});
+
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.INT32, TSDataType.INT64));
+    for (int position = 0; position < distinctKeys * rowsPerKey; position++) {
+      builder.getTimeColumnBuilder().writeLong(position);
+      builder.getColumnBuilder(0).writeInt(position % distinctKeys);
+      builder.getColumnBuilder(1).writeLong(position);
+      builder.declarePosition();
+    }
+    TsBlock input = builder.build();
+
+    Map<Integer, Integer> bucketByKey = new HashMap<>();
+    int[] bucketRowCounts = new int[bucketCount];
+    Set<Long> seenRows = new HashSet<>();
+    for (TsBlockHashPartitioner.Partition partition : partitioner.partition(input)) {
+      TsBlock block = partition.getTsBlock();
+      bucketRowCounts[partition.getBucket()] += block.getPositionCount();
+      for (int position = 0; position < block.getPositionCount(); position++) {
+        int key = block.getColumn(0).getInt(position);
+        Integer previousBucket = bucketByKey.putIfAbsent(key, partition.getBucket());
+        if (previousBucket != null) {
+          assertEquals("key " + key, previousBucket.intValue(), partition.getBucket());
+        }
+        assertTrue(seenRows.add(block.getColumn(1).getLong(position)));
+      }
+    }
+
+    assertEquals(distinctKeys, bucketByKey.size());
+    assertEquals(distinctKeys * rowsPerKey, seenRows.size());
+    // 120 keys over 3 buckets is 40 keys per bucket, and 40 keys times 50 rows is 2,000 rows.
+    assertEquals(2000, bucketRowCounts[0]);
+    assertEquals(2000, bucketRowCounts[1]);
+    assertEquals(2000, bucketRowCounts[2]);
   }
 
   private static void assertRowsAndRecordBuckets(

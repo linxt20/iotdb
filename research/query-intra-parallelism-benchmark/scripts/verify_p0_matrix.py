@@ -56,15 +56,19 @@ def numeric_metric(value: Any, name: str) -> bool:
         number = float(value)
     except (TypeError, ValueError):
         return False
-    return math.isfinite(number) and (number > 0 if name == "query_ms" else number >= 0)
+    # Zero means the collector did not produce a usable resource sample.
+    return math.isfinite(number) and number > 0
 
 
 def check_manifest(output: Path, problems: list[str]) -> None:
     manifest = read_json(output / "manifest.json", problems)
     if manifest is None:
         return
-    if manifest.get("dop_sequence") != [1, 2, 4, 8, 16, 1]:
+    dop_sequence = manifest.get("dop_sequence")
+    if dop_sequence != [1, 2, 4, 8, 16, 1]:
         problems.append("manifest dop_sequence must be exactly [1, 2, 4, 8, 16, 1]")
+    if not isinstance(dop_sequence, list) or not dop_sequence or dop_sequence[-1] != 1:
+        problems.append("manifest final DOP step must be an explicit DOP=1 cache-drift control")
     modes = manifest.get("cache_modes")
     if not isinstance(modes, list) or set(modes) != set(P0_CACHE_MODES):
         problems.append("manifest cache_modes must contain exactly warm and cold")
@@ -160,7 +164,7 @@ def self_test() -> int:
             "iterations": MIN_MEASURED_SAMPLES_PER_CELL,
         }), encoding="utf-8")
         (output / "environment" / "environment.json").write_text(json.dumps({
-            "git": {"head": {"exit_code": 0, "stdout": "0123456789abcdef\\n"}},
+            "git": {"head": {"exit_code": 0, "stdout": "0123456789abcdef\n"}},
             "configs": [{"source": "/isolated/conf/iotdb-system.properties"}],
         }), encoding="utf-8")
         rows = []
@@ -172,12 +176,14 @@ def self_test() -> int:
                     (attempt / "record.json").write_text("{}", encoding="utf-8")
                     for iteration in range(MIN_MEASURED_SAMPLES_PER_CELL):
                         rows.append({"query_id": query, "dop": dop, "cache_mode": mode,
-                                     "query_ms": "1", "cpu_pct": "0", "peak_rss_bytes": "0",
-                                     "shuffle_bytes": "0", "attempt_dir": str(attempt)})
-        with (output / "summary" / "attempts.csv").open("w", newline="", encoding="utf-8") as target:
-            writer = csv.DictWriter(target, fieldnames=rows[0])
-            writer.writeheader()
-            writer.writerows(rows)
+                                     "query_ms": "1", "cpu_pct": "1", "peak_rss_bytes": "1",
+                                     "shuffle_bytes": "1", "attempt_dir": str(attempt)})
+        def write_rows():
+            with (output / "summary" / "attempts.csv").open("w", newline="", encoding="utf-8") as target:
+                writer = csv.DictWriter(target, fieldnames=rows[0])
+                writer.writeheader()
+                writer.writerows(rows)
+        write_rows()
         for query in P0_QUERIES:
             for dop in P0_DOPS:
                 report = output / "validation" / query / f"dop-{dop}" / "report.json"
@@ -185,21 +191,31 @@ def self_test() -> int:
                 report.write_text('{"matched": true}', encoding="utf-8")
         if not verify(output)["accepted"]:
             return 1
+        bad_manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+        bad_manifest["dop_sequence"] = [1, 2, 4, 8, 16]
+        (output / "manifest.json").write_text(json.dumps(bad_manifest), encoding="utf-8")
+        if verify(output)["accepted"]:
+            return 1
+        bad_manifest["dop_sequence"] = [1, 2, 4, 8, 16, 1]
+        (output / "manifest.json").write_text(json.dumps(bad_manifest), encoding="utf-8")
+        rows[0]["cpu_pct"] = "0"
+        write_rows()
+        if verify(output)["accepted"]:
+            return 1
+        rows[0]["cpu_pct"] = "1"
+        write_rows()
         (output / "validation" / "top_k" / "dop-16" / "report.json").write_text(
             '{"matched": false}', encoding="utf-8")
         if verify(output)["accepted"]:
             return 1
         (output / "validation" / "top_k" / "dop-16" / "report.json").write_text(
             '{"matched": true}', encoding="utf-8")
-        with (output / "summary" / "attempts.csv").open("w", newline="", encoding="utf-8") as target:
-            writer = csv.DictWriter(target, fieldnames=rows[0])
-            writer.writeheader()
-            writer.writerows(rows[:-1])
+        rows.pop()
+        write_rows()
         if verify(output)["accepted"]:
             return 1
     print("verify_p0_matrix self-test passed")
     return 0
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)

@@ -22,6 +22,7 @@ package org.apache.iotdb.calc.execution.operator.source.relational;
 import org.apache.iotdb.calc.execution.operator.AbstractOperator;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.relational.HashKeyCanonicalizer;
 import org.apache.iotdb.calc.plan.planner.CommonOperatorUtils;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
@@ -254,44 +255,13 @@ public class HashInnerJoinOperator extends AbstractOperator {
       if (column.isNull(row)) {
         return null;
       }
-      Object value = canonicalValue(column, row, joinKeyTypes.get(keyIndex));
+      Object value = HashKeyCanonicalizer.canonicalValue(column, row, joinKeyTypes.get(keyIndex));
       if (value == null) {
         return null;
       }
       values[keyIndex] = value;
     }
     return new HashJoinKey(values);
-  }
-
-  private static Object canonicalValue(Column column, int position, Type type) {
-    switch (type.getTypeEnum()) {
-      case INT32:
-      case DATE:
-        return column.getInt(position);
-      case INT64:
-      case TIMESTAMP:
-        return column.getLong(position);
-      case FLOAT:
-        float floatValue = column.getFloat(position);
-        if (Float.isNaN(floatValue)) {
-          return null;
-        }
-        return floatValue == 0.0F ? 0.0F : floatValue;
-      case DOUBLE:
-        double doubleValue = column.getDouble(position);
-        if (Double.isNaN(doubleValue)) {
-          return null;
-        }
-        return doubleValue == 0.0D ? 0.0D : doubleValue;
-      case BOOLEAN:
-        return column.getBoolean(position);
-      case STRING:
-      case BLOB:
-      case TEXT:
-        return column.getBinary(position);
-      default:
-        throw new UnsupportedOperationException("Unsupported hash join key type: " + type);
-    }
   }
 
   private void reserve(long bytes) {

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
+import org.apache.iotdb.calc.execution.relational.HashKeyCanonicalizer;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,21 +36,28 @@ import java.util.Set;
 /**
  * Splits a {@link TsBlock} into hash buckets without changing the rows carried by the block.
  *
- * <p>The key indexes address value columns, not the time column. The logical planner must supply
- * value columns whose equality and hash semantics have already been normalized for the consuming
- * operator. In particular, this class intentionally does not choose SQL coercion or collation
- * rules; it is the physical primitive that routes the resulting values.
+ * <p>The key indexes address value columns, not the time column. Each key index is paired with the
+ * SQL type the planner resolved for that symbol, because the hash is a SQL hash and not a physical
+ * one: {@link HashKeyCanonicalizer} is the single rule shared with the consuming hash join. Hashing
+ * the raw physical object instead would send {@code -0.0} and {@code +0.0} to different buckets
+ * while the executor regards them as equal.
  *
  * <p>A null key component contributes a deterministic zero hash. Therefore rows with equal keys,
  * including equal null positions in composite keys, are assigned to the same bucket independently
- * of TsBlock boundaries.
+ * of TsBlock boundaries. A NaN component is routed by its canonical hash and, per the join
+ * contract, never matches another row.
+ *
+ * <p>For any row whose key has no null and no NaN component, the bucket equals the join's internal
+ * key hash reduced modulo the bucket count. That identity is asserted by {@code
+ * HashKeyCanonicalizerTest}.
  */
 public class TsBlockHashPartitioner {
 
   private final int bucketCount;
   private final int[] keyColumnIndexes;
+  private final Type[] keyColumnTypes;
 
-  public TsBlockHashPartitioner(int bucketCount, int[] keyColumnIndexes) {
+  public TsBlockHashPartitioner(int bucketCount, int[] keyColumnIndexes, Type[] keyColumnTypes) {
     Validate.isTrue(
         bucketCount > 0, DataNodeQueryMessages.EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923);
     Validate.notNull(
@@ -57,14 +66,26 @@ public class TsBlockHashPartitioner {
     Validate.isTrue(
         keyColumnIndexes.length > 0,
         DataNodeQueryMessages.EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41);
+    Validate.notNull(
+        keyColumnTypes, DataNodeQueryMessages.EXCEPTION_KEYCOLUMNTYPES_MUST_NOT_BE_NULL_5C3A17B9);
+    Validate.isTrue(
+        keyColumnTypes.length == keyColumnIndexes.length,
+        DataNodeQueryMessages.EXCEPTION_KEYCOLUMNTYPES_LENGTH_MUST_MATCH_KEYCOLUMNINDEXES_8B41D0C7);
     Set<Integer> uniqueKeyColumnIndexes = new HashSet<>();
     for (int keyColumnIndex : keyColumnIndexes) {
       Validate.isTrue(
           uniqueKeyColumnIndexes.add(keyColumnIndex),
           DataNodeQueryMessages.EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554);
     }
+    for (Type keyColumnType : keyColumnTypes) {
+      Validate.isTrue(
+          HashKeyCanonicalizer.isEncodable(keyColumnType),
+          DataNodeQueryMessages.EXCEPTION_KEYCOLUMNTYPE_HAS_NO_CANONICAL_ENCODING_2F6B9E14,
+          keyColumnType);
+    }
     this.bucketCount = bucketCount;
     this.keyColumnIndexes = keyColumnIndexes.clone();
+    this.keyColumnTypes = keyColumnTypes.clone();
   }
 
   /**
@@ -119,12 +140,13 @@ public class TsBlockHashPartitioner {
   }
 
   private int getBucketUnchecked(TsBlock tsBlock, int position) {
-    int hash = 1;
-    for (int keyColumnIndex : keyColumnIndexes) {
-      Column column = tsBlock.getColumn(keyColumnIndex);
-      hash = 31 * hash + (column.isNull(position) ? 0 : column.getObject(position).hashCode());
+    int[] componentHashes = new int[keyColumnIndexes.length];
+    for (int keyIndex = 0; keyIndex < keyColumnIndexes.length; keyIndex++) {
+      componentHashes[keyIndex] =
+          HashKeyCanonicalizer.routingHash(
+              tsBlock.getColumn(keyColumnIndexes[keyIndex]), position, keyColumnTypes[keyIndex]);
     }
-    return Math.floorMod(hash, bucketCount);
+    return Math.floorMod(HashKeyCanonicalizer.foldComponentHashes(componentHashes), bucketCount);
   }
 
   private void validateKeyColumnIndexes(TsBlock tsBlock) {

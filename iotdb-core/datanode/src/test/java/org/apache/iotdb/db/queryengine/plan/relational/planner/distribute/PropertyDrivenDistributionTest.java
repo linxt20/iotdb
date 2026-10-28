@@ -37,9 +37,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowN
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -51,13 +51,12 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.ArrayList;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -97,14 +96,25 @@ public class PropertyDrivenDistributionTest {
 
   @Parameterized.Parameter public boolean propertyDrivenPlanning;
 
-  @BeforeClass
-  public static void setUp() {
-    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
-  }
+  private boolean originalProperty;
+  private boolean originalHash;
+  private boolean originalOrdered;
+  private int originalBuckets;
+  private int originalDataNodeId;
 
   @Before
   public void applyFlag() {
-    setPropertyDrivenPlanning(propertyDrivenPlanning);
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    originalProperty = config.isEnablePropertyDrivenPlanning();
+    originalHash = config.isEnableTableGroupByHashRepartition();
+    originalOrdered = config.isEnableOrderedParallelScan();
+    originalBuckets = config.getTableGroupByHashRepartitionPartitionCount();
+    originalDataNodeId = config.getDataNodeId();
+    config.setDataNodeId(1);
+    config.setEnablePropertyDrivenPlanning(propertyDrivenPlanning);
+    config.setEnableTableGroupByHashRepartition(false);
+    config.setEnableOrderedParallelScan(false);
+    config.setTableGroupByHashRepartitionPartitionCount(2);
   }
 
   /**
@@ -136,8 +146,7 @@ public class PropertyDrivenDistributionTest {
   @Test
   public void parallelScanPermissionSurvivesFragmentSerialization()
       throws org.apache.iotdb.commons.exception.IllegalPathException {
-    DeviceTableScanNode original =
-        planAndCollectScans("SELECT * FROM testdb.table1").get(0);
+    DeviceTableScanNode original = planAndCollectScans("SELECT * FROM testdb.table1").get(0);
     assertTrue(original.isAllowParallelScan());
 
     ByteBuffer buffer = ByteBuffer.allocate(16 * 1024);
@@ -362,14 +371,7 @@ public class PropertyDrivenDistributionTest {
     assertTrue(generator.getRuleTrace().get(0).contains("CollectNode"));
   }
 
-  /**
-   * A real grouped aggregation is the first intended consumer of {@code Partitioned(groupKeys)}.
-   * The contract and row partitioner alone are not enough to make that true: the table fragmenter
-   * still creates one identity sink for each exchange edge, whereas this shape needs every partial
-   * aggregation to have a channel to every final partition. Until that N-to-N topology and the
-   * hash-aware sink operator are both present, the planner must keep the existing final
-   * aggregation/Collect shape and must never emit the declarative hash-sink node.
-   */
+  /** A disabled GROUP BY hash switch retains the serial final-aggregation/Collect path. */
   @Test
   public void groupedAggregationDoesNotSelectUnwiredHashExchange() {
     List<PlanNode> nodes =
@@ -377,11 +379,10 @@ public class PropertyDrivenDistributionTest {
 
     assertTrue(nodes.stream().anyMatch(node -> node instanceof AggregationNode));
     assertFalse(
-        "a hash contract without N-to-N fragment wiring must not be selected for GROUP BY",
+        "the disabled GROUP BY hash switch must keep hash sinks out of the plan",
         nodes.stream().anyMatch(node -> node instanceof TableHashPartitioningShuffleSinkNode));
     assertAllScansForbidParallelism(
-        nodes,
-        "until the final grouping aggregation consumes Partitioned(groupKeys), GROUP BY stays on the Collect fallback");
+        nodes, "the fallback final aggregation consumes one complete input stream");
   }
 
   /** Plans the statement against a single data region and returns every node in the plan. */
@@ -443,7 +444,12 @@ public class PropertyDrivenDistributionTest {
 
   @After
   public void restoreFlag() {
-    setPropertyDrivenPlanning(false);
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    config.setEnablePropertyDrivenPlanning(originalProperty);
+    config.setEnableTableGroupByHashRepartition(originalHash);
+    config.setEnableOrderedParallelScan(originalOrdered);
+    config.setTableGroupByHashRepartitionPartitionCount(originalBuckets);
+    config.setDataNodeId(originalDataNodeId);
   }
 
   private static void setPropertyDrivenPlanning(boolean enabled) {
@@ -585,23 +591,35 @@ public class PropertyDrivenDistributionTest {
     // This deliberately enables the GROUP BY-only experimental switch. A join must not inherit
     // that 1 x P implementation: it needs two independently routed inputs and one final join per
     // bucket, while the current operator is merge-sort based.
+    boolean originalJoinHashFlag =
+        IoTDBDescriptor.getInstance().getConfig().isEnableTableGroupByHashRepartition();
     IoTDBDescriptor.getInstance().getConfig().setEnableTableGroupByHashRepartition(true);
     try {
-      List<PlanNode> nodes =
-          planAndCollectNodes(
-              "SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time");
+      String sql = "SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time";
+      List<PlanNode> nodes = planAndCollectNodes(sql);
       assertTrue(nodes.stream().anyMatch(node -> node instanceof JoinNode));
       assertTrue(
           "merge-sort join must expose an ordering enforcer on at least one input",
-          nodes.stream().anyMatch(node -> node instanceof SortNode || node instanceof MergeSortNode));
+          nodes.stream()
+              .anyMatch(node -> node instanceof SortNode || node instanceof MergeSortNode));
       assertFalse(
           "a GROUP BY hash sink cannot be mistaken for a 2 x P equi-join implementation",
           nodes.stream().anyMatch(node -> node instanceof TableHashPartitioningShuffleSinkNode));
       assertAllScansForbidParallelism(
           nodes,
           "until Partitioned(joinKeys) is consumed by a hash exchange, equi-join scans stay serial");
+      if (propertyDrivenPlanning) {
+        assertTrue(
+            explainText(sql)
+                .contains(
+                    "FALLBACK:"
+                        + FallbackReason.HASH_JOIN_EXECUTOR_AND_TWO_SIDED_BUCKET_TOPOLOGY_REQUIRED
+                            .name()));
+      }
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setEnableTableGroupByHashRepartition(false);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableTableGroupByHashRepartition(originalJoinHashFlag);
     }
   }
 
@@ -642,15 +660,16 @@ public class PropertyDrivenDistributionTest {
 
     assertTrue(
         "the ordered ranking path must retain an order-sensitive physical operator",
-        nodes.stream().anyMatch(node -> node instanceof RowNumberNode || node instanceof WindowNode));
+        nodes.stream()
+            .anyMatch(node -> node instanceof RowNumberNode || node instanceof WindowNode));
     assertAllScansForbidParallelism(
         nodes, "an order-sensitive RowNumber must not split its scan into parallel drivers");
   }
 
   /**
-   * An ordered aggregate window is subject to the same ordering contract as ordered RowNumber.
-   * The physical source may satisfy that order directly or through a SortNode, so the invariant is
-   * the WindowNode and its non-splittable scan rather than an implementation-specific glue shape.
+   * An ordered aggregate window is subject to the same ordering contract as ordered RowNumber. The
+   * physical source may satisfy that order directly or through a SortNode, so the invariant is the
+   * WindowNode and its non-splittable scan rather than an implementation-specific glue shape.
    */
   @Test
   public void orderedWindowForbidsParallelScan() {

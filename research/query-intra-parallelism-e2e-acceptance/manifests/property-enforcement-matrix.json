@@ -1,17 +1,311 @@
 {
-  "schema_version": 1,
-  "purpose": "Machine-readable P0 contract for table-model property enforcement. Every operator family names its required and provided property, the selected enforcer, and either an executable scan-parallel path or the reason it remains prohibited.",
-  "property_vocabulary": ["Arbitrary", "Single", "Ordered(time)", "Partitioned(keys)"],
+  "schema_version": 2,
+  "purpose": "Static property-contract index with polarity-checked JUnit links. Node markers and scan eligibility are distinct; Java execution and service evidence are verified separately.",
+  "property_vocabulary": [
+    "Arbitrary",
+    "Single",
+    "Ordered(time)",
+    "Partitioned(keys)"
+  ],
   "operators": [
-    {"id":"scan","sql":"SELECT * FROM testdb.table1","required":"Single output; branch-local scan has no ordering requirement","provided":"Single direct source (or Arbitrary siblings before output convergence)","enforcer":"none when directly satisfied; CollectNode when sibling branches must converge","scan_parallelism":"allowed","forbidden_parallelism_reason":null,"plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"plainQueryAllowsParallelScan","assertions":["scans.get(0).isAllowParallelScan()"]}},
-    {"id":"filter","sql":"SELECT * FROM testdb.table1 WHERE s1 > 1","required":"Single output; branch-local FilterNode has no ordering requirement","provided":"Single direct source (or Arbitrary sibling scan branches)","enforcer":"none for FilterNode; CollectNode only at an enclosing Single consumer","scan_parallelism":"allowed","forbidden_parallelism_reason":null,"plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"filteredQueryAllowsParallelScan","assertions":["scan.isAllowParallelScan()"]}},
-    {"id":"project","sql":"SELECT s1 + 1 AS projected_s1 FROM testdb.table1","required":"Single output; computed projection cannot be copied to each scan branch","provided":"Arbitrary source, but ProjectNode is not copied to every branch","enforcer":"none","scan_parallelism":"forbidden","forbidden_parallelism_reason":"Computed ProjectNode has no branch-copying or collecting property rule; the safe P0 fallback keeps the source serial.","plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"computedProjectDocumentsTheNoEnforcerFallback","assertions":["node instanceof ProjectNode","assertAllScansForbidParallelism"]}},
-    {"id":"sort","sql":"SELECT * FROM testdb.table1 ORDER BY time","required":"Single + Ordered(time)","provided":"Arbitrary and unordered when sibling scans must converge","enforcer":"SortNode or MergeSortNode","scan_parallelism":"forbidden","forbidden_parallelism_reason":"A global ORDER BY must preserve one complete ordered stream; this static path does not split an ordered scan.","plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"orderedQueryForbidsParallelScan","assertions":["scan.isAllowParallelScan()"]}},
-    {"id":"top-k","sql":"SELECT * FROM testdb.table1 ORDER BY time LIMIT 10","required":"Single + Ordered(time) at the global result","provided":"TopKNode owns global convergence; its children are not pre-collected","enforcer":"TopKNode (no child CollectNode/MergeSortNode)","scan_parallelism":"forbidden","forbidden_parallelism_reason":"The global ordering and limit are correctness-sensitive; no complete parallel global Top-K contract is claimed in P0.","plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"topKDoesNotConvergeItsOwnChildren","assertions":["node instanceof TopKNode","assertAllScansForbidParallelism"]}},
-    {"id":"window","sql":"SELECT count(s1) OVER (ORDER BY time) FROM testdb.table1","required":"Single + Ordered(time)","provided":"Unordered source unless the physical child already carries the requested order","enforcer":"SortNode or MergeSortNode when needed","scan_parallelism":"forbidden","forbidden_parallelism_reason":"An ordered window is order-sensitive; P0 must not split its scan without a reviewed window repartition contract.","plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"orderedWindowForbidsParallelScan","assertions":["node instanceof WindowNode","assertAllScansForbidParallelism"]}},
-    {"id":"row-number","sql":"SELECT row_number() OVER (ORDER BY time) FROM testdb.table1","required":"Single + Ordered(time)","provided":"Unordered source unless the physical child already carries the requested order","enforcer":"SortNode or MergeSortNode when needed","scan_parallelism":"forbidden","forbidden_parallelism_reason":"Row numbering over an order is globally position-sensitive; P0 must preserve one logical ordered stream.","plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"orderedRowNumberForbidsParallelScan","assertions":["node instanceof RowNumberNode || node instanceof WindowNode","assertAllScansForbidParallelism"]}},
-    {"id":"aggregation","sql":"SELECT s1, count(*) FROM testdb.table1 GROUP BY s1","required":"Partitioned(groupKeys)","provided":"Arbitrary partial-aggregation sources before repartition","enforcer":"TableHashPartitioningShuffleSinkNode + HashPartitioningSinkOperator","scan_parallelism":"conditional","forbidden_parallelism_reason":"Only direct GROUP BY scans with enable_table_group_by_hash_repartition=true have the reviewed 1xP/NxP topology; scalar, computed, streamable, ordered, distinct, mask, and general aggregation shapes retain their serial/Collect fallback.","configuration":"enable_property_driven_planning=true; enable_table_group_by_hash_repartition=true","plan_test":{"class":"SingleSourceGroupByHashRepartitionPlanningTest.java","method":"directMultiSourceGroupByBuildsExecutableSourceByBucketFragments","assertions":["getIndexOfUpstreamSinkHandle()","validateFragmentOwnership"]}},
-    {"id":"join","sql":"SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time","required":"Compatible Partitioned(joinKeys) on both inputs","provided":"Ordered merge-join inputs; no two-sided executable Partitioned(joinKeys) consumer","enforcer":"SortNode or MergeSortNode fallback","scan_parallelism":"forbidden","forbidden_parallelism_reason":"The GROUP BY-only hash sink is not a 2xP join implementation; join needs independently routed inputs and a reviewed per-bucket join operator.","plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"equiJoinDocumentsThePartitionedKeysFallback","assertions":["node instanceof JoinNode","TableHashPartitioningShuffleSinkNode","assertAllScansForbidParallelism"]}},
-    {"id":"union","sql":"SELECT s1 FROM testdb.table1 UNION ALL SELECT s1 FROM testdb.table1","required":"Arbitrary (no global ordering requirement)","provided":"Independent branch streams","enforcer":"none (UnionNode does not manufacture CollectNode/MergeSortNode)","scan_parallelism":"forbidden","forbidden_parallelism_reason":"The current static planner has no explicit branch-consuming property rule for UNION ALL, so it retains the safe source-serialization fallback.","plan_test":{"class":"PropertyDrivenDistributionTest.java","method":"unionKeepsBranchSerializationUntilAnExplicitConsumer","assertions":["node instanceof UnionNode","assertAllScansForbidParallelism"]}}
+    {
+      "id": "scan",
+      "sql": "SELECT * FROM testdb.table1",
+      "required": "Single output; branch-local scan has no ordering requirement",
+      "provided": "Single direct source (or Arbitrary siblings before output convergence)",
+      "enforcer": "none when directly satisfied; CollectNode when sibling branches must converge",
+      "scan_parallelism": "allowed",
+      "forbidden_parallelism_reason": null,
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "plainQueryAllowsParallelScan",
+        "assertions": [
+          "true:scans.get(0).isAllowParallelScan()"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": true,
+        "assertion": "true:scans.get(0).isAllowParallelScan()"
+      }
+    },
+    {
+      "id": "filter",
+      "sql": "SELECT * FROM testdb.table1 WHERE s1 > 1",
+      "required": "Single output; branch-local FilterNode has no ordering requirement",
+      "provided": "Single direct source (or Arbitrary sibling scan branches)",
+      "enforcer": "none for FilterNode; CollectNode only at an enclosing Single consumer",
+      "scan_parallelism": "allowed",
+      "forbidden_parallelism_reason": null,
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "filteredQueryAllowsParallelScan",
+        "assertions": [
+          "true:scan.isAllowParallelScan()"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": true,
+        "assertion": "true:scan.isAllowParallelScan()"
+      }
+    },
+    {
+      "id": "project",
+      "sql": "SELECT s1 + 1 AS projected_s1 FROM testdb.table1",
+      "required": "Single output; branch-local ProjectNode has no ordering requirement",
+      "provided": "Single rewritten source (or Arbitrary sibling sources before convergence); computed projection preserves a single scan source",
+      "enforcer": "none for one source; CollectNode only at an existing Single consumer",
+      "scan_parallelism": "allowed",
+      "forbidden_parallelism_reason": null,
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "projectQueryAllowsParallelScan",
+        "assertions": [
+          "true:scans.get(0).isAllowParallelScan()"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": true,
+        "assertion": "true:scans.get(0).isAllowParallelScan()"
+      }
+    },
+    {
+      "id": "sort",
+      "sql": "SELECT * FROM testdb.table1 ORDER BY time",
+      "required": "Single + Ordered(time)",
+      "provided": "Arbitrary and unordered when sibling scans must converge",
+      "enforcer": "SortNode or MergeSortNode",
+      "scan_parallelism": "forbidden",
+      "forbidden_parallelism_reason": "A global ORDER BY must preserve one complete ordered stream; this static path does not split an ordered scan.",
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "orderedQueryForbidsParallelScan",
+        "assertions": [
+          "false:scan.isAllowParallelScan()"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": false,
+        "assertion": "false:scan.isAllowParallelScan()"
+      }
+    },
+    {
+      "id": "top-k",
+      "sql": "SELECT * FROM testdb.table1 ORDER BY time LIMIT 10",
+      "required": "Single + Ordered(time) at the global result",
+      "provided": "TopKNode owns global convergence; its children are not pre-collected",
+      "enforcer": "TopKNode (no child CollectNode/MergeSortNode)",
+      "scan_parallelism": "forbidden",
+      "forbidden_parallelism_reason": "The global ordering and limit are correctness-sensitive; no complete parallel global Top-K contract is claimed in P0.",
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "topKDoesNotConvergeItsOwnChildren",
+        "assertions": [
+          "false:topKs.isEmpty()",
+          "false:child instanceof CollectNode || child instanceof MergeSortNode",
+          "helper:false:assertAllScansForbidParallelism"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": false,
+        "assertion": "helper:false:assertAllScansForbidParallelism"
+      }
+    },
+    {
+      "id": "window",
+      "sql": "SELECT count(s1) OVER (ORDER BY time) FROM testdb.table1",
+      "required": "Single + Ordered(time)",
+      "provided": "Unordered source unless the physical child already carries the requested order",
+      "enforcer": "SortNode or MergeSortNode when needed",
+      "scan_parallelism": "forbidden",
+      "forbidden_parallelism_reason": "An ordered window is order-sensitive; P0 must not split its scan without a reviewed window repartition contract.",
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "orderedWindowForbidsParallelScan",
+        "assertions": [
+          "true:nodes.stream().anyMatch(node -> node instanceof WindowNode)",
+          "helper:false:assertAllScansForbidParallelism"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": false,
+        "assertion": "helper:false:assertAllScansForbidParallelism"
+      }
+    },
+    {
+      "id": "row-number",
+      "sql": "SELECT row_number() OVER (ORDER BY time) FROM testdb.table1",
+      "required": "Single + Ordered(time)",
+      "provided": "Unordered source unless the physical child already carries the requested order",
+      "enforcer": "SortNode or MergeSortNode when needed",
+      "scan_parallelism": "forbidden",
+      "forbidden_parallelism_reason": "Row numbering over an order is globally position-sensitive; P0 must preserve one logical ordered stream.",
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "orderedRowNumberForbidsParallelScan",
+        "assertions": [
+          "true:nodes.stream().anyMatch(node -> node instanceof RowNumberNode || node instanceof WindowNode)",
+          "helper:false:assertAllScansForbidParallelism"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": false,
+        "assertion": "helper:false:assertAllScansForbidParallelism"
+      }
+    },
+    {
+      "id": "aggregation",
+      "sql": "SELECT s1, count(*) FROM testdb.table1 GROUP BY s1",
+      "required": "Partitioned(groupKeys)",
+      "provided": "Arbitrary partial-aggregation sources before repartition",
+      "enforcer": "TableHashPartitioningShuffleSinkNode + HashPartitioningSinkOperator",
+      "scan_parallelism": "conditional",
+      "forbidden_parallelism_reason": "The reviewed 1xP/NxP topology accepts one DeviceTableScanNode per source, including single-child FilterNode/ProjectNode wrappers, when enable_table_group_by_hash_repartition=true and the aggregation admission checks pass; scalar, streamable, ordered, distinct, masked, and other unsupported shapes retain their serial/Collect fallback.",
+      "configuration": "enable_table_group_by_hash_repartition=true; enable_property_driven_planning controls diagnostics only",
+      "plan_test": {
+        "class": "SingleSourceGroupByHashRepartitionPlanningTest.java",
+        "method": "directMultiSourceGroupByBuildsExecutableSourceByBucketFragments",
+        "assertions": [
+          "true:hashSinks.size() > 1",
+          "true:validation.isExecutable()"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "plan_node",
+        "value": "TableHashPartitioningShuffleSinkNode",
+        "assertion": "true:validation.isExecutable()"
+      }
+    },
+    {
+      "id": "join",
+      "sql": "SELECT * FROM testdb.table1 t1 JOIN testdb.table2 t2 ON t1.time = t2.time",
+      "required": "Compatible Partitioned(joinKeys) on both inputs",
+      "provided": "Ordered merge-join inputs; no two-sided executable Partitioned(joinKeys) consumer",
+      "enforcer": "SortNode or MergeSortNode fallback",
+      "scan_parallelism": "forbidden",
+      "forbidden_parallelism_reason": "The GROUP BY-only hash sink is not a 2xP join implementation; join needs independently routed inputs and a reviewed per-bucket join operator.",
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "equiJoinDocumentsThePartitionedKeysFallback",
+        "assertions": [
+          "true:nodes.stream().anyMatch(node -> node instanceof JoinNode)",
+          "false:nodes.stream().anyMatch(node -> node instanceof TableHashPartitioningShuffleSinkNode)",
+          "helper:false:assertAllScansForbidParallelism",
+          "true:explainText(sql).contains(\"FALLBACK:\" + FallbackReason.HASH_JOIN_EXECUTOR_AND_TWO_SIDED_BUCKET_TOPOLOGY_REQUIRED.name())"
+        ]
+      },
+      "fallback_reason": "FALLBACK:HASH_JOIN_EXECUTOR_AND_TWO_SIDED_BUCKET_TOPOLOGY_REQUIRED",
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": false,
+        "assertion": "helper:false:assertAllScansForbidParallelism"
+      }
+    },
+    {
+      "id": "union",
+      "sql": "SELECT s1 FROM testdb.table1 UNION ALL SELECT s1 FROM testdb.table1",
+      "required": "Arbitrary (no global ordering requirement)",
+      "provided": "Independent branch streams",
+      "enforcer": "none (UnionNode does not manufacture CollectNode/MergeSortNode)",
+      "scan_parallelism": "forbidden",
+      "forbidden_parallelism_reason": "The current static planner has no explicit branch-consuming property rule for UNION ALL, so it retains the safe source-serialization fallback.",
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "unionKeepsBranchSerializationUntilAnExplicitConsumer",
+        "assertions": [
+          "true:nodes.stream().anyMatch(node -> node instanceof UnionNode)",
+          "false:nodes.stream().anyMatch(node -> node instanceof CollectNode || node instanceof MergeSortNode)",
+          "helper:false:assertAllScansForbidParallelism"
+        ]
+      },
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": false,
+        "assertion": "helper:false:assertAllScansForbidParallelism"
+      }
+    },
+    {
+      "id": "collect",
+      "sql": "SELECT * FROM testdb.table1",
+      "required": "Single unordered consumer input",
+      "provided": "Arbitrary independent input branches",
+      "enforcer": "CollectNode",
+      "scan_parallelism": "conditional",
+      "forbidden_parallelism_reason": "Source scan eligibility depends on provider coverage and the enclosing consumer; the linked direct-enforcer fixture uses ValuesNode inputs.",
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "plan_node",
+        "value": "CollectNode",
+        "assertion": "true:enforced instanceof CollectNode"
+      },
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "unorderedBranchesRecordArbitraryToSingleCollectEnforcement",
+        "assertions": [
+          "true:enforced instanceof CollectNode",
+          "true:trace.contains(\"provided=Arbitrary\")"
+        ]
+      }
+    },
+    {
+      "id": "merge-sort",
+      "sql": "SELECT * FROM testdb.table1 ORDER BY time",
+      "required": "Single ordered consumer input",
+      "provided": "Independent locally ordered input branches",
+      "enforcer": "MergeSortNode",
+      "scan_parallelism": "conditional",
+      "forbidden_parallelism_reason": "The ordered consumer preserves its scan qualification boundary; the linked component fixture proves ordered convergence using ValuesNode inputs.",
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "plan_node",
+        "value": "MergeSortNode",
+        "assertion": "true:r.getBranches().get(0) instanceof MergeSortNode"
+      },
+      "plan_test": {
+        "class": "PropertyEnforcerTest.java",
+        "method": "matchingOrderedBranchesNeedOnlyMergeSort",
+        "assertions": [
+          "true:r.getBranches().get(0) instanceof MergeSortNode",
+          "true:r.getProvidedAfter().satisfies(PlanProperties.singleUnordered().withOrdering(ASC))"
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "sql": "SELECT * FROM testdb.table1",
+      "required": "Single output stream",
+      "provided": "Single source or Arbitrary sibling branches before convergence",
+      "enforcer": "none or CollectNode at the existing output consumer",
+      "scan_parallelism": "allowed",
+      "forbidden_parallelism_reason": null,
+      "fallback_reason": null,
+      "execution_marker": {
+        "kind": "scan_permission",
+        "value": true,
+        "assertion": "true:scans.get(0).isAllowParallelScan()"
+      },
+      "plan_test": {
+        "class": "PropertyDrivenDistributionTest.java",
+        "method": "plainQueryAllowsParallelScan",
+        "assertions": [
+          "true:scans.get(0).isAllowParallelScan()"
+        ]
+      }
+    }
   ]
 }

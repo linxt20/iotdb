@@ -19,10 +19,10 @@ process.  An operator must prepare two explicitly named, isolated deployments be
 enabled candidate and a hash-disabled control.  It archives the commands (with passwords
 redacted), raw CLI output, copied configuration, canonical result CSVs, and an acceptance report.
 
-The acceptance proof is intentionally stronger than a matching result.  The enabled EXPLAIN and
-EXPLAIN ANALYZE output must both expose the property trace, TABLE_HASH_V1, at least N hash sinks,
-at least N*P ExchangeNode occurrences, and a reviewed ``sources=N partitions=P (N x P
-experimental path)`` trace.  The control must contain none of the hash-path markers.
+The enabled EXPLAIN records the planning query's source/bucket IDs. EXPLAIN ANALYZE
+is a separate query: its own fragment/operator IDs and hash sink downstream edges prove
+that every source sends one channel to each unique bucket owner. Candidate and control
+must return the same complete result multiset; this program makes no performance claim.
 """
 
 from __future__ import annotations
@@ -52,12 +52,22 @@ TOPOLOGY = re.compile(
     r"\s*\(N\s*x\s*P experimental path\)",
     re.IGNORECASE,
 )
-HASH_SINK_IDS = re.compile(
-    r"\[(?P<ids>\d+(?:\s*,\s*\d+)*)\]\s*:\s*required=Partitioned\[[^\]]+\]"
-    r"\s+provided=.*?TableHashPartitioningShuffleSinkNode\s+TABLE_HASH_V1",
+TOPOLOGY_IDS = re.compile(
+    r"hash-topology\s+sourceIds=\[(?P<sources>[^\]]*)\]"
+    r"\s+bucketIds=\[(?P<buckets>[^\]]*)\]"
+    r"\s+exchangeIds=(?P<exchanges>\[\[.*\]\])\s*\|?\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+FRAGMENT_COUNT = re.compile(r"Fragment Instances Count:\s*(?P<count>\d+)", re.IGNORECASE)
+FRAGMENT_INSTANCE = re.compile(
+    r"FRAGMENT-INSTANCE\[Id:\s*(?P<id>[^\]]+)\]\[IP:\s*(?P<ip>[^\]]+)\]",
     re.IGNORECASE,
 )
-RENDERED_EXCHANGE_IDS = re.compile(r"\bExchange-\d+\b")
+OPERATOR = re.compile(
+    r"\[PlanNodeId\s+(?P<id>[^\]]+)\]:\s*(?P<type>[A-Za-z0-9_]+)\(",
+    re.IGNORECASE,
+)
+DATANODE_ID_HEADERS = {"nodeid", "node_id", "datanodeid", "data_node_id"}
 
 
 def utc_now() -> str:
@@ -181,8 +191,13 @@ def table_rows(path: Path) -> tuple[tuple[str, ...], list[tuple[str, ...]]]:
         clean = ANSI_ESCAPE.sub("", line).strip()
         if clean.startswith("|") and clean.endswith("|"):
             rows.append(tuple(cell.strip() for cell in clean[1:-1].split("|")))
-    if len(rows) < 2:
-        raise RuntimeError(f"CLI output has no table header and data rows: {path}")
+    text = ANSI_ESCAPE.sub("", path.read_text(encoding="utf-8"))
+    completed = re.search(r"^\s*(?:Total line number = (\d+)|Empty set\.)\s*$", text, re.MULTILINE)
+    if not rows or completed is None:
+        raise RuntimeError(f"CLI output lacks a result header or completion footer: {path}")
+    reported_rows = int(completed.group(1) or "0")
+    if reported_rows != len(rows) - 1:
+        raise RuntimeError(f"CLI output result count disagrees with its completion footer: {path}")
     width = len(rows[0])
     if not width or any(len(row) != width for row in rows):
         raise RuntimeError(f"CLI output has an inconsistent table shape: {path}")
@@ -228,7 +243,52 @@ def compare_results(
     }
 
 
-def validate_enabled_plan(path: Path, expected_sources: int, expected_buckets: int) -> dict[str, int]:
+def _id_list(value: str, label: str) -> list[str]:
+    values = [item.strip() for item in value.split(",") if item.strip()]
+    if not values or len(values) != len(set(values)):
+        raise RuntimeError(f"enabled plan {label} IDs must be non-empty and unique")
+    return values
+
+
+def _exchange_matrix(value: str) -> list[list[str]]:
+    rows = re.findall(r"\[([^\[\]]*)\]", value)
+    if not rows:
+        raise RuntimeError("enabled plan exchange ID matrix is empty")
+    matrix = [_id_list(row, "exchange") for row in rows]
+    flattened = [item for row in matrix for item in row]
+    if len(flattened) != len(set(flattened)):
+        raise RuntimeError("enabled plan exchange IDs must be globally unique")
+    return matrix
+
+
+def _topology_ids(text: str, expected_sources: int, expected_buckets: int) -> dict[str, Any]:
+    matches = list(TOPOLOGY_IDS.finditer(text))
+    if len(matches) != 1:
+        raise RuntimeError(
+            f"enabled plan must contain exactly one explicit source/bucket ID matrix, found {len(matches)}"
+        )
+    match = matches[0]
+    source_ids = _id_list(match.group("sources"), "source")
+    bucket_ids = _id_list(match.group("buckets"), "bucket")
+    exchange_matrix = _exchange_matrix(match.group("exchanges"))
+    if len(source_ids) != expected_sources or len(bucket_ids) != expected_buckets:
+        raise RuntimeError(
+            f"enabled plan ID counts do not match requested topology: sources={len(source_ids)} "
+            f"buckets={len(bucket_ids)} expected={expected_sources}x{expected_buckets}"
+        )
+    if len(exchange_matrix) != expected_sources or any(
+        len(row) != expected_buckets for row in exchange_matrix
+    ):
+        raise RuntimeError("enabled plan exchange ID matrix does not match source x bucket dimensions")
+    return {
+        "source_ids": source_ids,
+        "bucket_ids": bucket_ids,
+        "exchange_ids": exchange_matrix,
+        "exchange_edges": expected_sources * expected_buckets,
+    }
+
+
+def validate_enabled_plan(path: Path, expected_sources: int, expected_buckets: int) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     for marker in ("Property enforcement:", "TableHashPartitioningShuffleSinkNode", "TABLE_HASH_V1"):
         if marker not in text:
@@ -244,56 +304,152 @@ def validate_enabled_plan(path: Path, expected_sources: int, expected_buckets: i
             f"expected {expected_sources} x {expected_buckets}, saw sources={sorted(reported_sources)} "
             f"partitions={sorted(reported_buckets)}"
         )
-    # The ASCII renderer prints the HashPartitioning sink class once in the
-    # property trace even when that trace describes several source fragments.
-    # Count its explicit fragment IDs rather than the rendered class name.
-    hash_sink_ids = {
-        int(identifier.strip())
-        for match in HASH_SINK_IDS.finditer(text)
-        for identifier in match.group("ids").split(",")
-    }
-    hash_sinks = len(hash_sink_ids)
-    # Compact ASCII plans render the node identity (for example ``Exchange-79``),
-    # while other explain formats retain the ``ExchangeNode`` class name.
-    exchanges = max(text.count("ExchangeNode"), len(set(RENDERED_EXCHANGE_IDS.findall(text))))
-    required_exchanges = expected_sources * expected_buckets
-    if hash_sinks < expected_sources:
-        raise RuntimeError(
-            f"enabled plan has {hash_sinks} hash-sink markers, below required source count {expected_sources}"
-        )
-    if exchanges < required_exchanges:
-        raise RuntimeError(
-            f"enabled plan has {exchanges} ExchangeNode markers, below required source x bucket edges "
-            f"{expected_sources} x {expected_buckets} = {required_exchanges}"
-        )
+    topology = _topology_ids(text, expected_sources, expected_buckets)
     return {
-        "hash_sink_markers": hash_sinks,
-        "hash_sink_ids": sorted(hash_sink_ids),
-        "exchange_markers": exchanges,
-        "required_exchange_edges": required_exchanges,
+        **topology,
+        "source_count": len(topology["source_ids"]),
+        "bucket_count": len(topology["bucket_ids"]),
     }
 
 
-def validate_enabled_runtime(path: Path, expected_sources: int, expected_buckets: int) -> dict[str, int]:
-    """Validate the executed fragments, whose EXPLAIN ANALYZE format omits property text."""
+def validate_datanodes(path: Path, expected_datanodes: int) -> dict[str, Any]:
+    header, rows = table_rows(path)
+    normalized = {name.lower().replace(" ", "_"): index for index, name in enumerate(header)}
+    node_index = next((normalized[name] for name in DATANODE_ID_HEADERS if name in normalized), None)
+    if node_index is None:
+        raise RuntimeError(f"SHOW DATANODES output lacks a node ID column: {path}")
+    values = [row[node_index] for row in rows]
+    if any(not value.isdigit() for value in values) or len(values) != len(set(values)):
+        raise RuntimeError(f"SHOW DATANODES must contain unique numeric node IDs: {path}")
+    status_index = normalized.get("status")
+    if status_index is None or any(row[status_index].lower() != "running" for row in rows):
+        raise RuntimeError(f"SHOW DATANODES must report every node as Running: {path}")
+    node_ids = set(values)
+    if len(node_ids) != expected_datanodes:
+        raise RuntimeError(
+            f"SHOW DATANODES reports {len(node_ids)} unique DataNode IDs, expected {expected_datanodes}: {path}"
+        )
+    return {"datanode_count": len(node_ids), "datanode_ids": sorted(node_ids)}
+
+
+def validate_enabled_runtime(
+    path: Path, topology: dict[str, Any], expected_datanodes: int, minimum_fragment_instances: int
+) -> dict[str, Any]:
+    """Validate concrete fragment and operator IDs, without counting rendered class strings."""
     text = path.read_text(encoding="utf-8")
-    hash_sinks = text.count("TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)")
-    exchanges = text.count("ExchangeNode(ExchangeOperator)")
-    required_exchanges = expected_sources * expected_buckets
-    if hash_sinks < expected_sources:
+    instances = list(FRAGMENT_INSTANCE.finditer(text))
+    instance_ids = [match.group("id").strip() for match in instances]
+    if not instance_ids or len(instance_ids) != len(set(instance_ids)):
+        raise RuntimeError(f"enabled runtime must contain unique FRAGMENT-INSTANCE IDs: {path}")
+    count_match = FRAGMENT_COUNT.search(text)
+    if count_match is None or int(count_match.group("count")) != len(instance_ids):
+        raise RuntimeError(f"enabled runtime fragment instance count disagrees with concrete IDs: {path}")
+    if len(instance_ids) < minimum_fragment_instances:
         raise RuntimeError(
-            f"enabled runtime has {hash_sinks} hash sink operators, below required source count {expected_sources}"
+            f"enabled runtime has {len(instance_ids)} fragment instances, below required minimum "
+            f"{minimum_fragment_instances}"
         )
-    if exchanges < required_exchanges:
+    runtime_endpoints = {match.group("ip").strip() for match in instances}
+    if len(runtime_endpoints) < expected_datanodes:
         raise RuntimeError(
-            f"enabled runtime has {exchanges} ExchangeNode operators, below required source x bucket edges "
-            f"{expected_sources} x {expected_buckets} = {required_exchanges}"
+            f"enabled runtime exposes {len(runtime_endpoints)} unique DataNode endpoints, "
+            f"expected at least {expected_datanodes}"
         )
+    # Keep runtime IDs independent from the IDs of the separate EXPLAIN query.
+    fragments: dict[str, dict[str, Any]] = {}
+    owners: dict[str, str] = {}
+    current_fragment = None
+    current_operator = None
+    for raw in text.splitlines():
+        line = ANSI_ESCAPE.sub("", raw).strip().strip("|").strip()
+        instance = FRAGMENT_INSTANCE.search(line)
+        if instance:
+            current_fragment = instance.group("id").strip()
+            current_operator = None
+            if "[State: FINISHED]" not in line:
+                raise RuntimeError(f"runtime fragment did not finish: {current_fragment}")
+            fragments[current_fragment] = {"endpoint": instance.group("ip").strip(), "operators": {}}
+            continue
+        operator = OPERATOR.search(line)
+        if operator:
+            if current_fragment is None:
+                raise RuntimeError("runtime operator has no fragment owner")
+            current_operator = operator.group("id").strip()
+            if current_operator in owners:
+                raise RuntimeError(f"runtime operator ID has duplicate ownership: {current_operator}")
+            owners[current_operator] = current_fragment
+            fragments[current_fragment]["operators"][current_operator] = {
+                "type": operator.group("type"), "downstream": []
+            }
+        elif "DownStreamPlanNodeId:" in line:
+            if current_fragment is None or current_operator is None:
+                raise RuntimeError("downstream list has no operator owner")
+            value = line.split("DownStreamPlanNodeId:", 1)[1].strip()
+            entry = fragments[current_fragment]["operators"][current_operator]
+            if entry["downstream"]:
+                raise RuntimeError("operator has repeated downstream lists")
+            entry["downstream"] = _id_list(value, "runtime downstream")
+
+    sources = []
+    for fragment_id, fragment in fragments.items():
+        sinks = [(key, value) for key, value in fragment["operators"].items()
+                 if value["type"] == "TableHashPartitioningShuffleSinkNode"]
+        if len(sinks) > 1:
+            raise RuntimeError("multiple hash sources share one fragment instance")
+        if sinks:
+            key, value = sinks[0]
+            sources.append({"sink_id": key, "fragment_id": fragment_id,
+                            "endpoint": fragment["endpoint"], "exchange_ids": value["downstream"]})
+    source_count = len(topology["source_ids"])
+    bucket_count = len(topology["bucket_ids"])
+    if len(sources) != source_count:
+        raise RuntimeError(f"runtime hash source count {len(sources)} differs from {source_count}")
+    source_fragments = {source["fragment_id"] for source in sources}
+    if len({source["endpoint"] for source in sources}) != expected_datanodes:
+        raise RuntimeError("runtime hash sources do not span the requested DataNodes")
+    edges = [edge for source in sources for edge in source["exchange_ids"]]
+    if any(len(source["exchange_ids"]) != bucket_count for source in sources):
+        raise RuntimeError("runtime source channel count differs from bucket count")
+    if len(edges) != len(set(edges)):
+        raise RuntimeError("runtime sources reuse an exchange edge")
+    buckets = []
+    for column in range(bucket_count):
+        column_edges = [source["exchange_ids"][column] for source in sources]
+        column_owners = set()
+        for edge in column_edges:
+            if edge not in owners:
+                raise RuntimeError(f"runtime edge has no exchange owner: {edge}")
+            owner = owners[edge]
+            if fragments[owner]["operators"][edge]["type"] != "ExchangeNode":
+                raise RuntimeError(f"runtime edge does not target an exchange: {edge}")
+            column_owners.add(owner)
+        if len(column_owners) != 1:
+            raise RuntimeError("one runtime bucket column targets multiple fragment instances")
+        owner = next(iter(column_owners))
+        if owner in source_fragments or any(bucket["fragment_id"] == owner for bucket in buckets):
+            raise RuntimeError("runtime buckets must have unique owners separate from sources")
+        bucket_ops = fragments[owner]["operators"]
+        aggregations = [key for key, value in bucket_ops.items() if value["type"] == "AggregationNode"]
+        exchanges = {key for key, value in bucket_ops.items() if value["type"] == "ExchangeNode"}
+        if len(aggregations) != 1 or not any(value["type"] == "CollectNode" for value in bucket_ops.values()):
+            raise RuntimeError("runtime bucket lacks a single final aggregation and collect")
+        if exchanges != set(column_edges):
+            raise RuntimeError("runtime bucket exchanges differ from source channels")
+        buckets.append({"bucket_index": column, "fragment_id": owner,
+                        "aggregation_id": aggregations[0], "exchange_ids": column_edges})
     return {
-        "hash_sink_operators": hash_sinks,
-        "exchange_operators": exchanges,
-        "required_exchange_edges": required_exchanges,
+        "fragment_instances": len(instance_ids),
+        "fragment_instance_ids": sorted(instance_ids),
+        "runtime_ip_values": sorted(runtime_endpoints),
+        "sources": sources,
+        "buckets": buckets,
+        "operator_ids": sorted(owners),
+        "required_exchange_edges": topology["exchange_edges"],
+        "verified_exchange_edges": len(edges),
+        "ownership_verified": True,
+        "id_scope": "EXPLAIN ANALYZE query only; planning EXPLAIN IDs are archived separately",
     }
+
 
 
 def validate_baseline_plan(path: Path) -> None:
@@ -302,7 +458,6 @@ def validate_baseline_plan(path: Path) -> None:
     present = [marker for marker in forbidden if marker in text]
     if present:
         raise RuntimeError(f"hash-disabled control unexpectedly exposed hash-path markers {present}: {path}")
-
 
 def write_queries(query_dir: Path, table: str) -> dict[str, Path]:
     core = f"SELECT s1, COUNT(*) AS row_count FROM {table} GROUP BY s1"
@@ -358,11 +513,22 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
     canonical_dir.mkdir()
     capture_context(args.output, args.enabled_config, args.baseline_config)
     queries = write_queries(args.output / "queries", args.table)
+    datanode_sql = args.output / "queries" / "show-datanodes.sql"
+    datanode_sql.write_text("SHOW DATANODES;\n", encoding="utf-8")
 
     enabled_explain = run_cli(args, "enabled", queries["enabled-explain"], raw_dir, password)
     explain_shape = validate_enabled_plan(enabled_explain, args.expected_sources, args.expected_buckets)
+    enabled_datanodes = run_cli(args, "enabled", datanode_sql, raw_dir, password)
+    datanode_shape = validate_datanodes(enabled_datanodes, args.expected_datanodes)
     enabled_analyze = run_cli(args, "enabled", queries["enabled-explain-analyze"], raw_dir, password)
-    analyze_shape = validate_enabled_runtime(enabled_analyze, args.expected_sources, args.expected_buckets)
+    analyze_shape = validate_enabled_runtime(
+        enabled_analyze,
+        explain_shape,
+        args.expected_datanodes,
+        args.minimum_fragment_instances
+        if args.minimum_fragment_instances is not None
+        else args.expected_sources + args.expected_buckets + 1,
+    )
     baseline_analyze = run_cli(args, "baseline", queries["baseline-explain-analyze"], raw_dir, password)
     validate_baseline_plan(baseline_analyze)
 
@@ -379,6 +545,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         "control": {"isolation_id": args.baseline_isolation_id, "endpoint": f"{args.baseline_host}:{args.baseline_port}"},
         "expected_topology": {"sources": args.expected_sources, "buckets": args.expected_buckets},
         "enabled_explain": explain_shape,
+        "enabled_datanodes": datanode_shape,
         "enabled_explain_analyze": analyze_shape,
         "control_hash_path": "absent",
         "result_equivalence": comparison,
@@ -391,46 +558,91 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def self_test() -> int:
+    checks = 0
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
+        def rejects(call, text):
+            nonlocal checks
+            try:
+                call(text)
+            except RuntimeError:
+                checks += 1
+            else:
+                raise AssertionError("invalid evidence accepted: " + text[:160])
         plan = root / "plan.stdout"
         plan.write_text(
-            "Property enforcement:\n"
-            "[11, 12]: required=Partitioned[k] provided=Single -> "
-            "TableHashPartitioningShuffleSinkNode TABLE_HASH_V1 sources=2 partitions=3 (N x P experimental path)\n"
-            "TableHashPartitioningShuffleSinkNode TABLE_HASH_V1\n"
-            + "\n".join("ExchangeNode" for _ in range(6)),
-            encoding="utf-8",
-        )
-        shape = validate_enabled_plan(plan, 2, 3)
-        assert shape["required_exchange_edges"] == 6
+            "Property enforcement:\nTableHashPartitioningShuffleSinkNode TABLE_HASH_V1 "
+            "sources=2 partitions=2 (N x P experimental path) "
+            "hash-topology sourceIds=[ps1, ps2] bucketIds=[pb1, pb2] "
+            "exchangeIds=[[pe11, pe12], [pe21, pe22]]\n", encoding="utf-8")
+        shape = validate_enabled_plan(plan, 2, 2)
+        checks += 1
         runtime = root / "runtime.stdout"
-        runtime.write_text(
-            "\n".join(
-                [
-                    "TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)",
-                    "TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)",
-                ]
-                + ["ExchangeNode(ExchangeOperator)"] * 6
-            ),
-            encoding="utf-8",
-        )
-        assert validate_enabled_runtime(runtime, 2, 3)["exchange_operators"] == 6
-        bad = root / "bad.stdout"
-        bad.write_text("Property enforcement: TABLE_HASH_V1", encoding="utf-8")
-        try:
-            validate_enabled_plan(bad, 2, 3)
-        except RuntimeError:
-            pass
-        else:
-            raise AssertionError("missing source x bucket proof was accepted")
+        text = "\n".join([
+            "Fragment Instances Count: 5",
+            "FRAGMENT-INSTANCE[Id: q.0.0][IP: dn-a][State: FINISHED]",
+            "[PlanNodeId root]: CollectNode(CollectOperator)",
+            "FRAGMENT-INSTANCE[Id: q.1.0][IP: dn-a][State: FINISHED]",
+            "[PlanNodeId s1]: TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)",
+            "DownStreamPlanNodeId: e11, e12",
+            "FRAGMENT-INSTANCE[Id: q.2.0][IP: dn-b][State: FINISHED]",
+            "[PlanNodeId s2]: TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)",
+            "DownStreamPlanNodeId: e21, e22",
+            "FRAGMENT-INSTANCE[Id: q.3.0][IP: dn-a][State: FINISHED]",
+            "[PlanNodeId b1]: AggregationNode(HashAggregationOperator)",
+            "[PlanNodeId c1]: CollectNode(CollectOperator)",
+            "[PlanNodeId e11]: ExchangeNode(ExchangeOperator)",
+            "[PlanNodeId e21]: ExchangeNode(ExchangeOperator)",
+            "FRAGMENT-INSTANCE[Id: q.4.0][IP: dn-b][State: FINISHED]",
+            "[PlanNodeId b2]: AggregationNode(HashAggregationOperator)",
+            "[PlanNodeId c2]: CollectNode(CollectOperator)",
+            "[PlanNodeId e12]: ExchangeNode(ExchangeOperator)",
+            "[PlanNodeId e22]: ExchangeNode(ExchangeOperator)",
+        ])
+        def validate(value):
+            runtime.write_text(value, encoding="utf-8")
+            return validate_enabled_runtime(runtime, shape, 2, 5)
+        assert validate(text)["verified_exchange_edges"] == 4
+        checks += 1
+        for invalid in [
+            text.replace("dn-b", "dn-a"),
+            text.replace("Count: 5", "Count: 6"),
+            text.replace("q.4.0", "q.3.0"),
+            text.replace("DownStreamPlanNodeId: e21, e22", "DownStreamPlanNodeId: e21"),
+            text.replace("DownStreamPlanNodeId: e21, e22", "DownStreamPlanNodeId: e21, e12"),
+            text.replace("DownStreamPlanNodeId: e21, e22", "DownStreamPlanNodeId: e22, e21"),
+            text.replace("DownStreamPlanNodeId: e21, e22", "DownStreamPlanNodeId: e21, missing"),
+            text.replace("[PlanNodeId e22]", "[PlanNodeId e21]"),
+            text.replace("[PlanNodeId b2]: AggregationNode", "[PlanNodeId b2]: ProjectNode"),
+            text.replace("[State: FINISHED]", "[State: RUNNING]", 1),
+        ]:
+            rejects(validate, invalid)
+        datanodes = root / "datanodes.stdout"
+        def nodes(value):
+            datanodes.write_text(value, encoding="utf-8")
+            return validate_datanodes(datanodes, 2)
+        node_text = "| NodeID | Status |\n| 1 | Running |\n| 2 | Running |\nTotal line number = 2\n"
+        assert nodes(node_text)["datanode_count"] == 2
+        checks += 1
+        rejects(nodes, node_text.replace("| 2 |", "| 1 |"))
+        rejects(nodes, node_text.replace("Running", "Unknown", 1))
         table = root / "table.stdout"
-        table.write_text("| s1 | row_count |\n| 1 | 4 |\n| 2 | 8 |\n", encoding="utf-8")
+        table.write_text("| s1 | row_count |\n| null | 4 |\n| 2 | 8 |\nTotal line number = 2\n", encoding="utf-8")
         parsed = table_rows(table)
         assert compare_results(parsed, parsed, 2)["matched"]
-    print("multisource hash GROUP BY E2E self-test passed")
+        assert not compare_results(parsed, (parsed[0], parsed[1] + parsed[1][:1]), 2)["matched"]
+        checks += 2
+        table.write_text("| s1 | row_count |\nEmpty set.\n", encoding="utf-8")
+        assert table_rows(table)[1] == []
+        checks += 1
+        def result(value):
+            table.write_text(value, encoding="utf-8")
+            return table_rows(table)
+        rejects(result, "")
+        rejects(result, "| s1 | row_count |\n")
+        rejects(result, "| s1 | row_count |\n| 1 | 4 |\nEmpty set.\n")
+    print(json.dumps({"self_test": "PASS", "checks": checks}))
     return 0
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -442,6 +654,8 @@ def main() -> int:
     parser.add_argument("--expected-sources", type=int, default=2)
     parser.add_argument("--expected-buckets", type=int, default=2)
     parser.add_argument("--minimum-result-rows", type=int, default=2)
+    parser.add_argument("--expected-datanodes", type=int, default=2)
+    parser.add_argument("--minimum-fragment-instances", type=int)
     for endpoint_name in ("enabled", "baseline"):
         parser.add_argument(f"--{endpoint_name}-cli")
         parser.add_argument(f"--{endpoint_name}-host")

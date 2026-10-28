@@ -22,17 +22,18 @@
 ## Static property-enforcement matrix
 
 `manifests/property-enforcement-matrix.json` is the machine-readable P0 contract for scan,
-filter, project, sort, top-k, window, row-number, aggregation, join, and union. It records each
+filter, project, sort, top-k, window, row-number, aggregation, join, union, collect, merge-sort, and output. Schema version 2 records each
 family's required and actually provided property, selected enforcer, and explicit reason for every
 serial or conditional path. Every row links to a concrete JUnit plan-shape assertion.
 
 Run its dependency-free integrity check before a server build:
 
 ```bash
+python3 scripts/verify_property_enforcement_matrix.py --self-test
 python3 scripts/verify_property_enforcement_matrix.py
 ```
 
-The matrix is a coverage index, not a performance claim. Its narrow GROUP BY row is conditional
+The matrix links 13 node families to executable assertions. Its verifier checks assertion polarity, required and provided properties, enforcers, fallback reasons, execution markers, and enum domains. The matrix is a coverage index. Its narrow GROUP BY row is conditional
 on the reviewed hash-repartition feature; its join row records the required two-sided partitioning
 contract and the current serial fallback.
 
@@ -48,7 +49,7 @@ GROUP BY, and equi-join), use the separate read-only
 result equivalence for static candidates while keeping GROUP BY and join as explicit
 fallback-only baselines; it does not report speedups.
 
-It proves three narrow claims for the current static implementation:
+It proves four narrow claims for the current static implementation:
 
 1. Text-format `EXPLAIN` on the enabled endpoint contains the `Property enforcement:` trace.
 2. An enabled ordered merge-tree candidate and its ordered-parallel fallback return the same
@@ -60,14 +61,13 @@ It proves three narrow claims for the current static implementation:
    bytes. This lets a reviewer compare equal-count and LPT-size grouping without treating the
    static estimate as observed work.
 
-It does **not** prove join repartition. The separately scoped single-source GROUP BY experiment
-below has a real 1 x P hash exchange. The guarded direct-scan multi-source GROUP BY rewrite has a
-separate, stricter N x P acceptance entry point in
-[`MULTISOURCE_HASH_GROUPBY_ACCEPTANCE.md`](MULTISOURCE_HASH_GROUPBY_ACCEPTANCE.md): it requires
-an isolated hash-on/control pair, a source-by-bucket plan proof, and result equivalence. Until an
-operator archives a successful run, it must not be presented as a cluster-accepted result. Likewise,
-equality alone is not evidence that a path was used: the raw `EXPLAIN` and `EXPLAIN ANALYZE`
-outputs are retained and each must contain its configured execution marker.
+The single-source GROUP BY experiment below uses a real source-by-bucket hash exchange.
+The guarded multi-source path accepts supported scan, filter, and project shapes through a separate
+[multi-source acceptance contract](MULTISOURCE_HASH_GROUPBY_ACCEPTANCE.md). That contract checks
+actual DataNodes, completed fragment instances, unique exchange edges, final-bucket ownership,
+and full result equivalence. Planning and runtime queries retain their own IDs. The linked A
+archive covers balanced, nullable, skewed, and empty fixtures on a rebuilt candidate/control pair.
+Join repartition and performance measurements retain their separate acceptance requirements.
 
 For a repeatable Linux candidate/control deployment, use the
 [isolated 1C2D + 1C2D launcher](linux-isolated-cluster/README.md). It is intentionally separate

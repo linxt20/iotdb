@@ -373,6 +373,13 @@ public class FragmentInstanceExecution {
             }
 
             statisticsLock.writeLock().lock();
+            // Ask the drivers to record what only they can record, before the snapshot below
+            // converts an operator context's specifiedInfo into the frozen statistics. A driver
+            // that finished during scheduling has already written its own value and the write is
+            // idempotent, so this only supplies the value for the drivers this listener closes.
+            for (IDriver driver : drivers) {
+              driver.recordMorselCompletionStatistics();
+            }
             // Store statistics in context for EXPLAIN ANALYZE to avoid being released.
             if (isExplainAnalyze) {
               context.setFragmentInstanceStatistics(buildStatistics());

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.pipe.resource;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -51,7 +49,6 @@ public class PipeRecentFailureCounter {
     record(failureType, System.currentTimeMillis());
   }
 
-  @TestOnly
   synchronized void record(final PipeResourceFailureType failureType, final long timestamp) {
     final long bucketStartTime = Math.floorDiv(timestamp, BUCKET_MILLIS) * BUCKET_MILLIS;
     final int bucketIndex = Math.floorMod(Math.floorDiv(timestamp, BUCKET_MILLIS), BUCKET_COUNT);
@@ -67,7 +64,6 @@ public class PipeRecentFailureCounter {
     return getRecentFailures(System.currentTimeMillis());
   }
 
-  @TestOnly
   synchronized Map<String, Long> getRecentFailures(final long currentTime) {
     final Map<String, Long> result = new LinkedHashMap<>();
     final long earliestIncludedTime = currentTime - WINDOW_MILLIS;

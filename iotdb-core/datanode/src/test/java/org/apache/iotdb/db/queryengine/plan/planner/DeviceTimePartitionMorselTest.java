@@ -21,11 +21,13 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
+import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
@@ -326,9 +328,9 @@ public class DeviceTimePartitionMorselTest {
 
   /**
    * The control arm keeps exactly the same safe morsel decomposition but forms time groups by
-   * count. Its per-driver EXPLAIN ANALYZE annotations retain the observed metadata estimates, so
-   * an equal-count versus LPT comparison is reproducible without pretending that unavailable
-   * metadata is a zero-byte estimate.
+   * count. Its per-driver EXPLAIN ANALYZE annotations retain the observed metadata estimates, so an
+   * equal-count versus LPT comparison is reproducible without pretending that unavailable metadata
+   * is a zero-byte estimate.
    */
   @Test
   public void testEqualCountMorselsExposeControlEvidence() throws Exception {
@@ -802,6 +804,90 @@ public class DeviceTimePartitionMorselTest {
   }
 
   /**
+   * Fusing a filter into parallel morsels is only sound when nothing above the scan needs the rows
+   * in the scan's own order. The distributed planner records that in {@code allowParallelScan}: it
+   * sets the bit only where the required properties are unordered, and clears it both when a sort
+   * has to stay above and when it proved the scan's own ordering already satisfies the parent and
+   * dropped that sort. A filter above such a scan must therefore not split it.
+   */
+  @Test
+  public void testFilterFusionRefusesWhenOrderingIsRequired() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    try {
+      DeviceTableScanNode scanNode = initDeviceTableScanNode(8);
+      scanNode.setAllowParallelScan(false);
+      FilterNode filterNode =
+          new FilterNode(new PlanNodeId("FilterNode"), scanNode, s1IsPositive());
+
+      LocalExecutionPlanContext context =
+          createTypedContext("filter_fusion_ordered", dataRegionWithPartitions(0L, 1L, 2L));
+      context.setDegreeOfParallelism(4);
+
+      Operator root = filterNode.accept(generator, context);
+      try {
+        assertFalse(
+            "the CollectOperator of the morsel split concatenates streams in arrival order,"
+                + " so it may not be used when the parent relies on the scan ordering",
+            root instanceof CollectOperator);
+        assertEquals(
+            "the filter stays at the root, above the single unsplit scan stream",
+            FilterAndProjectOperator.class,
+            root.getClass());
+      } finally {
+        closeQuietly(root);
+        closePipelineOperations(context);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+    }
+  }
+
+  /**
+   * The control for {@link #testFilterFusionRefusesWhenOrderingIsRequired()}. Same node, same
+   * region, same degree of parallelism, only the bit differs: with the bit set the fusion path does
+   * run and the three time partitions become three pipelines.
+   */
+  @Test
+  public void testFilterFusionRunsWhenOrderingIsNotRequired() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    try {
+      DeviceTableScanNode scanNode = initDeviceTableScanNode(8);
+      scanNode.setAllowParallelScan(true);
+      FilterNode filterNode =
+          new FilterNode(new PlanNodeId("FilterNode"), scanNode, s1IsPositive());
+
+      LocalExecutionPlanContext context =
+          createTypedContext("filter_fusion_unordered", dataRegionWithPartitions(0L, 1L, 2L));
+      context.setDegreeOfParallelism(4);
+
+      Operator root = filterNode.accept(generator, context);
+      try {
+        assertEquals(CollectOperator.class, root.getClass());
+        assertEquals(3, ((CollectOperator) root).getChildren().size());
+        assertEquals(3, context.getPipelineNumber());
+        for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
+          assertEquals(
+              "each pipeline root is the fused filter, not the bare scan",
+              FilterAndProjectOperator.class,
+              driverFactory.getOperation().getClass());
+        }
+      } finally {
+        closeQuietly(root);
+        closePipelineOperations(context);
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+    }
+  }
+
+  private static Expression s1IsPositive() {
+    return new ComparisonExpression(
+        ComparisonExpression.Operator.GREATER_THAN,
+        new SymbolReference("s1"),
+        new LongLiteral("0"));
+  }
+
+  /**
    * A context whose region reports the given time partitions, so the morsel split sees a realistic
    * partition count without needing real storage behind it.
    */
@@ -815,6 +901,20 @@ public class DeviceTimePartitionMorselTest {
     fragmentInstanceContext.setDataRegion(dataRegion);
     return new LocalExecutionPlanContext(
         new TypeProvider(), fragmentInstanceContext, new DataNodeQueryContext(1));
+  }
+
+  /**
+   * The same context as {@link #createContext(String, DataRegion)} with the scan's output symbols
+   * typed. Building a filter above the scan resolves the child's output column types through this
+   * provider, and the stub context starts with an empty one.
+   */
+  private LocalExecutionPlanContext createTypedContext(String queryId, DataRegion dataRegion) {
+    LocalExecutionPlanContext context = createContext(queryId, dataRegion);
+    TypeProvider typeProvider = context.getTypeProvider();
+    typeProvider.putTableModelType(new Symbol("time"), TypeFactory.getType(TSDataType.TIMESTAMP));
+    typeProvider.putTableModelType(new Symbol("tag1"), TypeFactory.getType(TSDataType.STRING));
+    typeProvider.putTableModelType(new Symbol("s1"), TypeFactory.getType(TSDataType.INT32));
+    return context;
   }
 
   private DataRegion dataRegionWithPartitions(Long... tpIds) {

@@ -51,6 +51,12 @@ public class PlanProperties {
     return new PlanProperties(distribution, ordering);
   }
 
+  /** Creates the properties required at an input boundary. */
+  public static PlanProperties requirementFor(
+      DistributionProperty distribution, @Nullable OrderingScheme ordering) {
+    return of(distribution, ordering);
+  }
+
   /** The properties a node requires when it only needs all rows in one branch, in any order. */
   public static PlanProperties singleUnordered() {
     return new PlanProperties(DistributionProperty.single(), null);
@@ -80,10 +86,23 @@ public class PlanProperties {
    * same ordering, since a differently ordered result has to be sorted again anyway.
    */
   public boolean satisfies(PlanProperties required) {
-    if (!distribution.satisfies(required.distribution)) {
-      return false;
-    }
+    return satisfiesDistribution(required) && satisfiesOrdering(required);
+  }
+
+  public boolean satisfiesDistribution(PlanProperties required) {
+    return distribution.satisfies(required.distribution);
+  }
+
+  public boolean satisfiesOrdering(PlanProperties required) {
     return required.ordering == null || required.ordering.equals(ordering);
+  }
+
+  public PlanProperties withDistribution(DistributionProperty replacement) {
+    return of(replacement, ordering);
+  }
+
+  public PlanProperties withOrdering(@Nullable OrderingScheme replacement) {
+    return of(distribution, replacement);
   }
 
   @Override

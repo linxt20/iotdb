@@ -1,0 +1,404 @@
+{
+  "status": "PASS",
+  "scope": "A completed; B documentation only",
+  "full_suite": {
+    "status": "PASS",
+    "exit_code": 0,
+    "totals": {
+      "tests": 4995,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 50
+    },
+    "source_changes_during_run": [],
+    "observed_java_workers": 785,
+    "fork_classload_logs": 784,
+    "seconds": 2954.3467071056366,
+    "class_source_count": 95374,
+    "out_of_memory_mentions": 0,
+    "heap_policy": "2 GiB; architecture OOM raises AssertionError; intentional exchange OOM remains testable; original forkCount=1 and reuseForks=false",
+    "limitations": "Full DataNode Java unit suite only; no claim of server E2E or performance acceptance"
+  },
+  "suite_coverage": {
+    "status": "PASS",
+    "runnable_expected": 784,
+    "reported": 784,
+    "not_reported": [],
+    "non_test_sources": 21,
+    "inventory": "/root/property-a-artifacts/A6-20261028T080437+0000/full-suite-selection-audit-03/inventory.json",
+    "inventory_sha256": "e6343b10818ec48460e3324b4bfe16ebea6a59fe663f42aa7477e819bb4075ce",
+    "added_test": "TypeProviderSerializationContractTest: ten executed regression cases"
+  },
+  "targeted": {
+    "phase": "A6 targeted regression",
+    "status": "PASS",
+    "junit_invocations": 339,
+    "junit_condition_skips": 5,
+    "junit_failures": 0,
+    "basic_snapshots": 128,
+    "same_configuration_differences": 0,
+    "scope": "Current-reactor core dependencies; configuration and execution contract regression. Full DataNode and server E2E remain pending"
+  },
+  "two_datanode": {
+    "status": "PASS",
+    "claim": "A GROUP BY correctness on rebuilt isolated candidate/control; no performance conclusion",
+    "cases": [
+      {
+        "case": "balanced",
+        "status": "PASS",
+        "planning_query_jdbc_handle": 18,
+        "analyze_query_jdbc_handle": 22,
+        "runtime_query_ids": [
+          "20261028_110350_00021_1"
+        ],
+        "planning_topology": {
+          "source_ids": [
+            "78",
+            "82"
+          ],
+          "bucket_ids": [
+            "4",
+            "87"
+          ],
+          "exchange_ids": [
+            [
+              "79",
+              "80"
+            ],
+            [
+              "83",
+              "84"
+            ]
+          ],
+          "exchange_edges": 4,
+          "source_count": 2,
+          "bucket_count": 2
+        },
+        "runtime_topology": {
+          "fragment_instances": 5,
+          "fragment_instance_ids": [
+            "20261028_110350_00021_1.2.0",
+            "20261028_110350_00021_1.3.0",
+            "20261028_110350_00021_1.4.0",
+            "20261028_110350_00021_1.5.0",
+            "20261028_110350_00021_1.6.0"
+          ],
+          "runtime_ip_values": [
+            "127.0.0.1:27930",
+            "127.0.0.1:28930"
+          ],
+          "sources": [
+            {
+              "sink_id": "100",
+              "fragment_id": "20261028_110350_00021_1.4.0",
+              "endpoint": "127.0.0.1:27930",
+              "exchange_ids": [
+                "101",
+                "102"
+              ]
+            },
+            {
+              "sink_id": "104",
+              "fragment_id": "20261028_110350_00021_1.5.0",
+              "endpoint": "127.0.0.1:28930",
+              "exchange_ids": [
+                "105",
+                "106"
+              ]
+            }
+          ],
+          "buckets": [
+            {
+              "bucket_index": 0,
+              "fragment_id": "20261028_110350_00021_1.3.0",
+              "aggregation_id": "4",
+              "exchange_ids": [
+                "101",
+                "105"
+              ]
+            },
+            {
+              "bucket_index": 1,
+              "fragment_id": "20261028_110350_00021_1.6.0",
+              "aggregation_id": "109",
+              "exchange_ids": [
+                "102",
+                "106"
+              ]
+            }
+          ],
+          "operator_ids": [
+            "100",
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110",
+            "155",
+            "156",
+            "158",
+            "159",
+            "160",
+            "4",
+            "96",
+            "97",
+            "99"
+          ],
+          "required_exchange_edges": 4,
+          "verified_exchange_edges": 4,
+          "ownership_verified": true,
+          "id_scope": "EXPLAIN ANALYZE query only; planning EXPLAIN IDs are archived separately"
+        },
+        "rows": 3,
+        "multiset_sha256": "d7549ff137cc6cd01b747a7a4d44a49f7fdb845c3304219328ec3eddcf76124c",
+        "expected_sha256": "d7549ff137cc6cd01b747a7a4d44a49f7fdb845c3304219328ec3eddcf76124c"
+      },
+      {
+        "case": "nullable",
+        "status": "PASS",
+        "planning_query_jdbc_handle": 26,
+        "analyze_query_jdbc_handle": 28,
+        "runtime_query_ids": [
+          "20261028_110353_00027_1"
+        ],
+        "planning_topology": {
+          "source_ids": [
+            "78",
+            "82"
+          ],
+          "bucket_ids": [
+            "4",
+            "87"
+          ],
+          "exchange_ids": [
+            [
+              "79",
+              "80"
+            ],
+            [
+              "83",
+              "84"
+            ]
+          ],
+          "exchange_edges": 4,
+          "source_count": 2,
+          "bucket_count": 2
+        },
+        "runtime_topology": {
+          "fragment_instances": 5,
+          "fragment_instance_ids": [
+            "20261028_110353_00027_1.2.0",
+            "20261028_110353_00027_1.3.0",
+            "20261028_110353_00027_1.4.0",
+            "20261028_110353_00027_1.5.0",
+            "20261028_110353_00027_1.6.0"
+          ],
+          "runtime_ip_values": [
+            "127.0.0.1:27930",
+            "127.0.0.1:28930"
+          ],
+          "sources": [
+            {
+              "sink_id": "100",
+              "fragment_id": "20261028_110353_00027_1.4.0",
+              "endpoint": "127.0.0.1:27930",
+              "exchange_ids": [
+                "101",
+                "102"
+              ]
+            },
+            {
+              "sink_id": "104",
+              "fragment_id": "20261028_110353_00027_1.5.0",
+              "endpoint": "127.0.0.1:28930",
+              "exchange_ids": [
+                "105",
+                "106"
+              ]
+            }
+          ],
+          "buckets": [
+            {
+              "bucket_index": 0,
+              "fragment_id": "20261028_110353_00027_1.3.0",
+              "aggregation_id": "4",
+              "exchange_ids": [
+                "101",
+                "105"
+              ]
+            },
+            {
+              "bucket_index": 1,
+              "fragment_id": "20261028_110353_00027_1.6.0",
+              "aggregation_id": "109",
+              "exchange_ids": [
+                "102",
+                "106"
+              ]
+            }
+          ],
+          "operator_ids": [
+            "100",
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110",
+            "155",
+            "156",
+            "158",
+            "159",
+            "160",
+            "4",
+            "96",
+            "97",
+            "99"
+          ],
+          "required_exchange_edges": 4,
+          "verified_exchange_edges": 4,
+          "ownership_verified": true,
+          "id_scope": "EXPLAIN ANALYZE query only; planning EXPLAIN IDs are archived separately"
+        },
+        "rows": 4,
+        "multiset_sha256": "4c9de34887e408cb1e9910c0c36638ffae32cd699932f6f1eb5b7650e9e91aba",
+        "expected_sha256": "4c9de34887e408cb1e9910c0c36638ffae32cd699932f6f1eb5b7650e9e91aba"
+      },
+      {
+        "case": "skewed",
+        "status": "PASS",
+        "planning_query_jdbc_handle": 32,
+        "analyze_query_jdbc_handle": 34,
+        "runtime_query_ids": [
+          "20261028_110358_00033_1"
+        ],
+        "planning_topology": {
+          "source_ids": [
+            "78",
+            "82"
+          ],
+          "bucket_ids": [
+            "4",
+            "87"
+          ],
+          "exchange_ids": [
+            [
+              "79",
+              "80"
+            ],
+            [
+              "83",
+              "84"
+            ]
+          ],
+          "exchange_edges": 4,
+          "source_count": 2,
+          "bucket_count": 2
+        },
+        "runtime_topology": {
+          "fragment_instances": 5,
+          "fragment_instance_ids": [
+            "20261028_110358_00033_1.2.0",
+            "20261028_110358_00033_1.3.0",
+            "20261028_110358_00033_1.4.0",
+            "20261028_110358_00033_1.5.0",
+            "20261028_110358_00033_1.6.0"
+          ],
+          "runtime_ip_values": [
+            "127.0.0.1:27930",
+            "127.0.0.1:28930"
+          ],
+          "sources": [
+            {
+              "sink_id": "100",
+              "fragment_id": "20261028_110358_00033_1.4.0",
+              "endpoint": "127.0.0.1:27930",
+              "exchange_ids": [
+                "101",
+                "102"
+              ]
+            },
+            {
+              "sink_id": "104",
+              "fragment_id": "20261028_110358_00033_1.5.0",
+              "endpoint": "127.0.0.1:28930",
+              "exchange_ids": [
+                "105",
+                "106"
+              ]
+            }
+          ],
+          "buckets": [
+            {
+              "bucket_index": 0,
+              "fragment_id": "20261028_110358_00033_1.3.0",
+              "aggregation_id": "4",
+              "exchange_ids": [
+                "101",
+                "105"
+              ]
+            },
+            {
+              "bucket_index": 1,
+              "fragment_id": "20261028_110358_00033_1.6.0",
+              "aggregation_id": "109",
+              "exchange_ids": [
+                "102",
+                "106"
+              ]
+            }
+          ],
+          "operator_ids": [
+            "100",
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110",
+            "155",
+            "156",
+            "158",
+            "159",
+            "160",
+            "4",
+            "96",
+            "97",
+            "99"
+          ],
+          "required_exchange_edges": 4,
+          "verified_exchange_edges": 4,
+          "ownership_verified": true,
+          "id_scope": "EXPLAIN ANALYZE query only; planning EXPLAIN IDs are archived separately"
+        },
+        "rows": 2,
+        "multiset_sha256": "d886b4cf7bd0c8c9cdda2f8e3ede619d74738000517cbe620c6ac16b4d75582d",
+        "expected_sha256": "d886b4cf7bd0c8c9cdda2f8e3ede619d74738000517cbe620c6ac16b4d75582d"
+      },
+      {
+        "case": "empty",
+        "status": "PASS",
+        "rows": 0,
+        "multiset_sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+        "scope": "expected empty result; optimizer may prune sources"
+      }
+    ],
+    "loaded_nodes": 6
+  },
+  "original_evidence_root": "/root/property-a-artifacts/A6-20261028T080437+0000",
+  "source_build_manifest_sha256": "23a65495db6363a196b8dd514e474555c0a8f3f83dca61c2d0e5e9f2c14eb9d1",
+  "generator_source_sha256": "e56091ab2385ae2f37dae6d82dadb7ad45e7d46bcaf6a0465dfef03866136c84"
+}

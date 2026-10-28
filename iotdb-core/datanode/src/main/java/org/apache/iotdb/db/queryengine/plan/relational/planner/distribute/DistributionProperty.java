@@ -112,6 +112,19 @@ public class DistributionProperty {
     return type == Type.SINGLE;
   }
 
+  public boolean isPartitioned() {
+    return type == Type.PARTITIONED;
+  }
+
+  public boolean isArbitrary() {
+    return type == Type.ARBITRARY;
+  }
+
+  /** Compares logical key sets; physical hash descriptors have a separate contract. */
+  public boolean isCompatiblePartitioning(DistributionProperty other) {
+    return isPartitioned() && other.isPartitioned() && keys.equals(other.keys);
+  }
+
   /**
    * Whether a result with this property can be fed to a parent that requires {@code required}
    * without inserting a node to enforce it.
