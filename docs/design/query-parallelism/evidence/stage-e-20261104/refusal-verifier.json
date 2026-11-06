@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "sameVersionSourceManifest": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/source-manifest.json",
+  "verifiedNativeResourceSnapshots": 24,
+  "verdicts": [
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r0-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r1-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r2-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r3-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r4-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r5-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r6-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/1node-candidate-r7-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r0-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r0-datanode-2-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r1-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r1-datanode-2-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r2-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r2-datanode-2-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r3-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r3-datanode-2-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r4-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r4-datanode-2-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r5-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r5-datanode-2-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r6-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r6-datanode-2-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r7-datanode-1-runtime.verified.json",
+    "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/refusal-verifier/2node-candidate-r7-datanode-2-runtime.verified.json"
+  ],
+  "businessPass": false,
+  "fullEAcceptance": false
+}

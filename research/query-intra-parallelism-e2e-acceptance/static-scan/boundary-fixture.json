@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "fixtureName": "B6 isolated scan boundary relations",
+  "partitionIntervalMillis": 604800000,
+  "timePartitionOrigin": 0,
+  "timestampPrecision": "ms",
+  "devicesPerRelation": 32,
+  "databases": [
+    "b6_boundary_main",
+    "b6_boundary_singlepart",
+    "b6_boundary_ties",
+    "b6_boundary_diff",
+    "b6_boundary_skew"
+  ],
+  "singlePartitionIsolation": "No other table or multi-partition insert is permitted inside b6_boundary_singlepart",
+  "skewFixtureRowsByPartition": {"0": 16384, "1": 256, "2": 256, "3": 256},
+  "skewRuntimeRequirement": "Actual flushed TsFile bytes, per actual DataRegion, max/min at least4; row imbalance alone is not acceptance",
+  "duplicateKeys": "Physical devices differ by variant tag; projection group_tag,time makes tied complete output rows identical, including null tag keys",
+  "diffOracle": "Every s1 equals7; diff(s1) IS NULL OR diff(s1)=0.0 includes every input row independently of scan order"
+}

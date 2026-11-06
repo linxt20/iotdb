@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "bindingState": "UNBOUND_WAIT_NEW_SOURCE_PACKAGE_COMPILED_CARRIERS_PASS",
+  "runtimeAcceptance": false,
+  "sourceArchive": {
+    "path": "/REQUIRED_NEW_CANONICAL_SOURCE_ARCHIVE.tar.gz",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "sourceManifest": {
+    "path": "/REQUIRED_NEW_CANONICAL_SOURCE_MANIFEST.json",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "package": {
+    "path": "/REQUIRED_NEW_CANONICAL_PACKAGE.zip",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "serverJarSha256": "REQUIRED_NEW_SERVER_SHA256",
+  "baselineTestProvenance": {
+    "path": "/REQUIRED_NEW_CANONICAL_CARRIER_BASELINE_PASS.json",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "identityAgentSource": {
+    "path": "/root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/NegativeContractClassIdentityAgent.java",
+    "sha256": "ca748068294deee743e605e48cf7294c2769de6c19cc2062ff8c79867d314b19"
+  },
+  "java": {
+    "path": "/REQUIRED_EXACT_JAVA_EXECUTABLE",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "javac": {
+    "path": "/REQUIRED_EXACT_JAVAC_EXECUTABLE",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "maven": {
+    "path": "/REQUIRED_EXACT_MAVEN_EXECUTABLE",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "pvcTaskRoot": "/root/rivermind-data/iotdb-ad-acceptance-20261103",
+  "persistentOutputRoot": "/root/rivermind-data/iotdb-ad-acceptance-20261103/REQUIRED_NEW_B6_CORE_NEGATIVE_RUN",
+  "storageIdentity": {
+    "path": "/root/rivermind-data/iotdb-ad-acceptance-20261103/storage-identity.json",
+    "sha256": "15c86932afaa2614c021dc5d21a8a41e6d6b228bf6123bf6bd93de88819a7818"
+  },
+  "legacySixCaseReferenceOnly": {
+    "path": "/root/run_ad_converged_negative_20261103_r1.py",
+    "sha256": "51807ce06078efa8ca8d0602270cd5b2d87bd36621d9474a61c029a93fed1e0a",
+    "executed": false,
+    "notASubstituteForFiveCore": true
+  },
+  "cases": [
+    {
+      "id": "core1_duplicate_partition",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/ScanParallelPlanner.java",
+      "sourceSha256": "a6cc68254b34b55651cc9702d4eea0e68c4965848a5dd80c4018667b13f29e6d",
+      "class": "org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlanner",
+      "replacements": [
+        {
+          "old": "      offset += size;\n    }\n    return result;",
+          "new": "      offset += size;\n    }\n    if (values.get(0) instanceof Long) result.get(result.size() - 1).add(values.get(0));\n    return result;"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/ScanParallelPlannerTest.java",
+          "sourceSha256": "66817435d8565a9340dd1d4271d6c6c788664537b0bb5b06c532ddf3aa7028e6",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlannerTest",
+          "method": "largeMetadataProductClampsToEightBoundedWorkUnits",
+          "assertionMessageRegex": "expected:<30000> but was:<30001>",
+          "assertionStackRegex": "org\\.apache\\.iotdb\\.db\\.queryengine\\.plan\\.planner\\.ScanParallelPlannerTest\\.largeMetadataProductClampsToEightBoundedWorkUnits"
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlanner"
+      ],
+      "acceptanceContract": "Duplicate one actual Long partition only; independent coverage cardinality rejects it without changing device grouping."
+    },
+    {
+      "id": "core2_ordered_root_collect",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DataNodeTableOperatorGenerator.java",
+      "sourceSha256": "4023f5359882e754b3583d878748bb2870f80d52fe0228eeeb8ac0f50e60bec1",
+      "class": "org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator",
+      "replacements": [
+        {
+          "old": "    return new TableMergeSortOperator(\n        addOperatorContext(\n            context, sortNode.getPlanNodeId(), TableMergeSortOperator.class.getSimpleName()),\n        exchangeOperators,\n        dataTypes,\n        getComparatorForTable(\n            sortNode.getOrderingScheme().getOrderingList(), sortItemIndexes, sortItemDataTypes));",
+          "new": "    return new CollectOperator(\n        addOperatorContext(context, sortNode.getPlanNodeId(), CollectOperator.class.getSimpleName()),\n        exchangeOperators);"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/OrderedScanPipelineContractTest.java",
+          "sourceSha256": "77c393cf25148bd421edd717279e664c56906a9da2277c174e2e6d4317590281",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.OrderedScanPipelineContractTest",
+          "method": "orderedTimeAscendingMatchesCompleteRows",
+          "assertionMessageRegex": "TableMergeSortOperator.*CollectOperator",
+          "assertionStackRegex": "OrderedScanPipelineContractTest\\.assertCompleteMerge",
+          "allowPowerMockFailureFinishArtifact": true
+        },
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/OrderedScanPipelineContractTest.java",
+          "sourceSha256": "77c393cf25148bd421edd717279e664c56906a9da2277c174e2e6d4317590281",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.OrderedScanPipelineContractTest",
+          "method": "orderedTimeDescendingMatchesCompleteRows",
+          "assertionMessageRegex": "TableMergeSortOperator.*CollectOperator",
+          "assertionStackRegex": "OrderedScanPipelineContractTest\\.assertCompleteMerge",
+          "allowPowerMockFailureFinishArtifact": true
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.plan.planner.DataNodeTableOperatorGenerator"
+      ],
+      "acceptanceContract": "Restored carrier drains and compares complete ordered rows. Mutant specifically fails root MergeSort structure assertion, not a dependency/JVM failure."
+    },
+    {
+      "id": "core3_omitted_queue",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionResourceRegistry.java",
+      "sourceSha256": "452834ee7f9da0f386eeac353b238c9f2e5955ddbc2aa62dc4d4080983e807bc",
+      "class": "org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionResourceRegistry",
+      "replacements": [
+        {
+          "old": "public final class LocalExecutionResourceRegistry {",
+          "new": "public final class LocalExecutionResourceRegistry {\n  private boolean negativeQueueOmissionInjected;"
+        },
+        {
+          "old": "    entries.putIfAbsent(physicalResource, new ResourceEntry(physicalKind, physicalMemoryKey));",
+          "new": "    if (physicalResource instanceof SharedTsBlockQueue && !negativeQueueOmissionInjected) {\n      negativeQueueOmissionInjected = true;\n    } else {\n    entries.putIfAbsent(physicalResource, new ResourceEntry(physicalKind, physicalMemoryKey));\n    }"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/B6NegativeResourceContractTest.java",
+          "sourceSha256": "4f3913817149196b27f86ba25c6a7a44392cc921effac64931c5aeef0e0f1eac",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.B6NegativeResourceContractTest",
+          "method": "omittedRealQueueKeepsCapsButFailsPhysicalObjectCount",
+          "assertionMessageRegex": "B6_REAL_QUEUE_OBJECT_COUNT_AFTER_CAP_VERIFIED",
+          "assertionStackRegex": "org\\.apache\\.iotdb\\.db\\.queryengine\\.plan\\.planner\\.B6NegativeResourceContractTest\\.omittedRealQueueKeepsCapsButFailsPhysicalObjectCount"
+        },
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/B6NegativeResourceContractTest.java",
+          "sourceSha256": "4f3913817149196b27f86ba25c6a7a44392cc921effac64931c5aeef0e0f1eac",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.B6NegativeResourceContractTest",
+          "method": "omittedRealQueueKeepsCapsButFailsIndependentNominalShare",
+          "assertionMessageRegex": "B6_REAL_QUEUE_NOMINAL_SHARE_AFTER_CAP_VERIFIED",
+          "assertionStackRegex": "org\\.apache\\.iotdb\\.db\\.queryengine\\.plan\\.planner\\.B6NegativeResourceContractTest\\.omittedRealQueueKeepsCapsButFailsIndependentNominalShare"
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionResourceRegistry"
+      ],
+      "acceptanceContract": "Four distinct real queues sharing one key + real remote input + two real remote outputs canonical7. Publication/lifecycle untouched; actual cap checks precede independent count and nominalShare assertions."
+    },
+    {
+      "id": "core4_skipped_first_driver",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+      "sourceSha256": "edc1738b9bb2c2c1189da48d349f6b518ed2ba62e14a20694400bf8f22067281",
+      "class": "org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager",
+      "replacements": [
+        {
+          "old": "    for (IDriver driver : drivers) {\n      try {\n        driver.close();",
+          "new": "    for (int negativeDriverIndex = 1; negativeDriverIndex < drivers.size(); negativeDriverIndex++) {\n      IDriver driver = drivers.get(negativeDriverIndex);\n      try {\n        driver.close();"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/fragment/B6NegativeDriverCleanupContractTest.java",
+          "sourceSha256": "434d096af273706610649c39fb573a955f4beae09b7b9fe945284e987d7a895d",
+          "class": "org.apache.iotdb.db.queryengine.execution.fragment.B6NegativeDriverCleanupContractTest",
+          "method": "realManagerFailureClosesFirstDriverAndSettlesRealAccount",
+          "assertionMessageRegex": "B6_FIRST_REAL_DRIVER_MUST_CLOSE",
+          "assertionStackRegex": "B6NegativeDriverCleanupContractTest\\.managerFailure"
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager"
+      ],
+      "acceptanceContract": "Manager real middle-factory failure after positive actual MemoryPool reservation; record actual account/receipt/driver/endpoint/future before assertions. Preserve any independent endpoint cleanup truth; driver failure cannot be hidden by a clean account."
+    },
+    {
+      "id": "core4_deregister_account",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/memory/MemoryPool.java",
+      "sourceSha256": "3cad99c15a25eeedeadb2765ab2afc56a97ef157bb635aa28f7f3ff7a4dbc636",
+      "class": "org.apache.iotdb.db.queryengine.execution.memory.MemoryPool",
+      "replacements": [
+        {
+          "old": "      String queryId, String fragmentInstanceId, boolean forceDeregister) {\n    Map<String, Map<String, Long>> queryRelatedMemory",
+          "new": "      String queryId, String fragmentInstanceId, boolean forceDeregister) {\n    if (queryId != null) return;\n    Map<String, Map<String, Long>> queryRelatedMemory"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/fragment/B6NegativeDriverCleanupContractTest.java",
+          "sourceSha256": "434d096af273706610649c39fb573a955f4beae09b7b9fe945284e987d7a895d",
+          "class": "org.apache.iotdb.db.queryengine.execution.fragment.B6NegativeDriverCleanupContractTest",
+          "method": "realManagerFailureRequiresIndependentDeregistrationReceipt",
+          "assertionMessageRegex": "B6_REAL_DEREGISTRATION_ACCOUNT_MUST_BE_ABSENT",
+          "assertionStackRegex": "B6NegativeDriverCleanupContractTest\\.assertAccount"
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.execution.memory.MemoryPool"
+      ],
+      "acceptanceContract": "Independent actual deregistration failure retains a real zero account. Refuse missing/abnormal actual receipt, without forging released/account fields."
+    },
+    {
+      "id": "core5_nominal_as_cap",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionResourceRegistry.java",
+      "sourceSha256": "452834ee7f9da0f386eeac353b238c9f2e5955ddbc2aa62dc4d4080983e807bc",
+      "class": "org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionResourceRegistry",
+      "replacements": [
+        {
+          "old": "    queues.forEach(SharedTsBlockQueue::setMaxBytesCanReserve);",
+          "new": "    queues.replaceAll((queue, cap) -> validated.nominalShareBytes().orElse(cap));\n    sinks.replaceAll((sink, cap) -> validated.nominalShareBytes().orElse(cap));\n    sources.replaceAll((source, cap) -> validated.nominalShareBytes().orElse(cap));\n    queues.forEach(SharedTsBlockQueue::setMaxBytesCanReserve);"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/B6NegativeResourceContractTest.java",
+          "sourceSha256": "4f3913817149196b27f86ba25c6a7a44392cc921effac64931c5aeef0e0f1eac",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.B6NegativeResourceContractTest",
+          "method": "thirtyTwoRealLocalChannelsAcceptMeasuredBlockAboveDiagnosticShare",
+          "assertionMessageRegex": "B6_NOMINAL_AS_CAP_REAL_BLOCK_REJECTED actualBlockBytes=(\\d+).*bytesToReserve: \\1B",
+          "assertionStackRegex": "org\\.apache\\.iotdb\\.db\\.queryengine\\.plan\\.planner\\.B6NegativeResourceContractTest\\.thirtyTwoRealLocalChannelsAcceptMeasuredBlockAboveDiagnosticShare"
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionResourceRegistry"
+      ],
+      "acceptanceContract": "32 real LocalSinkChannel/SharedQueue objects canonical32 with one actual source key. Measured block lies strictly between125703 and4022509. No remote 1MiB bootstrap. Specific real MemoryPool exception must name exactly that block; actual release/account/futures finally checked."
+    },
+    {
+      "id": "rr_constructor_threshold",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/sink/ShuffleSinkHandle.java",
+      "sourceSha256": "f3101f53304a854ffad626881d7ede51fd17dfeba6e01bd8978634becae9fce2",
+      "class": "org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle",
+      "replacements": [
+        {
+          "old": "private final long channelMemoryThreshold = maxBytesCanReserve / channelNum * 3;",
+          "new": "private long channelMemoryThreshold = maxBytesCanReserve / channelNum * 3;"
+        },
+        {
+          "old": "  public void publishLegacyHandleCap(long cap) {\n    this.maxBytesCanReserve = cap;\n  }",
+          "new": "  public void publishLegacyHandleCap(long cap) {\n    this.maxBytesCanReserve = cap;\n    if (shuffleStrategy instanceof SimpleRoundRobinStrategy) ((SimpleRoundRobinStrategy) shuffleStrategy).channelMemoryThreshold = cap / channelNum * 3;\n  }"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/BQuotaCompatibilityContractTest.java",
+          "sourceSha256": "64ee38d693a0c274128ffec452d2dc03ba7c232f377c711dc0d7623580bcc969",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.BQuotaCompatibilityContractTest",
+          "method": "frozenRoundRobinMatchesBaselineTracesForFourAndThirtyTwoChannels",
+          "assertionMessageRegex": "expected:<3016881> but was:<603375>",
+          "assertionStackRegex": "BQuotaCompatibilityContractTest\\.assertRoundRobinTrace"
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle",
+        "org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle$SimpleRoundRobinStrategy"
+      ],
+      "acceptanceContract": "Legacy RR constructor threshold must not be recomputed from later published handle cap; 4 and32-channel baseline traces preserved."
+    },
+    {
+      "id": "rr_no_candidate_forced_switch",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/sink/ShuffleSinkHandle.java",
+      "sourceSha256": "f3101f53304a854ffad626881d7ede51fd17dfeba6e01bd8978634becae9fce2",
+      "class": "org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle",
+      "replacements": [
+        {
+          "old": "      for (int i = 1; i < channelNum; i++) {\n        int nextIndex = (currentIndex + i) % channelNum;\n        if (satisfy(nextIndex)) {\n          downStreamChannelIndex.setCurrentIndex(nextIndex);\n          return;\n        }\n      }\n    }\n\n    private boolean satisfy(int channelIndex)",
+          "new": "      for (int i = 1; i < channelNum; i++) {\n        int nextIndex = (currentIndex + i) % channelNum;\n        if (satisfy(nextIndex)) {\n          downStreamChannelIndex.setCurrentIndex(nextIndex);\n          return;\n        }\n      }\n      downStreamChannelIndex.setCurrentIndex((currentIndex + 1) % channelNum);\n    }\n\n    private boolean satisfy(int channelIndex)"
+        }
+      ],
+      "tests": [
+        {
+          "source": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/BQuotaCompatibilityContractTest.java",
+          "sourceSha256": "64ee38d693a0c274128ffec452d2dc03ba7c232f377c711dc0d7623580bcc969",
+          "class": "org.apache.iotdb.db.queryengine.plan.planner.BQuotaCompatibilityContractTest",
+          "method": "frozenRoundRobinMatchesBaselineTracesForFourAndThirtyTwoChannels",
+          "assertionMessageRegex": "step 2 channels 4 expected:<3> but was:<0>",
+          "assertionStackRegex": "BQuotaCompatibilityContractTest\\.assertRoundRobinTrace"
+        }
+      ],
+      "requiredLoadedClasses": [
+        "org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle",
+        "org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle$SimpleRoundRobinStrategy"
+      ],
+      "acceptanceContract": "When no next channel satisfies the legacy conditions, keep current index; independent full trace/send counts reject a forced switch."
+    }
+  ],
+  "compiledIdentityContract": "Fresh archive verified against manifest; no old targets copied. Every mutation/recovery archives all exact main + $inner classes. Read-only premain observes actual Surefire Class loader/codeSource/resourceURL/resourceSHA; does not claim transformed live bytecode. PowerMock extra XML entries allowed only when unique selected logical methods match exact assertion messages/stacks; any <error>, arbitrary failure or missing XML refuses PASS.",
+  "scopeLimits": [
+    "Current source hashes and patch anchors are static previews only until the new baseline/source/package/provenance is bound.",
+    "No mutation compiled and no Java tests executed by this tool during preparation.",
+    "Original existing six negative resource cases remain separate subset evidence."
+  ],
+  "requiredBaselineProvenanceSchema": {
+    "status": "PASS",
+    "sourceManifestSha256": "EXACT_NEW_MANIFEST_SHA",
+    "serverJarSha256": "EXACT_NEW_SERVER_SHA",
+    "testSourceSha256": {
+      "SOURCE_RELATIVE_PATH": "EXACT_CARRIER_SHA"
+    }
+  },
+  "commands": {
+    "bindOnly": "python3 run-negative-contracts.py --manifest ABSOLUTE_BOUND_MANIFEST --work NEW_PVC_WORK_ROOT --output NEW_PUBLIC_PROPERTY_B_SYMLINK",
+    "executeOnlyAfterNewBaseline": "python3 run-negative-contracts.py --manifest ABSOLUTE_BOUND_MANIFEST --work NEW_PVC_WORK_ROOT --output NEW_PUBLIC_PROPERTY_B_SYMLINK --run"
+  },
+  "storagePolicy": "All new source, target and temporary files on bound persistent PVC; preserve originals",
+  "providerEventContract": "All raw XML nodes preserved; only explicitly bound PowerMock carrier may pair one exact assertion failure with one identical same-XML empty-success finish event after actual PowerMock loader provenance. Two failures/two successes/errors/skips/flaky/rerun remain rejected."
+}

@@ -1,0 +1,65 @@
+[
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/collect_datanode_proc.py",
+    "exitCode": 0,
+    "seconds": 0.063,
+    "stdout": "collect_datanode_proc self-test passed\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/extract_remote_shuffle_payload_bytes.py",
+    "exitCode": 0,
+    "seconds": 0.048,
+    "stdout": "extract_remote_shuffle_payload_bytes self-test passed\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/iotdb_cli_adapter.py",
+    "exitCode": 0,
+    "seconds": 0.066,
+    "stdout": "iotdb_cli_adapter self-test passed\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/server_current_query_metrics.py",
+    "exitCode": 0,
+    "seconds": 0.054,
+    "stdout": "server_current_query_metrics self-test passed\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/server_query_metrics_with_proc.py",
+    "exitCode": 0,
+    "seconds": 0.065,
+    "stdout": "server_query_metrics_with_proc self-test passed\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/verify_p0_matrix.py",
+    "exitCode": 0,
+    "seconds": 0.149,
+    "stdout": "verify_p0_matrix self-test passed\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_multi_query_case_acceptance.py",
+    "exitCode": 0,
+    "seconds": 0.069,
+    "stdout": "{\n  \"self_test\": \"passed\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+    "exitCode": 0,
+    "seconds": 0.065,
+    "stdout": "{\"self_test\": \"PASS\", \"checks\": 21}\n",
+    "stderr": ""
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/verify_property_enforcement_matrix.py",
+    "exitCode": 0,
+    "seconds": 1.359,
+    "stdout": "property enforcement matrix: OK (13 contracts, 23 parser self-tests)\n",
+    "stderr": ""
+  }
+]

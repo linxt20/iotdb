@@ -1,0 +1,77 @@
+{
+  "command": "mvn -B -pl iotdb-core/datanode -am test -DforkCount=4 -Dtest.port.closed=true [flags from final-candidate-identity.json]",
+  "exitCode": 0,
+  "modules": {
+    "iotdb-client/service-rpc": {
+      "classes": 9,
+      "tests": 111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-client/session": {
+      "classes": 11,
+      "tests": 288,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/datanode": {
+      "classes": 944,
+      "tests": 6359,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 53
+    },
+    "iotdb-core/node-commons": {
+      "classes": 105,
+      "tests": 526,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    },
+    "iotdb-core/consensus": {
+      "classes": 26,
+      "tests": 91,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/calc-commons": {
+      "classes": 21,
+      "tests": 102,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/metrics/interface": {
+      "classes": 5,
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/metrics/core": {
+      "classes": 4,
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-api/pipe-api": {
+      "classes": 2,
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "totals": {
+    "classes": 1127,
+    "tests": 7521,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 56
+  },
+  "failedTests": []
+}

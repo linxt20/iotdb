@@ -1,0 +1,655 @@
+{
+  "source_host": "sc01",
+  "source_directory": "/root/w5-docs",
+  "archival_policy": "Original document bodies retained byte-for-byte; Apache header prepended where absent. Historical records are not the execution entrypoint.",
+  "documents": [
+    {
+      "source_name": "A-D_完整实现补全核查_20261102.md",
+      "path": "records/A-D_完整实现补全核查_20261102.md",
+      "source_bytes": 18687,
+      "source_sha256": "3881d167b798722b3ee153550e17d1fde63e16d92f2724532e4180e20ce8b142",
+      "published_sha256": "648903242b1205068d5c78fa5ec93912427bd432f4243f01ae15ef57bf290630",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "A5_序列化重载缺陷与修复范围_20261028.md",
+      "path": "records/A5_序列化重载缺陷与修复范围_20261028.md",
+      "source_bytes": 6096,
+      "source_sha256": "43abe738998772c6023e29b9b4518200117b0050210a0f5fc22b7298c4c29a85",
+      "published_sha256": "13b54956e146f75e5fb786b2389fbcfb2ab05f47e24a22ff3e08d1b3a526615b",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "ABCDE代码改动量与既有优化影响核查_20261105.md",
+      "path": "records/ABCDE代码改动量与既有优化影响核查_20261105.md",
+      "source_bytes": 11988,
+      "source_sha256": "b43a9380ac774b5fc6046581621869e49b92f965b8786f2e2c6043d63c80def9",
+      "published_sha256": "fe744be1beee41a5ca0cd4b3327411937501e2a402e51ca9a02b3fa6ce064c15",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "ABCDE整体实现核查记录_20261104.md",
+      "path": "records/ABCDE整体实现核查记录_20261104.md",
+      "source_bytes": 11571,
+      "source_sha256": "e8f020e97b77d915711b8058ad29af4a09219be2d032a8cbaab8746dc1da98ce",
+      "published_sha256": "949a26a4cb896b4b40ed989ee9cd40cfe07ea35467b2e646e47cff2fb03b8efd",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "A_属性框架验收结果_20261028.md",
+      "path": "records/A_属性框架验收结果_20261028.md",
+      "source_bytes": 6525,
+      "source_sha256": "bec8f7da50c753aa70e5fb51f9b0597d9e059e8f00ca429142fe8679ba4342b0",
+      "published_sha256": "1489b0d3be5b44d047d95b28676f3da47cabc72b5a5ae879398b06d817e040ed",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_文档复审Prompt_20261031.md",
+      "path": "records/B_文档复审Prompt_20261031.md",
+      "source_bytes": 2022,
+      "source_sha256": "2fb0f1fc5ea1737858d32c79d331fca132a56b82bb1e37c9bf74ae58f5afa371",
+      "published_sha256": "c0ca842691ae30aabd4e8e303eb6b39bff30aa2953e2cf1fa06405b0dc915e0f",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_文档审查Prompt_20261028.md",
+      "path": "records/B_文档审查Prompt_20261028.md",
+      "source_bytes": 3176,
+      "source_sha256": "77902fecb8239c358f34e865ea1b851248b94703b162a47610e2498b63915e02",
+      "published_sha256": "4166cfdfec7a57cb111cfc9c567ac632be1b5c1c5ea163ae862a441d46121af9",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_文档第三轮审查Prompt_20261031.md",
+      "path": "records/B_文档第三轮审查Prompt_20261031.md",
+      "source_bytes": 1947,
+      "source_sha256": "24d041c7b26d88dfaae322cfe92c950403179d4b5725d0c98c1642e80d3611eb",
+      "published_sha256": "dcc07f76735e8e0bd57141e8140c0b25c54ead6793fc86678c1b10b53ca5f98e",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_无序Collect活性补充实现规划_20261103.md",
+      "path": "records/B_无序Collect活性补充实现规划_20261103.md",
+      "source_bytes": 11838,
+      "source_sha256": "719eb51f4b7f0c5aebcfa93aea23d950997b8180052ca78e60ca0342fea7622f",
+      "published_sha256": "080640134809a8832c06cf88c8f506bf1f70a3eaa79f4829c0875010439ba1ca",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_无序Collect活性补充设计_20261103.md",
+      "path": "records/B_无序Collect活性补充设计_20261103.md",
+      "source_bytes": 11416,
+      "source_sha256": "1e0103302220a34ddc5b2a75cd893f9919265a88d104a51de0d7fad67f293a49",
+      "published_sha256": "38cb6aa3b531fcf13dab5c680f8ce6e4bbfebf87afb5d6897a7e9fd7f71c8d76",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一复审修订记录_20261031.md",
+      "path": "records/B_静态数据并行统一复审修订记录_20261031.md",
+      "source_bytes": 1893,
+      "source_sha256": "eea45cb5ebdf4a125d886133ea8c535215420c287137fbd632625c8a1d09b5df",
+      "published_sha256": "a1633564d9b7e8c849255e19da562477834428fca2c6f492d3e199121f759eba",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一复审处理说明_20261031.md",
+      "path": "records/B_静态数据并行统一复审处理说明_20261031.md",
+      "source_bytes": 9456,
+      "source_sha256": "88f4481ca03785cebf86c439f512f0173e6fff8c6281983af8bd5d8831427911",
+      "published_sha256": "8778662323c39dc400554450239030df1b32509c12754b27039ba212ad49f417",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一实施记录_20261031.md",
+      "path": "records/B_静态数据并行统一实施记录_20261031.md",
+      "source_bytes": 30179,
+      "source_sha256": "61af08a78ee89598db4ef574b414809e21109d980d25663d11f3422fddd98e54",
+      "published_sha256": "0a8f8822f6096f807499443b008e7f0b8228a6f2e46bc28f7f29444343f61668",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一实现规划_20261028.md",
+      "path": "records/B_静态数据并行统一实现规划_20261028.md",
+      "source_bytes": 26577,
+      "source_sha256": "5e1f05f945aed0cc712c3361561e03b0fc2926cfe561d9de77aef8b39368bd0e",
+      "published_sha256": "cc710eb279c3806dc0ece8b335251b322db0e95fdc4bec254990b80bc586a1bf",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一实现规划_20261031.md",
+      "path": "records/B_静态数据并行统一实现规划_20261031.md",
+      "source_bytes": 37042,
+      "source_sha256": "86b3fa1aaac9082a45767971c15f2f54b72589e34605c5f04530510c62a3e979",
+      "published_sha256": "90e55b412727bbd47282b28e95aab76a82639f4043ca3cac0e019bb12cd99d7c",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一实现规划_20261031_实施版.md",
+      "path": "records/B_静态数据并行统一实现规划_20261031_实施版.md",
+      "source_bytes": 45555,
+      "source_sha256": "fdf055ac7cc16bf17904495129cb070014eb362169a8d99d3e794fd65ea3ef68",
+      "published_sha256": "ce6feb643bdec8c3220446f061d6a5c51a97729393a7a9a1dac6ceade73b1cec",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一实现规划_20261031_实施版_复审修订.md",
+      "path": "records/B_静态数据并行统一实现规划_20261031_实施版_复审修订.md",
+      "source_bytes": 53490,
+      "source_sha256": "fa050fa5212a021479755669a7d62d22aedb903fc602f0f56e1929dc53ad8ecb",
+      "published_sha256": "6e75a0d46723fb520be3eaff16740c6b2b5d435acc6ae3ea5007497858170cc2",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一实现规划_20261031_第二轮.md",
+      "path": "records/B_静态数据并行统一实现规划_20261031_第二轮.md",
+      "source_bytes": 44515,
+      "source_sha256": "8d9ec0ce364aa04d14dee5731ac36e65c2a14117ece44732eee92655d510e3d4",
+      "published_sha256": "8efce3b38cfb9d28baa8392dd28a3afd443f1e35f292154b2f5a4f5a04f176dc",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一审查处理说明_20261031.md",
+      "path": "records/B_静态数据并行统一审查处理说明_20261031.md",
+      "source_bytes": 12288,
+      "source_sha256": "c6794e0b779c5594d9bef7690659fbee258534c51249d2f246d957cdde7a7c2e",
+      "published_sha256": "d300172aaadaded46b14b2c43328e8878dfcbad0cd0cca5da4a8408e1d4d0748",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一文档复审_20261031.md",
+      "path": "records/B_静态数据并行统一文档复审_20261031.md",
+      "source_bytes": 33721,
+      "source_sha256": "8ceac1821ec1f9f1d7bc02357305e07b0c2d2c9bbc5a9ecab4d4441b47b1aa53",
+      "published_sha256": "ab4dae021652af4f01a4aa9e841e024adde4f94d686b55e55c1f6b8747d39316",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一文档审查_20261028.md",
+      "path": "records/B_静态数据并行统一文档审查_20261028.md",
+      "source_bytes": 40118,
+      "source_sha256": "4afe0d97269fd994d5aa4067605ba608de9a716c70063b37f11ccee8a0d07b22",
+      "published_sha256": "c5429230d3a599fa7e2ddae1caa8645090df6f5f5ae3222e3da018c2a07a1d2f",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一文档第三轮审查_20261031.md",
+      "path": "records/B_静态数据并行统一文档第三轮审查_20261031.md",
+      "source_bytes": 16387,
+      "source_sha256": "d54ae4f0afd6cddb784f1afbc1a8485b35fd84878a79082604c4443730d6ed19",
+      "published_sha256": "ae9d8e91fd22c56a84f15c1ea449f86758c6c072ece3fdf4acb1c8ec492e36f3",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一第三轮审查处理_20261031.md",
+      "path": "records/B_静态数据并行统一第三轮审查处理_20261031.md",
+      "source_bytes": 3335,
+      "source_sha256": "216a0a1054af22228b75d0ecf93bee6413a1bf71e2c8d1913b5666f9db466ed4",
+      "published_sha256": "fc470caa52e9aee3cbfac16d26a1b32a231e1c74d85ebbf31bba0fe8cb1f91fe",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一设计_20261028.md",
+      "path": "records/B_静态数据并行统一设计_20261028.md",
+      "source_bytes": 23033,
+      "source_sha256": "99231faa41dbe5612f6172286b4f5785b989f590be6ac87ced825c2ac1c5be2a",
+      "published_sha256": "962e0b8f7283b9899c3c84f4ace08944452cec39e92583a6399e22463edbe7b5",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一设计_20261031.md",
+      "path": "records/B_静态数据并行统一设计_20261031.md",
+      "source_bytes": 31308,
+      "source_sha256": "c787442ddd3f5ba3718a8a28c6be2289557587d4925f58e28ffff5d765ce9804",
+      "published_sha256": "2610a9fffa47cdbea3640bc7ba3e77d11cf57b5edcb1cfbcf4c35472da3633f9",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一设计_20261031_实施版.md",
+      "path": "records/B_静态数据并行统一设计_20261031_实施版.md",
+      "source_bytes": 34566,
+      "source_sha256": "57bf065bd7898ba667249895c5cb23396fe961cfdae03aae36bcc436d6f182fa",
+      "published_sha256": "6db49b0b059883beef85289373440b5972932f939e39f7f1c8e8e1057fe973b6",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一设计_20261031_实施版_复审修订.md",
+      "path": "records/B_静态数据并行统一设计_20261031_实施版_复审修订.md",
+      "source_bytes": 40740,
+      "source_sha256": "950b5d6470a152d68a28dc5c4de234a7f461494b71eee47c2be2d865b1d929ac",
+      "published_sha256": "bdf4a9ad804bc76890fee4996766c664e531e155dbf86bc190ccca70e25ffbbc",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "B_静态数据并行统一设计_20261031_第二轮.md",
+      "path": "records/B_静态数据并行统一设计_20261031_第二轮.md",
+      "source_bytes": 34190,
+      "source_sha256": "28c5dbd770fcab700cf45ee77f85c603b4d7cd019f9ba90d4a19b8dcb10b74ca",
+      "published_sha256": "fbc8a0c0a19be66399a5c88d9873be4e91a0516dea5ff1a64db815342572c433",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照修订版文档审查_20261101.md",
+      "path": "records/C_运行指标快照修订版文档审查_20261101.md",
+      "source_bytes": 44800,
+      "source_sha256": "10891eb1d676d4e30ad9fd0c5b30d6fc3da222d76018a12af00ee655ca685694",
+      "published_sha256": "2260082e313aaed62f01a24ce8f5545d5caf42b6079449627aa647432dbd90b5",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照修订版文档审查处理说明_20261101.md",
+      "path": "records/C_运行指标快照修订版文档审查处理说明_20261101.md",
+      "source_bytes": 1872,
+      "source_sha256": "cad883feb557a372a378f391f17c9a8f859032779ee7139919cec1f3c706837b",
+      "published_sha256": "2c6291ef2fefa2367d0e3d68759b86a2028fba71cfdc5043a0be7bf0960a09fe",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照修订版文档审查处理说明_20261101_第三轮.md",
+      "path": "records/C_运行指标快照修订版文档审查处理说明_20261101_第三轮.md",
+      "source_bytes": 1130,
+      "source_sha256": "acc5aeed34fa75133a4a065a78b7ded21fa6b78cbc0951b03f08088ec3d7def7",
+      "published_sha256": "befd679916c80bc4418cce23cc70a0376f97301df1a7761648424434a0594cb7",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照实施记录_20261101.md",
+      "path": "records/C_运行指标快照实施记录_20261101.md",
+      "source_bytes": 8657,
+      "source_sha256": "80efa7239c5d6a038bb1e92c0ac4312aa6aacfdd301dbf3f835e356529c55b5c",
+      "published_sha256": "c93c9cfcd982d7ab098c6233c4a564c6ec16751f7cacdb75a5e627f93f1d91ec",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照实现规划_20261101.md",
+      "path": "records/C_运行指标快照实现规划_20261101.md",
+      "source_bytes": 8936,
+      "source_sha256": "945d1eace39be2bcfaa6fc49a5ce1a0a96772eab340bac2a7acda1ec7b95e18d",
+      "published_sha256": "9e11850a305b3a6857ea50f06e69e9bbef682277f10dd635d31ec95bbedbd87d",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照文档审查_20261101.md",
+      "path": "records/C_运行指标快照文档审查_20261101.md",
+      "source_bytes": 74334,
+      "source_sha256": "33e59efa78e6181cf0cc3635409e97aba81d0227c46b030d03618d6b738f58af",
+      "published_sha256": "cc3d46e52461f7b53a288d22c6d1fbf68e0ec7ad6e380384ca7a2777f682228c",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照文档审查处理说明_20261101.md",
+      "path": "records/C_运行指标快照文档审查处理说明_20261101.md",
+      "source_bytes": 3665,
+      "source_sha256": "e6b0b56ef85bddb0fe62b6a8c7d229b6d6895400965f92e32b8609fd836d6fac",
+      "published_sha256": "20609b5fcff89adc4aed7a86e01e59d70b77a8d245b1a47e097965123b55bc25",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照文档审查第三轮_20261101.md",
+      "path": "records/C_运行指标快照文档审查第三轮_20261101.md",
+      "source_bytes": 20251,
+      "source_sha256": "d0bc7817e21bc10579e1f0db59b79479dbbd1c4af78a9eb2f5755921fb634b7a",
+      "published_sha256": "0675020eaaa590ea384c7aafb8487ee26d13e88d9cac3cfae57dde917dc08a46",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "C_运行指标快照设计_20261101.md",
+      "path": "records/C_运行指标快照设计_20261101.md",
+      "source_bytes": 10178,
+      "source_sha256": "9109f78400c49406a093927b9c06c27cc8fb79a7535b1b74655a5d7fefa5366e",
+      "published_sha256": "ed6a67ce286d28d31def98136dc4b79ed2508369186e4fffb5974d6caa9c91d5",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行实现规划_20261101.md",
+      "path": "records/D_静态数据并行实现规划_20261101.md",
+      "source_bytes": 21750,
+      "source_sha256": "60ab32bc667f99daf4d28ab1585732d0e7fcfca618946f5a5f54e3b6858285f7",
+      "published_sha256": "15d442a6d18b4a623901bdb2a38591fb733fcd45a1aff37600644f168ed4d81c",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行文档审查_20261101.md",
+      "path": "records/D_静态数据并行文档审查_20261101.md",
+      "source_bytes": 20256,
+      "source_sha256": "f3e53b533e4147e9397898dff07a30d6f583dad5174253295aec93ee986a4ad9",
+      "published_sha256": "2c90d68b4bd325107076e307941a52f2b1b8ca7f32757ea2f947e061cc6a4f97",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行文档审查处理说明_20261101.md",
+      "path": "records/D_静态数据并行文档审查处理说明_20261101.md",
+      "source_bytes": 3435,
+      "source_sha256": "4bf89879c62c29b7d4d2199983070eef90e549687fa6ad45bb9a53aaf2236830",
+      "published_sha256": "dde49458dcabc160fde2bf06e024b25652f4706a468a6506bca7d944cf99c0c9",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行文档审查第三轮_20261101.md",
+      "path": "records/D_静态数据并行文档审查第三轮_20261101.md",
+      "source_bytes": 14959,
+      "source_sha256": "7d4e8a71d188cbacff2079b5a89836c4bd10e492aacc4f755efb74c2fb885e6e",
+      "published_sha256": "f804172540d0851aaaa0c12b5d60c40e39ac4f9bbe1f5a6a8a49146809addad6",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行文档审查第二轮_20261101.md",
+      "path": "records/D_静态数据并行文档审查第二轮_20261101.md",
+      "source_bytes": 19006,
+      "source_sha256": "31129db52deb9f7595674fea4f48544f096d73566bed226f45529ffd4764fa31",
+      "published_sha256": "7b839366c28939b58e36f9f0b7d99220ae2c9bf67850c426a86ed57db396174d",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行文档审查第五轮_20261101.md",
+      "path": "records/D_静态数据并行文档审查第五轮_20261101.md",
+      "source_bytes": 17596,
+      "source_sha256": "d5c28a35c6b637fe91bf61ff78ebbfd044dfd5adc7c8f78fd5e6e498a7baca16",
+      "published_sha256": "11f65d868c6725a6821280e321588e9c2f09f96997fd4e715d6b4f23d2d7fd3a",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行文档审查第四轮_20261101.md",
+      "path": "records/D_静态数据并行文档审查第四轮_20261101.md",
+      "source_bytes": 13494,
+      "source_sha256": "c3aa097b49bf70451335e77a605d304e8fc1e8190f2c1d8e0866451a7a267d3c",
+      "published_sha256": "19b83b985ecd32b8132375957b6a385ab1f9cae90af16f45eadbe768d7010b84",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行第三轮审查处理说明_20261101.md",
+      "path": "records/D_静态数据并行第三轮审查处理说明_20261101.md",
+      "source_bytes": 2355,
+      "source_sha256": "ba4f6182e2bc7cc3b877d20ea3657bd386a9ab04a96fcf3ce964cded38c282d2",
+      "published_sha256": "6cf30a79213186fd1e518fdfa01f4aafbe6da466eaa235874ef7b49bc81e224f",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行第二轮审查处理说明_20261101.md",
+      "path": "records/D_静态数据并行第二轮审查处理说明_20261101.md",
+      "source_bytes": 2637,
+      "source_sha256": "648f0ef6e3e4c57bb67a3c11af4590d6b74dbc2041bd472f10c6bb53ff22da79",
+      "published_sha256": "755eba60343d2f2c5f325c117903e2ff6da7e765ef2eccbed6449c87ffcaf272",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行第五轮审查处理说明_20261101.md",
+      "path": "records/D_静态数据并行第五轮审查处理说明_20261101.md",
+      "source_bytes": 2271,
+      "source_sha256": "d33b698c4881cf55a77d007a7702acd75d4085470be1b9a87cc132a94592fe85",
+      "published_sha256": "bd57bd5979286a7481e6d1a3fd3298328932203fa6602ff09dbc418aefd382b2",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行第四轮审查处理说明_20261101.md",
+      "path": "records/D_静态数据并行第四轮审查处理说明_20261101.md",
+      "source_bytes": 2173,
+      "source_sha256": "364e843c303bf6b39fcca56bfeeccd3cb110ae2f8620d394bd47083f62f3dea5",
+      "published_sha256": "4a54d3626bf7243e4025f02858c8de7777a5fa5db3cdb74760b01de39da77365",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "D_静态数据并行设计_20261101.md",
+      "path": "records/D_静态数据并行设计_20261101.md",
+      "source_bytes": 11547,
+      "source_sha256": "7e036786c6f0c1d457177b228d8f259df4a43280656991e5efb0d972d464d946",
+      "published_sha256": "b65371ccee790001d4502eac120793c8aead1f355a2c059de6dc6936942d1c08",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实施补充与进度_20261103.md",
+      "path": "records/E_动态数据并行实施补充与进度_20261103.md",
+      "source_bytes": 6097,
+      "source_sha256": "ad71bb616c491cea1f3563bdf3e4b25b4bfc92d5d8a46213bba1e393c26a0659",
+      "published_sha256": "ac2105d4dfde620c9c10d03eaf6a8c88107b56daca207ea02205f186a0557098",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实施进度_20261104.md",
+      "path": "records/E_动态数据并行实施进度_20261104.md",
+      "source_bytes": 15691,
+      "source_sha256": "e42a21adaefa9f76a11c980cf489f9aba9735674c490abcc428f4ab92b7a1dae",
+      "published_sha256": "1f3a7788d70f87b4b948a2ba43b6e901a00261511a32c0e3c72ad7a29c3ac882",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实现规划_20261102.md",
+      "path": "records/E_动态数据并行实现规划_20261102.md",
+      "source_bytes": 11381,
+      "source_sha256": "44617911a9b9bfa0cdd1a1c8a669f225cbd905804e32e323c0523a3406c4744a",
+      "published_sha256": "2a452de8730f0130b744dd5856d1ba121af0e74bf0910bf7002cf141a2c0a082",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实现规划_20261102_第一轮修订.md",
+      "path": "records/E_动态数据并行实现规划_20261102_第一轮修订.md",
+      "source_bytes": 17610,
+      "source_sha256": "c8b1140ee33e2e2e6a0f907d8edccd6bc6edd4e685a7dd47e4ca990236e1d191",
+      "published_sha256": "c406c5d0846f92b2abcc5bf918ee887c988cbfabe204aaed146c9c1ba9db83a7",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实现规划_20261102_第二轮修订.md",
+      "path": "records/E_动态数据并行实现规划_20261102_第二轮修订.md",
+      "source_bytes": 20843,
+      "source_sha256": "317fda3b4a2aceac5212b9f92593de56f046483c5d5c1735b94480c640ebcff7",
+      "published_sha256": "6767ceec4bcec0a3d29614026b14e2c8803da7a3b5aeab0c21461ab28ed483d6",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实现规划_20261103_第三轮修订.md",
+      "path": "records/E_动态数据并行实现规划_20261103_第三轮修订.md",
+      "source_bytes": 32622,
+      "source_sha256": "58403426e98295aa948489f1559f357e501cc6c239bfbb5ce593d20af167c3b1",
+      "published_sha256": "6299227de589deced263810bc198baf7f9baeb4206acec3f7ee2b0f84dc3a3f7",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实现规划_20261103_第五轮修订.md",
+      "path": "records/E_动态数据并行实现规划_20261103_第五轮修订.md",
+      "source_bytes": 44467,
+      "source_sha256": "1c1a6515ab0504792beaffce6c55766b4989aad204f3d882e162c8d6e2675a06",
+      "published_sha256": "3cb28033d9174cab8c6a3252d373bc2a53e274312e1bb23b3a4d9718a26ba5ad",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行实现规划_20261103_第四轮修订.md",
+      "path": "records/E_动态数据并行实现规划_20261103_第四轮修订.md",
+      "source_bytes": 39410,
+      "source_sha256": "41755a6d24af15e4a2146862b36b501bcc799e42fb8b03653e775a4d819f6f37",
+      "published_sha256": "e6cd43f3db0500c6cf7c995b9bb6d9483268822492ba0548513978f6f1f848a8",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行文档审查第一轮_20261102.md",
+      "path": "records/E_动态数据并行文档审查第一轮_20261102.md",
+      "source_bytes": 20068,
+      "source_sha256": "7e1f120ca725d88beb0d1067485393038f2bc930300ecd53a09a7b4e3dd675ed",
+      "published_sha256": "7340e035ea0d1eb1815cd69df3ccefa20b78f71d238227c0988b52e9ff2ce382",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行文档审查第三轮_20261103.md",
+      "path": "records/E_动态数据并行文档审查第三轮_20261103.md",
+      "source_bytes": 20350,
+      "source_sha256": "eff663625ae499a91dc3bd7d41cd789cdf09784262682a67384c9c10d12730bc",
+      "published_sha256": "eb7ff9e48aebe8f79c9592b3be56aad5734c6a0e5dde477fd90bb90f10401d73",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行文档审查第二轮_20261102.md",
+      "path": "records/E_动态数据并行文档审查第二轮_20261102.md",
+      "source_bytes": 25076,
+      "source_sha256": "f22da68703574cc11d3d40752976fae5d771563f86520439aa61070753c9f0de",
+      "published_sha256": "8cd6a61b6774ca17104aa848861edcf07cd59cbb54341ce7107a5d319697bab5",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行文档审查第五轮_20261103.md",
+      "path": "records/E_动态数据并行文档审查第五轮_20261103.md",
+      "source_bytes": 14011,
+      "source_sha256": "652b70e178ea8c70b4a62375653fc95a024e0b3b95da2eb1f16286cf0a48d5b2",
+      "published_sha256": "59f55bdce76b40cf31ac33f32efff6cbf69d392897ad616e2bd79a39cde0d58e",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行文档审查第四轮_20261103.md",
+      "path": "records/E_动态数据并行文档审查第四轮_20261103.md",
+      "source_bytes": 14554,
+      "source_sha256": "071c4a18293a3769abb2f1296dd3c203902f1a24b7d5bfe04dda2cb6908d4c70",
+      "published_sha256": "6180ea5a45c7fc513abffd9e1f83d58f35ea733f739738c8dbfc372da5cee710",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行设计_20261102.md",
+      "path": "records/E_动态数据并行设计_20261102.md",
+      "source_bytes": 9013,
+      "source_sha256": "64608e31ef3b4bc7dd2fb00dd30ba42904c3f7a3e5acd54ac5fea921fd3842ab",
+      "published_sha256": "4bcc408d35962e36fb2fbc123b26500ee6064abd417526f2bf00375854418a52",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行设计_20261102_第一轮修订.md",
+      "path": "records/E_动态数据并行设计_20261102_第一轮修订.md",
+      "source_bytes": 14327,
+      "source_sha256": "4759b039edd08519077b45c93b91da3497011649274e058e4ba06762867ae220",
+      "published_sha256": "2eac41031303e172852e42f6aa1380e3b9cc417d5700dbdd1245f50c62d7b1ea",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行设计_20261102_第二轮修订.md",
+      "path": "records/E_动态数据并行设计_20261102_第二轮修订.md",
+      "source_bytes": 21042,
+      "source_sha256": "d4c2342d46726c0a5bd841b411d5369075ec83e67d80400bfc2e6b1b300fcde4",
+      "published_sha256": "a5e595189eb1747c2177deb6e9dc393f61acc8a8ce5a279e25e96abe648a30b9",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行设计_20261103_第三轮修订.md",
+      "path": "records/E_动态数据并行设计_20261103_第三轮修订.md",
+      "source_bytes": 28345,
+      "source_sha256": "e5c860e51463b0e5534db257889a17ce35e3e289cd1c347463afcb49a036fce8",
+      "published_sha256": "bc7ea53467da5fe0d2bc004db0554eb57aa04658f31ac48ec4fece3379d2e503",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行设计_20261103_第五轮修订.md",
+      "path": "records/E_动态数据并行设计_20261103_第五轮修订.md",
+      "source_bytes": 41901,
+      "source_sha256": "4d3eeba9a411aa6d33678c22d2de937db2d4ad0d57a0a236e49b273036813241",
+      "published_sha256": "837e56ac4717858e9196cf6cdf3fbce809aa947a6a09243cbb15df9c73b258bf",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "E_动态数据并行设计_20261103_第四轮修订.md",
+      "path": "records/E_动态数据并行设计_20261103_第四轮修订.md",
+      "source_bytes": 33314,
+      "source_sha256": "6b53785ba20dc13ab735e6180d722c70559256744b6c3808ed19645b2204e4ad",
+      "published_sha256": "5d90e92d643cf318ff0efe5874e8319d45459a6701d60297a644acfb96d870fd",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "IoTDB查询执行并行化_ABCDE完整总体设计_20261104.md",
+      "path": "records/IoTDB查询执行并行化_ABCDE完整总体设计_20261104.md",
+      "source_bytes": 25275,
+      "source_sha256": "93818697759c9fa0b4370ae7336ca45b877c038177c6cacb9c101107ca299bad",
+      "published_sha256": "bb8494d88fd85ea5ee3f5e9aeaf346e7e050a36b2dfbb2f2d89103aac2e392f2",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "修改位置与整体设计_20261025.md",
+      "path": "records/修改位置与整体设计_20261025.md",
+      "source_bytes": 5629,
+      "source_sha256": "7b1961c3e91173129d73fd98f09118123344892051c3733b427186344308fd68",
+      "published_sha256": "a97b8139b39f367475b08995e28e0d88c4e0f43369b204128a54e23f35c98eb8",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "实现规划_20261025.md",
+      "path": "records/实现规划_20261025.md",
+      "source_bytes": 6591,
+      "source_sha256": "a292077037fc50dccec09da9402527fb3f0fe2dc59a73b52142f4022cf68b1ce",
+      "published_sha256": "7737b4fae80bdad7c32c096ff15a76f6ed12dd21d2246a974225bbd91120f085",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架实施记录_20261028.md",
+      "path": "records/属性驱动并行判定框架实施记录_20261028.md",
+      "source_bytes": 5056,
+      "source_sha256": "0bbb320d21a78e33655ae7f92bf5ba6251fb398a93cc27f40aadc0b97dddab2a",
+      "published_sha256": "5630e8c04a40783dc194015909c81cd717cb804d76ded87f3f7b80f7cba22c10",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架实现规划_20261026.md",
+      "path": "records/属性驱动并行判定框架实现规划_20261026.md",
+      "source_bytes": 10849,
+      "source_sha256": "fbea1ea584197d5c7ae7cc034f0731ab9dfec30329ac6da185c7a9789c3dbddd",
+      "published_sha256": "8e99f61bca41828832d34e98981814e801b98f49a99d24ce2b86295cddd73d34",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架实现规划_20261027.md",
+      "path": "records/属性驱动并行判定框架实现规划_20261027.md",
+      "source_bytes": 26567,
+      "source_sha256": "a2559484fe677409a9d14d30f6521ee8b9918833e5fce10aaab27245e5fe121d",
+      "published_sha256": "66e74a6db9b90073c86db8772a07da7e87997e014d597168b9ced12b8e7b1fea",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架文档复审_20261027.md",
+      "path": "records/属性驱动并行判定框架文档复审_20261027.md",
+      "source_bytes": 15750,
+      "source_sha256": "92e89e3a0850c881183599d129864b58ce87dac2ee91f671720a7bdbcc8d95de",
+      "published_sha256": "692b44afb8e449e7b7e2177990646fdf8dd327d2f73a53083b4f37e8c4220a6e",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架文档复审_20261027_第三轮.md",
+      "path": "records/属性驱动并行判定框架文档复审_20261027_第三轮.md",
+      "source_bytes": 15123,
+      "source_sha256": "7476d95d9be29bf62865458ac1ed577b69503ebac789bd9cef7c75d744b927a5",
+      "published_sha256": "89d70e73370136c35408bf200f3bd79c013b9f286d21bd4060a67c1fb06eb62d",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架文档审查_20261027.md",
+      "path": "records/属性驱动并行判定框架文档审查_20261027.md",
+      "source_bytes": 32118,
+      "source_sha256": "aafcb714a6107190d6cbcaeba8d8469dc564b63be1a5be115d7ae85f75d1b86a",
+      "published_sha256": "589bf274c76de1da3ebd325e59e582c984315e585bdaf759056d1b34e8801afd",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架测试核查_20261028.md",
+      "path": "records/属性驱动并行判定框架测试核查_20261028.md",
+      "source_bytes": 12411,
+      "source_sha256": "c155e8cc022591ac46ff026713d3940612ae1b257ec418665179ba745e7394c2",
+      "published_sha256": "0ebf69ab7850d9a30b2466aa33df2a894a0ed3c1c366a4f609b8ac89eaf1dd48",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架设计_20261026.md",
+      "path": "records/属性驱动并行判定框架设计_20261026.md",
+      "source_bytes": 12603,
+      "source_sha256": "254f791451f2fb1293018728765ce0dbe2c74b71494957737fa43f12f9e260c7",
+      "published_sha256": "4c55b89029f952ddcb493e4f278d25a39ba2971c5d5f152176a61c777fd9277b",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "属性驱动并行判定框架设计_20261027.md",
+      "path": "records/属性驱动并行判定框架设计_20261027.md",
+      "source_bytes": 35764,
+      "source_sha256": "f9bb3045bc0d94bf374b2c45dd2dd981acaa9e080cdc38542ac601ecb68a721d",
+      "published_sha256": "bd212826640b3bd5e12c023d40f7004e5f8f8e279148bdba50b055c286f5c779",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "汇报PPT结构与讲法_20261025.md",
+      "path": "records/汇报PPT结构与讲法_20261025.md",
+      "source_bytes": 7063,
+      "source_sha256": "ffe60b8c002a78d22d626908a1c649e54dd72bc2d05f10a6ca4b2f4be2761fea",
+      "published_sha256": "a04b4e89a3961aba5a5ff2eccd7db22a401e0f0ca5c9a4a514c75c45703bced1",
+      "license_prefix_bytes": 825
+    }
+  ]
+}

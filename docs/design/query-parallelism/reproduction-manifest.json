@@ -1,0 +1,50 @@
+{
+  "source_repository": "https://github.com/linxt20/iotdb.git",
+  "branch": "feat/query-parallelism-six-parts",
+  "upstream_base": "522c080122ef0dffb5c7ba6cfe01568ae24c1fde",
+  "implementation_reference_commit": "14d3ba46cb270abecd193e6b6b07968d23491fd7",
+  "last_implementation_parent": "9e14ebf5f460cd07ca98dde01a9356e1b3f72128",
+  "code_git_tree_sha256": "687df3e9a5c8f3efc34a9f6d1c09701479e3266f4819d2070731325470936a89",
+  "code_git_tree_filter": "git ls-tree -rz HEAD records, excluding paths ending .md or starting docs/; join remaining records by NUL with trailing NUL",
+  "entry_sha256": {
+    "iotdb-client/client-py/tests/unit/test_runtime_snapshot_thrift.py": "e1de814dab9e6192d9dd1f82e1a36a6015ace888c4891367af19d7799c22ca6f",
+    "iotdb-protocol/thrift-datanode/src/main/thrift/datanode.thrift": "4d3770601e86057b187954ec501c64ae9c150ab910cfd45e458089bf609fa573",
+    "pom.xml": "99bc9073d7f8e872960732866a763c573088739ea6cf934c5abd64b8588bbd0d",
+    "research/query-intra-parallelism-benchmark/scripts/collect_datanode_proc.py": "eceb32ba76cfe13ceb6c9cf5264fa886696e30158c3368f9a560f2cbf84a9f88",
+    "research/query-intra-parallelism-benchmark/scripts/extract_remote_shuffle_payload_bytes.py": "6de8472275e621f9c6b494135ef41d3a5a902241a3620552d2f40c4db3ab1c3a",
+    "research/query-intra-parallelism-benchmark/scripts/iotdb_cli_adapter.py": "993d1d86f22d18ca09c4cb7e0465294154c6a4061e791357f0e511664e003fa4",
+    "research/query-intra-parallelism-benchmark/scripts/server_current_query_metrics.py": "e323189f17c211f8152295a002c6518072c6ab2b2f502bb94a22bf9191cc240a",
+    "research/query-intra-parallelism-benchmark/scripts/server_query_metrics_with_proc.py": "4193911156b9abb4023fddd48e92613c65be5dcbaa0038ac440178459516206d",
+    "research/query-intra-parallelism-benchmark/scripts/verify_p0_matrix.py": "0d8264fd17684035424ab10d8f0cf7b0b6e49c7db6e96a641ae2e70cfbe18048",
+    "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh": "49fe037cdf06fdbddf2efaedf8445d6a98ef9f3d26cf4a50d977fb5d9d87c9cb",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/run_multi_query_case_acceptance.py": "eb81bc632df13cc84de5d573652b82d6d3c87a558c378190a86893a92b8b44ea",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py": "aa656c2e5c992d7f15ce1993e606be4bc5407040918e30e8f194c618159b6fc6",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/verify_property_enforcement_matrix.py": "2df8ab7c06fe6b8c84174dc3ed7272612a69c8ae3cc36fafd43deddc442c8d66",
+    "research/query-intra-parallelism-e2e-acceptance/sql/multisource_hash_groupby_fixture.sql": "c7faee55e5b02f19d0a17ee962fbe789fcd5acfcf33645586ee2ce553628e77f"
+  },
+  "self_test_entries": [
+    "research/query-intra-parallelism-benchmark/scripts/collect_datanode_proc.py",
+    "research/query-intra-parallelism-benchmark/scripts/extract_remote_shuffle_payload_bytes.py",
+    "research/query-intra-parallelism-benchmark/scripts/iotdb_cli_adapter.py",
+    "research/query-intra-parallelism-benchmark/scripts/server_current_query_metrics.py",
+    "research/query-intra-parallelism-benchmark/scripts/server_query_metrics_with_proc.py",
+    "research/query-intra-parallelism-benchmark/scripts/verify_p0_matrix.py",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/run_multi_query_case_acceptance.py",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/verify_property_enforcement_matrix.py"
+  ],
+  "validated_environment": {
+    "os": "Linux x86_64",
+    "jdk": "17.0.20.1",
+    "maven": "3.6.3",
+    "python": "3.12.13",
+    "thrift_python": "0.25.0",
+    "pytest": "8.3.5"
+  },
+  "runtime_class_bindings": [
+    "org/apache/iotdb/db/queryengine/plan/relational/planner/distribute/TableDistributedPlanner.class",
+    "org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.class",
+    "org/apache/iotdb/db/queryengine/plan/planner/DynamicParallelPlanningService.class",
+    "org/apache/iotdb/db/queryengine/statistics/snapshot/RuntimeSnapshotAdapters.class"
+  ]
+}

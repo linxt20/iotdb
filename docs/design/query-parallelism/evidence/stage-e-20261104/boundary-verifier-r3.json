@@ -1,0 +1,330 @@
+{
+  "status": "PASS",
+  "packageSha256": "b664160b902c3c213df818e0d27c8f0ac090152ed6a700f24cbc37ac3cd00256",
+  "boundaryCases": [
+    {
+      "case": "time-weighted",
+      "status": "PASS",
+      "rounds": [
+        {
+          "round": 0,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a0e1b0e34c17671033e6ef1b8c761f2a0798ed8730b6630d7a3dee8fff1dda26",
+          "ordinaryRows": 1024,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231241_00014_2",
+              "fragmentId": "2.0",
+              "endpoint": "127.0.0.1:47130",
+              "actualScanOperators": 1024,
+              "workUnits": 1024,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "eea247fd03cf409f9cbc2d2ae8117622b80be60be8b30e66cd53675ec2fde6bc",
+              "responseStructuralBytes": 2633198
+            }
+          ],
+          "separateDiagnosticOutcome": {
+            "label": "scan",
+            "sql": "EXPLAIN ANALYZE (FORMAT JSON) SELECT device_id,time,s1,s2 FROM e_boundary.fixture",
+            "startedMillis": 1793747561328,
+            "schema": [
+              [
+                "Explain Analyze",
+                12,
+                "TEXT"
+              ]
+            ],
+            "rows": 1,
+            "multisetSha256": "0e8a1e6005a86136c39b517b70bbb8f5f4ae999c8c32eff9adcc6d2fd157dd35",
+            "sequenceSha256": "0e8a1e6005a86136c39b517b70bbb8f5f4ae999c8c32eff9adcc6d2fd157dd35",
+            "status": "SUCCESS",
+            "endedMillis": 1793747575581
+          }
+        },
+        {
+          "round": 1,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a0e1b0e34c17671033e6ef1b8c761f2a0798ed8730b6630d7a3dee8fff1dda26",
+          "ordinaryRows": 1024,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231318_00030_2",
+              "fragmentId": "2.0",
+              "endpoint": "127.0.0.1:47130",
+              "actualScanOperators": 1024,
+              "workUnits": 1024,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "1b1c9d4dad07881bdcbba30afe5e54e2b790226963e6bc8bc682ec10e6cfdb4b",
+              "responseStructuralBytes": 2633198
+            }
+          ],
+          "separateDiagnosticOutcome": {
+            "label": "scan",
+            "sql": "EXPLAIN ANALYZE (FORMAT JSON) SELECT device_id,time,s1,s2 FROM e_boundary.fixture",
+            "startedMillis": 1793747598796,
+            "schema": [
+              [
+                "Explain Analyze",
+                12,
+                "TEXT"
+              ]
+            ],
+            "rows": 1,
+            "multisetSha256": "267227f472614b598ba666809bad5e0ba4a01a8a1bdb0d892cf7023e9eef8442",
+            "sequenceSha256": "267227f472614b598ba666809bad5e0ba4a01a8a1bdb0d892cf7023e9eef8442",
+            "status": "SUCCESS",
+            "endedMillis": 1793747612442
+          }
+        },
+        {
+          "round": 2,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a0e1b0e34c17671033e6ef1b8c761f2a0798ed8730b6630d7a3dee8fff1dda26",
+          "ordinaryRows": 1024,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231355_00046_2",
+              "fragmentId": "2.0",
+              "endpoint": "127.0.0.1:47130",
+              "actualScanOperators": 1024,
+              "workUnits": 1024,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "0a9d7aa273924042ae7ae6b2fefd7b001a9fa021def93c019d6cb0d4743676bf",
+              "responseStructuralBytes": 2633198
+            }
+          ],
+          "separateDiagnosticOutcome": {
+            "label": "scan",
+            "sql": "EXPLAIN ANALYZE (FORMAT JSON) SELECT device_id,time,s1,s2 FROM e_boundary.fixture",
+            "startedMillis": 1793747635581,
+            "schema": [
+              [
+                "Explain Analyze",
+                12,
+                "TEXT"
+              ]
+            ],
+            "rows": 1,
+            "multisetSha256": "da188b2b1e27e357063b8a58e0a214d65684edb7055d45682936aec5641b2945",
+            "sequenceSha256": "da188b2b1e27e357063b8a58e0a214d65684edb7055d45682936aec5641b2945",
+            "status": "SUCCESS",
+            "endedMillis": 1793747649426
+          }
+        }
+      ],
+      "explainFailuresNotCountedBusiness": true
+    },
+    {
+      "case": "time-unweighted",
+      "status": "PASS",
+      "rounds": [
+        {
+          "round": 0,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a0e1b0e34c17671033e6ef1b8c761f2a0798ed8730b6630d7a3dee8fff1dda26",
+          "ordinaryRows": 1024,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231241_00033_1",
+              "fragmentId": "2.0",
+              "endpoint": "127.0.0.1:51130",
+              "actualScanOperators": 1024,
+              "workUnits": 1024,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "26dd4047b10de82afacb975d981f861367e160a66446608dd88246ba53ade481",
+              "responseStructuralBytes": 2633198
+            }
+          ],
+          "separateDiagnosticOutcome": {
+            "label": "scan",
+            "sql": "EXPLAIN ANALYZE (FORMAT JSON) SELECT device_id,time,s1,s2 FROM e_boundary.fixture",
+            "startedMillis": 1793747561882,
+            "schema": [
+              [
+                "Explain Analyze",
+                12,
+                "TEXT"
+              ]
+            ],
+            "rows": 1,
+            "multisetSha256": "3b563b2c4c42d757f960de5ec38b756678feb5f7ae999024172d894d85f5a3f2",
+            "sequenceSha256": "3b563b2c4c42d757f960de5ec38b756678feb5f7ae999024172d894d85f5a3f2",
+            "status": "SUCCESS",
+            "endedMillis": 1793747575416
+          }
+        },
+        {
+          "round": 1,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a0e1b0e34c17671033e6ef1b8c761f2a0798ed8730b6630d7a3dee8fff1dda26",
+          "ordinaryRows": 1024,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231316_00049_1",
+              "fragmentId": "2.0",
+              "endpoint": "127.0.0.1:51130",
+              "actualScanOperators": 1024,
+              "workUnits": 1024,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "55c3ba86178ffa6c723c52757499407586bdd4abda307a7fbc78ed6a5cc91243",
+              "responseStructuralBytes": 2633198
+            }
+          ],
+          "separateDiagnosticOutcome": {
+            "label": "scan",
+            "sql": "EXPLAIN ANALYZE (FORMAT JSON) SELECT device_id,time,s1,s2 FROM e_boundary.fixture",
+            "startedMillis": 1793747596914,
+            "schema": [
+              [
+                "Explain Analyze",
+                12,
+                "TEXT"
+              ]
+            ],
+            "rows": 1,
+            "multisetSha256": "11f5dfd75fce4d161b6b0cd74bef46c224acc3d491e13485825df642b40a7979",
+            "sequenceSha256": "11f5dfd75fce4d161b6b0cd74bef46c224acc3d491e13485825df642b40a7979",
+            "status": "SUCCESS",
+            "endedMillis": 1793747609552
+          }
+        },
+        {
+          "round": 2,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a0e1b0e34c17671033e6ef1b8c761f2a0798ed8730b6630d7a3dee8fff1dda26",
+          "ordinaryRows": 1024,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231351_00065_1",
+              "fragmentId": "2.0",
+              "endpoint": "127.0.0.1:51130",
+              "actualScanOperators": 1024,
+              "workUnits": 1024,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "0d178fced8b7af198da5450e824db0093b1471f61be0ef12ee8405c4d44d9584",
+              "responseStructuralBytes": 2633198
+            }
+          ],
+          "separateDiagnosticOutcome": {
+            "label": "scan",
+            "sql": "EXPLAIN ANALYZE (FORMAT JSON) SELECT device_id,time,s1,s2 FROM e_boundary.fixture",
+            "startedMillis": 1793747631732,
+            "schema": [
+              [
+                "Explain Analyze",
+                12,
+                "TEXT"
+              ]
+            ],
+            "rows": 1,
+            "multisetSha256": "1ef64701482ff20217bbf6e163cea7919771d4ac5bcf1a4751f3f10939150e25",
+            "sequenceSha256": "1ef64701482ff20217bbf6e163cea7919771d4ac5bcf1a4751f3f10939150e25",
+            "status": "SUCCESS",
+            "endedMillis": 1793747644891
+          }
+        }
+      ],
+      "explainFailuresNotCountedBusiness": true
+    },
+    {
+      "case": "ordered",
+      "status": "PASS",
+      "rounds": [
+        {
+          "round": 0,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a29ce4b0298a97ffd30214c1b32fba715b972d9d0868436b28ec03bf4035bde3",
+          "ordinaryRows": 512,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231223_00023_1",
+              "fragmentId": "1.0",
+              "endpoint": "127.0.0.1:54130",
+              "actualScanOperators": 16,
+              "workUnits": 16,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "2d2934c7c5623612a04cf1518e7f9df765e72f77628e3396fbbbe437977e552a",
+              "responseStructuralBytes": 36768
+            }
+          ],
+          "separateDiagnosticOutcome": null
+        },
+        {
+          "round": 1,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a29ce4b0298a97ffd30214c1b32fba715b972d9d0868436b28ec03bf4035bde3",
+          "ordinaryRows": 512,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231232_00031_1",
+              "fragmentId": "1.0",
+              "endpoint": "127.0.0.1:54130",
+              "actualScanOperators": 16,
+              "workUnits": 16,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "786ccdf0feb80359662fa5cf6f5275f690773e2150bc47ef5cec1ac6ce2896e1",
+              "responseStructuralBytes": 36768
+            }
+          ],
+          "separateDiagnosticOutcome": null
+        },
+        {
+          "round": 2,
+          "ordinaryBusinessStatus": "SUCCESS",
+          "completeResultSha256": "a29ce4b0298a97ffd30214c1b32fba715b972d9d0868436b28ec03bf4035bde3",
+          "ordinaryRows": 512,
+          "nativeSources": [
+            {
+              "queryId": "20261103_231240_00039_1",
+              "fragmentId": "1.0",
+              "endpoint": "127.0.0.1:54130",
+              "actualScanOperators": 16,
+              "workUnits": 16,
+              "bucketIds": [
+                0
+              ],
+              "traceChecksum": "eb998c5ae46ac99b7ff9933d3bd322246a5e35f7d3526dbfe4250659ccf3d8eb",
+              "responseStructuralBytes": 36768
+            }
+          ],
+          "separateDiagnosticOutcome": null
+        }
+      ],
+      "explainFailuresNotCountedBusiness": true
+    }
+  ],
+  "nativeExceptionCases": [
+    {
+      "role": "candidate",
+      "disabledSources": 3,
+      "highestPrioritySources": 1,
+      "finalPoolBytes": 257440597,
+      "capacityProof": false
+    },
+    {
+      "role": "control",
+      "disabledSources": 3,
+      "highestPrioritySources": 1,
+      "finalPoolBytes": 257440597,
+      "capacityProof": false
+    }
+  ],
+  "scope": "All ordinary boundary queries passed complete results; native source diagnostics verified independently; native diagnostic and ordinary business queries passed independently",
+  "finalEAcceptance": false
+}

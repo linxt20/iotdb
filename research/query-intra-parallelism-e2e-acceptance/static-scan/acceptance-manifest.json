@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "bindingState": "TEMPLATE_REQUIRES_CURRENT_B1_PACKAGE_AND_LIVE_NODE_BINDING",
+  "scope": "Same helper and one source/32 hash channels/32 receive buckets/final Collect on frozen A and B",
+  "baselineResourceObservationGap": "Frozen A predates B audit/C snapshot protocol. Its full results, 34 FINISHED instances, two runtime DataNodes and actual per-bucket Exchange outputRows are checked. No A-side B accounting/zero-resource PASS is claimed.",
+  "candidateResourceRequirements": [
+    "32 unique physical SINK_CHANNEL tokens",
+    "one observed producer memory key matching frozen source",
+    "one actual created and closed source driver",
+    "32-channel explicitRouting constructor publication",
+    "34 independent complete zero receipts",
+    "both node exchange/operator pools restored",
+    "nonzero resource runtime fields"
+  ],
+  "fixture": {
+    "path": "/root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/fixture.sql",
+    "sha256": "9e973ed339f794814f1dfa5dcf797a61acb0e724f9349c34c2909f890dc2b6e7",
+    "rows": 24,
+    "emptyReceiveBuckets": 30
+  },
+  "expected": {
+    "path": "/root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/expected-results.json",
+    "sha256": "809836bd801cb6eccd1068d2414790b8b0d75e51b72fb018906e678837a44f4e",
+    "fullMultisetSha256": "5d09dbccf0b1fec4336f4f77963f89b2488e338fc6e1798bdce985b5e6aa1b4b"
+  },
+  "candidate": {
+    "configNodes": [
+      {
+        "host": "127.0.0.1",
+        "port": "REQUIRED_LIVE_CN_INTERNAL_PORT"
+      }
+    ],
+    "nodes": [
+      {
+        "config": "/REQUIRED_ISOLATED_DN1/conf/iotdb-system.properties",
+        "pid": "REQUIRED_LIVE_PID",
+        "classLoadLog": "/REQUIRED_ISOLATED_DN1/logs/classload.log"
+      },
+      {
+        "config": "/REQUIRED_ISOLATED_DN2/conf/iotdb-system.properties",
+        "pid": "REQUIRED_LIVE_PID",
+        "classLoadLog": "/REQUIRED_ISOLATED_DN2/logs/classload.log"
+      }
+    ],
+    "jdbcUrl": "REQUIRED_DISTINCT_LIVE_JDBC_URL_WITH_sql_dialect=table",
+    "username": "root",
+    "passwordEnv": "IOTDB_E2E_PASSWORD",
+    "jmxPortOffset": 6000,
+    "expectedFlags": {
+      "degree_of_query_parallelism": "1",
+      "enable_property_driven_planning": "true"
+    },
+    "baselineKind": "B_CANDIDATE",
+    "sourceManifest": {
+      "path": "/REQUIRED_CURRENT_B1_SOURCE_MANIFEST.json",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "package": {
+      "path": "/REQUIRED_CURRENT_B1_FINAL_PACKAGE.zip",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "distributionRoot": "/REQUIRED_CURRENT_B1_FINAL_DISTRIBUTION",
+    "serverJarSha256": "REQUIRED_SHA256",
+    "collectorPort": 53240,
+    "helperInternalPort": 53230
+  },
+  "control": {
+    "configNodes": [
+      {
+        "host": "127.0.0.1",
+        "port": "REQUIRED_LIVE_CN_INTERNAL_PORT"
+      }
+    ],
+    "nodes": [
+      {
+        "config": "/REQUIRED_ISOLATED_DN1/conf/iotdb-system.properties",
+        "pid": "REQUIRED_LIVE_PID",
+        "classLoadLog": "/REQUIRED_ISOLATED_DN1/logs/classload.log"
+      },
+      {
+        "config": "/REQUIRED_ISOLATED_DN2/conf/iotdb-system.properties",
+        "pid": "REQUIRED_LIVE_PID",
+        "classLoadLog": "/REQUIRED_ISOLATED_DN2/logs/classload.log"
+      }
+    ],
+    "jdbcUrl": "REQUIRED_DISTINCT_LIVE_JDBC_URL_WITH_sql_dialect=table",
+    "username": "root",
+    "passwordEnv": "IOTDB_E2E_PASSWORD",
+    "jmxPortOffset": 6000,
+    "expectedFlags": {
+      "degree_of_query_parallelism": "1",
+      "enable_property_driven_planning": "true"
+    },
+    "baselineKind": "FROZEN_A",
+    "sourceManifest": {
+      "path": "/root/property-a-artifacts/A6-20261028T080437+0000/isolated-distribution-06/source-manifest.json",
+      "sha256": "72b57ac841481123e3e14ee05a262cc7cf68660556d125a9bda2570c560a4886"
+    },
+    "package": {
+      "path": "/root/property-a-artifacts/A6-20261028T080437+0000/isolated-distribution-06/source/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin.zip",
+      "sha256": "46eed50a7a3014c89dc5181065e86fbd58208dcfdfdc5c0c459b0ec20c9323fc"
+    },
+    "distributionRoot": "/root/property-a-artifacts/A6-20261028T080437+0000/isolated-distribution-06/source/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin/apache-iotdb-2.0.11-SNAPSHOT-all-bin",
+    "serverJarSha256": "1f8c4ccc749bc86fe6334c7ce91fc84ade4d710ae5395cb004fd546472f5ec68",
+    "collectorPort": 54240,
+    "helperInternalPort": 54230,
+    "frozen_A_instrumentation_absent": true,
+    "historicalSourceExecutionRecord": "/root/property-a-artifacts/A6-20261028T080437+0000/isolated-distribution-06/execution-before.json",
+    "historicalSourceCommit": "0ec0e02287565d9395ec676bd9fcfc6d1f644386",
+    "historicalSourceIncludesDirtyAImplementation": true
+  },
+  "standardCommands": {
+    "compileOnly": "python3 /root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/run-two-datanode.py --manifest /ABSOLUTE/bound-manifest.json --output /root/property-b-artifacts/NEW-single-source32-abi --compile-only",
+    "executeOnAlreadyRunningIsolatedServices": "python3 /root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/run-two-datanode.py --manifest /ABSOLUTE/bound-manifest.json --output /root/property-b-artifacts/NEW-single-source32-runtime",
+    "verifyCandidate": "python3 /root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/verify-runtime.py --run /ABSOLUTE/run/candidate/execution --candidate",
+    "verifyFrozenA": "python3 /root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/verify-runtime.py --run /ABSOLUTE/run/control/execution"
+  },
+  "serviceLifecycle": "External orchestrator owns all six node snapshots/start/stop/port closure/config rollback; this entry changes no node configuration and starts no DataNode.",
+  "performanceClaim": false
+}

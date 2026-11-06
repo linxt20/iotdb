@@ -1,0 +1,3825 @@
+{
+  "status": "PASS",
+  "scope": "Actual SHOW DATANODES IDs/ports matched to captured isolated process/config; query-to-runtime chronology; exact unique fragment/source/bucket/work IDs; disjoint complete device coverage; same-version Java record validation linked",
+  "packageSha256": "b664160b902c3c213df818e0d27c8f0ac090152ed6a700f24cbc37ac3cd00256",
+  "results": [
+    {
+      "nodes": 1,
+      "role": "candidate",
+      "actualDataNodes": [
+        {
+          "nodeId": 1,
+          "root": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/clusters-1node-business-r2/candidate/datanode-1",
+          "rpc": "127.0.0.1:35667",
+          "endpoint": "127.0.0.1:35130",
+          "pid": 2720541
+        }
+      ],
+      "queries": [
+        {
+          "queryId": "20261103_231410_00050_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231411_00052_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231411_00054_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231412_00056_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231413_00058_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231413_00060_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231414_00062_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231414_00064_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231415_00066_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231415_00068_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231416_00070_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231416_00072_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231416_00074_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231416_00076_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231418_00077_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231418_00079_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231418_00081_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231418_00083_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231419_00084_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231420_00086_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231420_00088_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231420_00090_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        }
+      ],
+      "sources": [
+        {
+          "queryId": "20261103_231410_00050_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231410_00050_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231411_00052_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231411_00052_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231411_00054_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231411_00054_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231412_00056_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231412_00056_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231413_00058_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231413_00058_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231413_00060_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231413_00060_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231414_00062_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231414_00062_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231414_00064_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231414_00064_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231415_00066_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231415_00066_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231415_00068_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231415_00068_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231416_00070_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231416_00070_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231416_00072_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231416_00072_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231416_00074_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231416_00074_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231416_00076_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231418_00077_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231418_00077_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231418_00079_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231418_00079_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231418_00081_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231418_00081_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231418_00083_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231419_00084_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231419_00084_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231420_00086_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231420_00086_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231420_00088_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231420_00088_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231420_00090_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:35130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        }
+      ]
+    },
+    {
+      "nodes": 1,
+      "role": "control",
+      "actualDataNodes": [
+        {
+          "nodeId": 1,
+          "root": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/clusters-1node-business-r2/control/datanode-1",
+          "rpc": "127.0.0.1:45667",
+          "endpoint": "127.0.0.1:45130",
+          "pid": 2720997
+        }
+      ],
+      "queries": [
+        {
+          "queryId": "20261103_231425_00050_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231425_00052_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231425_00054_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231426_00056_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231427_00057_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231427_00059_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231427_00061_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231427_00063_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231429_00064_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231429_00066_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231429_00068_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231429_00070_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        }
+      ],
+      "sources": [
+        {
+          "queryId": "20261103_231425_00050_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231425_00050_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231425_00052_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231425_00052_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231425_00054_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231425_00054_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231426_00056_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231427_00057_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231427_00057_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231427_00059_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231427_00059_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231427_00061_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231427_00061_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231427_00063_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231429_00064_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231429_00064_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231429_00066_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231429_00066_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231429_00068_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231429_00068_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231429_00070_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:45130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        }
+      ]
+    },
+    {
+      "nodes": 2,
+      "role": "candidate",
+      "actualDataNodes": [
+        {
+          "nodeId": 1,
+          "root": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/clusters-2node-business-r2/candidate/datanode-1",
+          "rpc": "127.0.0.1:39667",
+          "endpoint": "127.0.0.1:39130",
+          "pid": 2724565
+        },
+        {
+          "nodeId": 2,
+          "root": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/clusters-2node-business-r2/candidate/datanode-2",
+          "rpc": "127.0.0.1:40667",
+          "endpoint": "127.0.0.1:40130",
+          "pid": 2724965
+        }
+      ],
+      "queries": [
+        {
+          "queryId": "20261103_231514_00050_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231514_00052_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231515_00054_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231516_00056_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231516_00058_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231517_00060_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231517_00062_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231518_00064_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231519_00066_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231519_00068_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231520_00070_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231520_00072_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231520_00074_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231520_00076_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            2
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231522_00077_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231523_00079_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231523_00081_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231523_00083_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            2
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231525_00084_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231525_00086_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231525_00088_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231525_00090_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            2
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        }
+      ],
+      "sources": [
+        {
+          "queryId": "20261103_231514_00050_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231514_00052_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231515_00054_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231516_00056_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231516_00058_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231517_00060_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231517_00062_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231518_00064_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231519_00066_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231519_00068_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231520_00070_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231520_00072_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231520_00074_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231522_00077_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231523_00079_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231523_00081_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231525_00084_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "32",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231525_00086_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "47",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231525_00088_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:39130",
+          "sourceId": "61",
+          "nodeId": 1,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231514_00050_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231514_00052_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231515_00054_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231516_00056_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231516_00058_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231517_00060_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231517_00062_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231518_00064_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231519_00066_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231519_00068_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231520_00070_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231520_00072_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231520_00074_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "60",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231520_00076_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231522_00077_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231523_00079_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231523_00081_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "60",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231523_00083_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231525_00084_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "31",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 8,
+          "action": "REBALANCE_NEXT_FRAGMENT"
+        },
+        {
+          "queryId": "20261103_231525_00086_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "workUnits": 4,
+          "action": "KEEP_STATIC"
+        },
+        {
+          "queryId": "20261103_231525_00088_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "60",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231525_00090_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:40130",
+          "sourceId": "46",
+          "nodeId": 2,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        }
+      ]
+    },
+    {
+      "nodes": 2,
+      "role": "control",
+      "actualDataNodes": [
+        {
+          "nodeId": 1,
+          "root": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/clusters-2node-business-r2/control/datanode-1",
+          "rpc": "127.0.0.1:49667",
+          "endpoint": "127.0.0.1:49130",
+          "pid": 2725289
+        },
+        {
+          "nodeId": 2,
+          "root": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/clusters-2node-business-r2/control/datanode-2",
+          "rpc": "127.0.0.1:50667",
+          "endpoint": "127.0.0.1:50130",
+          "pid": 2725709
+        }
+      ],
+      "queries": [
+        {
+          "queryId": "20261103_231530_00050_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231531_00052_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231531_00054_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231532_00056_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231534_00057_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231534_00059_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231534_00061_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231534_00063_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        },
+        {
+          "queryId": "20261103_231536_00064_1",
+          "label": "scan",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231536_00066_1",
+          "label": "filter",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "b360b97d6354bef7205f97b45b187192b12b737136cd0ca5cf55cb71754699fa"
+        },
+        {
+          "queryId": "20261103_231536_00068_1",
+          "label": "ordered",
+          "fragmentInstances": 2,
+          "actualScanNodeIds": [
+            1,
+            2
+          ],
+          "uniqueDevices": 16,
+          "uniqueSources": 2,
+          "rowMultisetSha256": "58d872c64db9dc57fcdabf1970a9d06881c0b918c8d8fa1bbe7e9e14de02f7db"
+        },
+        {
+          "queryId": "20261103_231537_00070_1",
+          "label": "serial",
+          "fragmentInstances": 1,
+          "actualScanNodeIds": [
+            1
+          ],
+          "uniqueDevices": 1,
+          "uniqueSources": 1,
+          "rowMultisetSha256": "9e4bb2f152afbed746193f734157add69b7ccb71ba4d524aa20667ce63d54652"
+        }
+      ],
+      "sources": [
+        {
+          "queryId": "20261103_231530_00050_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231531_00052_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231531_00054_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231532_00056_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231534_00057_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231534_00059_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231534_00061_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231534_00063_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231536_00064_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "31",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231536_00066_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231536_00068_1",
+          "fragment": "3.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "60",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d10",
+            "fixture.d12",
+            "fixture.d00",
+            "fixture.d14",
+            "fixture.d02",
+            "fixture.d04",
+            "fixture.d06",
+            "fixture.d08"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231537_00070_1",
+          "fragment": "1.0",
+          "endpoint": "127.0.0.1:49130",
+          "sourceId": "46",
+          "nodeId": 1,
+          "region": "1",
+          "devices": [
+            "fixture.d00"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231530_00050_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "32",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231531_00052_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "47",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231531_00054_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "61",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231534_00057_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "32",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231534_00059_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "47",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231534_00061_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "61",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231536_00064_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "32",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231536_00066_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "47",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        },
+        {
+          "queryId": "20261103_231536_00068_1",
+          "fragment": "2.0",
+          "endpoint": "127.0.0.1:50130",
+          "sourceId": "61",
+          "nodeId": 2,
+          "region": "2",
+          "devices": [
+            "fixture.d01",
+            "fixture.d11",
+            "fixture.d03",
+            "fixture.d13",
+            "fixture.d05",
+            "fixture.d15",
+            "fixture.d07",
+            "fixture.d09"
+          ],
+          "bucketIds": [
+            0
+          ],
+          "workUnits": 1,
+          "action": "SERIAL_FALLBACK"
+        }
+      ]
+    }
+  ]
+}

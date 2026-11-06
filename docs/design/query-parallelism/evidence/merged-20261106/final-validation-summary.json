@@ -1,0 +1,49 @@
+{
+  "branch": "feat/next-p0-pr-master",
+  "head": "b9a1448e79e0b166bc80860852aa2fcce63d1daf",
+  "worktree": "/tmp/Dev_1/iotdb-pr",
+  "base": "522c080122ef0dffb5c7ba6cfe01568ae24c1fde",
+  "commitsAheadOfMaster": 1,
+  "pushed": true,
+  "productionCodeTestedCommit": "aaf84f6dc17070431c6ae45188579a0c5b630e0f",
+  "finalVsTestedCommitDelta": [
+    "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh"
+  ],
+  "allOtherSourceHashesMatchTestedInputs": true,
+  "unitTests": {
+    "classes": 1127,
+    "tests": 7521,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 56
+  },
+  "englishFullReactorCompile": true,
+  "chineseFullReactorCompile": true,
+  "cleanDistributionBuild": true,
+  "pythonSnapshotTestsPassed": 16,
+  "multiSourceStaticAccepted": true,
+  "multiSourceDynamicEnabledAccepted": true,
+  "resultMultisetSha256": "4d7676072ef684be2fd39ac04e0371bb2440d7e3831124fcb36a9377bff25334",
+  "dynamicSourceSnapshots": [
+    {
+      "schema": 2,
+      "terminal": true,
+      "resourceObjects": 2,
+      "decisionActions": [
+        "SERIAL_FALLBACK"
+      ]
+    },
+    {
+      "schema": 2,
+      "terminal": true,
+      "resourceObjects": 2,
+      "decisionActions": [
+        "SERIAL_FALLBACK"
+      ]
+    }
+  ],
+  "launcherLiveStopRegression": true,
+  "performanceBenchmarkRerun": false,
+  "pushRepository": "https://github.com/linxt20/iotdb.git",
+  "remoteCommitVerified": true
+}

@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "status": "STATIC_TOOL_PREPARATION_RUNTIME_PENDING_NEW_B4_REPAIRED_PACKAGE",
+  "baselineHead": "8d5d9c6a2c838e42f21be9ebd3278151fb75c520",
+  "scope": "Additional original B6 boundary service matrix; independent from single-source32 pressure and data-scan oversize",
+  "repeats": 3,
+  "requiredDataNodesPerSide": 2,
+  "candidateConfiguredDop": 4,
+  "controlActualManagedScanDop": 1,
+  "sourceBinding": "Explicit new source manifest plus actual new package and root service identity receipt; old defective021 source/server blocked",
+  "serviceOwnership": "Root starts, identifies and stops isolated nodes; this runner only connects explicit bound query ports and reads explicit data directories",
+  "probeSource": "/root/property-d-artifacts/AD-converged-runtime-20261103-r2/A6SqlProbe.java",
+  "probeSourceSha256": "abda71aa3fb5e01b5d9bcc8ec7647ba4668f36852d8e22b3905424a531d0b690",
+  "cases": [
+    {
+      "id": "filter-diff",
+      "sql": "SELECT device_id,time,s1 FROM b6_boundary_diff.telemetry WHERE diff(s1) IS NULL OR diff(s1)=0.0",
+      "columns": [
+        "device_id",
+        "time",
+        "s1"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64"
+      ],
+      "candidateMode": "TIME_PARTITION",
+      "candidateParallel": true
+    },
+    {
+      "id": "skewed-partitions",
+      "sql": "SELECT device_id,time,s1 FROM b6_boundary_skew.telemetry",
+      "columns": [
+        "device_id",
+        "time",
+        "s1"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64"
+      ],
+      "candidateMode": "TIME_PARTITION",
+      "candidateParallel": true
+    },
+    {
+      "id": "single-device",
+      "sql": "SELECT device_id,time,s1,s2 FROM b6_boundary_main.telemetry WHERE device_id='d00'",
+      "columns": [
+        "device_id",
+        "time",
+        "s1",
+        "s2"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64",
+        "DOUBLE"
+      ],
+      "candidateMode": "SERIAL",
+      "candidateReason": "SINGLE_DEVICE"
+    },
+    {
+      "id": "single-partition",
+      "sql": "SELECT device_id,time,s1 FROM b6_boundary_singlepart.telemetry",
+      "columns": [
+        "device_id",
+        "time",
+        "s1"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64"
+      ],
+      "candidateMode": "DEVICE",
+      "candidateParallel": true
+    },
+    {
+      "id": "negative-boundaries",
+      "sql": "SELECT device_id,time,s1,s2 FROM b6_boundary_main.telemetry",
+      "columns": [
+        "device_id",
+        "time",
+        "s1",
+        "s2"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64",
+        "DOUBLE"
+      ],
+      "candidateMode": "TIME_PARTITION",
+      "candidateParallel": true
+    },
+    {
+      "id": "adjacent-half-open",
+      "sql": "SELECT device_id,time,s1,s2 FROM b6_boundary_main.telemetry WHERE time>=604799999 AND time<604800001",
+      "columns": [
+        "device_id",
+        "time",
+        "s1",
+        "s2"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64",
+        "DOUBLE"
+      ],
+      "candidateMode": "TIME_PARTITION",
+      "candidateParallel": true
+    },
+    {
+      "id": "nonempty-time-filter",
+      "sql": "SELECT device_id,time,s1,s2 FROM b6_boundary_main.telemetry WHERE time>=-604800000 AND time<604800000",
+      "columns": [
+        "device_id",
+        "time",
+        "s1",
+        "s2"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64",
+        "DOUBLE"
+      ],
+      "candidateMode": "TIME_PARTITION",
+      "candidateParallel": true
+    },
+    {
+      "id": "device-limit",
+      "sql": "SELECT device_id,time,s1,s2 FROM b6_boundary_main.telemetry ORDER BY time,device_id LIMIT 11",
+      "columns": [
+        "device_id",
+        "time",
+        "s1",
+        "s2"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64",
+        "DOUBLE"
+      ],
+      "ordered": true
+    },
+    {
+      "id": "global-limit-offset",
+      "sql": "SELECT device_id,time,s1,s2 FROM b6_boundary_main.telemetry ORDER BY device_id,time LIMIT 11 OFFSET 3",
+      "columns": [
+        "device_id",
+        "time",
+        "s1",
+        "s2"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP",
+        "INT64",
+        "DOUBLE"
+      ],
+      "candidateMode": "SERIAL",
+      "candidateReason": "GLOBAL_LIMIT_OR_OFFSET",
+      "ordered": true
+    },
+    {
+      "id": "duplicate-keys-nulls",
+      "sql": "SELECT group_tag,time FROM b6_boundary_ties.telemetry ORDER BY group_tag ASC NULLS FIRST,time DESC",
+      "columns": [
+        "group_tag",
+        "time"
+      ],
+      "types": [
+        "STRING",
+        "TIMESTAMP"
+      ],
+      "candidateMode": "ORDERED",
+      "candidateParallel": true,
+      "ordered": true
+    }
+  ],
+  "fixtureRegionPolicy": "CUSTOM default1; diff max1 for direct Filter→Scan, other databases max2"
+}

@@ -1,0 +1,11 @@
+{
+  "python": "/root/rivermind-data/iotdb-pr-validation-20261106/pyenv/bin/python",
+  "version": "3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]",
+  "thriftVersion": "0.25.0",
+  "PYTHONPATH": "/tmp/Dev_1/iotdb-pr/iotdb-client/client-py",
+  "thriftModule": "/tmp/Dev_1/iotdb-pr/iotdb-client/client-py/iotdb/thrift/datanode/ttypes.py",
+  "moduleSha256": "7f7c7b76c530d0b3a8a7112ae0f7508716116e6ddb282a9c8cf119a397dbbb4f",
+  "fastbinary": "/root/rivermind-data/iotdb-pr-validation-20261106/pyenv/lib/python3.12/site-packages/thrift/protocol/fastbinary.cpython-312-x86_64-linux-gnu.so",
+  "fastbinarySha256": "22982f4a39e5aeed067ab5072b9111012471df76ab0dd5a665c78dc88c703aaa",
+  "test": "/tmp/Dev_1/iotdb-pr/iotdb-client/client-py/tests/unit/test_runtime_snapshot_thrift.py"
+}

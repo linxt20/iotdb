@@ -1,0 +1,23 @@
+{
+  "configs": {
+    "/root/rivermind-data/iotdb-pr-validation-20261106/isolated-nxp/candidate/confignode/conf/iotdb-system.properties": "610c20d757b6ef1eef74ef9b87840dc2b0d917d814482d769bb0aef28b3304c5",
+    "/root/rivermind-data/iotdb-pr-validation-20261106/isolated-nxp/candidate/datanode-1/conf/iotdb-system.properties": "fbde5efd5fd61d50626ed926bcf8d38099ba91c27cd43167304882f9ccdae3a0",
+    "/root/rivermind-data/iotdb-pr-validation-20261106/isolated-nxp/candidate/datanode-2/conf/iotdb-system.properties": "cc3e45d52a6ad752cafa6c8bbfd478cb0c9f5d01fa779983964d98e8c9c86cc7",
+    "/root/rivermind-data/iotdb-pr-validation-20261106/isolated-nxp/control/confignode/conf/iotdb-system.properties": "6519c761b8b3011b5101b6b94d53afe900a66e39a37f178218913ba0920187e2",
+    "/root/rivermind-data/iotdb-pr-validation-20261106/isolated-nxp/control/datanode-1/conf/iotdb-system.properties": "4f351df79319b7a880917c4c6592514d98868a7a97196460c5893a14caa3a1d2",
+    "/root/rivermind-data/iotdb-pr-validation-20261106/isolated-nxp/control/datanode-2/conf/iotdb-system.properties": "8f02953277c99a494740ede6f79bd5ac8ab2da9738a8fc538ffb5e21915e552d"
+  },
+  "javaToolOptions": "-Xlog:class+load=info:file=/root/rivermind-data/iotdb-pr-validation-20261106/classload-%p.log",
+  "fixture": {
+    "database": "p0multi",
+    "table": "telemetry",
+    "rows": 12,
+    "devices": 4,
+    "dataRegionGroups": 2
+  },
+  "shape": {
+    "dataNodesPerDeployment": 2,
+    "expectedSources": 2,
+    "expectedBuckets": 2
+  }
+}

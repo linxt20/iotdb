@@ -1,0 +1,84 @@
+{
+  "artifacts": [
+    {
+      "group": "org.apache.tsfile",
+      "artifact": "common",
+      "version": "2.5.1-261023-SNAPSHOT",
+      "resolved_version": "2.5.1-261023-20261023.065606-1",
+      "extension": "jar",
+      "maven_cache_path": "org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-SNAPSHOT.jar",
+      "sha256": "1acd30f73bb5b09dc8a46b6dc03f0accc60614c20fd665900fdb723e6b85971d",
+      "download_urls": [
+        "https://repository.apache.org/snapshots/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-20261023.065606-1.jar",
+        "https://maven.aliyun.com/repository/apache-snapshots/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-20261023.065606-1.jar"
+      ]
+    },
+    {
+      "group": "org.apache.tsfile",
+      "artifact": "common",
+      "version": "2.5.1-261023-SNAPSHOT",
+      "resolved_version": "2.5.1-261023-20261023.065606-1",
+      "extension": "pom",
+      "maven_cache_path": "org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-SNAPSHOT.pom",
+      "sha256": "4688f21d688ebff6329b900c03befc3cc9a3c295d71ac60ef999433340caae84",
+      "download_urls": [
+        "https://repository.apache.org/snapshots/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-20261023.065606-1.pom",
+        "https://maven.aliyun.com/repository/apache-snapshots/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-20261023.065606-1.pom"
+      ]
+    },
+    {
+      "group": "org.apache.tsfile",
+      "artifact": "tsfile",
+      "version": "2.5.1-261023-SNAPSHOT",
+      "resolved_version": "2.5.1-261023-20261023.065606-1",
+      "extension": "jar",
+      "maven_cache_path": "org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.jar",
+      "sha256": "78904b9375fc4617f2ff3d807084a439afb2da820181eac10578d532f9366413",
+      "download_urls": [
+        "https://repository.apache.org/snapshots/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-20261023.065606-1.jar",
+        "https://maven.aliyun.com/repository/apache-snapshots/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-20261023.065606-1.jar"
+      ]
+    },
+    {
+      "group": "org.apache.tsfile",
+      "artifact": "tsfile",
+      "version": "2.5.1-261023-SNAPSHOT",
+      "resolved_version": "2.5.1-261023-20261023.065606-1",
+      "extension": "pom",
+      "maven_cache_path": "org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.pom",
+      "sha256": "2aeacea464b13d51c64b088fffd0f9819c2c02b0552d94796a2637bcedd50be1",
+      "download_urls": [
+        "https://repository.apache.org/snapshots/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-20261023.065606-1.pom",
+        "https://maven.aliyun.com/repository/apache-snapshots/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-20261023.065606-1.pom"
+      ]
+    },
+    {
+      "group": "org.apache.tsfile",
+      "artifact": "tsfile-java",
+      "version": "2.5.1-261023-SNAPSHOT",
+      "resolved_version": "2.5.1-261023-20261023.065606-1",
+      "extension": "pom",
+      "maven_cache_path": "org/apache/tsfile/tsfile-java/2.5.1-261023-SNAPSHOT/tsfile-java-2.5.1-261023-SNAPSHOT.pom",
+      "sha256": "436fb54a851b43934137c0b80c0d48bc0b5de869eecda49897cb1cd0ce0537bc",
+      "download_urls": [
+        "https://repository.apache.org/snapshots/org/apache/tsfile/tsfile-java/2.5.1-261023-SNAPSHOT/tsfile-java-2.5.1-261023-20261023.065606-1.pom",
+        "https://maven.aliyun.com/repository/apache-snapshots/org/apache/tsfile/tsfile-java/2.5.1-261023-SNAPSHOT/tsfile-java-2.5.1-261023-20261023.065606-1.pom"
+      ]
+    },
+    {
+      "group": "org.apache.tsfile",
+      "artifact": "tsfile-parent",
+      "version": "2.5.1-261023-SNAPSHOT",
+      "resolved_version": "2.5.1-261023-20261023.065606-1",
+      "extension": "pom",
+      "maven_cache_path": "org/apache/tsfile/tsfile-parent/2.5.1-261023-SNAPSHOT/tsfile-parent-2.5.1-261023-SNAPSHOT.pom",
+      "sha256": "d659952d101b7bf50418562ec4d70887b6fdb75442e4628d346f107981c870a2",
+      "download_urls": [
+        "https://repository.apache.org/snapshots/org/apache/tsfile/tsfile-parent/2.5.1-261023-SNAPSHOT/tsfile-parent-2.5.1-261023-20261023.065606-1.pom",
+        "https://maven.aliyun.com/repository/apache-snapshots/org/apache/tsfile/tsfile-parent/2.5.1-261023-SNAPSHOT/tsfile-parent-2.5.1-261023-20261023.065606-1.pom"
+      ]
+    }
+  ],
+  "mirror_settings": "maven-settings.xml",
+  "scope": "Pinned TsFile snapshots used by the validated build; other dependencies follow repository POMs. Maven cache and distribution jars must be checked on the target host."
+}

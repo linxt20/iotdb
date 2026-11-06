@@ -1,0 +1,139 @@
+{
+  "completed_at_utc": "2026-11-06T07:33:50.484579+00:00",
+  "claim": "multi-source N x P GROUP BY hash topology correctness only; no performance conclusion",
+  "table": "p0multi.telemetry",
+  "candidate": {
+    "isolation_id": "pr-master-dynamic-candidate",
+    "endpoint": "127.0.0.1:46667"
+  },
+  "control": {
+    "isolation_id": "pr-master-control",
+    "endpoint": "127.0.0.1:56667"
+  },
+  "expected_topology": {
+    "sources": 2,
+    "buckets": 2
+  },
+  "enabled_explain": {
+    "source_ids": [
+      "78",
+      "82"
+    ],
+    "bucket_ids": [
+      "4",
+      "87"
+    ],
+    "exchange_ids": [
+      [
+        "79",
+        "80"
+      ],
+      [
+        "83",
+        "84"
+      ]
+    ],
+    "exchange_edges": 4,
+    "source_count": 2,
+    "bucket_count": 2
+  },
+  "enabled_datanodes": {
+    "datanode_count": 2,
+    "datanode_ids": [
+      "1",
+      "2"
+    ]
+  },
+  "enabled_explain_analyze": {
+    "fragment_instances": 5,
+    "fragment_instance_ids": [
+      "20261106_073336_00003_1.2.0",
+      "20261106_073336_00003_1.3.0",
+      "20261106_073336_00003_1.4.0",
+      "20261106_073336_00003_1.5.0",
+      "20261106_073336_00003_1.6.0"
+    ],
+    "runtime_ip_values": [
+      "127.0.0.1:46130",
+      "127.0.0.1:47130"
+    ],
+    "sources": [
+      {
+        "sink_id": "100",
+        "fragment_id": "20261106_073336_00003_1.4.0",
+        "endpoint": "127.0.0.1:46130",
+        "exchange_ids": [
+          "101",
+          "102"
+        ]
+      },
+      {
+        "sink_id": "104",
+        "fragment_id": "20261106_073336_00003_1.5.0",
+        "endpoint": "127.0.0.1:47130",
+        "exchange_ids": [
+          "105",
+          "106"
+        ]
+      }
+    ],
+    "buckets": [
+      {
+        "bucket_index": 0,
+        "fragment_id": "20261106_073336_00003_1.3.0",
+        "aggregation_id": "4",
+        "exchange_ids": [
+          "101",
+          "105"
+        ]
+      },
+      {
+        "bucket_index": 1,
+        "fragment_id": "20261106_073336_00003_1.6.0",
+        "aggregation_id": "109",
+        "exchange_ids": [
+          "102",
+          "106"
+        ]
+      }
+    ],
+    "operator_ids": [
+      "100",
+      "101",
+      "102",
+      "103",
+      "104",
+      "105",
+      "106",
+      "107",
+      "108",
+      "109",
+      "110",
+      "155",
+      "156",
+      "158",
+      "159",
+      "160",
+      "4",
+      "96",
+      "97",
+      "99"
+    ],
+    "required_exchange_edges": 4,
+    "verified_exchange_edges": 4,
+    "ownership_verified": true,
+    "id_scope": "EXPLAIN ANALYZE query only; planning EXPLAIN IDs are archived separately"
+  },
+  "control_hash_path": "absent",
+  "result_equivalence": {
+    "same_header": true,
+    "same_multiset": true,
+    "baseline_rows": 3,
+    "candidate_rows": 3,
+    "minimum_required_rows": 2,
+    "baseline_multiset_sha256": "4d7676072ef684be2fd39ac04e0371bb2440d7e3831124fcb36a9377bff25334",
+    "candidate_multiset_sha256": "4d7676072ef684be2fd39ac04e0371bb2440d7e3831124fcb36a9377bff25334",
+    "matched": true
+  },
+  "accepted": true
+}

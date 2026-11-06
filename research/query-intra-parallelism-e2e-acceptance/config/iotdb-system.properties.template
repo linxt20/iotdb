@@ -1,0 +1,26 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.
+# See the NOTICE file distributed with this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0.
+# You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software distributed under the License is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and limitations under the License.
+
+# Copy these values only to the configuration of an isolated test deployment. The E2E runner does
+# not write this file and does not restart a process. Keep a copied version in the evidence output.
+degree_of_query_parallelism=4
+enable_dop_estimation=false
+enable_property_driven_planning=true
+
+# Narrow executable GROUP BY experiment: one direct table-scan source only.  Do not enable this
+# for multi-region GROUP BY until the source x bucket N x N topology has passed cluster acceptance.
+enable_table_group_by_hash_repartition=false
+table_group_by_hash_repartition_partition_count=2
+
+# Enabled endpoint: both true. Ordered-fallback endpoint: set ordered false. Morsel-fallback
+# endpoint: set morsel false. Do not claim a feature path unless its corresponding endpoint is on.
+enable_timepartition_morsel=true
+# Use true for the LPT-by-TsFile-size candidate and false for the equal-count control. Keep the
+# data, DOP and every other setting identical; archive both EXPLAIN ANALYZE exports.
+enable_timepartition_morsel_size_weighting=true
+enable_ordered_parallel_scan=true

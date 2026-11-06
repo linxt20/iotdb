@@ -1,0 +1,208 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    (the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+
+# Isolated static-parallelism E2E acceptance
+
+## Design and reproduction
+
+Table queries must preserve distribution, ordering, and resource ownership while executing parallel scan pipelines. The stage documents describe these responsibilities, and the reproduction guide supplies the execution steps.
+
+Sources: [ABCDE design and reproduction entrypoint](../../docs/design/query-parallelism/README.md).
+
+## Static property-enforcement matrix
+
+`manifests/property-enforcement-matrix.json` is the machine-readable P0 contract for scan,
+filter, project, sort, top-k, window, row-number, aggregation, join, union, collect, merge-sort, and output. Schema version 2 records each
+family's required and actually provided property, selected enforcer, and explicit reason for every
+serial or conditional path. Every row links to a concrete JUnit plan-shape assertion.
+
+Run its dependency-free integrity check before a server build:
+
+```bash
+python3 scripts/verify_property_enforcement_matrix.py --self-test
+python3 scripts/verify_property_enforcement_matrix.py
+```
+
+The matrix links 13 node families to executable assertions. Its verifier checks assertion polarity, required and provided properties, enforcers, fallback reasons, execution markers, and enum domains. The matrix is a coverage index. Its narrow GROUP BY row is conditional
+on the reviewed hash-repartition feature; its join row records the required two-sided partitioning
+contract and the current serial fallback.
+
+This is a correctness acceptance kit for an already running, isolated IoTDB deployment. It
+never starts, stops, reconfigures, clears, creates, or writes to a server. Its only server
+statements are `EXPLAIN`, `EXPLAIN ANALYZE`, and `SELECT`. Every endpoint and CLI executable
+must be named explicitly on the command line, so the kit cannot accidentally target a
+pre-existing experiment cluster.
+
+For the six-query-family result/fallback gate (scan/filter, filter/project, ordered scan, top-k,
+GROUP BY, and equi-join), use the separate read-only
+[`MULTI_QUERY_CASE_ACCEPTANCE.md`](MULTI_QUERY_CASE_ACCEPTANCE.md) runner. It records exact
+result equivalence for static candidates while keeping GROUP BY and join as explicit
+fallback-only baselines; it does not report speedups.
+
+It proves four narrow claims for the current static implementation:
+
+1. Text-format `EXPLAIN` on the enabled endpoint contains the `Property enforcement:` trace.
+2. An enabled ordered merge-tree candidate and its ordered-parallel fallback return the same
+   headers and row sequence.
+3. An enabled time-partition morsel candidate and its morsel-disabled fallback return the same
+   headers and row multiset (including duplicate counts).
+4. The saved morsel `EXPLAIN ANALYZE` contains per-driver actual output, CPU time, TsBlock count,
+   elapsed driver wall time, its assigned time partitions, and (for the LPT arm) estimated TsFile
+   bytes. This lets a reviewer compare equal-count and LPT-size grouping without treating the
+   static estimate as observed work.
+
+The single-source GROUP BY experiment below uses a real source-by-bucket hash exchange.
+The guarded multi-source path accepts supported scan, filter, and project shapes through a separate
+[multi-source acceptance contract](MULTISOURCE_HASH_GROUPBY_ACCEPTANCE.md). That contract checks
+actual DataNodes, completed fragment instances, unique exchange edges, final-bucket ownership,
+and full result equivalence. Planning and runtime queries retain their own IDs. The linked A
+archive covers balanced, nullable, skewed, and empty fixtures on a rebuilt candidate/control pair.
+Join repartition and performance measurements retain their separate acceptance requirements.
+
+For a repeatable Linux candidate/control deployment, use the
+[isolated 1C2D + 1C2D launcher](linux-isolated-cluster/README.md). It is intentionally separate
+from these read-only runners: setup changes only an explicitly supplied new root, and the runners
+still own the plan/result acceptance decision.
+
+## Restricted hash GROUP BY acceptance
+
+For the default-off experimental setting
+`enable_table_group_by_hash_repartition=true`, use a fresh isolated deployment and a query that
+maps to exactly one physical source. The helper scripts are intentionally mutating and therefore
+are not called by the read-only runner:
+
+```bash
+bash scripts/load_hash_groupby_fixture.sh <isolated-home> <artifact-dir> 26667
+bash scripts/run_hash_groupby_e2e.sh <isolated-home> <artifact-dir> 26667
+```
+
+The first script creates only the `p0e2e` fixture on the explicitly selected isolated endpoint.
+The second records an `EXPLAIN ANALYZE` and result for `device_id='d0' GROUP BY s1`. Accept it
+only when the raw plan contains both
+`TableHashPartitioningShuffleSinkNode(HashPartitioningSinkOperator)` and two downstream
+`ExchangeNode` instances. Run the same fixture/query on another isolated endpoint with the hash
+flag off, then compare canonicalized result rows. This verifies the selected 1 x P path's result
+equivalence; it does not justify a speedup claim on the small fixture.
+
+## Deployment contract
+
+Prepare three isolated endpoint states. They may be three separate isolated deployments, or
+the same isolated deployment restarted by an operator between runs. The runner itself never
+performs that restart. Use a DOP of at least two and keep `enable_dop_estimation=false` for a
+fixed-DOP acceptance.
+
+| Endpoint | Required configuration | Purpose |
+| --- | --- | --- |
+| enabled | property planning, time-partition morsels, and ordered scans enabled | candidate path and EXPLAIN trace |
+| ordered fallback | `enable_ordered_parallel_scan=false` | ordered correctness control |
+| morsel fallback | `enable_timepartition_morsel=false` | morsel correctness control |
+
+For the P1 balance experiment, run a fourth isolated endpoint with
+`enable_timepartition_morsel=true` and `enable_timepartition_morsel_size_weighting=false`. Compare
+its exported `EXPLAIN ANALYZE` against an otherwise identical endpoint where the weighting flag is
+true. Retain both raw plans and compare the `MORSEL_*` fields per `-morsel-` pipeline: estimated
+TsFile bytes are planning evidence, while output rows, CPU time, TsBlock count, and driver wall
+time are observed execution evidence. The maximum driver wall time is the scan-stage long-tail
+proxy; it is not a whole-query latency claim.
+
+After preserving the two raw `EXPLAIN ANALYZE` stdout files, generate a reviewable comparison
+without accessing the server again:
+
+```bash
+python3 scripts/summarize_morsel_evidence.py \
+  --lpt-plan raw/lpt-morsel-plan.stdout \
+  --equal-count-plan raw/equal-count-morsel-plan.stdout \
+  --output morsel-balance.json
+```
+
+The summarizer rejects plans that lack morsel scheduling, assigned partition, or actual driver
+wall-time fields. It preserves every parsed per-driver record and reports maximum driver wall time
+and CPU time for both arms. It does not infer a speedup or whole-query latency from these records.
+
+For a deterministic skewed fixture that creates a visible equal-count versus LPT grouping
+decision, use the manual [morsel balance fixture](MORSEL_BALANCE_FIXTURE.md). It requires two
+fresh isolated endpoints, an explicit database `time_partition_interval`, and a flush after each
+partition shard so LPT has actual TsFile-byte metadata. Its tiny dataset validates the evidence
+pipeline only; it is not performance evidence.
+
+For a complete server-side archive, use the read-only balance runner after preparing two isolated,
+otherwise-identical deployments. The equal-count endpoint must set
+`enable_timepartition_morsel_size_weighting=false`; the LPT endpoint must set it to `true`.
+The runner verifies those configurations before it connects, archives both plans and result sets,
+requires result-multiset equivalence, and fails rather than overwrite an existing artifact.
+
+```bash
+export IOTDB_E2E_PASSWORD='your-isolated-password'
+python3 scripts/run_morsel_balance_evidence.py \
+  --output /root/iotdb-next-artifacts/morsel-balance-$(date -u +%Y%m%dT%H%M%SZ) \
+  --plan-sql /root/morsel-sql/explain-analyze.sql \
+  --result-sql /root/morsel-sql/result.sql \
+  --equal-cli /root/iotdb-morsel-equal/sbin/start-cli.sh \
+  --equal-port 26667 --equal-config /root/iotdb-morsel-equal/conf/iotdb-system.properties \
+  --lpt-cli /root/iotdb-morsel-lpt/sbin/start-cli.sh \
+  --lpt-port 36667 --lpt-config /root/iotdb-morsel-lpt/conf/iotdb-system.properties
+```
+
+Both SQL files are read-only: the first must start with `EXPLAIN ANALYZE`; the second must be its
+corresponding `SELECT`. The resulting `morsel-balance-acceptance.json` records every parsed driver,
+the result hashes, copied configuration hashes, and explicit limitations. It does not attribute
+fragment-level backpressure to an individual morsel: the raw plans retain the fragment blocked
+queue fields until that instrumentation is implemented.
+
+Copy the relevant keys from `config/iotdb-system.properties.template` into each deployment's
+own `conf/iotdb-system.properties`; do not edit a shared production/baseline configuration. Pass
+those exact files through `--config` so they are copied into the evidence directory.
+
+The table must be a simple unquoted `database.table` identifier with columns
+`device_id STRING TAG`, `s1 INT64 FIELD`, and `s2 DOUBLE FIELD`. It needs non-empty rows from at
+least two devices and two physical time partitions. `sql/fixture.sql` is a deliberately
+**manual, mutating** smoke fixture. Review and execute it only against a new isolated database;
+the runner will never execute it. Increase its data before using this kit as performance evidence.
+
+## Run
+
+The CLI password is read from the explicitly named environment variable and is never written to
+the artifact. For a standard all-in-one distribution, the executable is normally
+`<isolated-home>/sbin/start-cli.sh`; verify the path with `--help` first.
+
+```bash
+export IOTDB_E2E_PASSWORD='your-isolated-password'
+python3 scripts/run_e2e_acceptance.py \
+  --output /root/iotdb-next-artifacts/e2e-$(date -u +%Y%m%dT%H%M%SZ) \
+  --table p0e2e.telemetry \
+  --enabled-cli /root/iotdb-next-enabled/sbin/start-cli.sh \
+  --enabled-host 127.0.0.1 --enabled-port 16667 \
+  --ordered-fallback-cli /root/iotdb-next-ordered-fallback/sbin/start-cli.sh \
+  --ordered-fallback-host 127.0.0.1 --ordered-fallback-port 26667 \
+  --morsel-fallback-cli /root/iotdb-next-morsel-fallback/sbin/start-cli.sh \
+  --morsel-fallback-host 127.0.0.1 --morsel-fallback-port 36667 \
+  --config /root/iotdb-next-enabled/conf/iotdb-system.properties \
+  --config /root/iotdb-next-ordered-fallback/conf/iotdb-system.properties \
+  --config /root/iotdb-next-morsel-fallback/conf/iotdb-system.properties
+```
+
+The runner records the exact commands with passwords redacted, CLI raw output, canonical CSV
+extracted from CLI tables, plan traces, copied configuration, Git context, and
+`acceptance.json`. It fails on a missing property trace, missing configured marker, malformed
+CLI table, non-empty output directory, command failure, or either result mismatch.
+
+The default `TableMergeSortOperator` and `-morsel-` markers are intentionally tied to this
+prototype. If a later implementation changes its observable operator names, use
+`--ordered-marker` and `--morsel-marker` with the reviewed replacement strings and retain the
+raw plan outputs. Do not weaken a marker to a generic word such as `scan`.

@@ -1,0 +1,365 @@
+{
+  "schemaVersion": 1,
+  "bindingState": "UNBOUND_TEMPLATE_NOT_RUN",
+  "runtimeAcceptance": false,
+  "scope": "Independent observed single-source32 resource acceptance after original 24-row small-case complete PASS and clean unobserved A correctness; not performance",
+  "rows": 1048576,
+  "devices": 4,
+  "logicalHashBuckets": 32,
+  "actualStorageSources": 1,
+  "database": "static_scan32_pressure",
+  "ownerRunId": "REQUIRED_FRESH_OWNED_RUN_ID",
+  "acceptedHelperSource": {
+    "path": "/REQUIRED_COMPLETE_PASS_ACCEPTED_StaticScanAcceptanceDriver.java",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "completeSmallAcceptanceReceipt": {
+    "path": "/REQUIRED_COMPLETE_SMALL_HELPER_PASS_WRAPPER.json",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "cleanACorrectnessReceipt": {
+    "path": "/REQUIRED_CLEAN_A_CORRECTNESS_PASS_WRAPPER.json",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "ownership": {
+    "freshEnvironment": true,
+    "receipt": {
+      "path": "/REQUIRED_NEW_ENV_OWNERSHIP.json",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "cleanup": {
+      "script": {
+        "path": "/REQUIRED_EXPLICIT_OWNED_ENV_CLEANUP.py",
+        "sha256": "REQUIRED_SHA256"
+      },
+      "command": [
+        "python3",
+        "/REQUIRED_EXPLICIT_OWNED_ENV_CLEANUP.py",
+        "--owner-run-id",
+        "REQUIRED_FRESH_OWNED_RUN_ID",
+        "--receipt",
+        "/REQUIRED_NEW_CLEANUP_RECEIPT.json"
+      ],
+      "receiptPath": "/REQUIRED_NEW_CLEANUP_RECEIPT.json"
+    }
+  },
+  "control": {
+    "baselineKind": "FROZEN_A",
+    "java": {
+      "path": "/REQUIRED_EXACT_JAVA_EXECUTABLE",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "sourceManifest": {
+      "path": "/REQUIRED_FROZEN_A_SOURCE_MANIFEST.json",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "package": {
+      "path": "/REQUIRED_FROZEN_A_PACKAGE.zip",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "sideManifest": {
+      "path": "/REQUIRED_PRESSURE_SIDE_MANIFEST.json",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "helperConfig": {
+      "path": "/REQUIRED_ISOLATED_HELPER_CONF/iotdb-system.properties",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "helperClasses": "/REQUIRED_ACCEPTED_HELPER_CLASSES",
+    "helperClassSha256": "REQUIRED_SHA256",
+    "compiledHelperSourceSha256": "REQUIRED_ACCEPTED_HELPER_SOURCE_SHA256",
+    "helperCommand": [
+      "/REQUIRED_EXACT_JAVA_EXECUTABLE",
+      "--add-opens=java.base/java.lang=ALL-UNNAMED",
+      "-Xms128m",
+      "-Xmx4g",
+      "-DIOTDB_CONF=/REQUIRED_ISOLATED_HELPER_CONF",
+      "-DIOTDB_HOME=/REQUIRED_ISOLATED_HELPER_HOME",
+      "-cp",
+      "/REQUIRED_ACCEPTED_HELPER_CLASSES:/REQUIRED_EXACT_DISTRIBUTION/lib/EXACT_JARS_NO_WILDCARDS",
+      "StaticScanAcceptanceDriver"
+    ],
+    "libraries": [
+      {
+        "path": "/REQUIRED_EXACT_DISTRIBUTION/lib/EACH_LIBRARY.jar",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ],
+    "observers": [
+      {
+        "path": "/REQUIRED_ACTUAL_DN1_OBSERVER_BOUND_MANIFEST.json",
+        "sha256": "REQUIRED_SHA256"
+      },
+      {
+        "path": "/REQUIRED_ACTUAL_DN2_OBSERVER_BOUND_MANIFEST.json",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ],
+    "gateSource": {
+      "path": "/root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/StaticScanPressureGate.java",
+      "sha256": "REQUIRED_GATE_SOURCE_SHA256"
+    },
+    "gateClasses": "/REQUIRED_GATE_CLASSES",
+    "gateClassSha256": "REQUIRED_SHA256",
+    "gateCommand": [
+      "/REQUIRED_EXACT_JAVA_EXECUTABLE",
+      "-cp",
+      "/REQUIRED_GATE_CLASSES:/REQUIRED_ACCEPTED_HELPER_CLASSES:/REQUIRED_EXACT_DISTRIBUTION/lib/EXACT_JARS_NO_WILDCARDS",
+      "StaticScanPressureGate"
+    ],
+    "helperClassFiles": [
+      {
+        "path": "/REQUIRED_ACCEPTED_HELPER_CLASSES/StaticScanAcceptanceDriver.class",
+        "sha256": "REQUIRED_SHA256"
+      },
+      {
+        "path": "/REQUIRED_ACCEPTED_HELPER_CLASSES/ALL_ACTUAL_NESTED_HELPER_CLASSES.class",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ],
+    "gateClassFiles": [
+      {
+        "path": "/REQUIRED_GATE_CLASSES/StaticScanPressureGate.class",
+        "sha256": "REQUIRED_SHA256"
+      },
+      {
+        "path": "/REQUIRED_GATE_CLASSES/StaticScanPressureGate$Node.class",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ]
+  },
+  "candidate": {
+    "baselineKind": "B_CANDIDATE",
+    "java": {
+      "path": "/REQUIRED_EXACT_JAVA_EXECUTABLE",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "sourceManifest": {
+      "path": "/REQUIRED_CURRENT_B1_SOURCE_MANIFEST.json",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "package": {
+      "path": "/REQUIRED_CURRENT_B1_PACKAGE.zip",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "sideManifest": {
+      "path": "/REQUIRED_PRESSURE_SIDE_MANIFEST.json",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "helperConfig": {
+      "path": "/REQUIRED_ISOLATED_HELPER_CONF/iotdb-system.properties",
+      "sha256": "REQUIRED_SHA256"
+    },
+    "helperClasses": "/REQUIRED_ACCEPTED_HELPER_CLASSES",
+    "helperClassSha256": "REQUIRED_SHA256",
+    "compiledHelperSourceSha256": "REQUIRED_ACCEPTED_HELPER_SOURCE_SHA256",
+    "helperCommand": [
+      "/REQUIRED_EXACT_JAVA_EXECUTABLE",
+      "--add-opens=java.base/java.lang=ALL-UNNAMED",
+      "-Xms128m",
+      "-Xmx4g",
+      "-DIOTDB_CONF=/REQUIRED_ISOLATED_HELPER_CONF",
+      "-DIOTDB_HOME=/REQUIRED_ISOLATED_HELPER_HOME",
+      "-cp",
+      "/REQUIRED_ACCEPTED_HELPER_CLASSES:/REQUIRED_EXACT_DISTRIBUTION/lib/EXACT_JARS_NO_WILDCARDS",
+      "StaticScanAcceptanceDriver"
+    ],
+    "libraries": [
+      {
+        "path": "/REQUIRED_EXACT_DISTRIBUTION/lib/EACH_LIBRARY.jar",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ],
+    "observers": [
+      {
+        "path": "/REQUIRED_ACTUAL_DN1_OBSERVER_BOUND_MANIFEST.json",
+        "sha256": "REQUIRED_SHA256"
+      },
+      {
+        "path": "/REQUIRED_ACTUAL_DN2_OBSERVER_BOUND_MANIFEST.json",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ],
+    "gateSource": {
+      "path": "/root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/StaticScanPressureGate.java",
+      "sha256": "REQUIRED_GATE_SOURCE_SHA256"
+    },
+    "gateClasses": "/REQUIRED_GATE_CLASSES",
+    "gateClassSha256": "REQUIRED_SHA256",
+    "gateCommand": [
+      "/REQUIRED_EXACT_JAVA_EXECUTABLE",
+      "-cp",
+      "/REQUIRED_GATE_CLASSES:/REQUIRED_ACCEPTED_HELPER_CLASSES:/REQUIRED_EXACT_DISTRIBUTION/lib/EXACT_JARS_NO_WILDCARDS",
+      "StaticScanPressureGate"
+    ],
+    "helperClassFiles": [
+      {
+        "path": "/REQUIRED_ACCEPTED_HELPER_CLASSES/StaticScanAcceptanceDriver.class",
+        "sha256": "REQUIRED_SHA256"
+      },
+      {
+        "path": "/REQUIRED_ACCEPTED_HELPER_CLASSES/ALL_ACTUAL_NESTED_HELPER_CLASSES.class",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ],
+    "gateClassFiles": [
+      {
+        "path": "/REQUIRED_GATE_CLASSES/StaticScanPressureGate.class",
+        "sha256": "REQUIRED_SHA256"
+      },
+      {
+        "path": "/REQUIRED_GATE_CLASSES/StaticScanPressureGate$Node.class",
+        "sha256": "REQUIRED_SHA256"
+      }
+    ]
+  },
+  "independentFixture": {
+    "generator": "i=0..1048575; time=i//4+1; device=d(i%4); s1=1+(i//4)%2; s2=null if i%97=0 else i+.5",
+    "types": [
+      "INT64",
+      "DOUBLE"
+    ],
+    "dataRegionGroups": 1,
+    "bucketRows": [
+      524288,
+      524288,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "preservesOriginalSmallCase": true,
+    "generatedOnlyByExplicitRun": true
+  },
+  "pressureContract": {
+    "windowStart": "Persistent JMX connections to both pre-attached own observer MBeans before launching helper; exact query from bound side manifest",
+    "holdTrigger": "Actual source full FI + actual 32 physical channels and receiver FI/plan edges + one exact producer leaf key + positive measured reserved bytes",
+    "signalScope": "Only this runner Popen helper PID after /proc exact Java exe/SHA, full argv and start ticks; never a DataNode",
+    "pendingProof": "Actual pool future and actual channel blockedFuture share token/key/cap; both unfinished and uncancelled; reservedBytes + bytesToReserve > actual future cap",
+    "stability": "Two latest-frame observations of same source/key/future/token/reservation/caps at least 20 ms apart. ACK establishes observer clock sampling barrier. New latest-frame time OR increased unchangedSamples after a complete successful production reread proves freshness; ticks/time alone never qualifies.",
+    "deduplication": "unchangedSamples increments only after observer sample() rereads all production fields and serialized structure is identical; an older history match is never selected if latest frame lost the sink/future.",
+    "consistency": "WEAK_CONCURRENT_READ; stable repetition does not claim atomic global state",
+    "resume": "SIGCONT owned helper then require complete 1048576-row typed result, complete multiset bytes/SHA, routing and 34 terminal FI",
+    "caps": "Validate each side actual receiver FI/sourceExchangeId/channel index and endpoint first. Compare measured cap by logical bucket only when local/remote placement matches. Local consumers may tighten caps. No blanket 4MiB assertion.",
+    "candidateOriginalProtocol": "Original helper B_REQUIRED_AND_CHECKED, 34 complete zero FI receipts, actual channels/one key/one created-closed driver, both pools restored remain mandatory.",
+    "frozenAOriginalProtocol": "Unavailable; independent observer resource observations are separate evidence and cannot be labeled original A B/C protocol PASS.",
+    "cleanup": "finally resume any stopped owned helper, reap helper, stop all known owned observer windows/release production references, reap gate; invoke exact hash-bound ownership cleanup and validate all owned process/port/config receipts.",
+    "preservation": "All large fixture/result/canonical/chunks stay in new tmpfs/ramfs output. Finally create a complete bounded gzip tar in explicit new persistentEvidenceRoot, stream-decompress every member and verify original length/SHA. Preserve RAM originals and any failed partial archive; no deletion/overwrite.",
+    "smallAcceptanceBinding": "Generic business/cleanup PASS is insufficient: require exact accepted helper + candidate source/package + hash-bound strict B4 PASS; original typed fields38/39/40 must be32/1/125703"
+  },
+  "requiredWrapperSchemas": {
+    "completeSmallAcceptanceReceipt": {
+      "status": "PASS",
+      "acceptedHelperSourceSha256": "ACTUAL_SHA256",
+      "originalSmallAcceptancePath": "ABSOLUTE_PASS_RECEIPT_PATH",
+      "candidateSourceManifest": {
+        "path": "ABSOLUTE_FINAL_CANDIDATE_SOURCE_MANIFEST",
+        "sha256": "ACTUAL_CANDIDATE_SOURCE_SHA256"
+      },
+      "candidatePackage": {
+        "path": "ABSOLUTE_FINAL_CANDIDATE_PACKAGE",
+        "sha256": "ACTUAL_CANDIDATE_PACKAGE_SHA256"
+      },
+      "strictSourceB4Receipt": {
+        "path": "ABSOLUTE_STRICT_B4_PASS_RECEIPT",
+        "sha256": "ACTUAL_STRICT_B4_PASS_SHA256"
+      }
+    },
+    "cleanACorrectnessReceipt": {
+      "status": "PASS",
+      "observerAttached": false,
+      "actualCleanAReceipt": "ABSOLUTE_PASS_RECEIPT_PATH"
+    },
+    "ownershipReceipt": {
+      "ownerRunId": "EXACT_OWNER_RUN_ID",
+      "processes": [
+        {
+          "pid": "ACTUAL_PID",
+          "startTicks": "ACTUAL_TICKS",
+          "kind": "DataNode|ConfigNode",
+          "side": "control|candidate"
+        }
+      ]
+    },
+    "cleanupReceipt": {
+      "ownerRunId": "EXACT_OWNER_RUN_ID",
+      "status": "PASS",
+      "allOwnedProcessesExited": true,
+      "allOwnedPortsClosed": true,
+      "allOriginalConfigurationsRestored": true
+    },
+    "strictSourceB4Receipt": {
+      "status": "PASS",
+      "observedNumbers": {
+        "38": 32,
+        "39": 1,
+        "40": 125703
+      },
+      "observedRawThrift": {
+        "38": {
+          "i32": 32
+        },
+        "39": {
+          "i32": 1
+        },
+        "40": {
+          "i64": 125703
+        }
+      },
+      "sourceFragmentInstanceId": "ACTUAL_SOURCE_FI_ID",
+      "rawEvidence": "ACTUAL_FULL_TERMINAL_SNAPSHOT_PATH"
+    }
+  },
+  "commands": {
+    "filesOnly": "python3 run-single-source32-pressure.py --manifest ABSOLUTE_BOUND_MANIFEST --output NEW_BINDING_RECEIPT.json --check-binding",
+    "explicitRuntimeAfterParentAuthorizesFreshEnv": "python3 run-single-source32-pressure.py --manifest ABSOLUTE_BOUND_MANIFEST --output NEW_TMPFS_PRESSURE_OUTPUT_DIRECTORY --run"
+  },
+  "notExecuted": [
+    "million-row fixture generation",
+    "service lifecycle",
+    "observer attach",
+    "sampler execution",
+    "pressure acceptance"
+  ],
+  "persistentEvidenceRoot": "/root/property-b-artifacts/REQUIRED_NEW_SOURCE32_PRESSURE_EVIDENCE",
+  "ramMinimumFreeBytes": 671088640,
+  "persistentArchiveBudgetBytes": 268435456,
+  "persistentMinimumFreeBytes": 335544320,
+  "spaceBudget": {
+    "ramFixtureAndRawEvidenceExpectedBytes": [
+      367001600,
+      629145600
+    ],
+    "maxSingleSequentialHelperHeapBytes": 4294967296,
+    "persistentArchiveMaximumBytes": 268435456,
+    "serviceHeapsAndRootBuildsNotIncluded": true,
+    "noLargeInputGenerationUntilBoundRuntime": true
+  },
+  "authoritativeReceipt": "persistentEvidenceRoot/acceptance-final.json (requires both runtime correctness and lossless archive PASS)"
+}

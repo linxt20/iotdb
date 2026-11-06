@@ -1,0 +1,28 @@
+{
+  "status": "PASS",
+  "packageSha256": "b664160b902c3c213df818e0d27c8f0ac090152ed6a700f24cbc37ac3cd00256",
+  "uniqueManagedSourceRecords": 124,
+  "allNativeResourceFieldsPresentAndPositive": true,
+  "nativeActionsInBothTopologies": [
+    {
+      "topologyDataNodes": 1,
+      "nativeActionCounts": {
+        "KEEP_STATIC": 32,
+        "REBALANCE_NEXT_FRAGMENT": 4,
+        "SERIAL_FALLBACK": 13,
+        "REDUCE_DOP": 6
+      }
+    },
+    {
+      "topologyDataNodes": 2,
+      "nativeActionCounts": {
+        "KEEP_STATIC": 31,
+        "SERIAL_FALLBACK": 13,
+        "REBALANCE_NEXT_FRAGMENT": 5,
+        "REDUCE_DOP": 6
+      }
+    }
+  ],
+  "admissionExceptionsVerifiedSeparately": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/boundary-verifier-r3/verdict.json",
+  "scope": "Ordinary managed source C responses must contain positive native B object/key/nominal fields; named zero-admission exceptions do not waive missing B accounting"
+}

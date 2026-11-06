@@ -1,0 +1,494 @@
+[
+  {
+    "source": {
+      "sink_id": "100",
+      "fragment_id": "20261106_073336_00003_1.4.0",
+      "endpoint": "127.0.0.1:46130",
+      "exchange_ids": [
+        "101",
+        "102"
+      ]
+    },
+    "response": {
+      "status": {
+        "code": 200,
+        "message": null,
+        "subStatus": null,
+        "redirectNode": null,
+        "needRetry": null,
+        "responseData": null
+      },
+      "fragmentInstanceId": {
+        "queryId": "20261106_073336_00003_1",
+        "fragmentId": 4,
+        "instanceId": "0"
+      },
+      "dataRegion": "2",
+      "startTimeInMS": 1793950416630,
+      "endTimeInMS": 1793950416793,
+      "queryStatistics": {
+        "loadTimeSeriesMetadataDiskSeqCount": 0,
+        "loadTimeSeriesMetadataDiskUnSeqCount": 0,
+        "loadTimeSeriesMetadataMemSeqCount": 0,
+        "loadTimeSeriesMetadataMemUnSeqCount": 0,
+        "loadTimeSeriesMetadataAlignedDiskSeqCount": 2,
+        "loadTimeSeriesMetadataAlignedDiskUnSeqCount": 0,
+        "loadTimeSeriesMetadataAlignedMemSeqCount": 0,
+        "loadTimeSeriesMetadataAlignedMemUnSeqCount": 0,
+        "loadTimeSeriesMetadataDiskSeqTime": 0,
+        "loadTimeSeriesMetadataDiskUnSeqTime": 0,
+        "loadTimeSeriesMetadataMemSeqTime": 0,
+        "loadTimeSeriesMetadataMemUnSeqTime": 0,
+        "loadTimeSeriesMetadataAlignedDiskSeqTime": 54867332,
+        "loadTimeSeriesMetadataAlignedDiskUnSeqTime": 0,
+        "loadTimeSeriesMetadataAlignedMemSeqTime": 0,
+        "loadTimeSeriesMetadataAlignedMemUnSeqTime": 0,
+        "constructNonAlignedChunkReadersDiskCount": 0,
+        "constructNonAlignedChunkReadersMemCount": 0,
+        "constructAlignedChunkReadersDiskCount": 2,
+        "constructAlignedChunkReadersMemCount": 0,
+        "constructNonAlignedChunkReadersDiskTime": 0,
+        "constructNonAlignedChunkReadersMemTime": 0,
+        "constructAlignedChunkReadersDiskTime": 20562862,
+        "constructAlignedChunkReadersMemTime": 0,
+        "pageReadersDecodeAlignedDiskCount": 2,
+        "pageReadersDecodeAlignedDiskTime": 8439287,
+        "pageReadersDecodeAlignedMemCount": 0,
+        "pageReadersDecodeAlignedMemTime": 0,
+        "pageReadersDecodeNonAlignedDiskCount": 0,
+        "pageReadersDecodeNonAlignedDiskTime": 0,
+        "pageReadersDecodeNonAlignedMemCount": 0,
+        "pageReadersDecodeNonAlignedMemTime": 0,
+        "pageReaderMaxUsedMemorySize": 0,
+        "alignedTimeSeriesMetadataModificationCount": 0,
+        "alignedTimeSeriesMetadataModificationTime": 3763439,
+        "nonAlignedTimeSeriesMetadataModificationCount": 0,
+        "nonAlignedTimeSeriesMetadataModificationTime": 0,
+        "loadBloomFilterFromCacheCount": 1,
+        "loadBloomFilterFromDiskCount": 1,
+        "loadBloomFilterActualIOSize": 279,
+        "loadBloomFilterTime": 33815353,
+        "loadTimeSeriesMetadataFromCacheCount": 2,
+        "loadTimeSeriesMetadataFromDiskCount": 2,
+        "loadTimeSeriesMetadataActualIOSize": 380,
+        "loadChunkFromCacheCount": 0,
+        "loadChunkFromDiskCount": 4,
+        "loadChunkActualIOSize": 134,
+        "chunkWithMetadataErrorsCount": 0,
+        "timeSeriesIndexFilteredRows": 0,
+        "chunkIndexFilteredRows": 0,
+        "pageIndexFilteredRows": 0,
+        "rowScanFilteredRows": 0
+      },
+      "operatorStatisticsMap": {
+        "99": {
+          "planNodeId": "99",
+          "operatorType": "HashAggregationOperator",
+          "totalExecutionTimeInNanos": 131913089,
+          "nextCalledCount": 5,
+          "hasNextCalledCount": 5,
+          "specifiedInfo": {
+            "CurrentUsedMemory": "23208",
+            "CurrentGroupNumber": "3",
+            "MaxGroupNumber": "3",
+            "__mt_tsBlockOutputCount": "1"
+          },
+          "outputRows": 3,
+          "memoryUsage": 262144,
+          "count": null,
+          "outputBytes": null,
+          "tsBlockCount": 1
+        },
+        "100": {
+          "planNodeId": "100",
+          "operatorType": "HashPartitioningSinkOperator",
+          "totalExecutionTimeInNanos": 134529393,
+          "nextCalledCount": 5,
+          "hasNextCalledCount": 5,
+          "specifiedInfo": {
+            "__mt_tsBlockOutputCount": "0",
+            "DownStreamPlanNodeId": "101, 102"
+          },
+          "outputRows": 0,
+          "memoryUsage": 524288,
+          "count": null,
+          "outputBytes": null,
+          "tsBlockCount": 0
+        },
+        "97": {
+          "planNodeId": "97",
+          "operatorType": "TableScanOperator",
+          "totalExecutionTimeInNanos": 120692593,
+          "nextCalledCount": 4,
+          "hasNextCalledCount": 5,
+          "specifiedInfo": {
+            "__mt_tsBlockOutputCount": "2",
+            "DeviceNumber": "2",
+            "CurrentDeviceIndex": "1"
+          },
+          "outputRows": 6,
+          "memoryUsage": 131072,
+          "count": null,
+          "outputBytes": null,
+          "tsBlockCount": 2
+        }
+      },
+      "initDataQuerySourceCost": 10021371,
+      "seqUnclosedNum": 0,
+      "seqClosednNum": 1,
+      "unseqClosedNum": 0,
+      "unseqUnclosedNum": 0,
+      "readyQueuedTime": 191479,
+      "blockQueuedTime": 0,
+      "ip": "127.0.0.1:46130",
+      "state": "FINISHED",
+      "initDataQuerySourceRetryCount": 0,
+      "schemaVersion": 2,
+      "snapshotGeneration": 1,
+      "capturedAtNanos": 16927322351751859,
+      "sourceNodeId": "1",
+      "sourceEndpoint": "127.0.0.1:46130",
+      "validityReasons": null,
+      "snapshotChecksum": "8789b114ee3ca7a38fd0325e80ca1d06931bc583be272c25bdae43d89870ba20",
+      "isTerminal": true,
+      "ignoredFragmentReason": null,
+      "driverSnapshots": [
+        {
+          "fragmentInstanceId": "20261106_073336_00003_1.4.0",
+          "driverPipelineId": "0",
+          "driverTaskId": "20261106_073336_00003_1.4.0.0",
+          "driverRole": "input",
+          "driverSampleGeneration": 1,
+          "driverFirstProcessNanos": 16927322202014710,
+          "driverLastProcessNanos": 16927322338051758,
+          "driverCpuNanos": null,
+          "driverWallNanos": 136037048,
+          "driverReadyNanos": null,
+          "driverBlockedNanos": null,
+          "driverOutputRows": 0,
+          "driverOutputBytes": null,
+          "driverTsBlockCount": 0,
+          "validityReasons": [
+            "UNSUPPORTED_FIELD:driverCpuNanos",
+            "UNSUPPORTED_FIELD:driverOutputBytes",
+            "UNSUPPORTED_FIELD:driverReadyNanos",
+            "UNSUPPORTED_FIELD:driverBlockedNanos"
+          ],
+          "scanAssignments": [
+            {
+              "sourcePlanNodeId": "97",
+              "bucketId": 0,
+              "workUnitIds": [
+                "23:20261106_073336_00003_1|3:4.0|2:97|6:SERIAL|3:ALL|3:ALL|"
+              ]
+            }
+          ]
+        }
+      ],
+      "plannedDop": 1,
+      "actualPipelineCount": 1,
+      "splitMode": "SERIAL",
+      "splitReason": "PARALLEL_SCAN_NOT_ALLOWED",
+      "planIdentityChecksum": "129bfa535a3913d98e8cc5e4a1b4ae45a0ba382e045991875f19afff5b8517bc",
+      "workUnitIds": [
+        "23:20261106_073336_00003_1|3:4.0|2:97|6:SERIAL|3:ALL|3:ALL|"
+      ],
+      "bucketIds": [
+        0
+      ],
+      "exchangeEdgeIds": [],
+      "canonicalFallbackReason": "PARALLEL_SCAN_NOT_SELECTED",
+      "planGeneration": 1,
+      "resourceObjectCount": 2,
+      "resourceUniqueMemoryKeyCount": 1,
+      "resourceNominalShareBytes": 402250,
+      "admissionStatus": "ADMISSION_ACCEPTED",
+      "admissionReason": null,
+      "dynamicDecisions": [
+        {
+          "queryId": "20261106_073336_00003_1",
+          "fragmentId": "4.0",
+          "endpoint": "127.0.0.1:46130",
+          "sourcePlanNodeId": "97",
+          "checkSequence": 1,
+          "contextDop": 4,
+          "inputDop": 4,
+          "previousDop": 1,
+          "targetDop": 1,
+          "dopEstimationEnabled": false,
+          "estimateStatus": "NOT_REQUESTED_SERIAL_GUARD",
+          "estimatedDop": null,
+          "action": "SERIAL_FALLBACK",
+          "rawReason": "PARALLEL_SCAN_NOT_ALLOWED",
+          "canonicalReason": "PARALLEL_SCAN_NOT_SELECTED",
+          "dynamicGrouping": false,
+          "workUnitCount": 1,
+          "actualBucketCount": 1,
+          "shapeChecksum": "c0c21acbc927a7de802b46c97e81d5967faceba9b551ec7fcc31ecccbd0df86c",
+          "sourcePlanChecksum": "a360841fd263f3437fe2c28e1ab1830cc2125efe9df70517216488763c05aa72",
+          "groupingChecksum": "7452e713d692109a9c667cb811d4d742966997f7eb906b4ee3d2f6b4b4fd4c9d",
+          "admissionStatus": "ADMISSION_ACCEPTED",
+          "admissionReason": null,
+          "inputs": [],
+          "admissionMemory": {
+            "checks": 1,
+            "allocationAttempts": 1,
+            "reservations": 1,
+            "reservedBytes": 525824,
+            "releases": 0,
+            "releasedBytes": 0
+          },
+          "receiptChecksum": "6aa34cda977a48d990433888093448361b60a1950cd11c3c6aab8aaf23d45823",
+          "traceChecksum": "83f74c095680329b4dda433bcd32f2037041bb2bd801f45b8652816932125ee5"
+        }
+      ],
+      "dynamicFeedbackDropReason": null
+    }
+  },
+  {
+    "source": {
+      "sink_id": "104",
+      "fragment_id": "20261106_073336_00003_1.5.0",
+      "endpoint": "127.0.0.1:47130",
+      "exchange_ids": [
+        "105",
+        "106"
+      ]
+    },
+    "response": {
+      "status": {
+        "code": 200,
+        "message": null,
+        "subStatus": null,
+        "redirectNode": null,
+        "needRetry": null,
+        "responseData": null
+      },
+      "fragmentInstanceId": {
+        "queryId": "20261106_073336_00003_1",
+        "fragmentId": 5,
+        "instanceId": "0"
+      },
+      "dataRegion": "3",
+      "startTimeInMS": 1793950416653,
+      "endTimeInMS": 1793950416874,
+      "queryStatistics": {
+        "loadTimeSeriesMetadataDiskSeqCount": 0,
+        "loadTimeSeriesMetadataDiskUnSeqCount": 0,
+        "loadTimeSeriesMetadataMemSeqCount": 0,
+        "loadTimeSeriesMetadataMemUnSeqCount": 0,
+        "loadTimeSeriesMetadataAlignedDiskSeqCount": 2,
+        "loadTimeSeriesMetadataAlignedDiskUnSeqCount": 0,
+        "loadTimeSeriesMetadataAlignedMemSeqCount": 0,
+        "loadTimeSeriesMetadataAlignedMemUnSeqCount": 0,
+        "loadTimeSeriesMetadataDiskSeqTime": 0,
+        "loadTimeSeriesMetadataDiskUnSeqTime": 0,
+        "loadTimeSeriesMetadataMemSeqTime": 0,
+        "loadTimeSeriesMetadataMemUnSeqTime": 0,
+        "loadTimeSeriesMetadataAlignedDiskSeqTime": 59582109,
+        "loadTimeSeriesMetadataAlignedDiskUnSeqTime": 0,
+        "loadTimeSeriesMetadataAlignedMemSeqTime": 0,
+        "loadTimeSeriesMetadataAlignedMemUnSeqTime": 0,
+        "constructNonAlignedChunkReadersDiskCount": 0,
+        "constructNonAlignedChunkReadersMemCount": 0,
+        "constructAlignedChunkReadersDiskCount": 2,
+        "constructAlignedChunkReadersMemCount": 0,
+        "constructNonAlignedChunkReadersDiskTime": 0,
+        "constructNonAlignedChunkReadersMemTime": 0,
+        "constructAlignedChunkReadersDiskTime": 17793890,
+        "constructAlignedChunkReadersMemTime": 0,
+        "pageReadersDecodeAlignedDiskCount": 2,
+        "pageReadersDecodeAlignedDiskTime": 6382012,
+        "pageReadersDecodeAlignedMemCount": 0,
+        "pageReadersDecodeAlignedMemTime": 0,
+        "pageReadersDecodeNonAlignedDiskCount": 0,
+        "pageReadersDecodeNonAlignedDiskTime": 0,
+        "pageReadersDecodeNonAlignedMemCount": 0,
+        "pageReadersDecodeNonAlignedMemTime": 0,
+        "pageReaderMaxUsedMemorySize": 0,
+        "alignedTimeSeriesMetadataModificationCount": 0,
+        "alignedTimeSeriesMetadataModificationTime": 3141781,
+        "nonAlignedTimeSeriesMetadataModificationCount": 0,
+        "nonAlignedTimeSeriesMetadataModificationTime": 0,
+        "loadBloomFilterFromCacheCount": 1,
+        "loadBloomFilterFromDiskCount": 1,
+        "loadBloomFilterActualIOSize": 281,
+        "loadBloomFilterTime": 38402800,
+        "loadTimeSeriesMetadataFromCacheCount": 2,
+        "loadTimeSeriesMetadataFromDiskCount": 2,
+        "loadTimeSeriesMetadataActualIOSize": 380,
+        "loadChunkFromCacheCount": 0,
+        "loadChunkFromDiskCount": 4,
+        "loadChunkActualIOSize": 134,
+        "chunkWithMetadataErrorsCount": 0,
+        "timeSeriesIndexFilteredRows": 0,
+        "chunkIndexFilteredRows": 0,
+        "pageIndexFilteredRows": 0,
+        "rowScanFilteredRows": 0
+      },
+      "operatorStatisticsMap": {
+        "103": {
+          "planNodeId": "103",
+          "operatorType": "HashAggregationOperator",
+          "totalExecutionTimeInNanos": 127598972,
+          "nextCalledCount": 5,
+          "hasNextCalledCount": 5,
+          "specifiedInfo": {
+            "CurrentUsedMemory": "23208",
+            "CurrentGroupNumber": "3",
+            "MaxGroupNumber": "3",
+            "__mt_tsBlockOutputCount": "1"
+          },
+          "outputRows": 3,
+          "memoryUsage": 262144,
+          "count": null,
+          "outputBytes": null,
+          "tsBlockCount": 1
+        },
+        "104": {
+          "planNodeId": "104",
+          "operatorType": "HashPartitioningSinkOperator",
+          "totalExecutionTimeInNanos": 130184635,
+          "nextCalledCount": 5,
+          "hasNextCalledCount": 5,
+          "specifiedInfo": {
+            "__mt_tsBlockOutputCount": "0",
+            "DownStreamPlanNodeId": "105, 106"
+          },
+          "outputRows": 0,
+          "memoryUsage": 524288,
+          "count": null,
+          "outputBytes": null,
+          "tsBlockCount": 0
+        },
+        "96": {
+          "planNodeId": "96",
+          "operatorType": "TableScanOperator",
+          "totalExecutionTimeInNanos": 117485252,
+          "nextCalledCount": 4,
+          "hasNextCalledCount": 5,
+          "specifiedInfo": {
+            "__mt_tsBlockOutputCount": "2",
+            "DeviceNumber": "2",
+            "CurrentDeviceIndex": "1"
+          },
+          "outputRows": 6,
+          "memoryUsage": 131072,
+          "count": null,
+          "outputBytes": null,
+          "tsBlockCount": 2
+        }
+      },
+      "initDataQuerySourceCost": 8949265,
+      "seqUnclosedNum": 0,
+      "seqClosednNum": 1,
+      "unseqClosedNum": 0,
+      "unseqUnclosedNum": 0,
+      "readyQueuedTime": 162289,
+      "blockQueuedTime": 0,
+      "ip": "127.0.0.1:47130",
+      "state": "FINISHED",
+      "initDataQuerySourceRetryCount": 0,
+      "schemaVersion": 2,
+      "snapshotGeneration": 1,
+      "capturedAtNanos": 16927322430773051,
+      "sourceNodeId": "2",
+      "sourceEndpoint": "127.0.0.1:47130",
+      "validityReasons": null,
+      "snapshotChecksum": "f801199dc405f65203f3a32c0273dcffc1d48b4212db500906300f1abcd6ac2f",
+      "isTerminal": true,
+      "ignoredFragmentReason": null,
+      "driverSnapshots": [
+        {
+          "fragmentInstanceId": "20261106_073336_00003_1.5.0",
+          "driverPipelineId": "0",
+          "driverTaskId": "20261106_073336_00003_1.5.0.0",
+          "driverRole": "input",
+          "driverSampleGeneration": 1,
+          "driverFirstProcessNanos": 16927322278700399,
+          "driverLastProcessNanos": 16927322413159422,
+          "driverCpuNanos": null,
+          "driverWallNanos": 134459023,
+          "driverReadyNanos": null,
+          "driverBlockedNanos": null,
+          "driverOutputRows": 0,
+          "driverOutputBytes": null,
+          "driverTsBlockCount": 0,
+          "validityReasons": [
+            "UNSUPPORTED_FIELD:driverCpuNanos",
+            "UNSUPPORTED_FIELD:driverOutputBytes",
+            "UNSUPPORTED_FIELD:driverReadyNanos",
+            "UNSUPPORTED_FIELD:driverBlockedNanos"
+          ],
+          "scanAssignments": [
+            {
+              "sourcePlanNodeId": "96",
+              "bucketId": 0,
+              "workUnitIds": [
+                "23:20261106_073336_00003_1|3:5.0|2:96|6:SERIAL|3:ALL|3:ALL|"
+              ]
+            }
+          ]
+        }
+      ],
+      "plannedDop": 1,
+      "actualPipelineCount": 1,
+      "splitMode": "SERIAL",
+      "splitReason": "PARALLEL_SCAN_NOT_ALLOWED",
+      "planIdentityChecksum": "199b10360fe990f9a9667914705d74e73fbe8eb3deb010e693d47afbdb08af44",
+      "workUnitIds": [
+        "23:20261106_073336_00003_1|3:5.0|2:96|6:SERIAL|3:ALL|3:ALL|"
+      ],
+      "bucketIds": [
+        0
+      ],
+      "exchangeEdgeIds": [],
+      "canonicalFallbackReason": "PARALLEL_SCAN_NOT_SELECTED",
+      "planGeneration": 1,
+      "resourceObjectCount": 2,
+      "resourceUniqueMemoryKeyCount": 1,
+      "resourceNominalShareBytes": 402250,
+      "admissionStatus": "ADMISSION_ACCEPTED",
+      "admissionReason": null,
+      "dynamicDecisions": [
+        {
+          "queryId": "20261106_073336_00003_1",
+          "fragmentId": "5.0",
+          "endpoint": "127.0.0.1:47130",
+          "sourcePlanNodeId": "96",
+          "checkSequence": 1,
+          "contextDop": 4,
+          "inputDop": 4,
+          "previousDop": 1,
+          "targetDop": 1,
+          "dopEstimationEnabled": false,
+          "estimateStatus": "NOT_REQUESTED_SERIAL_GUARD",
+          "estimatedDop": null,
+          "action": "SERIAL_FALLBACK",
+          "rawReason": "PARALLEL_SCAN_NOT_ALLOWED",
+          "canonicalReason": "PARALLEL_SCAN_NOT_SELECTED",
+          "dynamicGrouping": false,
+          "workUnitCount": 1,
+          "actualBucketCount": 1,
+          "shapeChecksum": "4c3b3f6956feccea10bcd7522aa381723a47bc98cf877517f2b40b5b3002c905",
+          "sourcePlanChecksum": "7bbf3abe915516a95ee6ec023ee120649f481a16006db9abd1e840fe9842ec91",
+          "groupingChecksum": "85d1d0b29de470ccefe9fd717a0a0ba7fc099a2ab0b185fbf02266e328a127f5",
+          "admissionStatus": "ADMISSION_ACCEPTED",
+          "admissionReason": null,
+          "inputs": [],
+          "admissionMemory": {
+            "checks": 1,
+            "allocationAttempts": 1,
+            "reservations": 1,
+            "reservedBytes": 526368,
+            "releases": 0,
+            "releasedBytes": 0
+          },
+          "receiptChecksum": "5a8c2fd1bb39548fa7d45e526b97304feb95e8be6fdff178167994d22e7db998",
+          "traceChecksum": "3443788427363b660611215d3040f1be6a26f680297ceefd03b5aadcd8af7491"
+        }
+      ],
+      "dynamicFeedbackDropReason": null
+    }
+  }
+]

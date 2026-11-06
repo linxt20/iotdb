@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "operationScope": "INDEPENDENT_OBSERVED_RESOURCE_RUN_AFTER_UNOBSERVED_A_CORRECTNESS",
+  "pid": 0,
+  "processStartTicks": "REQUIRED_ACTUAL_PROC_START_TICKS",
+  "javaExecutable": "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+  "javaExecutableSha256": "ac1d3bbe5301caaa1b86966802a4f8ec9f9f4f065c04dec45cc4a9f7dc24d075",
+  "iotdbHome": "/root/property-a-artifacts/A6-20261028T080437+0000/isolated-distribution-06/source/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin/apache-iotdb-2.0.11-SNAPSHOT-all-bin",
+  "confDir": "/REQUIRED_ISOLATED_A_DATANODE_CONF",
+  "serverJar": "/root/property-a-artifacts/A6-20261028T080437+0000/isolated-distribution-06/source/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar",
+  "serverJarSha256": "1f8c4ccc749bc86fe6334c7ce91fc84ade4d710ae5395cb004fd546472f5ec68",
+  "observerJar": "/root/property-b-artifacts/B6-readonly-observer-abi-20261103-r3/frozen-A/static-scan-readonly-observer.jar",
+  "observerJarSha256": "ecddd3a3819f85c8cac0e9c875c7baf7f5cfed1306c034d408c6db40c671a7c1",
+  "mppPort": 0,
+  "jmxPort": 0,
+  "classSha256": {
+    "org.apache.iotdb.db.service.DataNode": "de3132168d66cc29e21997564e87b0fd26b3a2eefa82d18bd668126770e812dc",
+    "org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService": "4a8ae0892be425f55fdc29ce33234cca001f0df34954fde7bedec0da8c9bc51d",
+    "org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager": "5d01cdfe65cb9a796394654f60bf52fec46373b9f8dd43efabdca6b05a26fa23",
+    "org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle": "b266efbec9e13e4f99520a1ebfb6173e792a24d7bd900f1523c7f50571d0d9fc",
+    "org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel": "4baf8910390eeb34f6fc05fc2b8ea60a3e336e8965dcde7d0dbb267abf9f5647",
+    "org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel": "f97d895840dc8b043032548ab8ecc1697568f80d105769f08331a1ad77af74d7",
+    "org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue": "ee078508db52e32a997a35c31a508a989f5a7dfac55a192a724bfb4873eaec0c",
+    "org.apache.iotdb.db.queryengine.execution.memory.MemoryPool": "d74bff1c854776fc87e7d147dca2d056f37273175517c4301ecd6065dcc9d732"
+  },
+  "bindingState": "UNBOUND_LIVE_PID_START_TICKS_CONF_AND_PORTS",
+  "observerSource": {
+    "path": "/root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/StaticScanReadOnlyObserver.java",
+    "sha256": "3e4bc1fe614d912fe96d6979e0f731dbbcbffe367e74f02eca3c0cca7d48860c"
+  },
+  "agentManifest": {
+    "path": "/root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/readonly-observer-agent.mf",
+    "sha256": "a8b5c3fdcf31a83a5f51d2dfbe6aaca78161826286409832cba8da7186885b6b"
+  },
+  "sourceManifest": {
+    "path": "/root/property-a-artifacts/A6-20261028T080437+0000/isolated-distribution-06/source-manifest.json",
+    "sha256": "72b57ac841481123e3e14ee05a262cc7cf68660556d125a9bda2570c560a4886"
+  },
+  "originalAProtocolCapabilities": {
+    "BResourceAudit": false,
+    "CRuntimeSnapshot": false
+  },
+  "observerNamespace": "org.apache.iotdb.research.static_scan:type=ReadOnlyChannelObserver",
+  "objectIdentityEncoding": [
+    "actual PID",
+    "observer window UUID",
+    "IdentityHashMap allocated token"
+  ],
+  "sampler": {
+    "requestedPeriodNanos": 1000000,
+    "actualIntervalsRecorded": true,
+    "maxDurationMillis": 60000,
+    "maxObjectTokens": 8192,
+    "maxSnapshots": 2048,
+    "maxHistoryBytes": 16777216,
+    "historyContainsFrozenJSONOnly": true,
+    "productionObjectAndFieldCachesClearedOnStopTimeoutErrorOrBound": true,
+    "snapshotConsistency": "WEAK_CONCURRENT_READ"
+  },
+  "readOnlyPolicy": {
+    "instrumentationOnly": "getAllLoadedClasses",
+    "fieldAccess": "Field.get; setAccessible changes reflection permission metadata only",
+    "noProductionStateWrites": true,
+    "noProductionSettersOrCancellation": true,
+    "noClassTransformOrReplacement": true,
+    "noServiceLifecycleCalls": true,
+    "onlyOwnMBeanAndDaemonMayBeMutated": true,
+    "singletonReadPrecondition": "Original MPP service MBean must already exist with the exact expected RPC port",
+    "ownMBeanRemainsAfterWindowStop": true
+  },
+  "orchestratorPreconditions": [
+    "Run and freeze true A business/routing correctness without this observer first.",
+    "Use a distinct query/output directory for the subsequently observed resource shape; do not label a later run on an attached process as unobserved.",
+    "Bind PID/executable SHA/startTicks/home/conf/JMX/MPP/server SHA from actual started DataNode records.",
+    "Freeze the queried source FI and all receiver bucket/exchange IDs independently with the production driver.",
+    "Keep source active under a deterministic resource shape; a fast 24-row run may finish before any sample.",
+    "Stop/read each observer window and persist returned evidence; root orchestration still owns DataNode shutdown and six-node rollback."
+  ],
+  "runtimeEvidenceChecks": [
+    "At least one matching actual source handle, source FI equals frozen production producer.",
+    "32 distinct channel object tokens and 32 observed receiver FI/plan-node bindings matching frozen bucket edges.",
+    "Local channels expose distinct actual queue/source-handle bindings; all channels read the same producer query/FI/plan key and same actual MemoryPool object.",
+    "All 32 actual channel/queue maxBytesCanReserve values and actual sink cap are retained; compare against the independently frozen A contract without deriving values from a constructor formula.",
+    "Actual pool account leaf exists under the observed shared key; retain measured reserved bytes, including a positive running sample.",
+    "Only a captured matching future with isDone=false counts as pending; a queue entry or constructor does not prove backpressure.",
+    "If a round-robin strategy has channelMemoryThreshold, read it directly; PLAIN/no field remains absent, never fabricated as zero.",
+    "Use repeated stable identity/key/cap samples plus independent execution to assess concurrent reads; no atomic global-state claim.",
+    "Window must finish with referencesReleased=true and zero retained production-object/field/verification caches; truncation/read errors are explicit and must not be hidden.",
+    "Original server JAR/classfile bindings before/after unchanged; observer-bearing run remains distinct from the clean A correctness run."
+  ],
+  "standardCommands": {
+    "compile": "/usr/lib/jvm/java-17-openjdk-amd64/bin/javac --add-modules jdk.attach -encoding UTF-8 -cp 'EXACT_DISTRIBUTION/lib/*' -d NEW_CLASSES /root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/StaticScanReadOnlyObserver.java",
+    "package": "/usr/lib/jvm/java-17-openjdk-amd64/bin/jar --create --file NEW_OBSERVER_JAR --manifest /root/iotdb/research/query-intra-parallelism-e2e-acceptance/static-scan/readonly-observer-agent.mf -C NEW_CLASSES .",
+    "schemaOnly": "/usr/lib/jvm/java-17-openjdk-amd64/bin/java --add-modules jdk.attach -cp 'OBSERVER_JAR:EXACT_DISTRIBUTION/lib/*' StaticScanReadOnlyObserver schema BOUND_MANIFEST ABSOLUTE_NEW_SCHEMA_OUTPUT.json",
+    "attachOnlyAfterCleanAResult": "/usr/lib/jvm/java-17-openjdk-amd64/bin/java --add-modules jdk.attach -cp 'OBSERVER_JAR:EXACT_DISTRIBUTION/lib/*' StaticScanReadOnlyObserver attach BOUND_MANIFEST ABSOLUTE_NEW_ATTACH_OUTPUT.json",
+    "startOwnWindow": "/usr/lib/jvm/java-17-openjdk-amd64/bin/java --add-modules jdk.attach -cp 'OBSERVER_JAR:EXACT_DISTRIBUTION/lib/*' StaticScanReadOnlyObserver start BOUND_MANIFEST EXACT_QUERY_ID '' 10000 1024 ABSOLUTE_NEW_START_OUTPUT.json",
+    "readOwnWindow": "/usr/lib/jvm/java-17-openjdk-amd64/bin/java --add-modules jdk.attach -cp 'OBSERVER_JAR:EXACT_DISTRIBUTION/lib/*' StaticScanReadOnlyObserver read BOUND_MANIFEST WINDOW_UUID ABSOLUTE_NEW_READ_OUTPUT.json",
+    "stopOwnWindowAndReleaseReferences": "/usr/lib/jvm/java-17-openjdk-amd64/bin/java --add-modules jdk.attach -cp 'OBSERVER_JAR:EXACT_DISTRIBUTION/lib/*' StaticScanReadOnlyObserver stop BOUND_MANIFEST WINDOW_UUID ABSOLUTE_NEW_STOP_OUTPUT.json"
+  },
+  "validationScope": {
+    "bothOldSidesCompiled": true,
+    "bothOldSidesNoInitializationSchemaChecked": true,
+    "verifiedFieldsPerSide": 46,
+    "agentAttached": false,
+    "samplerExecuted": false,
+    "runtimeAcceptance": false,
+    "newCandidateAcceptance": false
+  },
+  "attachBindingTransport": "Absolute manifest path plus SHA256, verified from identical read bytes inside agent; argument <1024 bytes"
+}

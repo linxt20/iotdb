@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Agent-Class: StaticScanReadOnlyObserver
+Main-Class: StaticScanReadOnlyObserver
+Can-Redefine-Classes: false
+Can-Retransform-Classes: false
+Can-Set-Native-Method-Prefix: false
+

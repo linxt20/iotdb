@@ -1,0 +1,177 @@
+{
+  "head": "0221f5032048751a5ef30d5aa126d19b2c3d2ce7",
+  "totals": {
+    "tests": 187,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 5
+  },
+  "classes": {
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicAdmissionMemoryAccountTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelPlanningProductionTest": {
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 5
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotMergeAccountingTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelScheduleIdentityTest": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotDriverCoverageTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotDerivationTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicScanGroupingTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionTraceTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotStatisticsBarrierTest": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotProductionBoundaryTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicSnapshotHistoryStoreTest": {
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicSnapshotRecordTest": {
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelHysteresisTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotSerializationTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotValueTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotDeltaTest": {
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotTransportCompatibilityTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotAdaptersTest": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicScanGroupingChecksumTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotPlanIdentityTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyPlanningConfigurationIsolationTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicSnapshotAggregatorTest": {
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotFoldIsolationTest": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelSchedulerTest": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotViewTest": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelTransportCompatibilityTest": {
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "logs": [
+    "part4-tests.log"
+  ],
+  "title": "feat(query): add feedback-driven scan parallel scheduling"
+}

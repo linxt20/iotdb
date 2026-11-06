@@ -1,0 +1,193 @@
+{
+  "status": "PASS",
+  "scope": "Real same-version native region inventories, startup configuration, unchanged base files and complete results; candidate previous=4 bound to retained four-bucket history then real input=2 and target=2; control E off has native C estimated width two; native file unload and retained originals verified",
+  "packageSha256": "b664160b902c3c213df818e0d27c8f0ac090152ed6a700f24cbc37ac3cd00256",
+  "inventories": {
+    "candidate": {
+      "base": {
+        "region": "1",
+        "files": [
+          {
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/candidate/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747772901-1-0-0.tsfile",
+            "sequence": true,
+            "bytes": 199642283
+          }
+        ],
+        "bytes": 199642283
+      },
+      "high": {
+        "region": "1",
+        "files": [
+          {
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/candidate/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747772901-1-0-0.tsfile",
+            "sequence": true,
+            "bytes": 199642283
+          },
+          {
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/candidate/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747783222-2-0-0.tsfile",
+            "sequence": true,
+            "bytes": 232921086
+          }
+        ],
+        "bytes": 432563369
+      },
+      "low": {
+        "region": "1",
+        "files": [
+          {
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/candidate/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747772901-1-0-0.tsfile",
+            "sequence": true,
+            "bytes": 199642283
+          }
+        ],
+        "bytes": 199642283
+      }
+    },
+    "control": {
+      "base": {
+        "region": "1",
+        "files": [
+          {
+            "bytes": 199642283,
+            "sequence": true,
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/control/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747797649-1-0-0.tsfile"
+          }
+        ],
+        "bytes": 199642283
+      },
+      "high": {
+        "region": "1",
+        "files": [
+          {
+            "bytes": 199642283,
+            "sequence": true,
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/control/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747797649-1-0-0.tsfile"
+          },
+          {
+            "bytes": 232921086,
+            "sequence": true,
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/control/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747808163-2-0-0.tsfile"
+          }
+        ],
+        "bytes": 432563369
+      },
+      "low": {
+        "region": "1",
+        "files": [
+          {
+            "bytes": 199642283,
+            "sequence": true,
+            "path": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-clusters-r1/control/datanode-1/data/datanode-data/sequence/e_est/1/0/1793747797649-1-0-0.tsfile"
+          }
+        ],
+        "bytes": 199642283
+      }
+    }
+  },
+  "nativeSourceReceipts": [
+    {
+      "sources": [
+        {
+          "queryId": "20261103_231717_01677_1",
+          "fragmentId": "1.0",
+          "endpoint": "127.0.0.1:30130",
+          "sourcePlanNodeId": "40",
+          "checkSequence": 10,
+          "contextDop": 8,
+          "inputDop": 2,
+          "previousDop": 4,
+          "targetDop": 2,
+          "dopEstimationEnabled": true,
+          "estimateStatus": "ESTIMATED_FROM_TSFILE_BYTES",
+          "estimatedDop": 2,
+          "action": "REBALANCE_NEXT_FRAGMENT",
+          "rawReason": "COST_SKEW",
+          "canonicalReason": "COST_SKEW",
+          "dynamicGrouping": true,
+          "workUnitCount": 4,
+          "actualBucketCount": 2,
+          "shapeChecksum": "e6ae5b7792b8d1b1a6c0922f7f57691acad1679ff4af4d63198b5852c32e3dc5",
+          "sourcePlanChecksum": "15c1c797b437b00280b625ccbf37fb2d6834abff02212d67156412839bcd6f99",
+          "groupingChecksum": "84c4cc94bb3607c3c399b577d8fc8ce9e4eaac08cfe09aa0992676375742ce44",
+          "admissionStatus": "ADMISSION_ACCEPTED",
+          "inputs": [
+            {
+              "queryId": "20261103_231709_01673_1",
+              "fragmentId": "1.0",
+              "endpoint": "127.0.0.1:30130",
+              "sourceId": "40",
+              "snapshotChecksum": "bb3490c6db039378766b2a0e4605305de4eccee024b7775e60a0541a295da7f2",
+              "fragmentPlanChecksum": "761f8bcd138eadf3840e1a6f2e5572d3ff44b0cce733864f5cbb39493097b020",
+              "sourcePlanChecksum": "681e6c8b4edca5c77b6cb324258e905518d19eac9f80f5c9d327e4966d1f0d02",
+              "groupingChecksum": "8312212b6e4d30852f341081ae98e32f3915c6b0aaf18238a6258448e29759c0",
+              "shapeChecksum": "e6ae5b7792b8d1b1a6c0922f7f57691acad1679ff4af4d63198b5852c32e3dc5",
+              "sequence": 8,
+              "snapshotGeneration": 1,
+              "planGeneration": 1
+            },
+            {
+              "queryId": "20261103_231711_01675_1",
+              "fragmentId": "1.0",
+              "endpoint": "127.0.0.1:30130",
+              "sourceId": "40",
+              "snapshotChecksum": "3c81a57207b4d9c6c06779f3d40177466fab919a51c530716d1e41fbabba36b7",
+              "fragmentPlanChecksum": "70dcaf3775fdd426aefb17afd999d6d9dde44998100d1fb6ad5e746431f3af04",
+              "sourcePlanChecksum": "c705942e8aa92b7a6e68914aa142eae114f9fb254c1835c049d823c5b98a1ce1",
+              "groupingChecksum": "10842f426002b81ad9b7bcbb954494bf7a994013fd33dc6ea3b2349ead247b3f",
+              "shapeChecksum": "e6ae5b7792b8d1b1a6c0922f7f57691acad1679ff4af4d63198b5852c32e3dc5",
+              "sequence": 9,
+              "snapshotGeneration": 1,
+              "planGeneration": 1
+            }
+          ],
+          "admissionMemory": {
+            "checks": 1,
+            "allocationAttempts": 1,
+            "reservations": 1,
+            "reservedBytes": 133232,
+            "releases": 0,
+            "releasedBytes": 0
+          },
+          "receiptChecksum": "ee3a2f1ce44244bbfd655c680f3b0d65a66d24b811f2a4ea144d288e02b31487",
+          "traceChecksum": "ba15a61104981956ec7d667d149ea9e0df37e37ce8054d98d515d1371f152e1f"
+        }
+      ],
+      "role": "candidate",
+      "input": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-r2/low-r0-candidate-runtime.json",
+      "status": "VERIFIED"
+    },
+    {
+      "input": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/estimation-r2/explain-low-control-runtime.json",
+      "status": "VERIFIED",
+      "sources": [
+        {
+          "actualDrivers": 3,
+          "fragmentId": "2.0",
+          "plannedDop": 2,
+          "endpoint": "127.0.0.1:40130",
+          "queryId": "20261103_231733_01667_1",
+          "CChecksum": "f762f93558fd8575197d4eff19c763068ddd3379d2ec01603cca74a74d82a545"
+        }
+      ],
+      "role": "control"
+    }
+  ],
+  "comparisons": [
+    {
+      "round": 0,
+      "sha256": "fa66f8f959d1a506d9a039530a6d96b4bcf5dbb310944a3964666eb31b00b17c",
+      "rows": 24000
+    },
+    {
+      "round": 1,
+      "sha256": "fa66f8f959d1a506d9a039530a6d96b4bcf5dbb310944a3964666eb31b00b17c",
+      "rows": 24000
+    },
+    {
+      "round": 2,
+      "sha256": "fa66f8f959d1a506d9a039530a6d96b4bcf5dbb310944a3964666eb31b00b17c",
+      "rows": 24000
+    }
+  ],
+  "newPerformanceClaim": false
+}

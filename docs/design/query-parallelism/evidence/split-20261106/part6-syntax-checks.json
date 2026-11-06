@@ -1,0 +1,172 @@
+[
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/capture_environment.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/collect_datanode_proc.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/extract_remote_shuffle_payload_bytes.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/generate_fixture.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/iotdb_cli_adapter.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/load_table_fixture.sh",
+    "check": "bash -n",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/run_matrix.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/server_current_query_metrics.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/server_query_metrics_with_proc.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/validate_results.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-benchmark/scripts/verify_p0_matrix.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/data-scan-oversize/run-data-scan-oversize.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/data-scan-oversize/test-data-scan-oversize.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh",
+    "check": "bash -n",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/prepare-benchmark-deployment.sh",
+    "check": "bash -n",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/set-isolated-dop.sh",
+    "check": "bash -n",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/generate_hash_groupby_fixture.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/load_hash_groupby_fixture.sh",
+    "check": "bash -n",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_e2e_acceptance.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_hash_groupby_e2e.sh",
+    "check": "bash -n",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_morsel_balance_evidence.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_multi_query_case_acceptance.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/summarize_morsel_evidence.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/verify_property_enforcement_matrix.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/scripts/verify_staged_acceptance.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/boundary-acceptance.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/boundary-test.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/run-negative-contracts.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/run-single-source32-pressure.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/run-two-datanode.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/test-negative-contracts.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/test-single-source32-pressure.py",
+    "check": "python AST",
+    "passed": true
+  },
+  {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/verify-runtime.py",
+    "check": "python AST",
+    "passed": true
+  }
+]

@@ -1,0 +1,167 @@
+{
+  "head": "c504596a3de062af01cf71fb9ec9a13534297038",
+  "totals": {
+    "tests": 273,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 6
+  },
+  "classes": {
+    "org.apache.iotdb.db.queryengine.plan.planner.DeviceTableScanParallelPipelineTest": {
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.statistics.MetricTreeRenderTest": {
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyEnforcementIntegrationTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyEnforcementDecisionTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.execution.operator.sink.HashPartitioningSinkOperatorTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.planner.DeviceTimePartitionMorselTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.SpecializedPlanningBaselineTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.GroupedHashExchangeOwnershipGateTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableEquiJoinHashRepartitionGuardTest": {
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PlanPropertyProviderTest": {
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.WindowFunctionOptimizationTest": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableEquiJoinHashRepartitionTopologyTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceVisitorTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyEnforcerTest": {
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PlanPropertyMetadataCoverageTest": {
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyEnforcementTraceTest": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.analyze.TypeProviderSerializationContractTest": {
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.execution.driver.DriverMorselCompletionStatisticsTest": {
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest": {
+      "tests": 44,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 5
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableGroupByHashRepartitionTopologyTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.SingleSourceGroupByHashRepartitionPlanningTest": {
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest": {
+      "tests": 31,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.GroupByHashRepartitionSourceShapeTest": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.execution.exchange.RemoteShufflePayloadByteTrackerTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.TableHashPartitioningShuffleSinkNodeSerdeTest": {
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyPlanningConfigurationIsolationTest": {
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  }
+}

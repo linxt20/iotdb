@@ -1,0 +1,23 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.
+# See the NOTICE file distributed with this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.  You may obtain a copy of the
+# License at http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License
+# is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+# or implied.  See the License for the specific language governing permissions and limitations
+# under the License.
+
+# Copy only to an isolated test deployment. The runner never writes or restarts this deployment.
+# The candidate and control must be distinct endpoints and retain their exact copied files.
+degree_of_query_parallelism=4
+enable_dop_estimation=false
+
+# Candidate only: both values are required by run_multisource_hash_groupby_e2e.py.
+enable_property_driven_planning=true
+enable_table_group_by_hash_repartition=true
+table_group_by_hash_repartition_partition_count=2
+
+# The control is identical except both enable_* flags above are false. Keep its partition count
+# equal to the candidate's value so the archived difference is only planner selection.

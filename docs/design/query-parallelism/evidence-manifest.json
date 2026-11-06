@@ -1,0 +1,143 @@
+{
+  "scope": "Frozen historical receipts; absolute paths describe source-host provenance. Re-run using REPRODUCING.md on the destination host.",
+  "files": [
+    {
+      "path": "evidence/merged-20261106/final-validation-summary.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/final-validation-summary.json",
+      "sha256": "803214b7d8972f01275a295413fc542fcaeae17f2f58b3970bef63ffd7573a8d"
+    },
+    {
+      "path": "evidence/merged-20261106/full-unit-test-summary.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/full-unit-test-summary.json",
+      "sha256": "94219d10f0efdd9ed6225d0e11a00a77b2c458673a6cfda887515190f1a9bd42"
+    },
+    {
+      "path": "evidence/merged-20261106/clean-package-identity.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/clean-package-identity.json",
+      "sha256": "cfcb4503bbfc678cd0ffbfcaed3a6449cccd399ec3ec5d0614fd8f4735f7f73a"
+    },
+    {
+      "path": "evidence/merged-20261106/python-runtime-identity-thrift25.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/python-runtime-identity-thrift25.json",
+      "sha256": "7a948b3d86ed930fea098b40fbe7eb4e0be61fe06e96cb7d1f882e3dd8877941"
+    },
+    {
+      "path": "evidence/merged-20261106/runtime-config-identity.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/runtime-config-identity.json",
+      "sha256": "34d11557190197c7acfa46b97de71b90f47e5cc1ea7774e7411207e927cf5fe1"
+    },
+    {
+      "path": "evidence/merged-20261106/dynamic-runtime-rpc-snapshots.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/dynamic-runtime-rpc-snapshots.json",
+      "sha256": "ee90fde4de3c60a043a3f9910269670c64d127004cd0e90bbd805a60aa58d8a7"
+    },
+    {
+      "path": "evidence/merged-20261106/i18n-parity.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/i18n-parity.json",
+      "sha256": "a60461e6512672734d519189650ac53e2c20e94543911dc2a457e539075adb28"
+    },
+    {
+      "path": "evidence/merged-20261106/multisource-acceptance.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/multisource-acceptance/multisource-hash-groupby-acceptance.json",
+      "sha256": "886c6cdd4abdcf98caf9a54060e7c303016cad49c652f2785aa74ae059298313"
+    },
+    {
+      "path": "evidence/merged-20261106/multisource-dynamic-acceptance.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-pr-validation-20261106/multisource-dynamic-acceptance/multisource-hash-groupby-acceptance.json",
+      "sha256": "6b60843aaf22cde7cdea3e3c6651a7e1e6b58be68894ce257fdbc461b1dd58e0"
+    },
+    {
+      "path": "evidence/split-20261106/part1-commit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-six-parts-20261106/part1-commit.json",
+      "sha256": "bc7195c4d3f6cd108387f708c7f2b1953c04ce23c1d855180e14ed51da437e51"
+    },
+    {
+      "path": "evidence/split-20261106/part2-commit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-six-parts-20261106/part2-commit.json",
+      "sha256": "07430b5277b34fd2caed1c6ee051207a5e12fa7163370efcebf4d8e9c938637b"
+    },
+    {
+      "path": "evidence/split-20261106/part3-commit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-six-parts-20261106/part3-commit.json",
+      "sha256": "cffe30909415804f5a0699db6f4e86df6fd1250a68eba2c82275921f2ad10ee8"
+    },
+    {
+      "path": "evidence/split-20261106/part4-commit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-six-parts-20261106/part4-commit.json",
+      "sha256": "ec57c780f6b81b46962b880dbfb0a6084dd7003db24f5591e205f3e5dd123b9c"
+    },
+    {
+      "path": "evidence/split-20261106/part5-commit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-six-parts-20261106/part5-commit.json",
+      "sha256": "0bbe70394e883feca39d7edb060ba5f2a649b151446f57903403581f887e171c"
+    },
+    {
+      "path": "evidence/split-20261106/part6-self-tests.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-six-parts-20261106/part6-self-tests.json",
+      "sha256": "5051683e66850cede459a55a84a9f426f53ae810610b8bc454e5ab3e1372b46e"
+    },
+    {
+      "path": "evidence/split-20261106/part6-syntax-checks.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-six-parts-20261106/part6-syntax-checks.json",
+      "sha256": "97804d9089a38e0aed70d5ccb458f2b4bf2a57c531206b70bbca5dca22471a8b"
+    },
+    {
+      "path": "evidence/stage-e-20261104/delivery-final.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/delivery-final.json",
+      "sha256": "788793a257db4823c10a257bd6968e9c2a860535a48b9624d71e95b1a62c24a8"
+    },
+    {
+      "path": "evidence/stage-e-20261104/business-envelope-audit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/runtime-r1/business-envelope-audit/verdict.json",
+      "sha256": "95158138fbd1e37f3dadee114f24bf30f3c3cba792927813f5dffc3b3f5fd164"
+    },
+    {
+      "path": "evidence/stage-e-20261104/refusal-verifier.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/runtime-r1/refusal-verifier/verdict.json",
+      "sha256": "fcc34f48c28d6f8fc3cf08476c0caf6a8c40c8bf08a8d1c5f036f36bacb5040f"
+    },
+    {
+      "path": "evidence/stage-e-20261104/boundary-verifier-r3.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/runtime-r1/boundary-verifier-r3/verdict.json",
+      "sha256": "d1a296f647893e057bf08481e549780e9b372be3f43acda114bcbbec3810e199"
+    },
+    {
+      "path": "evidence/stage-e-20261104/estimation-native-audit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/runtime-r1/estimation-native-audit/verdict.json",
+      "sha256": "7f6539c1396f52ddaed66963959cb2311da3f04e5b7d9ab2e6a02bbbc663f1de"
+    },
+    {
+      "path": "evidence/stage-e-20261104/managed-resource-audit.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/runtime-r1/managed-resource-audit/verdict.json",
+      "sha256": "64f086c85ac96a9e68fa5cf5fc47590b29b3ac4f98e3abe7d016d9cfd53b7e0e"
+    },
+    {
+      "path": "evidence/stage-e-20261104/loaded-runtime-identity-audit-r3.json",
+      "source_host": "sc01",
+      "source_path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/runtime-r1/loaded-runtime-identity-audit-r3/verdict.json",
+      "sha256": "f933523b3bee896eac4118abc639f73ebfd5d9b7dd18dd6ba6bfa1e79a8f3069"
+    }
+  ]
+}

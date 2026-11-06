@@ -1,0 +1,15 @@
+{
+  "worktree": "/tmp/Dev_1/iotdb-pr-package",
+  "head": "aaf84f6dc17070431c6ae45188579a0c5b630e0f",
+  "tree": "36b2f6fcb396cbf00930f54073f9f6ffcceef0c6",
+  "runtime": "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+  "javaSha256": "ac1d3bbe5301caaa1b86966802a4f8ec9f9f4f065c04dec45cc4a9f7dc24d075",
+  "maven": "/usr/bin/mvn",
+  "command": "mvn -B clean package -pl distribution -am -DskipTests [flags from final-candidate-identity.json]",
+  "inputs": {
+    "pom.xml": "99bc9073d7f8e872960732866a763c573088739ea6cf934c5abd64b8588bbd0d",
+    "distribution/pom.xml": "cf728a183b56f19e20b61b95204dfaf9ac92783e7cd62963b6ceac756e258eeb",
+    "iotdb-core/datanode/pom.xml": "61ad395c1ae6c32a5fb616f8c15b8b7966b8cdc4db760ada8ac54a1537ce59ca",
+    "iotdb-protocol/thrift-datanode/src/main/thrift/datanode.thrift": "4d3770601e86057b187954ec501c64ae9c150ab910cfd45e458089bf609fa573"
+  }
+}

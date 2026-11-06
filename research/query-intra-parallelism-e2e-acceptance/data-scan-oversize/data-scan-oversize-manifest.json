@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "operationScope": "B6_REAL_DATA_SCAN_SINGLE_BLOCK_OVERSIZE_AND_CLEANUP",
+  "preferredCorePortOffset": 2500,
+  "coreAudit": {
+    "path": "/root/property-d-artifacts/AD-converged-runtime-20261103-r2/core-final-audit.json",
+    "sha256": "694905060197b3207005625811267bae808141c994caf519257b81e43d6a8fae"
+  },
+  "launcher": {
+    "path": "/root/property-d-artifacts/AD-converged-runtime-20261103-r2/launcher.sh",
+    "sha256": "1e8659dee9b491e7214d4fc7fa98ae99afa4a9ace8b5cd72114c7ffb632eb1dc"
+  },
+  "formalDriver": {
+    "path": "/root/run_b_resource_acceptance_20261102.py",
+    "sha256": "02f3769361dc94883919c21afd500e1caa4d5ee0b12b393f7d5e2bcd49d75fcd"
+  },
+  "historicalFormalExecution": {
+    "path": "/root/property-b-artifacts/B-resource-services-20261102-r1/B-resource-runtime-20261102-r6/oversize-execution-before.json",
+    "sha256": "164eed659f024bfdbfe539d8e58ee1b4642149c5653df3f1081ec01717db5da6"
+  },
+  "sourceManifest": {
+    "path": "/root/property-b-artifacts/AD-converged-build-20261103-r1/contracts-r1-sources.json",
+    "sha256": "021fdefeb3d69ffe998f9d55d6d13af9ab7719df8dbef60c83098ddd38cb500d"
+  },
+  "frozenSourceRoot": "/dev/shm/iotdb-ad-final-20261103-r1/source",
+  "package": {
+    "path": "/root/property-b-artifacts/AD-converged-build-20261103-r1/apache-iotdb-2.0.11-SNAPSHOT-all-bin.zip",
+    "sha256": "f6654b56f6beda73b15162d5aa1a6f4ed81bb375ed1c2464ea3c704045bb9a88"
+  },
+  "originalDistribution": "/dev/shm/iotdb-ad-converged-runtime-20261103-r2/apache-iotdb-2.0.11-SNAPSHOT-all-bin",
+  "serverJarSha256": "24d4b440a195109623d8ac2ee80bb54b9df602f0b11e90999cab211cbfe25733",
+  "directJavaSources": [
+    {
+      "path": "/root/BResourceJmxProbe.java",
+      "sha256": "eeb7f0e7ca0da860dbf23e1cabf27b5be3df8c0f63ece16213202d49d2625980",
+      "historicalCompileInput": "/root/property-b-artifacts/B-resource-services-20261102-r1/B-resource-runtime-20261102-r6/BResourceJmxProbe.java"
+    },
+    {
+      "path": "/root/BHeldQueryProbe.java",
+      "sha256": "ce6610c6478ca3530bc27d231a3d59714ebe62f0f5a1d7ebfac8ddf796e3af87",
+      "historicalCompileInput": "/root/property-b-artifacts/B-resource-services-20261102-r1/B-resource-runtime-20261102-r6/BHeldQueryProbe.java"
+    },
+    {
+      "path": "/root/property-d-artifacts/D6-final-runtime-20261102/A6SqlProbe.java",
+      "sha256": "abda71aa3fb5e01b5d9bcc8ec7647ba4668f36852d8e22b3905424a531d0b690",
+      "historicalCompileInput": "/root/property-b-artifacts/B-resource-services-20261102-r1/B-resource-runtime-20261102-r6/A6SqlProbe.java"
+    }
+  ],
+  "requiredProductionSources": [
+    "iotdb-protocol/thrift-datanode/src/main/thrift/datanode.thrift",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/memory/MemoryPool.java",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/ResourceAuditManager.java",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/Driver.java",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecution.java"
+  ],
+  "publicQueryMemoryProportion": "100:10000:20000:5000:20000:50000:20000:5000",
+  "publicConfigRationale": "exchange=32 would still reject a remote SinkChannel initial default block before scan; 50000 preserves public config, workers32 and estimation, but produces a measured FI exchange cap >=1MiB and <8MiB so schema68/default bootstrap pass while actual 8MiB data does not.",
+  "unchangedDefaultDiskThreshold": 0.05,
+  "queryWorkers": 32,
+  "fixture": {
+    "table": "b6.oversize",
+    "hugePayloadBytes": 8388608,
+    "device": "huge",
+    "smallRow": [
+      0,
+      "schema-ok"
+    ],
+    "hugeRow": [
+      1,
+      "y repeated exactly 8388608 bytes"
+    ],
+    "dataRegionGroups": 2
+  },
+  "persistentArchiveBudgetBytes": 104857600,
+  "persistentMinimumFreeBytes": 209715200,
+  "spaceBudget": {
+    "independentRamDistributionBytes": 142265040,
+    "serviceDataFixtureLogsExpectedBytes": [
+      104857600,
+      209715200
+    ],
+    "requiredRamHeadroomBytes": 1073741824,
+    "nodeJvmMaxHeapBytes": 1073741824,
+    "nodeJvmCount": 6,
+    "persistentArchiveMaximumBytes": 104857600
+  },
+  "acceptanceContract": [
+    "Runtime guard requires a new canonical-accounting-fixed package and a source/server-matched PASS receipt explicitly rejecting duplicate local wrapper accounting. Existing 021 identity is tool-debug-only.",
+    "Both candidate configuredDop4 and control configuredDop1 use current source/package and 32 query workers.",
+    "Same table/column small-row query must succeed first, not only SQL CREATE metadata.",
+    "Error must numerically name real request>=8MiB, request>actual cap>=1MiB, and cap must match observed pool budget/32. Schema68 and 1MiB bootstrap/generic errors fail.",
+    "FAILED dataRegion FI must expose a genuinely started driver and actual TableScan.next or positive root rows/TsBlocks; preserve raw original statistics RPC.",
+    "All FI drivers closed, source/queue/endpoint/factory/future/account/shared context and both physical pools independently stable and restored under original terminal_problems contract.",
+    "All six original config contents and permissions restored; all owned PID/port endpoints including JMX exit; RAM originals preserved and every compressed raw member revalidated by SHA."
+  ],
+  "bindingState": "TOOL_DEBUG_ONLY_021_REQUIRES_CANONICAL_RESOURCE_ACCOUNTING_FIXED_PACKAGE",
+  "runtimeAcceptance": false,
+  "servicesStarted": false,
+  "canonicalResourceAccountingAcceptance": {
+    "path": "/REQUIRED_NEW_PACKAGE_CANONICAL_RESOURCE_ACCOUNTING_PASS.json",
+    "sha256": "REQUIRED_SHA256"
+  },
+  "knownOldPackageLimitation": "021/24d4 is retained only for tool ABI/debug binding. Strict single32 acceptance exposed local wrapper and queue double counting (source48/share83802 vs canonical32/share125703); no data-oversize service runtime is authorized on this old package now. Rebind source/package/distribution/history and a matching canonical-accounting regression PASS before starting services."
+}

@@ -1,0 +1,30 @@
+{
+  "status": "TEMPLATE_ONLY_NOT_EXECUTABLE",
+  "sourceManifest": {"path": "REQUIRED_NEW_SOURCE_MANIFEST_ABSOLUTE_PATH", "sha256": "REQUIRED_NEW_MANIFEST_SHA256"},
+  "distribution": "REQUIRED_NEW_DISTRIBUTION_ABSOLUTE_PATH",
+  "serverJarSha256": "REQUIRED_NEW_SERVER_JAR_SHA256",
+  "protocolJarSha256": "REQUIRED_ACTUAL_PROTOCOL_JAR_SHA256",
+  "serviceIdentityReceipt": {"path": "REQUIRED_ACTUAL_SERVICE_IDENTITY_RECEIPT", "sha256": "REQUIRED_RECEIPT_SHA256"},
+  "b4RepairReceipt": {"path": "REQUIRED_B4_REPAIR_RECEIPT", "sha256": "REQUIRED_RECEIPT_SHA256"},
+  "receiptSchema": {
+    "requiredForBoth": ["status=PASS", "sourceManifestSha256 equals sourceManifest.sha256"],
+    "requiredForServiceIdentity": ["serverJarSha256 equals actual serverJarSha256"],
+    "scope": "Use root independent acceptance receipts or explicit normalized receipts that link actual original evidence and file SHA; a label alone is insufficient"
+  },
+  "sides": {
+    "candidate": {
+      "queryPort": 0,
+      "nodes": [
+        {"pid": 0, "queryPort": 0, "internalEndpoint": "REQUIRED", "config": "REQUIRED_ABSOLUTE_PATH", "dataDirectories": ["REQUIRED_ACTUAL_DATA_DIRECTORY"]},
+        {"pid": 0, "queryPort": 0, "internalEndpoint": "REQUIRED", "config": "REQUIRED_ABSOLUTE_PATH", "dataDirectories": ["REQUIRED_ACTUAL_DATA_DIRECTORY"]}
+      ]
+    },
+    "control": {
+      "queryPort": 0,
+      "nodes": [
+        {"pid": 0, "queryPort": 0, "internalEndpoint": "REQUIRED", "config": "REQUIRED_ABSOLUTE_PATH", "dataDirectories": ["REQUIRED_ACTUAL_DATA_DIRECTORY"]},
+        {"pid": 0, "queryPort": 0, "internalEndpoint": "REQUIRED", "config": "REQUIRED_ABSOLUTE_PATH", "dataDirectories": ["REQUIRED_ACTUAL_DATA_DIRECTORY"]}
+      ]
+    }
+  }
+}
