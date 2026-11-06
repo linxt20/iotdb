@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
@@ -40,7 +45,46 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topKRanking;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.window;
 
+@RunWith(Parameterized.class)
 public class WindowFunctionOptimizationTest {
+  @Parameterized.Parameters(name = "enable_property_driven_planning={0}")
+  public static Object[] flagValues() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public boolean propertyDrivenPlanning;
+
+  private boolean originalProperty;
+  private boolean originalHash;
+  private boolean originalOrdered;
+  private int originalDataNodeId;
+
+  @Before
+  public void applyConfiguration() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    originalProperty = config.isEnablePropertyDrivenPlanning();
+    originalHash = config.isEnableTableGroupByHashRepartition();
+    originalOrdered = config.isEnableOrderedParallelScan();
+    originalDataNodeId = config.getDataNodeId();
+    config.setEnablePropertyDrivenPlanning(propertyDrivenPlanning);
+    config.setEnableTableGroupByHashRepartition(false);
+    config.setEnableOrderedParallelScan(false);
+  }
+
+  @After
+  public void restoreConfiguration() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    config.setEnablePropertyDrivenPlanning(originalProperty);
+    config.setEnableTableGroupByHashRepartition(originalHash);
+    config.setEnableOrderedParallelScan(originalOrdered);
+    config.setDataNodeId(originalDataNodeId);
+  }
+
+  private PlanMatchPattern windowPhysicalInput(PlanMatchPattern scan) {
+    // Property enforcement sorts each input before merging when physical ordering is absent.
+    return propertyDrivenPlanning ? sort(scan) : scan;
+  }
+
   @Test
   public void testMergeWindowFunctions() {
     PlanTester planTester = new PlanTester();
@@ -186,7 +230,7 @@ public class WindowFunctionOptimizationTest {
 
     /*  OutputNode
      *     └──TopKRankingNode
-     *         └──CollectNode
+     *         └──MergeSortNode
      *               ├──ExchangeNode
      *               │        └──TableScan
      *               ├──ExchangeNode
@@ -196,10 +240,10 @@ public class WindowFunctionOptimizationTest {
      */
     assertPlan(
         planTester.getFragmentPlan(0),
-        output(topKRanking(collect(exchange(), exchange(), exchange()))));
-    assertPlan(planTester.getFragmentPlan(1), tableScan);
-    assertPlan(planTester.getFragmentPlan(2), tableScan);
-    assertPlan(planTester.getFragmentPlan(3), tableScan);
+        output(topKRanking(mergeSort(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), windowPhysicalInput(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), windowPhysicalInput(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), windowPhysicalInput(tableScan));
   }
 
   @Test
@@ -234,10 +278,10 @@ public class WindowFunctionOptimizationTest {
      */
     assertPlan(
         planTester.getFragmentPlan(0),
-        output(limit(2, topKRanking(collect(exchange(), exchange(), exchange())))));
-    assertPlan(planTester.getFragmentPlan(1), tableScan);
-    assertPlan(planTester.getFragmentPlan(2), tableScan);
-    assertPlan(planTester.getFragmentPlan(3), tableScan);
+        output(limit(2, topKRanking(mergeSort(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), windowPhysicalInput(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), windowPhysicalInput(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), windowPhysicalInput(tableScan));
   }
 
   @Test

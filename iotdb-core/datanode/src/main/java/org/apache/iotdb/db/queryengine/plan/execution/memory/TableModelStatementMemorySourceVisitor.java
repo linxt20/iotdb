@@ -102,15 +102,16 @@ public class TableModelStatementMemorySourceVisitor
     // Generate table model distributed plan
     final TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
-    final PlanNode outputNodeWithExchange =
+    final TableDistributedPlanner distributedPlanner =
         new TableDistributedPlanner(
-                context.getAnalysis(),
-                symbolAllocator,
-                logicalPlan,
-                LocalExecutionPlanner.getInstance().metadata,
-                Coordinator.getInstance().getDistributionPlanOptimizers(),
-                Coordinator.getInstance().getDataNodeLocationSupplier())
-            .generateDistributedPlanWithOptimize(planContext);
+            context.getAnalysis(),
+            symbolAllocator,
+            logicalPlan,
+            LocalExecutionPlanner.getInstance().metadata,
+            Coordinator.getInstance().getDistributionPlanOptimizers(),
+            Coordinator.getInstance().getDataNodeLocationSupplier());
+    final PlanNode outputNodeWithExchange =
+        distributedPlanner.generateDistributedPlanWithOptimize(planContext);
 
     List<String> mainExplainResult;
     if (node.getOutputFormat() == ExplainOutputFormat.JSON) {
@@ -121,6 +122,7 @@ public class TableModelStatementMemorySourceVisitor
               new PlanGraphPrinter(),
               new PlanGraphPrinter.GraphContext(
                   context.getQueryContext().getTypeProvider().getTemplatedInfo()));
+      mainExplainResult = distributedPlanner.appendRuleTrace(mainExplainResult);
     }
 
     Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults =

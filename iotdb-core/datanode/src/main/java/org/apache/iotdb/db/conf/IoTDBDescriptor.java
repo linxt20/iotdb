@@ -578,6 +578,47 @@ public class IoTDBDescriptor {
       conf.setDegreeOfParallelism(Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     }
 
+    conf.setEnablePropertyDrivenPlanning(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_property_driven_planning",
+                Boolean.toString(conf.isEnablePropertyDrivenPlanning()))));
+
+    conf.setEnableTableGroupByHashRepartition(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_table_group_by_hash_repartition",
+                Boolean.toString(conf.isEnableTableGroupByHashRepartition()))));
+
+    conf.setTableGroupByHashRepartitionPartitionCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "table_group_by_hash_repartition_partition_count",
+                Integer.toString(conf.getTableGroupByHashRepartitionPartitionCount()))));
+
+    conf.setEnableDopEstimation(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_dop_estimation", Boolean.toString(conf.isEnableDopEstimation()))));
+
+    conf.setEnableTimePartitionMorsel(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timepartition_morsel",
+                Boolean.toString(conf.isEnableTimePartitionMorsel()))));
+
+    conf.setEnableTimePartitionMorselSizeWeighting(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timepartition_morsel_size_weighting",
+                Boolean.toString(conf.isEnableTimePartitionMorselSizeWeighting()))));
+
+    conf.setEnableOrderedParallelScan(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_ordered_parallel_scan",
+                Boolean.toString(conf.isEnableOrderedParallelScan()))));
+
     conf.setMergeThresholdOfExplainAnalyze(
         Integer.parseInt(
             properties.getProperty(

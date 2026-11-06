@@ -22,9 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
+import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.calc.execution.operator.process.LimitOperator;
 import org.apache.iotdb.calc.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.LastDescAccumulator;
 import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.calc.execution.relational.ColumnTransformerBuilder;
@@ -45,17 +47,25 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -67,8 +77,12 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.IChannelRoutingSinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.TsBlockHashPartitioner;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
@@ -89,6 +103,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOper
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.sink.HashPartitioningSinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
@@ -111,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -135,6 +151,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExternalTsFi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
@@ -146,10 +163,15 @@ import org.apache.iotdb.db.queryengine.udf.IoTDBLocalImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.math.LongMath;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -179,6 +201,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -187,11 +210,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
 import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
@@ -216,6 +241,7 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
@@ -224,6 +250,22 @@ public class DataNodeTableOperatorGenerator
 
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
+
+  /**
+   * Amount of data a single scan driver is expected to work through before it is worth giving the
+   * scan another driver (only used when {@code enable_dop_estimation} is on).
+   *
+   * <p><b>This is an upper bound on parallelism, not a target</b>: when the region holds less than
+   * one multiple of this many bytes, {@code estimatePipelineNumByDataSize} returns 1 and the scan
+   * is <em>not</em> split at all, regardless of {@code dop} or how many devices there are. This is
+   * intentional — on a small dataset the scheduling overhead of extra drivers is not worth paying
+   * for — but it means that turning {@code enable_dop_estimation} on can silently suppress the
+   * split that {@code enable_timepartition_morsel} or a plain high {@code dop} would otherwise
+   * produce. When running an experiment or a demo where the point is to <em>observe</em> parallel
+   * scan splitting, either turn this flag off, or use a dataset whose region holds at least {@code
+   * TARGET_BYTES_PER_SCAN_DRIVER} bytes (128 MiB) so the estimate does not collapse to 1.
+   */
+  private static final long TARGET_BYTES_PER_SCAN_DRIVER = 128L * 1024 * 1024;
 
   public DataNodeTableOperatorGenerator(Metadata metadata) {
     super(metadata);
@@ -351,6 +393,85 @@ public class DataNodeTableOperatorGenerator
           DataNodeQueryMessages
               .QUERY_EXCEPTION_IDENTITYSINKNODE_SHOULD_ONLY_HAVE_ONE_CHILD_IN_TABLE_MODEL_5E995EB3);
     }
+  }
+
+  @Override
+  public Operator visitShuffleSink(ShuffleSinkNode node, LocalExecutionPlanContext context) {
+    checkArgument(
+        node instanceof TableHashPartitioningShuffleSinkNode,
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B);
+    TableHashPartitioningShuffleSinkNode hashNode = (TableHashPartitioningShuffleSinkNode) node;
+    checkArgument(
+        node.getChildren().size() == 1,
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00);
+
+    context.addExchangeSumNum(1);
+    OperatorContext operatorContext =
+        addOperatorContext(
+            context, node.getPlanNodeId(), HashPartitioningSinkOperator.class.getSimpleName());
+    String downStreamPlanNodeIds =
+        node.getDownStreamChannelLocationList().stream()
+            .map(DownStreamChannelLocation::getRemotePlanNodeId)
+            .collect(Collectors.joining(DELIMITER_BETWEEN_ID));
+    if (!downStreamPlanNodeIds.isEmpty()) {
+      operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeIds);
+    }
+
+    checkArgument(
+        MPP_DATA_EXCHANGE_MANAGER != null,
+        DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
+    FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
+    DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    ISinkHandle sinkHandle =
+        MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
+            node.getDownStreamChannelLocationList(),
+            downStreamChannelIndex,
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            localInstanceId.toThrift(),
+            node.getPlanNodeId().getId(),
+            context.getInstanceContext());
+    checkArgument(
+        sinkHandle instanceof IChannelRoutingSinkHandle,
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B);
+    IChannelRoutingSinkHandle channelRoutingSinkHandle = (IChannelRoutingSinkHandle) sinkHandle;
+    checkArgument(
+        channelRoutingSinkHandle.getChannelCount()
+            == hashNode.getPartitioningDescriptor().getPartitionCount(),
+        DataNodeQueryMessages
+            .EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B);
+
+    List<Symbol> sourceOutputSymbols = node.getChildren().get(0).getOutputSymbols();
+    List<Symbol> partitioningSymbols =
+        hashNode.getPartitioningDescriptor().getPartitioningSymbols();
+    int[] keyColumnIndexes =
+        partitioningSymbols.stream().mapToInt(sourceOutputSymbols::indexOf).toArray();
+    // The router hashes the SQL type the planner resolved, not the physical column encoding. See
+    // HashKeyCanonicalizer for why the two must not be allowed to drift apart.
+    Type[] keyColumnTypes =
+        partitioningSymbols.stream()
+            .map(symbol -> context.getTypeProvider().getTableModelType(symbol))
+            .toArray(Type[]::new);
+    for (int keyColumnIndex : keyColumnIndexes) {
+      checkArgument(
+          keyColumnIndex >= 0,
+          DataNodeQueryMessages
+              .EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F);
+    }
+
+    Operator child = node.getChildren().get(0).accept(this, context);
+    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    context.getDriverContext().setSink(sinkHandle);
+    return new HashPartitioningSinkOperator(
+        operatorContext,
+        child,
+        channelRoutingSinkHandle,
+        new TsBlockHashPartitioner(
+            hashNode.getPartitioningDescriptor().getPartitionCount(),
+            keyColumnIndexes,
+            keyColumnTypes));
   }
 
   @Override
@@ -1244,6 +1365,55 @@ public class DataNodeTableOperatorGenerator
         topKRuntimeFilter);
   }
 
+  /**
+   * Keep a transparent WHERE filter in each unordered time-partition morsel instead of collecting
+   * every scanned row into one root {@link FilterAndProjectOperator}. This is deliberately narrow:
+   * only a mappable, non-template WHERE directly above a scan that was already proved safe to split
+   * is moved. Global order, limit/offset, spilled device entries and non-mappable expressions
+   * retain the established root-filter path.
+   */
+  @Override
+  public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
+    if (!canPushTransparentFilterIntoParallelMorsels(node, context)) {
+      return super.visitFilter(node, context);
+    }
+
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    final DataRegion dataRegion = (DataRegion) context.getInstanceContext().getDataRegion();
+    final List<Long> timePartitions =
+        new ArrayList<>(dataRegion.getTsFileManager().getTimePartitions());
+    Collections.sort(timePartitions);
+    return constructParallelDeviceTpMorselScan(scanNode, context, timePartitions, node);
+  }
+
+  private boolean canPushTransparentFilterIntoParallelMorsels(
+      FilterNode node, LocalExecutionPlanContext context) {
+    if (!(node.getChild() instanceof DeviceTableScanNode)
+        || !(context.getInstanceContext().getDataRegion() instanceof DataRegion)) {
+      return false;
+    }
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    // Splitting this scan is only safe when nothing above it needs the rows in the scan's own
+    // order. The distributed planner encodes exactly that in the allowParallelScan bit: it sets
+    // the bit only where the required properties are unordered, and it leaves the bit clear both
+    // when a SortNode has to be kept above and when it proved the scan's own ordering already
+    // satisfies the parent and therefore dropped that SortNode. Reading the bit, instead of only
+    // the device-entry and push-down-limit checks, keeps this path exactly as conservative as the
+    // plain unordered device-parallel path in visitDeviceTableScan.
+    if (!canSplitDeviceTableScanIntoParallelPipelines(scanNode, context)
+        || !IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorsel()
+        || containsDiffFunction(node.getPredicate())
+        || ((DataRegion) context.getInstanceContext().getDataRegion())
+                .getTsFileManager()
+                .getTimePartitions()
+                .size()
+            <= 1) {
+      return false;
+    }
+
+    return true;
+  }
+
   @Override
   public Operator visitTreeDeviceViewScan(
       TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
@@ -1262,6 +1432,10 @@ public class DataNodeTableOperatorGenerator
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
     TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
 
+    if (canSplitDeviceTableScanIntoParallelPipelines(node, context)) {
+      return constructParallelDeviceTableScan(node, context);
+    }
+
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(node, context, topKRuntimeFilter);
 
@@ -1278,6 +1452,48 @@ public class DataNodeTableOperatorGenerator
         DeviceTableScanNode.class.getSimpleName());
 
     return tableScanOperator;
+  }
+
+  /**
+   * Builds a two-level merge tree for an ORDER BY that every per-device scan already satisfies.
+   * Each extra driver merges its own device scans before publishing a sorted stream to the root,
+   * which then merges those streams. Keeping a plain {@code TableSortOperator} out of this path is
+   * important: a CollectOperator would destroy the ordering before that sort got a chance to see
+   * it.
+   *
+   * <p>The optimization is deliberately narrow. It accepts only device/attribute keys followed by
+   * the time column, whose direction must be the scan direction. Field sorting, a time key in the
+   * middle, spilled device entries and a globally pushed-down limit/offset retain the established
+   * single-stream sort path.
+   */
+  @Override
+  public Operator visitSort(SortNode node, LocalExecutionPlanContext context) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+        || !(node.getChild() instanceof DeviceTableScanNode)) {
+      return super.visitSort(node, context);
+    }
+
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
+        || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
+      return super.visitSort(node, context);
+    }
+    return constructParallelOrderedDeviceTableScan(scanNode, node, context);
+  }
+
+  @Override
+  public Operator visitStreamSort(StreamSortNode node, LocalExecutionPlanContext context) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+        || !(node.getChild() instanceof DeviceTableScanNode)) {
+      return super.visitStreamSort(node, context);
+    }
+
+    final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
+    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
+        || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
+      return super.visitStreamSort(node, context);
+    }
+    return constructParallelOrderedDeviceTableScan(scanNode, node, context);
   }
 
   @Override
@@ -1314,6 +1530,787 @@ public class DataNodeTableOperatorGenerator
         .addExternalTsFileQueryResource(node.getExternalTsFileQueryResource());
 
     return externalTsFileTableScanOperator;
+  }
+
+  /**
+   * Judge whether the DeviceTableScanNode can be split into multiple parallel scan pipelines
+   * (grouped by deviceEntries) within current fragment instance:
+   *
+   * <ul>
+   *   <li>the parent node has no ordering requirement on this scan (marked by distributed planner
+   *       when merging children via CollectNode);
+   *   <li>degree of parallelism is larger than 1 and there are at least 2 devices to be split;
+   *   <li>no global limit/offset (shared by all devices) is pushed down into this scan, otherwise
+   *       each split scan will apply the global limit/offset independently and produce wrong
+   *       result.
+   * </ul>
+   */
+  private boolean canSplitDeviceTableScanIntoParallelPipelines(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    return node.isAllowParallelScan()
+        && canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(node, context);
+  }
+
+  /** Conditions shared by unordered splits and ordered merge-tree splits. */
+  private boolean canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    boolean hasGlobalPushDownLimitOffset =
+        (node.getPushDownLimit() > 0 || node.getPushDownOffset() > 0)
+            && !node.isPushLimitToEachDevice();
+    // Parallel scan splits the in-memory deviceEntries list into disjoint subsets. When the device
+    // entries have been spilled to disk, they are represented by a single shared
+    // DeviceEntryDataSetHandle instead (and deviceEntries is empty), which cannot be safely split
+    // across parallel drivers (the segment source is stateful and deletes segments on read). So we
+    // deliberately fall back to a single scan stream in the spill scenario.
+    return context.getDegreeOfParallelism() > 1
+        && !node.getDeviceEntryDataSetHandle().isPresent()
+        && node.getDeviceEntries() != null
+        && node.getDeviceEntries().size() > 1
+        && !hasGlobalPushDownLimitOffset;
+  }
+
+  /**
+   * A table scan consumes one device at a time, but its rows for that one device are naturally in
+   * scan-time order. Consequently a merge tree is safe precisely for constant per-device keys
+   * (TAG/ATTRIBUTE) followed by TIME. Anything else has to keep the regular TableSortOperator.
+   */
+  private static boolean isNaturallyMergeableDeviceScanOrder(
+      DeviceTableScanNode node, OrderingScheme orderingScheme) {
+    final List<Symbol> orderBy = orderingScheme.getOrderBy();
+    if (orderBy.isEmpty()) {
+      return false;
+    }
+    for (int i = 0; i < orderBy.size(); i++) {
+      final ColumnSchema column = node.getAssignments().get(orderBy.get(i));
+      if (column == null) {
+        return false;
+      }
+      if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
+        return i == orderBy.size() - 1
+            && (orderingScheme.getOrdering(orderBy.get(i)).isAscending()
+                == (node.getScanOrder() == Ordering.ASC));
+      }
+      if (column.getColumnCategory() != TsTableColumnCategory.TAG
+          && column.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Splits a naturally ordered table scan into independent driver-local merge trees and merges the
+   * resulting sorted streams in the root driver. A group contains one single-device source per
+   * device: grouping raw multi-device scans would be incorrect for ORDER BY time because such a
+   * scan emits all of one device before advancing to the next.
+   */
+  private Operator constructParallelOrderedDeviceTableScan(
+      DeviceTableScanNode node, SortNode sortNode, LocalExecutionPlanContext context) {
+    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    final int pipelineNum = decideParallelScanPipelineNum(context, deviceEntries.size());
+    final List<List<DeviceEntry>> deviceGroups = partitionIntoGroups(deviceEntries, pipelineNum);
+    final List<TSDataType> dataTypes =
+        getOutputColumnTypes(sortNode, context.getTableTypeProvider());
+    final List<Integer> sortItemIndexes =
+        new ArrayList<>(sortNode.getOrderingScheme().getOrderBy().size());
+    final List<TSDataType> sortItemDataTypes =
+        new ArrayList<>(sortNode.getOrderingScheme().getOrderBy().size());
+    genSortInformation(
+        sortNode.getOutputSymbols(),
+        sortNode.getOrderingScheme(),
+        sortItemIndexes,
+        sortItemDataTypes,
+        context.getTableTypeProvider());
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+    final List<Operator> exchangeOperators = new ArrayList<>(deviceGroups.size());
+    for (int groupIndex = 0; groupIndex < deviceGroups.size(); groupIndex++) {
+      final LocalExecutionPlanContext subContext = context.createSubContext();
+      final List<Operator> deviceScanOperators =
+          new ArrayList<>(deviceGroups.get(groupIndex).size());
+      for (int deviceIndex = 0; deviceIndex < deviceGroups.get(groupIndex).size(); deviceIndex++) {
+        final DeviceTableScanNode deviceScanNode = node.clone();
+        deviceScanNode.setPlanNodeId(
+            new PlanNodeId(
+                node.getPlanNodeId().getId() + "-ordered-" + groupIndex + "-" + deviceIndex));
+        deviceScanNode.setDeviceEntries(
+            Collections.singletonList(deviceGroups.get(groupIndex).get(deviceIndex)));
+        final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+            constructAbstractTableScanOperatorParameter(deviceScanNode, subContext, null);
+        final TableScanOperator deviceScanOperator = new TableScanOperator(parameter);
+        addSource(
+            deviceScanOperator,
+            subContext,
+            deviceScanNode,
+            parameter.measurementColumnNames,
+            parameter.measurementSchemas,
+            parameter.allSensors,
+            DeviceTableScanNode.class.getSimpleName());
+        deviceScanOperators.add(deviceScanOperator);
+      }
+
+      final PlanNodeId localMergeId =
+          new PlanNodeId(node.getPlanNodeId().getId() + "-ordered-local-merge-" + groupIndex);
+      final TableMergeSortOperator localMergeOperator =
+          new TableMergeSortOperator(
+              addOperatorContext(
+                  subContext, localMergeId, TableMergeSortOperator.class.getSimpleName()),
+              deviceScanOperators,
+              dataTypes,
+              getComparatorForTable(
+                  sortNode.getOrderingScheme().getOrderingList(),
+                  sortItemIndexes,
+                  sortItemDataTypes));
+      final ISinkChannel localSinkChannel =
+          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
+              subContext.getDriverContext(), localMergeId.getId());
+      subContext.setISink(localSinkChannel);
+      subContext.addPipelineDriverFactory(localMergeOperator, subContext.getDriverContext(), 0);
+      subContext.constructPipelineMemoryEstimator(
+          localMergeOperator, sortNode.getPlanNodeId(), sortNode, -1);
+
+      final ExchangeOperator exchangeOperator =
+          new ExchangeOperator(
+              context
+                  .getDriverContext()
+                  .addOperatorContext(
+                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                  ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
+                  context.getDriverContext()),
+              localMergeId,
+              localMergeOperator.calculateMaxReturnSize());
+      context.addExchangeOperator(exchangeOperator);
+      exchangeOperators.add(exchangeOperator);
+    }
+    context.addExchangeSumNum(deviceGroups.size());
+
+    return new TableMergeSortOperator(
+        addOperatorContext(
+            context, sortNode.getPlanNodeId(), TableMergeSortOperator.class.getSimpleName()),
+        exchangeOperators,
+        dataTypes,
+        getComparatorForTable(
+            sortNode.getOrderingScheme().getOrderingList(), sortItemIndexes, sortItemDataTypes));
+  }
+
+  /**
+   * Decide how many parallel scan pipelines one DeviceTableScanNode is split into.
+   *
+   * <p>By default this is {@code min(dop, deviceCount)}: parallelism is capped by the configured
+   * degree of parallelism and by the number of devices there is something to read from. When {@code
+   * enable_dop_estimation} is on, the amount of data stored in the region is taken into account as
+   * well, so that a scan over a small region does not get the same number of drivers as a scan over
+   * a large one. The estimated value never exceeds the default cap: estimation can only make the
+   * split smaller, never larger, which keeps the feature conservative.
+   */
+  private int decideParallelScanPipelineNum(
+      LocalExecutionPlanContext context, final int deviceCount) {
+    final int defaultPipelineNum = Math.min(context.getDegreeOfParallelism(), deviceCount);
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation()) {
+      return defaultPipelineNum;
+    }
+    final int estimated =
+        estimatePipelineNumByDataSize(context.getInstanceContext().getDataRegion(), deviceCount);
+    return Math.max(1, Math.min(defaultPipelineNum, estimated));
+  }
+
+  /**
+   * Estimate a target number of scan drivers from the size of the data this region holds.
+   *
+   * <p>The metadata needed for the estimate is the time partition count and the average size of a
+   * TsFile, both reachable from the region the fragment instance is bound to. {@code
+   * getAllTsFileListForQuery(null, null)} deliberately passes a null time partition list: the query
+   * engine does not narrow the scan to particular partitions here (the time predicate is applied by
+   * the scan operator itself), so the estimate has to look at every file of the region.
+   *
+   * <p>Returns {@code deviceCount} (i.e. "no opinion", which leaves the caller's default in place)
+   * whenever the metadata is unavailable, which is the case for regions other than a plain data
+   * region and for regions that hold no file at all.
+   *
+   * <p>When the region does hold files but they add up to less than {@link
+   * #TARGET_BYTES_PER_SCAN_DRIVER}, this legitimately returns 1 — see the caveat on that constant.
+   * On a small dataset (e.g. a quick functional demo) this flag alone will therefore suppress the
+   * split; observing parallel scan splitting on such a dataset requires this flag to stay off.
+   */
+  private int estimatePipelineNumByDataSize(
+      final IDataRegionForQuery dataRegion, final int deviceCount) {
+    if (!(dataRegion instanceof DataRegion)) {
+      return deviceCount;
+    }
+    final TsFileManager tsFileManager = ((DataRegion) dataRegion).getTsFileManager();
+    if (tsFileManager == null) {
+      return deviceCount;
+    }
+    final int timePartitionCount = tsFileManager.getTimePartitions().size();
+    if (timePartitionCount <= 0) {
+      return deviceCount;
+    }
+    final Pair<List<TsFileResource>, List<TsFileResource>> allTsFiles =
+        tsFileManager.getAllTsFileListForQuery(null, null);
+    final int fileCount = allTsFiles.left.size() + allTsFiles.right.size();
+    if (fileCount <= 0) {
+      return deviceCount;
+    }
+    long totalSize = 0L;
+    for (final TsFileResource resource : allTsFiles.left) {
+      totalSize += resource.getTsFileSize();
+    }
+    for (final TsFileResource resource : allTsFiles.right) {
+      totalSize += resource.getTsFileSize();
+    }
+    // One driver per TARGET_BYTES_PER_SCAN_DRIVER worth of data, rounded up, so that a region
+    // holding less than one target's worth still gets a single driver rather than none.
+    return (int) Math.ceil((double) totalSize / TARGET_BYTES_PER_SCAN_DRIVER);
+  }
+
+  /**
+   * Split one DeviceTableScanNode into a number of sub scan pipelines, each of which scans a subset
+   * of deviceEntries with a separate driver. The results of all sub pipelines are merged by a
+   * CollectOperator in current pipeline through local sink/source handle pairs (same way as
+   * OperatorTreeGenerator#createNewPipelineForChildNode). It's safe because parallel scan is only
+   * allowed when the parent has no ordering requirement on this scan.
+   */
+  private Operator constructParallelDeviceTableScan(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorsel()
+        && context.getInstanceContext().getDataRegion() instanceof DataRegion) {
+      final Set<Long> tpIds =
+          ((DataRegion) context.getInstanceContext().getDataRegion())
+              .getTsFileManager()
+              .getTimePartitions();
+      if (tpIds.size() > 1) {
+        // Sort so that the groups the partitions are cut into are stable across runs; the set comes
+        // from a HashSet, whose iteration order is not specified.
+        final List<Long> sortedTpIds = new ArrayList<>(tpIds);
+        Collections.sort(sortedTpIds);
+        return constructParallelDeviceTpMorselScan(node, context, sortedTpIds, null);
+      }
+    }
+    return constructParallelDeviceScan(node, context);
+  }
+
+  /**
+   * Fan out over the cartesian product of (device-subset × timePartition).
+   *
+   * <p>The parallelism factor is decomposed as {@code K = Kt × Kd}: the time partitions are cut
+   * into {@code Kt} disjoint groups and the devices into {@code Kd} disjoint groups, and pipeline
+   * {@code (i, j)} scans exactly {@code deviceGroup(i) × tpGroup(j)}. Every (device, partition)
+   * pair therefore belongs to exactly one pipeline, which is what keeps the union of all pipelines
+   * equal to a single scan of the whole table.
+   *
+   * <p>Note that a scan node always reads a product: its device list and its time predicate are
+   * independent axes. Assigning each pipeline an <em>arbitrary</em> subset of the (device, tp)
+   * pairs would make it read pairs that were meant for another pipeline, i.e. duplicate rows —
+   * hence the product decomposition rather than a flat round-robin over the pairs.
+   *
+   * <p>This is the <em>safe version</em>: it relies only on per-scan-node predicate narrowing and
+   * the existing shared read-only {@code QueryDataSource}. No locks or file reference counts are
+   * touched.
+   *
+   * <p>Spill guard: {@link #canSplitDeviceTableScanIntoParallelPipelines} already refuses to split
+   * when a {@code DeviceEntryDataSetHandle} is present, so this path is only reached with in-memory
+   * device entries.
+   */
+  private Operator constructParallelDeviceTpMorselScan(
+      DeviceTableScanNode node,
+      LocalExecutionPlanContext context,
+      List<Long> sortedTpIds,
+      FilterNode transparentFilter) {
+    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    final int deviceCount = deviceEntries.size();
+    final long interval = TimePartitionUtils.getTimePartitionInterval();
+    final String timeColumnName = requireTimeColumnName(node);
+
+    // Decompose the target parallelism over the two axes as K = Kt × Kd, using the largest device
+    // group count that keeps the product within budget. Time partitions are spread over first: they
+    // are a natural, already-disjoint way to cut the work.
+    final int targetParallelism =
+        Math.min(
+            decideParallelScanPipelineNum(context, deviceCount), deviceCount * sortedTpIds.size());
+    final int tpGroupCount = Math.min(sortedTpIds.size(), targetParallelism);
+    final int deviceGroupCount =
+        Math.max(1, Math.min(deviceCount, targetParallelism / tpGroupCount));
+
+    // File sizes make a much better static work estimate than the number of time partitions. A
+    // missing or incomplete metadata snapshot falls back to the original contiguous, equal-count
+    // split, preserving its established behavior and leaving no estimate annotation behind.
+    final TsFileManager tsFileManager =
+        ((DataRegion) context.getInstanceContext().getDataRegion()).getTsFileManager();
+    // Read the same optional, read-only size snapshot for both scheduling arms. The equal-count
+    // control must retain its deterministic contiguous groups, but it still needs to expose the
+    // resulting group-byte estimates in EXPLAIN ANALYZE; otherwise the two arms cannot be compared
+    // for a skewed workload without reconstructing the plan externally.
+    final Optional<TimePartitionMorselSchedule> sizeSchedule =
+        partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroupCount);
+    final boolean useSizeWeightedSchedule =
+        IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorselSizeWeighting()
+            && sizeSchedule.isPresent();
+    final List<List<Long>> tpGroups =
+        useSizeWeightedSchedule
+            ? sizeSchedule
+                .map(TimePartitionMorselSchedule::groups)
+                .orElseThrow(IllegalStateException::new)
+            : partitionIntoGroups(sortedTpIds, tpGroupCount);
+    final List<List<DeviceEntry>> deviceGroups =
+        partitionIntoGroups(deviceEntries, deviceGroupCount);
+
+    final int pipelineNum = tpGroups.size() * deviceGroups.size();
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+
+    final List<Operator> exchangeOperators = new ArrayList<>(pipelineNum);
+    int morselIdx = 0;
+    for (final List<Long> tpGroup : tpGroups) {
+      for (final List<DeviceEntry> deviceGroup : deviceGroups) {
+        // A pipeline covering several partitions OR-s their ranges together, so that one scan can
+        // serve the whole group.
+        Expression tpPredicate =
+            buildTimePartitionRangePredicate(tpGroup.get(0), interval, timeColumnName);
+        for (int m = 1; m < tpGroup.size(); m++) {
+          tpPredicate =
+              LogicalExpression.or(
+                  tpPredicate,
+                  buildTimePartitionRangePredicate(tpGroup.get(m), interval, timeColumnName));
+        }
+
+        final DeviceTableScanNode subScanNode =
+            cloneSubScanNode(
+                node,
+                new PlanNodeId(node.getPlanNodeId().getId() + "-morsel-" + morselIdx),
+                new ArrayList<>(deviceGroup),
+                tpPredicate);
+        morselIdx++;
+
+        // Build a sub pipeline (driver) exactly as in the plain device-parallel case.
+        final LocalExecutionPlanContext subContext = context.createSubContext();
+        final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+            constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
+        annotateTimePartitionMorsel(
+            parameter,
+            tpGroup,
+            deviceGroup.size(),
+            sizeSchedule.map(schedule -> schedule.estimatedBytes(tpGroup)).orElse(-1L),
+            useSizeWeightedSchedule);
+        final TableScanOperator subScanOperator = new TableScanOperator(parameter);
+        addSource(
+            subScanOperator,
+            subContext,
+            subScanNode,
+            parameter.measurementColumnNames,
+            parameter.measurementSchemas,
+            parameter.allSensors,
+            DeviceTableScanNode.class.getSimpleName());
+
+        final Operator pipelineRoot =
+            transparentFilter == null
+                ? subScanOperator
+                : constructTransparentMorselFilter(transparentFilter, subScanOperator, subContext);
+        if (transparentFilter != null) {
+          // Per-driver EXPLAIN snapshots are keyed by the sub-scan PlanNodeId. The filter retains
+          // its original id so its aggregate statistics remain attached to the logical FilterNode;
+          // carry the physical pipeline root alongside the scan snapshot to make the fusion
+          // visible.
+          subScanOperator
+              .getOperatorContext()
+              .getSpecifiedInfo()
+              .put("MORSEL_PIPELINE_ROOT", FilterAndProjectOperator.class.getSimpleName());
+        }
+
+        final ISinkChannel localSinkChannel =
+            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
+                subContext.getDriverContext(), subScanNode.getPlanNodeId().getId());
+        subContext.setISink(localSinkChannel);
+        subContext.addPipelineDriverFactory(pipelineRoot, subContext.getDriverContext(), 0);
+        subContext.constructPipelineMemoryEstimator(
+            pipelineRoot,
+            transparentFilter == null ? node.getPlanNodeId() : transparentFilter.getPlanNodeId(),
+            subScanNode,
+            -1);
+
+        final ExchangeOperator exchangeOperator =
+            new ExchangeOperator(
+                context
+                    .getDriverContext()
+                    .addOperatorContext(
+                        context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+                MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                    ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
+                    context.getDriverContext()),
+                subScanNode.getPlanNodeId(),
+                pipelineRoot.calculateMaxReturnSize());
+        context.addExchangeOperator(exchangeOperator);
+        exchangeOperators.add(exchangeOperator);
+      }
+    }
+    context.addExchangeSumNum(pipelineNum);
+
+    final OperatorContext collectOperatorContext =
+        addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
+    return new CollectOperator(collectOperatorContext, exchangeOperators);
+  }
+
+  private Operator constructTransparentMorselFilter(
+      FilterNode filterNode, Operator scanOperator, LocalExecutionPlanContext context) {
+    return constructFilterAndProjectOperator(
+        Optional.of(filterNode.getPredicate()),
+        scanOperator,
+        filterNode.getOutputSymbols().stream()
+            .map(Symbol::toSymbolReference)
+            .toArray(Expression[]::new),
+        getInputColumnTypes(filterNode, context.getTableTypeProvider()),
+        makeLayout(filterNode.getChildren()),
+        filterNode.getPlanNodeId(),
+        context);
+  }
+
+  /**
+   * Split a list into {@code groupCount} contiguous, near-equal, disjoint slices. The slices are
+   * ordered and together cover the input exactly once, which is what makes the pipelines' scans
+   * partition the table instead of overlapping.
+   */
+  private static <T> List<List<T>> partitionIntoGroups(List<T> items, int groupCount) {
+    final int size = items.size();
+    final int groups = Math.max(1, Math.min(groupCount, size));
+    final int avg = size / groups;
+    final int remainder = size % groups;
+    final List<List<T>> result = new ArrayList<>(groups);
+    int start = 0;
+    for (int i = 0; i < groups; i++) {
+      final int end = start + avg + (i < remainder ? 1 : 0);
+      result.add(new ArrayList<>(items.subList(start, end)));
+      start = end;
+    }
+    return result;
+  }
+
+  /**
+   * Attach plan-time work estimates to each morsel's own scan context. The normal operator
+   * statistics pipeline carries this information through EXPLAIN ANALYZE beside actual output rows
+   * and CPU time, which makes the scheduling decision and its observed long tail comparable from a
+   * single exported plan.
+   */
+  private static void annotateTimePartitionMorsel(
+      AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter,
+      List<Long> timePartitions,
+      int deviceCount,
+      long estimatedBytes,
+      boolean sizeWeighted) {
+    parameter.context.recordSpecifiedInfo(
+        "MORSEL_SCHEDULING", sizeWeighted ? "LPT_TSFILE_BYTES" : "EQUAL_PARTITION_COUNT");
+    parameter.context.recordSpecifiedInfo("MORSEL_TIME_PARTITIONS", timePartitions.toString());
+    parameter.context.recordSpecifiedInfo("MORSEL_DEVICE_COUNT", Integer.toString(deviceCount));
+    if (estimatedBytes >= 0) {
+      parameter.context.recordSpecifiedInfo(
+          "MORSEL_ESTIMATED_TSFILE_BYTES", Long.toString(estimatedBytes));
+    }
+  }
+
+  /**
+   * Partition time partitions by their TsFile sizes with deterministic largest-processing-time
+   * scheduling. A time partition remains indivisible, so this greedily assigns the next largest
+   * partition to the currently lightest group. For this static estimate, that is substantially less
+   * susceptible to a single large time partition than equal-count grouping.
+   *
+   * <p>The TsFile manager supplies an independent read-locked snapshot for every requested time
+   * partition. Size metadata is deliberately treated as optional: if a snapshot, its file lists, or
+   * a file size cannot be read, this method returns empty and the caller uses the legacy split.
+   * This never changes scan coverage or correctness; it only declines a scheduling optimization.
+   */
+  private static Optional<TimePartitionMorselSchedule> partitionTimePartitionsBySize(
+      TsFileManager tsFileManager, List<Long> timePartitions, int groupCount) {
+    if (tsFileManager == null || timePartitions.isEmpty()) {
+      return Optional.empty();
+    }
+
+    final List<TimePartitionWeight> weights = new ArrayList<>(timePartitions.size());
+    long totalSize = 0L;
+    try {
+      for (final Long timePartition : timePartitions) {
+        final Pair<List<TsFileResource>, List<TsFileResource>> files =
+            tsFileManager.getTsFileListSnapshot(timePartition);
+        if (files == null || files.left == null || files.right == null) {
+          return Optional.empty();
+        }
+        long partitionSize = 0L;
+        for (final TsFileResource resource : files.left) {
+          if (resource == null) {
+            return Optional.empty();
+          }
+          final long fileSize = resource.getTsFileSize();
+          if (fileSize < 0) {
+            return Optional.empty();
+          }
+          partitionSize = LongMath.saturatedAdd(partitionSize, fileSize);
+        }
+        for (final TsFileResource resource : files.right) {
+          if (resource == null) {
+            return Optional.empty();
+          }
+          final long fileSize = resource.getTsFileSize();
+          if (fileSize < 0) {
+            return Optional.empty();
+          }
+          partitionSize = LongMath.saturatedAdd(partitionSize, fileSize);
+        }
+        totalSize = LongMath.saturatedAdd(totalSize, partitionSize);
+        weights.add(new TimePartitionWeight(timePartition, partitionSize));
+      }
+    } catch (RuntimeException ignored) {
+      // Metadata only guides scheduling. Retain the legacy split if a concurrent file lifecycle
+      // change makes a size unavailable rather than allowing it to affect query execution.
+      return Optional.empty();
+    }
+
+    // Empty or zero-byte snapshots do not contain useful work information. Keeping the original
+    // grouping also makes this indistinguishable-from-no-metadata case behaviorally stable.
+    if (totalSize == 0L) {
+      return Optional.empty();
+    }
+
+    weights.sort(
+        Comparator.comparingLong(TimePartitionWeight::size)
+            .reversed()
+            .thenComparingLong(TimePartitionWeight::timePartition));
+    final int groupNum = Math.max(1, Math.min(groupCount, timePartitions.size()));
+    final PriorityQueue<TimePartitionGroup> groups =
+        new PriorityQueue<>(
+            Comparator.comparingLong(TimePartitionGroup::size)
+                .thenComparingInt(TimePartitionGroup::index));
+    for (int i = 0; i < groupNum; i++) {
+      groups.add(new TimePartitionGroup(i));
+    }
+    for (final TimePartitionWeight weight : weights) {
+      final TimePartitionGroup group = groups.remove();
+      group.add(weight);
+      groups.add(group);
+    }
+
+    final List<TimePartitionGroup> orderedGroups = new ArrayList<>(groups);
+    orderedGroups.sort(Comparator.comparingInt(TimePartitionGroup::index));
+    final List<List<Long>> result = new ArrayList<>(groupNum);
+    for (final TimePartitionGroup group : orderedGroups) {
+      Collections.sort(group.timePartitions);
+      result.add(group.timePartitions);
+    }
+    final Map<Long, Long> sizeByTimePartition = new HashMap<>(weights.size());
+    for (TimePartitionWeight weight : weights) {
+      sizeByTimePartition.put(weight.timePartition(), weight.size());
+    }
+    return Optional.of(new TimePartitionMorselSchedule(result, sizeByTimePartition));
+  }
+
+  private static final class TimePartitionMorselSchedule {
+    private final List<List<Long>> groups;
+    private final Map<Long, Long> sizeByTimePartition;
+
+    private TimePartitionMorselSchedule(
+        List<List<Long>> groups, Map<Long, Long> sizeByTimePartition) {
+      this.groups = groups;
+      this.sizeByTimePartition = sizeByTimePartition;
+    }
+
+    private List<List<Long>> groups() {
+      return groups;
+    }
+
+    private long estimatedBytes(List<Long> timePartitions) {
+      long estimatedBytes = 0L;
+      for (Long timePartition : timePartitions) {
+        estimatedBytes =
+            LongMath.saturatedAdd(estimatedBytes, sizeByTimePartition.get(timePartition));
+      }
+      return estimatedBytes;
+    }
+  }
+
+  private static final class TimePartitionWeight {
+    private final long timePartition;
+    private final long size;
+
+    private TimePartitionWeight(long timePartition, long size) {
+      this.timePartition = timePartition;
+      this.size = size;
+    }
+
+    private long timePartition() {
+      return timePartition;
+    }
+
+    private long size() {
+      return size;
+    }
+  }
+
+  private static final class TimePartitionGroup {
+    private final int index;
+    private final List<Long> timePartitions = new ArrayList<>();
+    private long size;
+
+    private TimePartitionGroup(int index) {
+      this.index = index;
+    }
+
+    private void add(TimePartitionWeight weight) {
+      timePartitions.add(weight.timePartition());
+      size = LongMath.saturatedAdd(size, weight.size());
+    }
+
+    private int index() {
+      return index;
+    }
+
+    private long size() {
+      return size;
+    }
+  }
+
+  /**
+   * Resolve the symbol name of the time column of a scan, i.e. the assignment entry whose column
+   * category is {@code TIME}. This mirrors how {@code CommonTableScanOperatorParameters} finds the
+   * time column, and avoids hardcoding the conventional name {@code time}, which a user is free to
+   * alias.
+   */
+  private static String requireTimeColumnName(DeviceTableScanNode node) {
+    for (final Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      if (entry.getValue().getColumnCategory() == TsTableColumnCategory.TIME) {
+        return entry.getKey().getName();
+      }
+    }
+    throw new IllegalStateException(
+        String.format(
+            DataNodeQueryMessages.QUERY_EXCEPTION_UNEXPECTED_COLUMN_CATEGORY_S_6E60A44E,
+            "no TIME column in " + node.getPlanNodeId()));
+  }
+
+  /**
+   * Build a time predicate {@code time >= tpStart AND time < tpEnd} narrowing a scan to one time
+   * partition. The time column is referenced the same way the analyzer does it, i.e. as a {@link
+   * SymbolReference}, so that the relational {@code ConvertPredicateToTimeFilterVisitor} recognises
+   * the comparison as a time filter.
+   *
+   * <p>Package-private so that {@code DeviceTimePartitionMorselTest} can assert directly on the
+   * ranges this produces — the morsel split is only meaningful if these ranges tile the partitions
+   * exactly once, which is not observable from the pipeline counts alone.
+   */
+  static Expression buildTimePartitionRangePredicate(
+      long tpId, long interval, String timeColumnName) {
+    final long lower = TimePartitionUtils.getStartTimeByPartitionId(tpId);
+    // Saturated so that the last, clamped partition does not wrap around to a negative bound and
+    // turn an upper bound into a lower one.
+    final long upper = LongMath.saturatedAdd(lower, interval);
+    final Expression timeColumn = new SymbolReference(timeColumnName);
+    return LogicalExpression.and(
+        new ComparisonExpression(
+            ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+            timeColumn,
+            new LongLiteral(String.valueOf(lower))),
+        new ComparisonExpression(
+            ComparisonExpression.Operator.LESS_THAN,
+            timeColumn,
+            new LongLiteral(String.valueOf(upper))));
+  }
+
+  /**
+   * Clone a {@link DeviceTableScanNode}, narrowing it to a subset of devices and to a single time
+   * partition.
+   *
+   * <p>Delegates to {@link DeviceTableScanNode#clone()} first so that every field is carried over —
+   * including the transient ones ({@code topKRuntimeFilterSourceId}, {@code
+   * deviceEntryDataSetHandle}, {@code coordinatorDeviceEntryDataSet}) that {@code clone()} copies
+   * manually and that a hand-rolled constructor call would silently drop. Only afterwards are the
+   * id, the device subset and the time predicate replaced.
+   *
+   * <p>The partition predicate is <em>AND</em>-ed with whatever time predicate the query already
+   * had, never substituted for it: the original predicate encodes the user's own {@code WHERE}
+   * bound, which stays in force for every morsel.
+   */
+  private static DeviceTableScanNode cloneSubScanNode(
+      DeviceTableScanNode origin,
+      PlanNodeId newId,
+      List<DeviceEntry> newDeviceEntries,
+      Expression tpPredicate) {
+    final DeviceTableScanNode subScanNode = origin.clone();
+    subScanNode.setPlanNodeId(newId);
+    subScanNode.setTimePredicate(
+        origin
+            .getTimePredicate()
+            .map(original -> (Expression) LogicalExpression.and(original, tpPredicate))
+            .orElse(tpPredicate));
+    // setDeviceEntries also clears the spill handle, matching the invariant that an inline device
+    // list and an on-disk spill handle are never both set.
+    subScanNode.setDeviceEntries(newDeviceEntries);
+    return subScanNode;
+  }
+
+  /**
+   * Core device-parallel scan: split one {@link DeviceTableScanNode} into {@link
+   * #decideParallelScanPipelineNum} sub pipelines, each scanning a contiguous slice of the device
+   * entry list.
+   */
+  private Operator constructParallelDeviceScan(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
+    final int deviceCount = deviceEntries.size();
+    final int pipelineNum = decideParallelScanPipelineNum(context, deviceCount);
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+
+    final List<Operator> exchangeOperators = new ArrayList<>(pipelineNum);
+    final int avgDeviceNum = deviceCount / pipelineNum;
+    final int remainder = deviceCount % pipelineNum;
+    int startIndex = 0;
+    for (int i = 0; i < pipelineNum; i++) {
+      final int endIndex = startIndex + avgDeviceNum + (i < remainder ? 1 : 0);
+      // construct a sub scan node which is same as the origin node except deviceEntries and
+      // planNodeId, the new planNodeId is only used in execution level (never serialized)
+      final DeviceTableScanNode subScanNode = node.clone();
+      subScanNode.setPlanNodeId(new PlanNodeId(node.getPlanNodeId().getId() + "-parallel-" + i));
+      subScanNode.setDeviceEntries(new ArrayList<>(deviceEntries.subList(startIndex, endIndex)));
+      startIndex = endIndex;
+
+      // each sub scan is executed by a new pipeline (a new driver)
+      final LocalExecutionPlanContext subContext = context.createSubContext();
+      final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+          constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
+      final TableScanOperator subScanOperator = new TableScanOperator(parameter);
+      addSource(
+          subScanOperator,
+          subContext,
+          subScanNode,
+          parameter.measurementColumnNames,
+          parameter.measurementSchemas,
+          parameter.allSensors,
+          DeviceTableScanNode.class.getSimpleName());
+
+      // connect the sub pipeline with current pipeline via local sink/source handle pair
+      final ISinkChannel localSinkChannel =
+          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
+              subContext.getDriverContext(), subScanNode.getPlanNodeId().getId());
+      subContext.setISink(localSinkChannel);
+      subContext.addPipelineDriverFactory(subScanOperator, subContext.getDriverContext(), 0);
+      subContext.constructPipelineMemoryEstimator(
+          subScanOperator, node.getPlanNodeId(), subScanNode, -1);
+
+      final ExchangeOperator exchangeOperator =
+          new ExchangeOperator(
+              context
+                  .getDriverContext()
+                  .addOperatorContext(
+                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
+              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                  ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
+                  context.getDriverContext()),
+              subScanNode.getPlanNodeId(),
+              subScanOperator.calculateMaxReturnSize());
+      context.addExchangeOperator(exchangeOperator);
+      exchangeOperators.add(exchangeOperator);
+    }
+    // one local exchange pair for each sub pipeline
+    context.addExchangeSumNum(pipelineNum);
+
+    final OperatorContext collectOperatorContext =
+        addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
+    return new CollectOperator(collectOperatorContext, exchangeOperators);
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(

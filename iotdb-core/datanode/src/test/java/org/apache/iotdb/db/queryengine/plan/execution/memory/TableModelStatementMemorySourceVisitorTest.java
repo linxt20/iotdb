@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
 
+import com.google.common.collect.ImmutableList;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -72,6 +73,19 @@ public class TableModelStatementMemorySourceVisitorTest {
     assertEquals("OutputNode-main", root.getAsJsonObject("mainQuery").get("name").getAsString());
   }
 
+  @Test
+  public void testMergeExplainResultsTextKeepsPropertyEnforcementTrace() throws Exception {
+    List<String> mainExplainResult =
+        ImmutableList.of(
+            "OutputNode-main", "", "Property enforcement:", "  scan: required=[] provided=[]");
+
+    List<String> result = mergeExplainResults(Collections.emptyMap(), mainExplainResult);
+
+    assertSame(mainExplainResult, result);
+    assertEquals("Property enforcement:", result.get(2));
+    assertEquals("  scan: required=[] provided=[]", result.get(3));
+  }
+
   @SuppressWarnings("unchecked")
   private static List<String> mergeExplainResultsJson(
       Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults,
@@ -80,6 +94,20 @@ public class TableModelStatementMemorySourceVisitorTest {
     Method method =
         TableModelStatementMemorySourceVisitor.class.getDeclaredMethod(
             "mergeExplainResultsJson", Map.class, List.class);
+    method.setAccessible(true);
+    return (List<String>)
+        method.invoke(
+            new TableModelStatementMemorySourceVisitor(), cteExplainResults, mainExplainResult);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<String> mergeExplainResults(
+      Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults,
+      List<String> mainExplainResult)
+      throws Exception {
+    Method method =
+        TableModelStatementMemorySourceVisitor.class.getDeclaredMethod(
+            "mergeExplainResults", Map.class, List.class);
     method.setAccessible(true);
     return (List<String>)
         method.invoke(

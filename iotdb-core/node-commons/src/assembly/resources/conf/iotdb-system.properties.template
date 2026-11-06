@@ -1322,6 +1322,43 @@ fragment_instance_dispatch_thread_count=0
 # Datatype: int
 degree_of_query_parallelism=0
 
+# Whether the distributed planner decides where to converge parallel branches by comparing the
+# distribution/ordering properties required by a parent node against those provided by its children.
+# When false, the legacy heuristics are used and the behaviour is unchanged.
+# effectiveMode: restart
+# Datatype: boolean
+enable_property_driven_planning=false
+
+# Whether a direct single-source table GROUP BY may use the experimental hash repartition path.
+# The multi-source N x N topology is intentionally not enabled by this switch.
+# effectiveMode: restart
+# Datatype: boolean
+enable_table_group_by_hash_repartition=false
+
+# Number of final GROUP BY partitions for the experimental single-source hash repartition path.
+# Values less than two retain the default.
+# effectiveMode: restart
+# Datatype: int
+table_group_by_hash_repartition_partition_count=2
+
+# Whether the number of parallel scan drivers is estimated from the amount of data in the region
+# instead of using the fixed degree_of_query_parallelism above.
+# effectiveMode: restart
+# Datatype: boolean
+enable_dop_estimation=false
+
+# Whether a device table scan may be split along the device x time partition dimension instead of
+# the device dimension only.
+# effectiveMode: restart
+# Datatype: boolean
+enable_timepartition_morsel=false
+
+# Whether table ORDER BY queries that can be produced by merging per-device time-ordered scans
+# may split one scan into local parallel drivers. Disabled by default while experimental.
+# effectiveMode: restart
+# Datatype: boolean
+enable_ordered_parallel_scan=false
+
 # The threshold of count map size when calculating the MODE aggregation function
 # effectiveMode: restart
 # Datatype: int

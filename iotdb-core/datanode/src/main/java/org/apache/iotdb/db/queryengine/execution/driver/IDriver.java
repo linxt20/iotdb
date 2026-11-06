@@ -69,6 +69,16 @@ public interface IDriver {
   void close();
 
   /**
+   * Records the statistics a driver owns that nothing inside the driver knows are needed.
+   *
+   * <p>The default is a no-op, so a driver that carries no such statistics need not implement it. A
+   * driver that does must be called before the fragment instance freezes its statistics: freezing
+   * is what converts an operator context's specifiedInfo into the snapshot that is read afterwards,
+   * so a write that happens after the freeze reaches a context nothing looks at again.
+   */
+  default void recordMorselCompletionStatistics() {}
+
+  /**
    * Fail current {@link IDriver}.
    *
    * @param t reason cause this failure

@@ -5659,4 +5659,22 @@ public final class DataNodeQueryMessages {
   public static final String
       MESSAGE_ARG_RULE_ARG_REQUIRED_COMPATIBLE_PARTITIONED_JOINKEYS_ON_BOTH_INPUTS_PROVIDED_ARG_SERIAL_JOIN_FALLBACK_ARG_INPUTS_ARG_OUTPUTS_ARG_E30CFBBA =
           "%s: rule=%s required=两侧输入兼容的 Partitioned(joinKeys) provided=%s -> 串行连接退回（%s）inputs=%s outputs=%s";
+
+  public static final String EXCEPTION_GROUPED_HASH_EXCHANGE_LOST_THE_FRAGMENT_OWNERSHIP_ITS_ARG_SOURCES_X_ARG_BUCKETS_MATRIX_REQUIRES_ARG_THE_QUERY_CANNOT_RUN_ON_THE_KEY_PARTITIONED_PATH_029F18C2 = "分组 Hash Exchange 丢失了 %d 个源 × %d 个桶矩阵所需的 Fragment 归属关系：%s。查询无法在按键分区路径上执行。";
+  public static final String EXCEPTION_HASH_SHUFFLE_SINK_DOES_NOT_OWN_EXCHANGE_ARG_E56CC023 = "Hash Shuffle 输出端不拥有 Exchange %s";
+  public static final String
+      EXCEPTION_PROPERTY_ENFORCEMENT_REQUIRES_EXACTLY_ONE_OUTPUT_BRANCH_4C5CCDDF =
+          "属性强制入口要求恰好一个输出分支。";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
+          "表模型 hash 分区需要且仅需要一个源算子。";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
+          "表模型 hash 分区需要支持通道路由的 sink handle。";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
+          "表模型 hash 分区符号必须由源算子输出。";
+  public static final String
+      MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7 =
+          "属性强制：";
 }

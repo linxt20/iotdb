@@ -38,10 +38,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.VirtualSour
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelTypeProviderExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
@@ -182,13 +184,12 @@ public class PlanFragment {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    id.serialize(byteBuffer);
-    planNodeTree.serialize(byteBuffer);
-    if (typeProvider == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      typeProvider.serialize(byteBuffer);
+    try (PublicBAOS bytes = new PublicBAOS();
+        DataOutputStream stream = new DataOutputStream(bytes)) {
+      serialize(stream);
+      byteBuffer.put(bytes.getBuf(), 0, bytes.size());
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

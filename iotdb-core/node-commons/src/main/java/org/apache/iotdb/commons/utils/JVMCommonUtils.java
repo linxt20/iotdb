@@ -155,7 +155,6 @@ public class JVMCommonUtils {
     return MAX_EXECUTOR_POOL_SIZE;
   }
 
-  @TestOnly
   public static void setDiskSpaceWarningThreshold(double threshold) {
     diskSpaceWarningThreshold = threshold;
   }

@@ -4960,4 +4960,22 @@ public final class DataNodeQueryMessages {
   public static final String
       MESSAGE_ARG_RULE_ARG_REQUIRED_COMPATIBLE_PARTITIONED_JOINKEYS_ON_BOTH_INPUTS_PROVIDED_ARG_SERIAL_JOIN_FALLBACK_ARG_INPUTS_ARG_OUTPUTS_ARG_E30CFBBA =
           "%s: rule=%s required=compatible Partitioned(joinKeys) on both inputs provided=%s -> serial join fallback (%s) inputs=%s outputs=%s";
+
+  public static final String EXCEPTION_GROUPED_HASH_EXCHANGE_LOST_THE_FRAGMENT_OWNERSHIP_ITS_ARG_SOURCES_X_ARG_BUCKETS_MATRIX_REQUIRES_ARG_THE_QUERY_CANNOT_RUN_ON_THE_KEY_PARTITIONED_PATH_029F18C2 = "Grouped hash exchange lost the fragment ownership its %d sources x %d buckets matrix requires: %s. The query cannot run on the key-partitioned path.";
+  public static final String EXCEPTION_HASH_SHUFFLE_SINK_DOES_NOT_OWN_EXCHANGE_ARG_E56CC023 = "Hash shuffle sink does not own exchange %s";
+  public static final String
+      EXCEPTION_PROPERTY_ENFORCEMENT_REQUIRES_EXACTLY_ONE_OUTPUT_BRANCH_4C5CCDDF =
+          "Property enforcement requires exactly one output branch.";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
+          "Table hash partitioning needs exactly one source operator.";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
+          "Table hash partitioning requires a channel-routing sink handle.";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
+          "Table hash partitioning symbols must be output by its source operator.";
+  public static final String
+      MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7 =
+          "Property enforcement:";
 }

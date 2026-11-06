@@ -57,6 +57,8 @@ public abstract class CommonOperatorContext implements Accountable {
   protected final Map<String, Object> specifiedInfo = new ConcurrentHashMap<>();
   protected long output = 0;
   protected long estimatedMemorySize;
+  // Number of TsBlocks produced by this operator; used for metric-tree throughput observation.
+  protected long tsBlockOutputCount = 0L;
 
   protected CommonOperatorContext(int operatorId, PlanNodeId planNodeId, String operatorType) {
     this.operatorId = operatorId;
@@ -146,8 +148,18 @@ public abstract class CommonOperatorContext implements Accountable {
     return estimatedMemorySize;
   }
 
+  /**
+   * Records the rows carried by one produced TsBlock. Since the only caller ({@code
+   * Operator#nextWithTimer}) invokes this once per non-null TsBlock, the invocation count doubles
+   * as the number of output batches, which is what the metric tree reports as TsBlock count.
+   */
   public void addOutputRows(long outputRows) {
     this.output += outputRows;
+    this.tsBlockOutputCount++;
+  }
+
+  public long getTsBlockOutputCount() {
+    return tsBlockOutputCount;
   }
 
   public long getOutputRows() {

@@ -359,6 +359,49 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   private int degreeOfParallelism = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
+  /**
+   * Whether the distributed planner decides where to converge parallel branches by comparing the
+   * distribution/ordering properties required by a parent node against those provided by its
+   * children, instead of the legacy heuristics. When false, the legacy behaviour is used.
+   */
+  private boolean enablePropertyDrivenPlanning = false;
+
+  /**
+   * Whether the experimental single-source GROUP BY path may split a partial aggregation by its
+   * grouping keys before the final aggregation. This remains off until the multi-source N x N
+   * topology is enabled separately.
+   */
+  private boolean enableTableGroupByHashRepartition = false;
+
+  /** Number of final GROUP BY partitions used by the experimental hash-repartition path. */
+  private int tableGroupByHashRepartitionPartitionCount = 2;
+
+  /**
+   * Whether the number of parallel scan drivers is estimated from the amount of data in the region
+   * instead of using the fixed degree of query parallelism. When false, the fixed value is used.
+   */
+  private boolean enableDopEstimation = false;
+
+  /**
+   * Whether a device table scan may be split along the device x time partition dimension instead of
+   * the device dimension only. When false, only the device dimension is used.
+   */
+  private boolean enableTimePartitionMorsel = false;
+
+  /**
+   * Whether a time-partition morsel uses TsFile sizes to form its groups with largest-processing-
+   * time scheduling. When false, the same morsel path uses deterministic equal-count groups, which
+   * provides the control arm for load-balance evidence.
+   */
+  private boolean enableTimePartitionMorselSizeWeighting = true;
+
+  /**
+   * Whether a table ORDER BY whose keys are naturally ordered by per-device scans may use local
+   * merge trees to split one scan into several drivers. Disabled by default while the feature is
+   * experimental.
+   */
+  private boolean enableOrderedParallelScan = false;
+
   private int mergeThresholdOfExplainAnalyze = 10;
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
@@ -2022,6 +2065,66 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   public int getDegreeOfParallelism() {
     return degreeOfParallelism;
+  }
+
+  public void setEnablePropertyDrivenPlanning(boolean enablePropertyDrivenPlanning) {
+    this.enablePropertyDrivenPlanning = enablePropertyDrivenPlanning;
+  }
+
+  public boolean isEnablePropertyDrivenPlanning() {
+    return enablePropertyDrivenPlanning;
+  }
+
+  public void setEnableTableGroupByHashRepartition(boolean enableTableGroupByHashRepartition) {
+    this.enableTableGroupByHashRepartition = enableTableGroupByHashRepartition;
+  }
+
+  public boolean isEnableTableGroupByHashRepartition() {
+    return enableTableGroupByHashRepartition;
+  }
+
+  public void setTableGroupByHashRepartitionPartitionCount(
+      int tableGroupByHashRepartitionPartitionCount) {
+    if (tableGroupByHashRepartitionPartitionCount > 1) {
+      this.tableGroupByHashRepartitionPartitionCount = tableGroupByHashRepartitionPartitionCount;
+    }
+  }
+
+  public int getTableGroupByHashRepartitionPartitionCount() {
+    return tableGroupByHashRepartitionPartitionCount;
+  }
+
+  public void setEnableDopEstimation(boolean enableDopEstimation) {
+    this.enableDopEstimation = enableDopEstimation;
+  }
+
+  public boolean isEnableDopEstimation() {
+    return enableDopEstimation;
+  }
+
+  public void setEnableTimePartitionMorsel(boolean enableTimePartitionMorsel) {
+    this.enableTimePartitionMorsel = enableTimePartitionMorsel;
+  }
+
+  public boolean isEnableTimePartitionMorsel() {
+    return enableTimePartitionMorsel;
+  }
+
+  public void setEnableTimePartitionMorselSizeWeighting(
+      boolean enableTimePartitionMorselSizeWeighting) {
+    this.enableTimePartitionMorselSizeWeighting = enableTimePartitionMorselSizeWeighting;
+  }
+
+  public boolean isEnableTimePartitionMorselSizeWeighting() {
+    return enableTimePartitionMorselSizeWeighting;
+  }
+
+  public void setEnableOrderedParallelScan(boolean enableOrderedParallelScan) {
+    this.enableOrderedParallelScan = enableOrderedParallelScan;
+  }
+
+  public boolean isEnableOrderedParallelScan() {
+    return enableOrderedParallelScan;
   }
 
   public void setMergeThresholdOfExplainAnalyze(int mergeThresholdOfExplainAnalyze) {

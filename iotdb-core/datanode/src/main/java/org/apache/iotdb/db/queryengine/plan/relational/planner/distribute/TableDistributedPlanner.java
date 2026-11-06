@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.distribution.WriteFragmentPa
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphJsonPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
@@ -44,15 +45,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExplainOutputFormat;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -67,6 +71,19 @@ public class TableDistributedPlanner {
   private final List<PlanOptimizer> optimizers;
   private final Metadata metadata;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+
+  /**
+   * The property enforcement decisions taken while generating the plan, shown under EXPLAIN. Empty
+   * unless property driven planning is enabled.
+   */
+  private List<PropertyEnforcementDecision> propertyEnforcementDecisions = Collections.emptyList();
+
+  /**
+   * The generator behind the current distributed plan, kept so the fragment ownership of every
+   * grouped hash exchange can be checked once the split has assigned fragments. Null until {@link
+   * #generateDistributedPlanWithOptimize(TableDistributedPlanGenerator.PlanContext)} has run.
+   */
+  private TableDistributedPlanGenerator distributedPlanGenerator;
 
   @TestOnly
   public TableDistributedPlanner(
@@ -117,6 +134,7 @@ public class TableDistributedPlanner {
                 new PlanGraphPrinter(),
                 new PlanGraphPrinter.GraphContext(
                     mppQueryContext.getTypeProvider().getTemplatedInfo()));
+        planText = appendRuleTrace(planText);
       }
     }
 
@@ -141,10 +159,13 @@ public class TableDistributedPlanner {
       TableDistributedPlanGenerator.PlanContext planContext) {
     // generate table model distributed plan
 
-    List<PlanNode> distributedPlanResult =
+    final TableDistributedPlanGenerator generator =
         new TableDistributedPlanGenerator(
-                mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier)
-            .genResult(logicalQueryPlan.getRootNode(), planContext);
+            mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier);
+    this.distributedPlanGenerator = generator;
+    List<PlanNode> distributedPlanResult =
+        generator.genResult(logicalQueryPlan.getRootNode(), planContext);
+    propertyEnforcementDecisions = List.copyOf(generator.getPropertyEnforcementDecisions());
     checkArgument(
         distributedPlanResult.size() == 1,
         DataNodeQueryMessages.EXCEPTION_ROOT_NODE_MUST_RETURN_ONLY_ONE_FF42061C);
@@ -182,6 +203,91 @@ public class TableDistributedPlanner {
     return planWithExchange;
   }
 
+  /** Frozen decisions from the generator, independent of subsequent plan mutation. */
+  public List<PropertyEnforcementDecision> getPropertyEnforcementDecisions() {
+    return propertyEnforcementDecisions;
+  }
+
+  /** Adds frozen property decisions to regular query and memory-source text EXPLAIN output. */
+  public List<String> appendRuleTrace(final List<String> planText) {
+    if (propertyEnforcementDecisions.isEmpty()) {
+      return planText;
+    }
+    final List<String> withTrace = new ArrayList<>(planText);
+    withTrace.add("");
+    withTrace.add(DataNodeQueryMessages.MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7);
+    propertyEnforcementDecisions.forEach(decision -> withTrace.add("  " + decision.render()));
+    return withTrace;
+  }
+
+  /**
+   * Checks that every grouped hash exchange the generator committed to still owns the fragments its
+   * N x P matrix requires after the split.
+   *
+   * <p>The condition that matters most is the one a serial merge would break: the exchanges of two
+   * different buckets must not end up in one fragment. A single fragment holding both computes the
+   * buckets one after another, which is the round-robin behaviour the key-partitioned path exists
+   * to avoid, and it does so without any visible error.
+   *
+   * <p>This runs after {@link #setSinkForRootInstance} so the check sees the final tree. It throws
+   * rather than falling back: by this stage the plan is materialized, and the alternative to a
+   * broken plan is no plan at all rather than a replanned one. The grouped hash path is behind a
+   * default-off flag, so only a query that opted in can reach the throw.
+   */
+  private void validateGroupedHashExchangeOwnership(SubPlan subPlan) {
+    if (distributedPlanGenerator == null) {
+      return;
+    }
+    List<TableGroupByHashRepartitionTopology> topologies =
+        distributedPlanGenerator.getBuiltGroupByTopologies();
+    if (topologies.isEmpty()) {
+      return;
+    }
+
+    Map<PlanNodeId, String> fragmentIdByNode = new HashMap<>();
+    for (PlanFragment fragment : subPlan.getPlanFragmentList()) {
+      recordFragmentOwnership(
+          fragment.getPlanNodeTree(), fragment.getId().toString(), fragmentIdByNode);
+    }
+    checkGroupedHashExchangeOwnership(topologies, fragmentIdByNode);
+  }
+
+  /**
+   * Throws unless every topology owns the fragments its matrix requires.
+   *
+   * <p>Split out from the caller so the ownership rule can be exercised against a hand-built
+   * fragment map. That is the only way to test the failure side: a split that did its job produces
+   * the right map, so reaching the throw needs a map that is deliberately wrong.
+   */
+  static void checkGroupedHashExchangeOwnership(
+      List<TableGroupByHashRepartitionTopology> topologies,
+      Map<PlanNodeId, String> fragmentIdByNode) {
+    for (TableGroupByHashRepartitionTopology topology : topologies) {
+      TableGroupByHashRepartitionTopology.FragmentTopologyValidation validation =
+          topology.validateFragmentOwnership(fragmentIdByNode);
+      if (!validation.isExecutable()) {
+        throw new IllegalStateException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_GROUPED_HASH_EXCHANGE_LOST_THE_FRAGMENT_OWNERSHIP_ITS_ARG_SOURCES_X_ARG_BUCKETS_MATRIX_REQUIRES_ARG_THE_QUERY_CANNOT_RUN_ON_THE_KEY_PARTITIONED_PATH_029F18C2,
+                topology.getSourceCount(),
+                topology.getPartitionCount(),
+                validation.getFailures()));
+      }
+    }
+  }
+
+  private static void recordFragmentOwnership(
+      PlanNode node, String fragmentId, Map<PlanNodeId, String> fragmentIdByNode) {
+    if (node == null) {
+      return;
+    }
+    fragmentIdByNode.put(node.getPlanNodeId(), fragmentId);
+    for (PlanNode child : node.getChildren()) {
+      recordFragmentOwnership(child, fragmentId, fragmentIdByNode);
+    }
+  }
+
   private DistributedQueryPlan generateDistributedPlan(
       PlanNode outputNodeWithExchange,
       final Map<PlanNodeId, NodeDistribution> nodeDistributionMap) {
@@ -204,6 +310,7 @@ public class TableDistributedPlanner {
     // only execute this step for READ operation
     if (mppQueryContext.isQuery()) {
       setSinkForRootInstance(subPlan, fragmentInstances);
+      validateGroupedHashExchangeOwnership(subPlan);
     }
 
     return new DistributedQueryPlan(subPlan, fragmentInstances);
@@ -261,6 +368,22 @@ public class TableDistributedPlanner {
       if (child instanceof ExchangeNode) {
         ExchangeNode exchangeNode = (ExchangeNode) child;
 
+        // A hash exchange already owns the complete source x bucket channel matrix. Replacing it
+        // with an IdentitySinkNode would silently discard its partitioning descriptor and turn the
+        // data path back into a serial/round-robin exchange. The ordinary exchange edges still get
+        // their identity sinks below, including the root Collect that merges the disjoint groups.
+        if (exchangeNode.getChild() instanceof TableHashPartitioningShuffleSinkNode) {
+          // A ShuffleSinkHandle owns one queue per downstream channel. The exchange must read the
+          // queue selected by its own plan-node id, rather than always queue 0. The latter happens
+          // to look correct for local channels (which are bound by the target plan node), but makes
+          // every remote bucket fetch channel 0: one bucket is duplicated and the remaining buckets
+          // are missing their remote partial results.
+          exchangeNode.setIndexOfUpstreamSinkHandle(
+              hashChannelIndex(
+                  exchangeNode, (TableHashPartitioningShuffleSinkNode) exchangeNode.getChild()));
+          continue;
+        }
+
         //        IdentitySinkNode identitySinkNode =
         //            regionNodeMap.computeIfAbsent(
         //
@@ -278,5 +401,26 @@ public class TableDistributedPlanner {
         exchangeNode.setIndexOfUpstreamSinkHandle(identitySinkNode.getCurrentLastIndex());
       }
     }
+  }
+
+  private static int hashChannelIndex(
+      ExchangeNode exchangeNode, TableHashPartitioningShuffleSinkNode hashSink) {
+    String exchangeNodeId = exchangeNode.getPlanNodeId().toString();
+    return IntStream.range(0, hashSink.getDownStreamChannelLocationList().size())
+        .filter(
+            channelIndex ->
+                exchangeNodeId.equals(
+                    hashSink
+                        .getDownStreamChannelLocationList()
+                        .get(channelIndex)
+                        .getRemotePlanNodeId()))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    String.format(
+                        DataNodeQueryMessages
+                            .EXCEPTION_HASH_SHUFFLE_SINK_DOES_NOT_OWN_EXCHANGE_ARG_E56CC023,
+                        exchangeNodeId)));
   }
 }
