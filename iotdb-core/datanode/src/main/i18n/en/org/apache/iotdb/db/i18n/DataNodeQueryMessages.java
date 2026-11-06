@@ -4925,4 +4925,39 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+
+  public static final String EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923 =
+      "bucketCount must be positive";
+  public static final String
+      EXCEPTION_CANNOT_ENFORCE_PLAN_PROPERTIES_FOR_INCOMPATIBLE_BRANCH_OUTPUT_SYMBOLS_5B0AFEA7 =
+          "Cannot enforce plan properties for incompatible branch output symbols.";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41 =
+      "keyColumnIndexes must not be empty";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_NULL_0D281214 =
+      "keyColumnIndexes must not be null";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554 =
+      "keyColumnIndexes must not contain duplicates";
+  public static final String EXCEPTION_KEYCOLUMNINDEX_IS_OUT_OF_BOUNDS_EE53523F =
+      "keyColumnIndex is out of bounds";
+  public static final String EXCEPTION_KEYCOLUMNTYPES_LENGTH_MUST_MATCH_KEYCOLUMNINDEXES_8B41D0C7 =
+      "keyColumnTypes length must match keyColumnIndexes length";
+  public static final String EXCEPTION_KEYCOLUMNTYPES_MUST_NOT_BE_NULL_5C3A17B9 =
+      "keyColumnTypes must not be null";
+  public static final String EXCEPTION_KEYCOLUMNTYPE_HAS_NO_CANONICAL_ENCODING_2F6B9E14 =
+      "key column type has no canonical hash encoding: %s";
+  public static final String
+      EXCEPTION_REQUIRED_PROPERTY_SYMBOLS_ARE_MISSING_FROM_A_BRANCH_OUTPUT_826CB07E =
+          "Required property symbols are missing from a branch output.";
+  public static final String
+      MESSAGE_ARG_RULE_ARG_EVENT_ARG_INPUTS_ARG_OUTPUTS_ARG_REQUIRED_ARG_PROVIDED_ARG_PROVIDEDAFTER_ARG_ARG_OUTCOME_ARG_REASON_ARG_67571BFD =
+          "%s: rule=%s event=%s inputs=%s outputs=%s required=%s provided=%s providedAfter=%s -> %s outcome=%s reason=%s";
+  public static final String
+      MESSAGE_ARG_RULE_ARG_EVENT_HASH_REPARTITION_APPLIED_REQUIRED_ARG_PROVIDED_ARG_TABLEHASHPARTITIONINGSHUFFLESINKNODE_TABLE_HASH_V1_SOURCES_ARG_PARTITIONS_ARG_N_X_P_EXPERIMENTAL_PATH_HASH_TOPOLOGY_SOURCEIDS_ARG_BUCKETIDS_ARG_EXCHANGEIDS_ARG_316A0F0F =
+          "%s: rule=%s event=HASH_REPARTITION_APPLIED required=%s provided=%s -> TableHashPartitioningShuffleSinkNode TABLE_HASH_V1 sources=%s partitions=%s (N x P experimental path) hash-topology sourceIds=%s bucketIds=%s exchangeIds=%s";
+  public static final String
+      MESSAGE_ARG_RULE_ARG_EVENT_SPECIALIZED_INPUTS_ARG_OUTPUTS_ARG_PROVIDED_ARG_REASON_ARG_04563442 =
+          "%s: rule=%s event=SPECIALIZED inputs=%s outputs=%s provided=%s reason=%s";
+  public static final String
+      MESSAGE_ARG_RULE_ARG_REQUIRED_COMPATIBLE_PARTITIONED_JOINKEYS_ON_BOTH_INPUTS_PROVIDED_ARG_SERIAL_JOIN_FALLBACK_ARG_INPUTS_ARG_OUTPUTS_ARG_E30CFBBA =
+          "%s: rule=%s required=compatible Partitioned(joinKeys) on both inputs provided=%s -> serial join fallback (%s) inputs=%s outputs=%s";
 }

@@ -610,4 +610,8 @@ public final class CalcMessages {
 
   public static final String EXCEPTION_SCALAR_SUB_QUERY_DOES_NOT_HAVE_OUTPUT_E64DBE29 =
       "标量子查询没有输出。";
+
+  public static final String EXCEPTION_HASH_INNER_JOIN_KEYS_MUST_BE_NON_EMPTY_AND_ALIGNED_26278CEA = "Hash 内连接的键不能为空且必须一一对应";
+  public static final String EXCEPTION_UNSUPPORTED_HASH_KEY_TYPE_FOR_EQUALITY_ARG_8AC6D0A8 = "不支持的 Hash 键等值比较类型：%s";
+  public static final String EXCEPTION_UNSUPPORTED_HASH_KEY_TYPE_FOR_ROUTING_ARG_988AE6C7 = "不支持的 Hash 键路由类型：%s";
 }

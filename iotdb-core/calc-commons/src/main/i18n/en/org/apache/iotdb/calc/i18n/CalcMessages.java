@@ -637,4 +637,8 @@ public final class CalcMessages {
 
   public static final String EXCEPTION_SCALAR_SUB_QUERY_DOES_NOT_HAVE_OUTPUT_E64DBE29 =
       "Scalar sub-query does not have output.";
+
+  public static final String EXCEPTION_HASH_INNER_JOIN_KEYS_MUST_BE_NON_EMPTY_AND_ALIGNED_26278CEA = "Hash inner join keys must be non-empty and aligned";
+  public static final String EXCEPTION_UNSUPPORTED_HASH_KEY_TYPE_FOR_EQUALITY_ARG_8AC6D0A8 = "Unsupported hash key type for equality: %s";
+  public static final String EXCEPTION_UNSUPPORTED_HASH_KEY_TYPE_FOR_ROUTING_ARG_988AE6C7 = "Unsupported hash key type for routing: %s";
 }

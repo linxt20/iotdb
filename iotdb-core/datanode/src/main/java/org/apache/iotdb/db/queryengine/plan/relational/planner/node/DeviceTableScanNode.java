@@ -90,6 +90,14 @@ public class DeviceTableScanNode extends TableScanNode {
   // Id of the TopKNode that produces the runtime filter for this scan; set during optimize.
   @Nullable protected String topKRuntimeFilterSourceId;
 
+  // Whether this scan node is allowed to be split into multiple parallel scan drivers (grouped by
+  // deviceEntries) during local execution planning. It is set to true only when the parent node
+  // has no ordering requirement on this scan (i.e. merged by CollectNode in distributed planning).
+  // This is part of the fragment contract. A distributed plan must preserve the same safe scan
+  // boundary when it is dispatched to a remote DataRegion, otherwise identical regions execute
+  // with different degrees of parallelism.
+  protected boolean allowParallelScan = false;
+
   protected DeviceTableScanNode() {}
 
   public DeviceTableScanNode(
@@ -156,6 +164,7 @@ public class DeviceTableScanNode extends TableScanNode {
             pushLimitToEachDevice,
             containsNonAlignedDevice);
     cloned.topKRuntimeFilterSourceId = topKRuntimeFilterSourceId;
+    cloned.allowParallelScan = allowParallelScan;
     cloned.deviceEntryDataSetHandle = deviceEntryDataSetHandle;
     cloned.coordinatorDeviceEntryDataSet = coordinatorDeviceEntryDataSet;
     return cloned;
@@ -193,6 +202,7 @@ public class DeviceTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, byteBuffer);
 
     ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, byteBuffer);
+    ReadWriteIOUtils.write(node.allowParallelScan, byteBuffer);
   }
 
   protected static void serializeMemberVariables(
@@ -228,6 +238,7 @@ public class DeviceTableScanNode extends TableScanNode {
     ReadWriteIOUtils.write(node.pushLimitToEachDevice, stream);
 
     ReadWriteIOUtils.write(node.topKRuntimeFilterSourceId, stream);
+    ReadWriteIOUtils.write(node.allowParallelScan, stream);
   }
 
   protected static void deserializeMemberVariables(
@@ -265,6 +276,7 @@ public class DeviceTableScanNode extends TableScanNode {
     node.pushLimitToEachDevice = ReadWriteIOUtils.readBool(byteBuffer);
 
     node.topKRuntimeFilterSourceId = ReadWriteIOUtils.readString(byteBuffer);
+    node.allowParallelScan = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   @Override
@@ -379,6 +391,14 @@ public class DeviceTableScanNode extends TableScanNode {
 
   public void setTimeFilter(Filter timeFilter) {
     this.timeFilter = timeFilter;
+  }
+
+  public boolean isAllowParallelScan() {
+    return allowParallelScan;
+  }
+
+  public void setAllowParallelScan(boolean allowParallelScan) {
+    this.allowParallelScan = allowParallelScan;
   }
 
   public boolean containsNonAlignedDevice() {

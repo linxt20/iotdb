@@ -27,11 +27,13 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -154,27 +156,12 @@ public class TypeProvider implements ITableTypeProvider {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(treeModelTypeMap.size(), byteBuffer);
-    for (Map.Entry<String, TSDataType> entry : treeModelTypeMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
-      ReadWriteIOUtils.write(entry.getValue().ordinal(), byteBuffer);
-    }
-
-    if (templatedInfo == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      templatedInfo.serialize(byteBuffer);
-    }
-
-    if (tableModelTypes == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(tableModelTypes.size(), byteBuffer);
-      for (Map.Entry<Symbol, Type> entry : tableModelTypes.entrySet()) {
-        ReadWriteIOUtils.write(entry.getKey().getName(), byteBuffer);
-        TypeUtil.serialize(entry.getValue(), byteBuffer);
-      }
+    try (PublicBAOS bytes = new PublicBAOS();
+        DataOutputStream stream = new DataOutputStream(bytes)) {
+      serialize(stream);
+      byteBuffer.put(bytes.getBuf(), 0, bytes.size());
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
