@@ -39,7 +39,7 @@ public class LocalSinkChannelTest {
   @Test
   public void testSend() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long mockTsBlockSize = 1024L;
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
@@ -64,7 +64,8 @@ public class LocalSinkChannelTest {
     LocalSinkChannel localSinkChannel =
         new LocalSinkChannel(localFragmentInstanceId, queue, mockSinkListener);
 
-    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
+    final long queueCap = queue.getMaxBytesCanReserve();
+    Assert.assertTrue(queueCap >= 10 * mockTsBlockSize);
 
     // Construct SourceHandle
     LocalSourceHandle localSourceHandle =
@@ -100,7 +101,7 @@ public class LocalSinkChannelTest {
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE,
+            queueCap,
             false);
 
     // Receive TsBlocks.
@@ -132,7 +133,7 @@ public class LocalSinkChannelTest {
   @Test
   public void testAbort() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long mockTsBlockSize = 1024L;
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
@@ -157,7 +158,8 @@ public class LocalSinkChannelTest {
     LocalSinkChannel localSinkChannel =
         new LocalSinkChannel(localFragmentInstanceId, queue, mockSinkListener);
 
-    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
+    final long queueCap = queue.getMaxBytesCanReserve();
+    Assert.assertTrue(queueCap >= 10 * mockTsBlockSize);
 
     // Construct SourceHandle
     LocalSourceHandle localSourceHandle =
@@ -194,7 +196,7 @@ public class LocalSinkChannelTest {
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE,
+            queueCap,
             false);
 
     // Abort.

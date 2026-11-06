@@ -75,6 +75,102 @@ public class ExplainAnalyzeOperatorTest {
     assertTrue(root.getAsJsonObject("planStatistics").has("dispatchCostMs"));
   }
 
+  @Test
+  public void largeTextResultIsBatchedWithoutChangingAnyRows() throws Exception {
+    org.apache.iotdb.db.conf.DataNodeMemoryConfig memory =
+        org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance().getMemoryConfig();
+    long original = memory.getMaxBytesPerFragmentInstance();
+    try {
+      memory.setMaxBytesPerFragmentInstance(4096);
+      Operator child = Mockito.mock(Operator.class);
+      ExplainAnalyzeOperator operator =
+          Mockito.mock(ExplainAnalyzeOperator.class, Mockito.CALLS_REAL_METHODS);
+      setField(operator, "child", child);
+      java.util.List<String> expected = new java.util.ArrayList<>();
+      org.apache.tsfile.read.common.block.TsBlockBuilder builder =
+          new org.apache.tsfile.read.common.block.TsBlockBuilder(
+              Collections.singletonList(org.apache.tsfile.enums.TSDataType.TEXT));
+      for (int i = 0; i < 100; i++) {
+        String line = "诊断" + i + "x".repeat(1000);
+        expected.add(line);
+        builder.getTimeColumnBuilder().writeLong(0);
+        builder
+            .getColumnBuilder(0)
+            .writeBinary(
+                new org.apache.tsfile.utils.Binary(line.getBytes(TSFileConfig.STRING_CHARSET)));
+        builder.declarePosition();
+      }
+      setField(operator, "pendingResult", builder.build());
+      java.util.List<String> actual = new java.util.ArrayList<>();
+      int blocks = 0;
+      while (operator.hasNext()) {
+        assertTrue(operator.isBlocked().isDone());
+        TsBlock block = operator.next();
+        assertTrue(block.getSizeInBytes() <= 4096);
+        for (int i = 0; i < block.getPositionCount(); i++)
+          actual.add(block.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+        blocks++;
+      }
+      assertEquals(expected, actual);
+      assertTrue(blocks > 1);
+      assertTrue(operator.isFinished());
+      assertEquals(4096, operator.calculateMaxReturnSize());
+      Mockito.verify(child, Mockito.never()).nextWithTimer();
+    } finally {
+      memory.setMaxBytesPerFragmentInstance(original);
+    }
+  }
+
+  @Test
+  public void closeDropsPendingOutputEvenWhenChildCloseFails() throws Exception {
+    ExplainAnalyzeOperator operator =
+        Mockito.mock(ExplainAnalyzeOperator.class, Mockito.CALLS_REAL_METHODS);
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.doThrow(new IllegalStateException("injected child close failure")).when(child).close();
+    setField(operator, "child", child);
+    setField(operator, "pendingResult", Mockito.mock(TsBlock.class));
+    try {
+      operator.close();
+      org.junit.Assert.fail("close failure was hidden");
+    } catch (IllegalStateException expected) {
+      Field field = ExplainAnalyzeOperator.class.getDeclaredField("pendingResult");
+      field.setAccessible(true);
+      org.junit.Assert.assertNull(field.get(operator));
+    }
+  }
+
+  @Test
+  public void oversizedSingleRowFailsWithExplicitMemoryReason() throws Exception {
+    org.apache.iotdb.db.conf.DataNodeMemoryConfig memory =
+        org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance().getMemoryConfig();
+    long original = memory.getMaxBytesPerFragmentInstance();
+    try {
+      memory.setMaxBytesPerFragmentInstance(32);
+      ExplainAnalyzeOperator operator =
+          Mockito.mock(ExplainAnalyzeOperator.class, Mockito.CALLS_REAL_METHODS);
+      setField(operator, "child", Mockito.mock(Operator.class));
+      org.apache.tsfile.read.common.block.TsBlockBuilder builder =
+          new org.apache.tsfile.read.common.block.TsBlockBuilder(
+              Collections.singletonList(org.apache.tsfile.enums.TSDataType.TEXT));
+      builder.getTimeColumnBuilder().writeLong(0);
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(
+              new org.apache.tsfile.utils.Binary(
+                  "x".repeat(100).getBytes(TSFileConfig.STRING_CHARSET)));
+      builder.declarePosition();
+      setField(operator, "pendingResult", builder.build());
+      try {
+        operator.next();
+        org.junit.Assert.fail("oversized row must fail");
+      } catch (org.apache.iotdb.calc.exception.MemoryNotEnoughException expected) {
+        assertTrue(expected.getMessage().contains("32"));
+      }
+    } finally {
+      memory.setMaxBytesPerFragmentInstance(original);
+    }
+  }
+
   private static MPPQueryContext createTestContext() {
     SessionInfo sessionInfo = new SessionInfo(0, "root", ZoneId.systemDefault());
     MPPQueryContext context =

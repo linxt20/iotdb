@@ -84,7 +84,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class DeviceTableScanParallelPipelineTest {
 
-  private static ExecutorService instanceNotificationExecutor;
+  static ExecutorService instanceNotificationExecutor;
 
   private final DataNodeTableOperatorGenerator generator =
       new DataNodeTableOperatorGenerator(new TableMetadataImpl());
@@ -139,8 +139,9 @@ public class DeviceTableScanParallelPipelineTest {
       DataDriverContext rootDriverContext = (DataDriverContext) context.getDriverContext();
       assertEquals(0, rootDriverContext.getSourceOperators().size());
 
-      // one local exchange pair for each sub pipeline
+      // one local exchange pair and one registered physical queue for each sub pipeline
       assertEquals(4, context.getExchangeSumNum());
+      assertEquals(12, context.getResourceRegistry().getObjectCount());
     } finally {
       closeQuietly(root);
       for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
@@ -285,6 +286,48 @@ public class DeviceTableScanParallelPipelineTest {
    * and the root merges those already sorted streams. This asserts the operator-tree shape that
    * protects that invariant rather than merely counting drivers.
    */
+  /** Unordered time-partition morsels use the same local pipeline builder as device splits. */
+  @Test
+  public void testTimePartitionParallelScanUsesCommonBuilder() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorselSizeWeighting(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    try {
+      TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+      Mockito.when(tsFileManager.getTimePartitions())
+          .thenReturn(new java.util.HashSet<>(Arrays.asList(0L, 1L)));
+      DataRegion dataRegion = Mockito.mock(DataRegion.class);
+      Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+
+      DeviceTableScanNode node = initDeviceTableScanNode(4);
+      node.setAllowParallelScan(true);
+      LocalExecutionPlanContext context = createLocalExecutionPlanContext("time_morsel_builder");
+      context.getDriverContext().getFragmentInstanceContext().setDataRegion(dataRegion);
+      context.setDegreeOfParallelism(4);
+
+      Operator root = node.accept(generator, context);
+      try {
+        assertEquals(CollectOperator.class, root.getClass());
+        assertEquals(4, ((CollectOperator) root).getChildren().size());
+        assertEquals(4, context.getPipelineNumber());
+        assertEquals(4, context.getExchangeSumNum());
+        assertEquals(12, context.getResourceRegistry().getObjectCount());
+        for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
+          assertEquals(TableScanOperator.class, driverFactory.getOperation().getClass());
+        }
+      } finally {
+        closeQuietly(root);
+        for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
+          closeQuietly(driverFactory.getOperation());
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorselSizeWeighting(true);
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(false);
+    }
+  }
+
   @Test
   public void testOrderedParallelScanBuildsTwoLevelMergeTree() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
@@ -397,7 +440,7 @@ public class DeviceTableScanParallelPipelineTest {
     }
   }
 
-  private LocalExecutionPlanContext createLocalExecutionPlanContext(String queryId) {
+  LocalExecutionPlanContext createLocalExecutionPlanContext(String queryId) {
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(new QueryId(queryId), 0), "stub-instance");
     FragmentInstanceStateMachine stateMachine =
@@ -415,7 +458,7 @@ public class DeviceTableScanParallelPipelineTest {
         typeProvider, fragmentInstanceContext, new DataNodeQueryContext(1));
   }
 
-  private DeviceTableScanNode initDeviceTableScanNode(int deviceNum) {
+  DeviceTableScanNode initDeviceTableScanNode(int deviceNum) {
     Symbol time = new Symbol("time");
     Symbol tag1 = new Symbol("tag1");
     Symbol s1 = new Symbol("s1");

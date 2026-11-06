@@ -26,9 +26,11 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotFetchResult;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -36,8 +38,15 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class QueryStatisticsFetcher {
 
@@ -61,6 +70,130 @@ public class QueryStatisticsFetcher {
       fragmentInstanceStatistics.put(instance.getId(), fetchStatistics(instance, clientManager));
     }
     return fragmentInstanceStatistics;
+  }
+
+  /**
+   * Fetches each fragment independently. A timeout or malformed response is recorded for that
+   * fragment and does not turn other fragment responses into zero-valued successes.
+   */
+  public static RuntimeSnapshotFetchResult fetchAllStatisticsBestEffort(
+      List<FragmentInstance> instances,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
+      long timeoutMillis) {
+    return fetchAllStatisticsBestEffort(instances, clientManager, timeoutMillis, false);
+  }
+
+  /** Waits for terminal responses within each fragment's existing fetch deadline. */
+  public static RuntimeSnapshotFetchResult fetchAllTerminalStatisticsBestEffort(
+      List<FragmentInstance> instances,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
+      long timeoutMillis) {
+    return fetchAllStatisticsBestEffort(instances, clientManager, timeoutMillis, true);
+  }
+
+  private static RuntimeSnapshotFetchResult fetchAllStatisticsBestEffort(
+      List<FragmentInstance> instances,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
+      long timeoutMillis,
+      boolean terminalOnly) {
+    if (timeoutMillis <= 0) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_TIMEOUTMILLIS_MUST_BE_POSITIVE_B8EC8967);
+    }
+    Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> responses = new LinkedHashMap<>();
+    Map<FragmentInstanceId, String> errors = new LinkedHashMap<>();
+    if (instances == null || instances.isEmpty()) {
+      return new RuntimeSnapshotFetchResult(responses, errors);
+    }
+    Map<FragmentInstanceId, FragmentInstance> uniqueInstances = new LinkedHashMap<>();
+    java.util.Set<FragmentInstanceId> duplicates = new java.util.HashSet<>();
+    for (FragmentInstance instance : instances) {
+      if (uniqueInstances.putIfAbsent(instance.getId(), instance) != null) {
+        duplicates.add(instance.getId());
+        errors.put(instance.getId(), "DUPLICATE_FRAGMENT_INSTANCE");
+      }
+    }
+    ExecutorService executor =
+        Executors.newFixedThreadPool(
+            Math.min(instances.size(), Runtime.getRuntime().availableProcessors()));
+    try {
+      Map<FragmentInstanceId, Future<TFetchFragmentInstanceStatisticsResp>> futures =
+          new LinkedHashMap<>();
+      for (FragmentInstance instance : uniqueInstances.values()) {
+        if (duplicates.contains(instance.getId())) continue;
+        futures.put(
+            instance.getId(),
+            executor.submit(
+                () ->
+                    terminalOnly
+                        ? fetchTerminalStatistics(instance, clientManager, timeoutMillis)
+                        : fetchStatistics(instance, clientManager)));
+      }
+      for (Map.Entry<FragmentInstanceId, Future<TFetchFragmentInstanceStatisticsResp>> entry :
+          futures.entrySet()) {
+        try {
+          TFetchFragmentInstanceStatisticsResp response =
+              entry.getValue().get(timeoutMillis, TimeUnit.MILLISECONDS);
+          if (response == null || response.status == null) {
+            errors.put(entry.getKey(), "EMPTY_RESPONSE");
+          } else if (response.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            errors.put(entry.getKey(), "STATUS_" + response.status.getCode());
+          } else {
+            TEndPoint endpoint =
+                uniqueInstances.get(entry.getKey()).getHostDataNode().getInternalEndPoint();
+            if (response.isSetFragmentInstanceId()
+                && !entry.getKey().toThrift().equals(response.getFragmentInstanceId())) {
+              errors.put(entry.getKey(), "FRAGMENT_INSTANCE_MISMATCH");
+            } else if (response.isSetSchemaVersion() && !response.isSetFragmentInstanceId()) {
+              errors.put(entry.getKey(), "MISSING_FRAGMENT_IDENTITY");
+            } else if (response.isSetSourceEndpoint()
+                && !(endpoint.getIp() + ":" + endpoint.getPort())
+                    .equals(response.getSourceEndpoint())) {
+              errors.put(entry.getKey(), "ENDPOINT_MISMATCH");
+            } else if (response.isSetSchemaVersion() && !response.isSetSourceEndpoint()) {
+              errors.put(entry.getKey(), "MISSING_SOURCE_ENDPOINT");
+            } else {
+              responses.put(entry.getKey(), response);
+            }
+          }
+        } catch (TimeoutException e) {
+          entry.getValue().cancel(true);
+          errors.put(entry.getKey(), "TIMEOUT");
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          errors.put(entry.getKey(), "INTERRUPTED");
+        } catch (ExecutionException e) {
+          errors.put(
+              entry.getKey(),
+              e.getCause() instanceof TimeoutException
+                  ? "TIMEOUT"
+                  : e.getCause() == null ? "ERROR" : e.getCause().toString());
+        }
+      }
+    } finally {
+      executor.shutdownNow();
+    }
+    return new RuntimeSnapshotFetchResult(responses, errors);
+  }
+
+  private static TFetchFragmentInstanceStatisticsResp fetchTerminalStatistics(
+      FragmentInstance instance,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
+      long timeoutMillis)
+      throws FragmentInstanceFetchException, InterruptedException, TimeoutException {
+    long started = System.nanoTime();
+    long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+    while (true) {
+      if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+      if (System.nanoTime() - started >= timeoutNanos) throw new TimeoutException();
+      TFetchFragmentInstanceStatisticsResp response = fetchStatistics(instance, clientManager);
+      if (response == null
+          || response.isSetIgnoredFragmentReason()
+          || !response.isSetSchemaVersion()
+          || !response.isSetIsTerminal()
+          || (response.isSetIsTerminal() && response.isIsTerminal())) return response;
+      TimeUnit.MILLISECONDS.sleep(1);
+    }
   }
 
   private static TFetchFragmentInstanceStatisticsResp fetchStatistics(

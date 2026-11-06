@@ -33,8 +33,6 @@ public class PipelineSourceHandle extends LocalSourceHandle {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
-      queue.setMaxBytesCanReserve(maxBytesCanReserve);
-    }
+    queue.setMaxBytesCanReserve(maxBytesCanReserve);
   }
 }

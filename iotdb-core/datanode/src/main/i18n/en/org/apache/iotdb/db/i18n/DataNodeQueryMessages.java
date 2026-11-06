@@ -4978,4 +4978,60 @@ public final class DataNodeQueryMessages {
   public static final String
       MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7 =
           "Property enforcement:";
+
+  public static final String EXCEPTION_ARGUMENT_MUST_NOT_BE_NULL_ARG_A1C0C918 = "Argument must not be null: %s";
+  public static final String EXCEPTION_ARG_MUST_BE_NON_NEGATIVE_F31E7CAD = "%s must be non-negative";
+  public static final String EXCEPTION_ARG_MUST_NOT_BE_EMPTY_313AFCE2 = "%s must not be empty";
+  public static final String EXCEPTION_BUCKETID_MUST_BE_NON_NEGATIVE_90E5ABD9 = "bucketId must be non-negative";
+  public static final String EXCEPTION_CANCEL_FRAGMENT_QUERY_MISMATCH =
+      "Cancellation fragment %s does not belong to query %s";
+  public static final String EXCEPTION_CANNOT_REGISTER_RESOURCES_AFTER_QUOTA_FREEZE_416641B9 = "Cannot register resources after quota freeze";
+  public static final String EXCEPTION_CHILD_RETURNED_A_NULL_BLOCKED_FUTURE_41941EB3 = "Child returned a null blocked future";
+  public static final String EXCEPTION_DRIVER_BELONGS_TO_ANOTHER_FRAGMENT_9BDC9524 = "driver belongs to another fragment";
+  public static final String EXCEPTION_DRIVER_FACTORY_HAS_ALREADY_BEEN_CONSUMED_OR_CLOSED_354A2854 = "Driver factory has already been consumed or closed";
+  public static final String EXCEPTION_DUPLICATE_DRIVER_IDENTITY_ARG_9439336C = "duplicate driver identity: %s";
+  public static final String EXCEPTION_DUPLICATE_FRAGMENT_INSTANCE_IN_DISPATCH_GRAPH_ARG_EF1BADDC = "Duplicate fragment instance in dispatch graph: %s";
+  public static final String EXCEPTION_DURATIONMS_MUST_BE_IN_0_600000_25F6A63F = "durationMs must be in (0, 600000]";
+  public static final String EXCEPTION_EXPLAIN_ANALYZE_RESULT_ROW_REQUIRES_ARG_BYTES_BUT_EXCHANGE_LIMIT_IS_ARG_BYTES_DE8EAAD6 = "EXPLAIN ANALYZE result row requires %s bytes but exchange limit is %s bytes";
+  public static final String EXCEPTION_FALLBACK_PLAN_IDENTITY_FIELD_4136E13B = "fallback plan identity field";
+  public static final String EXCEPTION_FRAGMENT_ARG_REFERENCES_AN_UNKNOWN_DOWNSTREAM_INSTANCE_ARG_8EA16E6A = "Fragment %s references an unknown downstream instance %s";
+  public static final String EXCEPTION_FRAGMENT_DISPATCH_DEPENDENCIES_CONTAIN_A_CYCLE_E133EC40 = "Fragment dispatch dependencies contain a cycle";
+  public static final String EXCEPTION_FRAGMENT_HAS_AN_UNBOUND_DOWNSTREAM_INSTANCE_ARG_9361033B = "Fragment has an unbound downstream instance: %s";
+  public static final String EXCEPTION_FRAGMENT_HAS_NO_EXCHANGE_SINK_IN_DISPATCH_GRAPH_ARG_D95FD948 = "Fragment has no exchange sink in dispatch graph: %s";
+  public static final String EXCEPTION_FRAGMENT_WAS_CANCELLED_DURING_DRIVER_CREATION_D031E9B1 = "Fragment was cancelled during driver creation";
+  public static final String EXCEPTION_GENERATION_AND_CAPTUREDATNANOS_MUST_BE_NON_NEGATIVE_B9AD4F5E = "generation and capturedAtNanos must be non-negative";
+  public static final String EXCEPTION_GROUPCOUNT_MUST_BE_POSITIVE_AA4A1FB8 = "groupCount must be positive";
+  public static final String EXCEPTION_INPUTDOP_MUST_BE_NON_NEGATIVE_A43328B5 = "inputDop must be non-negative";
+  public static final String EXCEPTION_NEGATIVE_TABLE_COLLECT_MEMORY_ESTIMATE_ARG_FC2C4F0B = "Negative table collect memory estimate: %s";
+  public static final String EXCEPTION_NEGATIVE_TABLE_PIPELINE_MEMORY_ESTIMATE_ARG_40A30A53 = "Negative table pipeline memory estimate: %s";
+  public static final String EXCEPTION_NEGATIVE_VALUE_62B19D51 = "negative value";
+  public static final String EXCEPTION_NUMOFDRIVERS_MUST_NOT_BE_NEGATIVE_7D6E3815 = "numOfDrivers must not be negative";
+  public static final String EXCEPTION_PARALLEL_PLAN_CONTAINS_AN_EMPTY_BUCKET_0766733B = "parallel plan contains an empty bucket";
+  public static final String EXCEPTION_PIPELINECOUNT_MUST_NOT_BE_NEGATIVE_AB4936D3 = "pipelineCount must not be negative";
+  public static final String EXCEPTION_PLANCHECKSUM_MUST_NOT_BE_EMPTY_7470325F = "planChecksum must not be empty";
+  public static final String EXCEPTION_PLANGENERATION_MUST_BE_NON_NEGATIVE_225F3309 = "planGeneration must be non-negative";
+  public static final String EXCEPTION_PLANGENERATION_MUST_NOT_BE_NEGATIVE_B8792414 = "planGeneration must not be negative";
+  public static final String EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572 = "planner source is missing: %s";
+  public static final String EXCEPTION_PLANNING_RESOURCE_OWNERSHIP_HAS_ALREADY_BEEN_ABORTED_432B8254 = "Planning resource ownership has already been aborted";
+  public static final String EXCEPTION_PLAN_IDENTITY_COUNTERS_MUST_BE_NON_NEGATIVE_52E192F8 = "plan identity counters must be non-negative";
+  public static final String EXCEPTION_QUERYID_MUST_NOT_BE_EMPTY_C9669429 = "queryId must not be empty";
+  public static final String EXCEPTION_RESOURCE_AUDIT_WINDOW_IS_MISSING_OR_EXPIRED_D052202A = "resource audit window is missing or expired";
+  public static final String EXCEPTION_RESOURCE_BUDGETS_MUST_BE_POSITIVE_F3EA50E8 = "resource budgets must be positive";
+  public static final String EXCEPTION_RESOURCE_QUOTA_IS_ALREADY_FROZEN_33314DF3 = "resource quota is already frozen";
+  public static final String EXCEPTION_SAMPLE_KEY_3434C941 = "sample key";
+  public static final String EXCEPTION_SHA_256_IS_UNAVAILABLE_6140A4E9 = "SHA-256 is unavailable";
+  public static final String EXCEPTION_SNAPSHOT_RESPONSE_HAS_NO_FRAGMENT_INSTANCE_ID_5099B351 = "snapshot response has no fragment instance id";
+  public static final String EXCEPTION_SOURCEKEY_C1E2B835 = "sourceKey";
+  public static final String EXCEPTION_SPLIT_REASON_2528562A = "split reason";
+  public static final String EXCEPTION_STATISTICS_A912A94D = "statistics";
+  public static final String EXCEPTION_TABLE_COLLECT_CHILD_FAILED_FBD7C950 = "Table collect child failed";
+  public static final String EXCEPTION_TABLE_COLLECT_CHILD_WAS_CANCELLED_A320FDF9 = "Table collect child was cancelled";
+  public static final String EXCEPTION_TABLE_PIPELINE_CONTAINS_AN_UNCHECKED_CHILD_ESTIMATOR_55F7B9C4 = "Table pipeline contains an unchecked child estimator";
+  public static final String EXCEPTION_TIMEOUTMILLIS_MUST_BE_POSITIVE_B8EC8967 = "timeoutMillis must be positive";
+  public static final String EXCEPTION_TOO_MANY_RESOURCE_AUDIT_WINDOWS_E2E7CD0B = "too many resource audit windows";
+  public static final String EXCEPTION_UNKNOWN_DRIVER_FIELD_ARG_AC56F319 = "unknown driver field: %s";
+  public static final String EXCEPTION_UNORDERED_SCAN_PIPELINE_MUST_USE_A_LOCAL_SINK_CHANNEL_8F69FB47 = "unordered scan pipeline must use a local sink channel";
+  public static final String EXCEPTION_UNSUPPORTED_TIME_PARTITION_RANGE =
+      "Time partition bounds cannot be represented as an exact half-open interval";
+  public static final String MESSAGE_FRAGMENT_INSTANCE_NOT_FOUND_ARG_A6E7A870 = "Fragment instance not found: %s";
 }

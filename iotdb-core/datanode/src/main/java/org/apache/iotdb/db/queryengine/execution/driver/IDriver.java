@@ -63,6 +63,28 @@ public interface IDriver {
     return 0;
   }
 
+  /** Runtime snapshot side-channel; implementations without a source return -1. */
+  default long getFirstProcessNanos() {
+    return -1;
+  }
+
+  default long getLastProcessNanos() {
+    return -1;
+  }
+
+  default long getWallNanos() {
+    return -1;
+  }
+
+  /** Output counters at the driver root. Missing implementations return -1. */
+  default long getRuntimeOutputRows() {
+    return -1;
+  }
+
+  default long getRuntimeTsBlockCount() {
+    return -1;
+  }
+
   void setDriverTaskId(DriverTaskId driverTaskId);
 
   /** Clear resource used by this fragment instance. */

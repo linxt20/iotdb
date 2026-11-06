@@ -2577,7 +2577,7 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
     if (!isSameNode) {
       context.addExchangeSumNum(1);
     }
-    sourceHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+    context.recordLegacySourceQuota(sourceHandle, context.getMaxBytesOneHandleCanReserve());
     ExchangeOperator exchangeOperator =
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     context.addExchangeOperator(exchangeOperator);
@@ -2616,8 +2616,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
     List<Operator> children = dealWithConsumeChildrenOneByOneNode(node, context);
-    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSink(sinkHandle);
+    context.recordLegacySinkQuota(sinkHandle, context.getMaxBytesOneHandleCanReserve());
+    context.setISink(sinkHandle);
 
     return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }
@@ -2658,8 +2658,8 @@ public class OperatorTreeGenerator implements PlanVisitor<Operator, LocalExecuti
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
-    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSink(sinkHandle);
+    context.recordLegacySinkQuota(sinkHandle, context.getMaxBytesOneHandleCanReserve());
+    context.setISink(sinkHandle);
 
     return new ShuffleHelperOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
   }

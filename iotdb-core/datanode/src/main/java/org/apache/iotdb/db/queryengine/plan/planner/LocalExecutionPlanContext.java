@@ -22,6 +22,7 @@ import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.plan.planner.ITableOperatorGeneratorContext;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -40,6 +42,7 @@ import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.CheckedTablePipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
@@ -91,6 +94,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private int exchangeSumNum = 0;
   private final long fragmentExchangeMaxBytes;
   private Map<ISink, Long> legacySinkLimits = new IdentityHashMap<>();
+  private final LocalExecutionResourceRegistry resourceRegistry;
+  private LocalExecutionResourceRegistry.Snapshot frozenResourceSnapshot;
 
   private List<TSDataType> cachedDataTypes;
 
@@ -127,6 +132,9 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.driverContext = new DataDriverContext(instanceContext, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
     this.dataNodeQueryContext = dataNodeQueryContext;
+    this.resourceRegistry = new LocalExecutionResourceRegistry();
+    instanceContext.setPlanningContext(this);
+    resourceRegistry.bindResourceAudit(instanceContext.getId());
   }
 
   // For creating subContext, differ from parent context mainly in driver context
@@ -147,6 +155,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.dataNodeQueryContext = parentContext.dataNodeQueryContext;
     this.timePartitions = parentContext.timePartitions;
     this.parentPlanNodeIdToMemoryEstimator = parentContext.parentPlanNodeIdToMemoryEstimator;
+    this.resourceRegistry = parentContext.resourceRegistry;
   }
 
   // for schema region
@@ -165,12 +174,24 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
         new SchemaDriverContext(instanceContext, schemaRegion, getNextPipelineId());
     this.pipelineDriverFactories = new ArrayList<>();
     this.dataNodeQueryContext = null;
+    this.resourceRegistry = new LocalExecutionResourceRegistry();
+    instanceContext.setPlanningContext(this);
+    resourceRegistry.bindResourceAudit(instanceContext.getId());
+  }
+
+  public void registerPipelineRoot(Operator operation) {
+    java.util.Collection<? extends Operator> sources =
+        driverContext instanceof DataDriverContext
+            ? ((DataDriverContext) driverContext).getSourceOperators()
+            : java.util.Collections.emptyList();
+    resourceRegistry.adoptOperatorRoot(operation, sources);
   }
 
   public void addPipelineDriverFactory(
       Operator operation, DriverContext driverContext, long estimatedMemorySize) {
+    registerPipelineRoot(operation);
     pipelineDriverFactories.add(
-        new PipelineDriverFactory(operation, driverContext, estimatedMemorySize));
+        new PipelineDriverFactory(operation, driverContext, estimatedMemorySize, resourceRegistry));
   }
 
   /**
@@ -188,8 +209,11 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
       final PlanNode root,
       final int dependencyPipelineIndex) {
     PipelineMemoryEstimator currentPipelineMemoryEstimator =
-        PipelineMemoryEstimatorFactory.createPipelineMemoryEstimator(
-            operation, root, dependencyPipelineIndex);
+        getInstanceContext().getSessionInfo() != null
+                && getInstanceContext().getSessionInfo().getSqlDialect() == SqlDialect.TABLE
+            ? new CheckedTablePipelineMemoryEstimator(operation, dependencyPipelineIndex)
+            : PipelineMemoryEstimatorFactory.createPipelineMemoryEstimator(
+                operation, root, dependencyPipelineIndex);
     // As OperatorTreeGenerator traverse the tree in a post-order way, all the children of current
     // pipeline have been recorded in the map.
     List<PipelineMemoryEstimator> childrenMemoryEstimators =
@@ -257,6 +281,23 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     return exchangeSumNum;
   }
 
+  public LocalExecutionResourceRegistry getResourceRegistry() {
+    return resourceRegistry;
+  }
+
+  /** Freeze the physical resource snapshot without changing the legacy effective quota. */
+  public LocalExecutionResourceRegistry.Snapshot freezeResourceQuota() {
+    long fragmentBudgetBytes =
+        IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    frozenResourceSnapshot =
+        resourceRegistry.freeze(fragmentBudgetBytes, getMaxBytesOneHandleCanReserve());
+    return frozenResourceSnapshot;
+  }
+
+  public LocalExecutionResourceRegistry.Snapshot getFrozenResourceSnapshot() {
+    return frozenResourceSnapshot;
+  }
+
   public void setExchangeSumNum(int exchangeSumNum) {
     this.exchangeSumNum = exchangeSumNum;
   }
@@ -274,6 +315,29 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
 
   public void addExchangeOperator(ExchangeOperator exchangeOperator) {
     this.exchangeOperatorList.add(exchangeOperator);
+    getInstanceContext()
+        .recordActualExchangeEdge(
+            getFragmentInstanceId().getFullId()
+                + "/pipeline/"
+                + getDriverContext().getDriverTaskID().getPipelineId()
+                + "/operator/"
+                + exchangeOperator.getOperatorContext().getOperatorId()
+                + "/source/"
+                + exchangeOperator.getSourceId().getId());
+    if (exchangeOperator.getSourceHandle() instanceof ISourceHandle) {
+      resourceRegistry.registerSourceHandle(
+          exchangeOperator.getSourceHandle(),
+          LocalExecutionResourceRegistry.memoryKey(
+              getFragmentInstanceId(), exchangeOperator.getSourceId().getId()));
+    }
+  }
+
+  public void recordLegacySinkQuota(ISink sink, long cap) {
+    resourceRegistry.recordLegacySinkQuota(sink, cap);
+  }
+
+  public void recordLegacySourceQuota(ISourceHandle source, long cap) {
+    resourceRegistry.recordLegacySourceQuota(source, cap);
   }
 
   public void setMaxBytesOneHandleCanReserve() {
@@ -285,7 +349,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
         exchangeSumNum);
     exchangeOperatorList.forEach(
         exchangeOperator ->
-            exchangeOperator.getSourceHandle().setMaxBytesCanReserve(maxBytesOneHandleCanReserve));
+            resourceRegistry.recordLegacySourceQuota(
+                exchangeOperator.getSourceHandle(), maxBytesOneHandleCanReserve));
   }
 
   /** Called after operator generation, before root memory estimation and factory registration. */
@@ -332,13 +397,19 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
           exchangeSumNum);
     }
     legacySinkLimits.forEach(
-        (sink, legacyLimit) ->
-            sink.setMaxBytesCanReserve(
-                sharedBudget ? instanceContext.getOutputMaxBytes() : legacyLimit));
+        (sink, legacyLimit) -> {
+          long effectiveLimit = sharedBudget ? instanceContext.getOutputMaxBytes() : legacyLimit;
+          sink.setMaxBytesCanReserve(effectiveLimit);
+          resourceRegistry.observePublishedQuota(sink, "SINK", effectiveLimit);
+        });
     long sourceLimit =
         sharedBudget ? instanceContext.getInputMaxBytes() : getMaxBytesOneHandleCanReserve();
     exchangeOperatorList.forEach(
-        exchangeOperator -> exchangeOperator.getSourceHandle().setMaxBytesCanReserve(sourceLimit));
+        exchangeOperator -> {
+          ISourceHandle source = exchangeOperator.getSourceHandle();
+          source.setMaxBytesCanReserve(sourceLimit);
+          resourceRegistry.observePublishedQuota(source, "SOURCE", sourceLimit);
+        });
   }
 
   public Set<String> getAllSensors(IDeviceID deviceId, String sensorId) {
@@ -375,6 +446,12 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
       legacySinkLimits.put(sink, getMaxBytesOneHandleCanReserve());
     }
     driverContext.setSink(sink);
+    if (sink instanceof ISinkHandle) {
+      resourceRegistry.registerSinkHandle(
+          (ISinkHandle) sink, getFragmentInstanceId(), getFragmentInstanceId().getFullId());
+    } else {
+      resourceRegistry.registerSink(sink);
+    }
   }
 
   public void setCachedDataTypes(List<TSDataType> cachedDataTypes) {

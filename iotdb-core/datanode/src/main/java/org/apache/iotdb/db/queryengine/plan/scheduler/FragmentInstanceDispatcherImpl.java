@@ -134,11 +134,54 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   public Future<FragInstanceDispatchResult> dispatch(
       SubPlan root, List<FragmentInstance> instances) {
     if (isQuery()) {
+      if (FragmentDispatchDependencyGraph.required(instances)) {
+        return dispatchSharedHashRead(instances);
+      }
       return instances.size() == 1 || root == null
           ? dispatchRead(instances)
           : topologicalParallelDispatchRead(root, instances);
     } else {
       return dispatchWrite(instances);
+    }
+  }
+
+  private Future<FragInstanceDispatchResult> dispatchSharedHashRead(
+      List<FragmentInstance> instances) {
+    long startTime = System.nanoTime();
+    try {
+      return immediateFuture(
+          FragmentDispatchDependencyGraph.dispatch(
+              instances,
+              Coordinator.getInstance().getDispatchExecutor(),
+              instance -> {
+                try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+                  dispatchOneInstance(instance);
+                  return new FragInstanceDispatchResult(true);
+                } catch (FragmentInstanceDispatchException e) {
+                  return new FragInstanceDispatchResult(e.getFailureStatus());
+                } catch (Throwable t) {
+                  LOGGER.warn(DataNodeQueryMessages.EXECUTE_ERROR_CAUSED_BY, t);
+                  return new FragInstanceDispatchResult(
+                      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, t.getMessage()));
+                } finally {
+                  if (queryContext.isExplainAnalyze()) instance.getFragment().clearTypeProvider();
+                  else instance.getFragment().clearUselessField();
+                }
+              }));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage())));
+    } catch (Throwable t) {
+      LOGGER.warn(DataNodeQueryMessages.EXECUTE_ERROR_CAUSED_BY, t);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, t.getMessage())));
+    } finally {
+      long elapsed = System.nanoTime() - startTime;
+      QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, elapsed);
+      queryContext.recordDispatchCost(elapsed);
     }
   }
 

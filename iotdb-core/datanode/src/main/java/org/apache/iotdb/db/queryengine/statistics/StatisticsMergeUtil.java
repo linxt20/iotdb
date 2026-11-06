@@ -39,6 +39,11 @@ public class StatisticsMergeUtil {
 
     for (Map.Entry<String, TOperatorStatistics> entry : operatorStatisticsMap.entrySet()) {
       String key = entry.getKey();
+      // Ordered local merge roots and their scan children share a source prefix, but
+      // report different operators and specified-info fields. Keep merge roots separate.
+      if (key.contains("-ordered-local-merge-")) {
+        continue;
+      }
       if (key.contains("-")) {
         String[] keys = key.split("-");
         String planNodeId = keys[0];
@@ -83,6 +88,11 @@ public class StatisticsMergeUtil {
     first.setNextCalledCount(first.getNextCalledCount() + second.getNextCalledCount());
     first.setHasNextCalledCount(first.getHasNextCalledCount() + second.getHasNextCalledCount());
     first.setOutputRows(first.getOutputRows() + second.getOutputRows());
+    if (first.isSetTsBlockCount() && second.isSetTsBlockCount()) {
+      first.setTsBlockCount(first.getTsBlockCount() + second.getTsBlockCount());
+    } else {
+      first.unsetTsBlockCount();
+    }
     first.setMemoryUsage(first.getMemoryUsage() + second.getMemoryUsage());
     first.setCount(first.getCount() + 1);
     first.setSpecifiedInfo(

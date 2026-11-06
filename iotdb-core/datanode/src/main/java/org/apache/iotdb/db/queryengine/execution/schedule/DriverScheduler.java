@@ -88,6 +88,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private final ITaskScheduler scheduler;
 
   private final AtomicInteger nextDriverTaskHandleId = new AtomicInteger(0);
+  private final AtomicLong completedDriverTaskCount = new AtomicLong(0);
   private IMPPDataExchangeManager blockManager;
 
   private static final int QUERY_MAX_CAPACITY = config.getMaxAllowedConcurrentQueries();
@@ -427,6 +428,22 @@ public class DriverScheduler implements IDriverScheduler, IService {
     return scheduler;
   }
 
+  @Override
+  public IDriverScheduler.RuntimeMetrics getRuntimeMetrics() {
+    long active = 0;
+    for (Map<FragmentInstanceId, Set<DriverTask>> instances : queryMap.values()) {
+      for (Set<DriverTask> tasks : instances.values()) {
+        synchronized (tasks) {
+          for (DriverTask task : tasks) {
+            if (task.getStatus() == DriverTaskStatus.RUNNING) active++;
+          }
+        }
+      }
+    }
+    return new IDriverScheduler.RuntimeMetrics(
+        active, readyQueue.size(), blockedTasks.size(), completedDriverTaskCount.get());
+  }
+
   public long getReadyQueueTaskCount() {
     return readyQueue.size();
   }
@@ -567,6 +584,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
+        completedDriverTaskCount.incrementAndGet();
         readyQueue.decreaseReservedSize(task);
       } finally {
         task.unlock();

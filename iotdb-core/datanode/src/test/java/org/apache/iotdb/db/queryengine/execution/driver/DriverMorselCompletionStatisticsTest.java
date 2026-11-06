@@ -142,6 +142,23 @@ public class DriverMorselCompletionStatisticsTest {
     assertFalse(hasWallTime(filter));
   }
 
+  @Test
+  public void runtimeOutputCountsUseTheDriverRootInsteadOfAnInternalScan() {
+    DriverContext driverContext = newDriverContext();
+    OperatorContext scan = addContext(driverContext, "scan-input", "TableScan");
+    scan.addOutputRows(100);
+    scan.addOutputRows(100);
+    OperatorContext filteredRoot =
+        new OperatorContext(1, new PlanNodeId("filtered-root"), "Filter", driverContext);
+    filteredRoot.addOutputRows(7);
+    Driver driver =
+        new NeverFinishingDriver(new NeverFinishingOperator(filteredRoot), driverContext);
+    assertEquals(7, driver.getRuntimeOutputRows());
+    assertEquals(1, driver.getRuntimeTsBlockCount());
+    assertEquals(200, scan.getOutputRows());
+    assertEquals(2, scan.getTsBlockOutputCount());
+  }
+
   // ------------------------------------------------------------------ helpers
 
   private DriverContext newDriverContext() {

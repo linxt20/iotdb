@@ -112,6 +112,19 @@ public class LocalSinkChannel implements ISinkChannel {
     if (closed) {
       return immediateVoidFuture();
     }
+    if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .isEnabled()) {
+      SharedTsBlockQueue.MemoryReservationKey key = queue.getMemoryReservationKey();
+      String query =
+          localFragmentInstanceId == null ? key.queryId() : localFragmentInstanceId.getQueryId();
+      String fragment =
+          localFragmentInstanceId == null
+              ? key.fragmentInstanceId()
+              : org.apache.iotdb.db.queryengine.common.FragmentInstanceId
+                  .createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .trackFuture(query, fragment, blocked);
+    }
     return nonCancellationPropagating(blocked);
   }
 
@@ -269,9 +282,7 @@ public class LocalSinkChannel implements ISinkChannel {
 
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    if (maxBytesCanReserve < queue.getMaxBytesCanReserve()) {
-      queue.setMaxBytesCanReserve(maxBytesCanReserve);
-    }
+    queue.setMaxBytesCanReserve(maxBytesCanReserve);
   }
 
   @Override

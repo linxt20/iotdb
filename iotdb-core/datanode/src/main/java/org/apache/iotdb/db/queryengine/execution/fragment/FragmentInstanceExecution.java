@@ -33,7 +33,9 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
+import org.apache.iotdb.db.queryengine.statistics.snapshot.FragmentRuntimeSnapshot;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
 
@@ -44,7 +46,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.queryengine.statistics.StatisticsMergeUtil.merge;
@@ -79,8 +81,10 @@ public class FragmentInstanceExecution {
   // statisticsRemoved,
   // so that fetchStatistics() in FragmentInstanceManager won't get the statistics which was just
   // cleared.
-  private final ReadWriteLock statisticsLock = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock statisticsLock = new ReentrantReadWriteLock();
   private boolean staticsRemoved = false;
+  private final AtomicLong snapshotGeneration = new AtomicLong();
+  private volatile FragmentRuntimeSnapshot runtimeSnapshot;
 
   @SuppressWarnings("squid:S107")
   public static FragmentInstanceExecution createFragmentInstanceExecution(
@@ -98,7 +102,13 @@ public class FragmentInstanceExecution {
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
     execution.initialize(scheduler, isExplainAnalyze);
-    scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
+    synchronized (context) {
+      if (context.isCancellationRequested()) {
+        throw new java.util.concurrent.CancellationException(
+            DataNodeQueryMessages.EXCEPTION_FRAGMENT_WAS_CANCELLED_DURING_DRIVER_CREATION_D031E9B1);
+      }
+      scheduler.submitDrivers(instanceId.getQueryId(), drivers, timeOut, context.getSessionInfo());
+    }
     return execution;
   }
 
@@ -144,6 +154,11 @@ public class FragmentInstanceExecution {
     return drivers;
   }
 
+  /** Java snapshot view produced at the same freeze boundary as the thrift response. */
+  public FragmentRuntimeSnapshot getRuntimeSnapshot() {
+    return runtimeSnapshot;
+  }
+
   public FragmentInstanceStateMachine getStateMachine() {
     return stateMachine;
   }
@@ -170,8 +185,40 @@ public class FragmentInstanceExecution {
   private boolean fillFragmentInstanceStatistics(
       FragmentInstanceContext context, TFetchFragmentInstanceStatisticsResp statistics) {
     statistics.setFragmentInstanceId(context.getId().toThrift());
-    statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
+    statistics.setQueryStatistics(context.getQueryStatistics().snapshotToThrift());
     statistics.setState(getInstanceState().toString());
+    if (context.getPlannedDop() >= 0) {
+      statistics.setPlannedDop(context.getPlannedDop());
+    }
+    if (context.getActualPipelineCount() >= 0) {
+      statistics.setActualPipelineCount(context.getActualPipelineCount());
+    }
+    if (context.getSplitMode() != null) {
+      statistics.setSplitMode(context.getSplitMode());
+    }
+    if (context.getSplitReason() != null) {
+      statistics.setSplitReason(context.getSplitReason());
+    }
+    if (context.getPlanIdentityChecksum() != null) {
+      statistics.setPlanIdentityChecksum(context.getPlanIdentityChecksum());
+      statistics.setPlanGeneration(context.getPlanGeneration());
+      statistics.setWorkUnitIds(context.getWorkUnitIds());
+      statistics.setBucketIds(context.getBucketIds());
+      statistics.setExchangeEdgeIds(context.getExchangeEdgeIds());
+    }
+    if (context.getCanonicalFallbackReason() != null) {
+      statistics.setCanonicalFallbackReason(context.getCanonicalFallbackReason());
+    }
+    if (context.getResourceObjectCount() >= 0) {
+      statistics.setResourceObjectCount(context.getResourceObjectCount());
+      statistics.setResourceUniqueMemoryKeyCount(context.getResourceUniqueMemoryKeyCount());
+      if (context.getResourceNominalShareBytes() >= 0)
+        statistics.setResourceNominalShareBytes(context.getResourceNominalShareBytes());
+    }
+    if (context.getAdmissionStatus() != null)
+      statistics.setAdmissionStatus(context.getAdmissionStatus());
+    if (context.getAdmissionReason() != null)
+      statistics.setAdmissionReason(context.getAdmissionReason());
     // Previously we ignore statistics when current data region is instance of
     // VirtualDataRegion. Now data region of a CteScanNode is also virtual.
     if (shouldIgnoreForStatistics) {
@@ -256,7 +303,9 @@ public class FragmentInstanceExecution {
   }
 
   private static boolean isParallelSubScan(String planNodeId) {
-    return planNodeId.contains("-parallel-") || planNodeId.contains("-morsel-");
+    return planNodeId.contains("-parallel-")
+        || planNodeId.contains("-morsel-")
+        || planNodeId.contains("-ordered-");
   }
 
   /** Shallow copy of an operator's statistics, including its specifiedInfo map. */
@@ -268,6 +317,7 @@ public class FragmentInstanceExecution {
     copy.setNextCalledCount(source.getNextCalledCount());
     copy.setHasNextCalledCount(source.getHasNextCalledCount());
     copy.setOutputRows(source.getOutputRows());
+    if (source.isSetTsBlockCount()) copy.setTsBlockCount(source.getTsBlockCount());
     copy.setMemoryUsage(source.getMemoryUsage());
     if (source.getSpecifiedInfo() != null) {
       copy.setSpecifiedInfo(new HashMap<>(source.getSpecifiedInfo()));
@@ -283,10 +333,11 @@ public class FragmentInstanceExecution {
     operatorStatistics.setNextCalledCount(operatorContext.getNextCalledCount());
     operatorStatistics.setHasNextCalledCount(operatorContext.getHasNextCalledCount());
     operatorStatistics.setOutputRows(operatorContext.getOutputRows());
+    operatorStatistics.setTsBlockCount(operatorContext.getTsBlockOutputCount());
     // Inject metric-tree fields into specifiedInfo so they survive thrift transport without
     // requiring schema changes.  Keys are prefixed with "__mt_" to avoid collisions with
     // operator-specific entries.
-    Map<String, Object> specifiedInfo = operatorContext.getSpecifiedInfo();
+    Map<String, Object> specifiedInfo = new HashMap<>(operatorContext.getSpecifiedInfo());
     specifiedInfo.put(
         "__mt_tsBlockOutputCount", Long.toString(operatorContext.getTsBlockOutputCount()));
     operatorStatistics.setSpecifiedInfo(convertSpecifiedInfo(specifiedInfo));
@@ -304,12 +355,77 @@ public class FragmentInstanceExecution {
     return result;
   }
 
+  private List<TDriverRuntimeSnapshot> buildDriverSnapshots() {
+    if (drivers == null || drivers.isEmpty()) {
+      return java.util.Collections.emptyList();
+    }
+    List<TDriverRuntimeSnapshot> snapshots = new java.util.ArrayList<>(drivers.size());
+    for (IDriver driver : drivers) {
+      org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId taskId =
+          driver.getDriverTaskId();
+      TDriverRuntimeSnapshot snapshot = new TDriverRuntimeSnapshot();
+      snapshot.setFragmentInstanceId(instanceId.toString());
+      snapshot.setDriverPipelineId(Integer.toString(taskId.getPipelineId()));
+      snapshot.setDriverTaskId(taskId.toString());
+      snapshot.setDriverRole(driver.getDriverContext().isInputDriver() ? "input" : "root");
+      snapshot.setDriverSampleGeneration(snapshotGeneration.get());
+      if (driver.getFirstProcessNanos() >= 0) {
+        snapshot.setDriverFirstProcessNanos(driver.getFirstProcessNanos());
+      }
+      if (driver.getLastProcessNanos() >= 0) {
+        snapshot.setDriverLastProcessNanos(driver.getLastProcessNanos());
+      }
+      if (driver.getWallNanos() >= 0) {
+        snapshot.setDriverWallNanos(driver.getWallNanos());
+      } else {
+        snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverWallNanos");
+      }
+      snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverCpuNanos");
+      snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverOutputBytes");
+      snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverReadyNanos");
+      snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverBlockedNanos");
+      long outputRows = driver.getRuntimeOutputRows();
+      long tsBlocks = driver.getRuntimeTsBlockCount();
+      if (outputRows >= 0) {
+        snapshot.setDriverOutputRows(outputRows);
+      } else {
+        snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverOutputRows");
+      }
+      if (tsBlocks >= 0) {
+        snapshot.setDriverTsBlockCount(tsBlocks);
+      } else {
+        snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverTsBlockCount");
+      }
+      snapshots.add(snapshot);
+    }
+    return snapshots;
+  }
+
+  private FragmentRuntimeSnapshot buildJavaRuntimeSnapshot(
+      TFetchFragmentInstanceStatisticsResp statistics,
+      List<TDriverRuntimeSnapshot> thriftSnapshots) {
+    return org.apache.iotdb.db.queryengine.statistics.snapshot.RuntimeSnapshotAdapters.fromResponse(
+        statistics);
+  }
+
   // Directly build statistics from FragmentInstanceExecution, which is still running.
   public TFetchFragmentInstanceStatisticsResp buildStatistics() {
     TFetchFragmentInstanceStatisticsResp statistics = new TFetchFragmentInstanceStatisticsResp();
-
+    statistics.setStatus(org.apache.iotdb.rpc.RpcUtils.SUCCESS_STATUS);
+    long generation = snapshotGeneration.incrementAndGet();
+    statistics.setSchemaVersion(1);
+    statistics.setSnapshotGeneration(generation);
+    statistics.setCapturedAtNanos(System.nanoTime());
+    statistics.setSourceNodeId(Integer.toString(CONFIG.getDataNodeId()));
+    statistics.setSourceEndpoint(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
+    statistics.setIsTerminal(
+        getInstanceState().isDone() && statisticsLock.isWriteLockedByCurrentThread());
+    List<TDriverRuntimeSnapshot> driverSnapshots = buildDriverSnapshots();
+    statistics.setDriverSnapshots(driverSnapshots);
     boolean res = fillFragmentInstanceStatistics(context, statistics);
     if (!res) {
+      runtimeSnapshot = buildJavaRuntimeSnapshot(statistics, driverSnapshots);
+      statistics.setSnapshotChecksum(runtimeSnapshot.getChecksum());
       return statistics;
     }
 
@@ -355,6 +471,8 @@ public class FragmentInstanceExecution {
     statistics.getOperatorStatisticsMap().putAll(pipelineSnapshots);
 
     mergeOperatorStatisticsIfDuplicate(statistics.getOperatorStatisticsMap());
+    runtimeSnapshot = buildJavaRuntimeSnapshot(statistics, driverSnapshots);
+    statistics.setSnapshotChecksum(runtimeSnapshot.getChecksum());
 
     return statistics;
   }
@@ -374,19 +492,22 @@ public class FragmentInstanceExecution {
             }
 
             statisticsLock.writeLock().lock();
-            // Ask the drivers to record what only they can record, before the snapshot below
-            // converts an operator context's specifiedInfo into the frozen statistics. A driver
-            // that finished during scheduling has already written its own value and the write is
-            // idempotent, so this only supplies the value for the drivers this listener closes.
-            for (IDriver driver : drivers) {
-              driver.recordMorselCompletionStatistics();
+            try {
+              // Ask the drivers to record what only they can record, before the snapshot below
+              // converts an operator context's specifiedInfo into the frozen statistics. A driver
+              // that finished during scheduling has already written its own value and the write is
+              // idempotent, so this only supplies the value for the drivers this listener closes.
+              for (IDriver driver : drivers) {
+                driver.recordMorselCompletionStatistics();
+              }
+              // Store statistics in context for EXPLAIN ANALYZE to avoid being released.
+              if (isExplainAnalyze) {
+                context.setFragmentInstanceStatistics(buildStatistics());
+              }
+            } finally {
+              staticsRemoved = true;
+              statisticsLock.writeLock().unlock();
             }
-            // Store statistics in context for EXPLAIN ANALYZE to avoid being released.
-            if (isExplainAnalyze) {
-              context.setFragmentInstanceStatistics(buildStatistics());
-            }
-            staticsRemoved = true;
-            statisticsLock.writeLock().unlock();
 
             // must clear shuffle sink handle before driver close
             // because in failed state, if we can driver.close firstly, we will finally call
@@ -440,6 +561,51 @@ public class FragmentInstanceExecution {
           } catch (Throwable t) {
             try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
               LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, t);
+            }
+            // A failed snapshot must never skip driver/sink/resource cleanup.
+            try {
+              if (sink != null) clearShuffleSinkHandle(newState);
+            } catch (Throwable cleanup) {
+              LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_SINK, cleanup);
+            }
+            if (drivers != null) {
+              for (IDriver driver : drivers) {
+                try {
+                  driver.close();
+                } catch (Throwable cleanup) {
+                  LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, cleanup);
+                }
+              }
+              drivers = null;
+            }
+            try {
+              context.releaseResourceWhenAllDriversAreClosed();
+            } catch (Throwable cleanup) {
+              LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, cleanup);
+            }
+            try {
+              exchangeManager.deRegisterFragmentInstanceFromMemoryPool(
+                  instanceId.getQueryId().getId(), instanceId.getFragmentInstanceId(), true);
+            } catch (Throwable cleanup) {
+              LOGGER.error(
+                  DataNodeQueryMessages.ERRORS_DEREGISTER_FI_FROM_MEMORY_POOL, newState, cleanup);
+            }
+            try {
+              deleteTmpFile();
+            } catch (Throwable cleanup) {
+              LOGGER.error(DataNodeQueryMessages.ERRORS_DELETING_TMP_FILES, cleanup);
+            }
+            try {
+              context.releaseMemoryReservationManager();
+            } catch (Throwable cleanup) {
+              LOGGER.error(DataNodeQueryMessages.ERRORS_RELEASING_MEMORY, cleanup);
+            }
+            if (newState.isFailed()) {
+              try {
+                scheduler.abortFragmentInstance(instanceId, context.getFailureCause().orElse(null));
+              } catch (Throwable cleanup) {
+                LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, cleanup);
+              }
             }
           }
         });

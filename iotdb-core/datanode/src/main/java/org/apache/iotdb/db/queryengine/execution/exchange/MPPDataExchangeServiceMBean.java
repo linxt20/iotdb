@@ -32,4 +32,14 @@ public interface MPPDataExchangeServiceMBean {
   void restartService() throws StartupException;
 
   void stopService();
+
+  String openResourceAuditWindow();
+
+  String openResourceAuditWindow(long durationMs);
+
+  String listResourceAuditFragments(String windowId, String queryId);
+
+  String readResourceAudit(String windowId, String queryId, String fragmentInstanceId);
+
+  void closeResourceAuditWindow(String windowId);
 }

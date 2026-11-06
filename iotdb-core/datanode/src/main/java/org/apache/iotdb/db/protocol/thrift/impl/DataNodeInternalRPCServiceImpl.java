@@ -614,9 +614,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           req.getFragmentInstanceIds().stream()
               .map(FragmentInstanceId::fromThrift)
               .collect(Collectors.toList());
-      for (FragmentInstanceId taskId : taskIds) {
-        FragmentInstanceManager.getInstance().cancelTask(taskId, req.hasThrowable);
-      }
+      FragmentInstanceManager.getInstance()
+          .cancelQuery(
+              new org.apache.iotdb.db.queryengine.common.QueryId(req.getQueryId()),
+              taskIds,
+              req.hasThrowable,
+              FragmentInstanceManager.CancellationOrigin.RPC_CANCEL_QUERY);
       return new TCancelResp(true);
     }
   }
@@ -1947,7 +1950,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       resp =
           fragmentInstanceManager.getFragmentInstanceStatistics(
               FragmentInstanceId.fromThrift(req.getFragmentInstanceId()));
-      resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      if (resp.getStatus() == null) {
+        resp.setStatus(RpcUtils.SUCCESS_STATUS);
+      }
     } catch (Exception e) {
       resp = new TFetchFragmentInstanceStatisticsResp();
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.EXPLAIN_ANALYZE_FETCH_ERROR, e.getMessage()));

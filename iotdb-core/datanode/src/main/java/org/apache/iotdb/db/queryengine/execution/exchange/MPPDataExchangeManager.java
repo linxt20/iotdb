@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceCl
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.PipelineSourceH
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
@@ -78,7 +80,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
@@ -747,9 +748,27 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
 
   public void deRegisterFragmentInstanceFromMemoryPool(
       String queryId, String fragmentInstanceId, boolean forceDeregister) {
-    localMemoryManager
-        .getQueryPool()
-        .deRegisterFragmentInstanceFromQueryMemoryMap(queryId, fragmentInstanceId, forceDeregister);
+    MemoryPool pool = localMemoryManager.getQueryPool();
+    MemoryPool.FragmentReservationSnapshot before =
+        pool.snapshotFragmentReservations(queryId, fragmentInstanceId);
+    Throwable failure = null;
+    try {
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap(
+          queryId, fragmentInstanceId, forceDeregister);
+    } catch (RuntimeException t) {
+      failure = t;
+      throw t;
+    } finally {
+      MemoryPool.FragmentReservationSnapshot after =
+          pool.snapshotFragmentReservations(queryId, fragmentInstanceId);
+      pool.recordDeregistrationReceipt(
+          queryId,
+          fragmentInstanceId,
+          before.fragmentReservedBytes(),
+          after,
+          failure == null,
+          failure);
+    }
   }
 
   public LocalMemoryManager getLocalMemoryManager() {
@@ -775,6 +794,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       FragmentInstanceContext instanceContext,
       AtomicInteger cnt,
       AtomicBoolean hasChannelFailedOrAborted) {
+    rejectCancelledFragment(localFragmentInstanceId);
+    rejectCancelledFragment(remoteFragmentInstanceId);
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -823,6 +844,14 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    */
   public ISinkChannel createLocalSinkChannelForPipeline(
       DriverContext driverContext, String planNodeId) {
+    return createLocalSinkChannelForPipeline(driverContext, planNodeId, queue -> {});
+  }
+
+  public synchronized ISinkChannel createLocalSinkChannelForPipeline(
+      DriverContext driverContext,
+      String planNodeId,
+      java.util.function.Consumer<SharedTsBlockQueue> onQueueCreated) {
+    rejectCancelledFragment(driverContext.getDriverTaskID().getFragmentInstanceId().toThrift());
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
           DataNodeQueryMessages.CREATE_LOCAL_SINK_HANDLE_FOR, driverContext.getDriverTaskID());
@@ -834,11 +863,21 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             localMemoryManager,
             executorService,
             driverContext.getFragmentInstanceContext().isHighestPriority());
-    queue.allowAddingTsBlock();
-    return new LocalSinkChannel(
-        queue,
-        new PipelineSinkListenerImpl(
-            driverContext.getFragmentInstanceContext(), driverContext::failed));
+    try {
+      onQueueCreated.accept(queue);
+      queue.allowAddingTsBlock();
+      return new LocalSinkChannel(
+          queue,
+          new PipelineSinkListenerImpl(
+              driverContext.getFragmentInstanceContext(), driverContext::failed));
+    } catch (Throwable failure) {
+      try {
+        queue.abort(failure);
+      } catch (Throwable cleanupFailure) {
+        if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
+    }
   }
 
   private ISinkChannel createSinkChannel(
@@ -881,7 +920,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
   }
 
   @Override
-  public ISinkHandle createShuffleSinkHandle(
+  public synchronized ISinkHandle createShuffleSinkHandle(
       List<DownStreamChannelLocation> downStreamChannelLocationList,
       DownStreamChannelIndex downStreamChannelIndex,
       ShuffleSinkHandle.ShuffleStrategyEnum shuffleStrategyEnum,
@@ -890,6 +929,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
+    rejectCancelledFragment(localFragmentInstanceId);
     if (shuffleSinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException(
           DataNodeQueryMessages.SHUFFLESINKHANDLE_ALREADY_IN_MAP
@@ -900,28 +940,50 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     int channelNum = downStreamChannelLocationList.size();
     AtomicInteger cnt = new AtomicInteger(channelNum);
     AtomicBoolean hasChannelFailedOrAborted = new AtomicBoolean(false);
-    List<ISinkChannel> downStreamChannelList =
-        downStreamChannelLocationList.stream()
-            .map(
-                downStreamChannelLocation ->
-                    createChannelForShuffleSink(
-                        localFragmentInstanceId,
-                        localPlanNodeId,
-                        downStreamChannelLocation,
-                        instanceContext,
-                        cnt,
-                        hasChannelFailedOrAborted))
-            .collect(Collectors.toList());
-
-    ShuffleSinkHandle shuffleSinkHandle =
-        new ShuffleSinkHandle(
-            localFragmentInstanceId,
-            downStreamChannelList,
-            downStreamChannelIndex,
-            shuffleStrategyEnum,
-            new ShuffleSinkListenerImpl(instanceContext, instanceContext::failed));
-    shuffleSinkHandles.put(localFragmentInstanceId, shuffleSinkHandle);
-    return shuffleSinkHandle;
+    List<ISinkChannel> downStreamChannelList = new java.util.ArrayList<>();
+    try {
+      for (DownStreamChannelLocation location : downStreamChannelLocationList) {
+        ISinkChannel channel =
+            createChannelForShuffleSink(
+                localFragmentInstanceId,
+                localPlanNodeId,
+                location,
+                instanceContext,
+                cnt,
+                hasChannelFailedOrAborted);
+        downStreamChannelList.add(channel);
+        ResourceAuditManager.getInstance()
+            .registerObject(
+                localFragmentInstanceId.getQueryId(),
+                FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                    localFragmentInstanceId),
+                channel,
+                "SINK_CHANNEL",
+                () -> channel.isClosed() || channel.isAborted(),
+                localFragmentInstanceId.getQueryId(),
+                FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                    localFragmentInstanceId),
+                localPlanNodeId);
+      }
+      ShuffleSinkHandle handle =
+          new ShuffleSinkHandle(
+              localFragmentInstanceId,
+              downStreamChannelList,
+              downStreamChannelIndex,
+              shuffleStrategyEnum,
+              new ShuffleSinkListenerImpl(instanceContext, instanceContext::failed));
+      shuffleSinkHandles.put(localFragmentInstanceId, handle);
+      return handle;
+    } catch (Throwable failure) {
+      for (ISinkChannel channel : downStreamChannelList) {
+        try {
+          channel.abort();
+        } catch (Throwable cleanup) {
+          if (cleanup != failure) failure.addSuppressed(cleanup);
+        }
+      }
+      throw failure;
+    }
   }
 
   private ISinkChannel createChannelForShuffleSink(
@@ -957,8 +1019,9 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    * As we know the upstream and downstream node of shared queue, we don't need to put it into the
    * sourceHandle map.
    */
-  public ISourceHandle createLocalSourceHandleForPipeline(
+  public synchronized ISourceHandle createLocalSourceHandleForPipeline(
       SharedTsBlockQueue queue, DriverContext context) {
+    rejectCancelledFragment(context.getDriverTaskID().getFragmentInstanceId().toThrift());
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.CREATE_LOCAL_SOURCE_HANDLE_FOR, context.getDriverTaskID());
     }
@@ -994,6 +1057,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       int index,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
       boolean isHighestPriority) {
+    rejectCancelledFragment(localFragmentInstanceId);
+    rejectCancelledFragment(remoteFragmentInstanceId);
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -1039,6 +1104,18 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, localSourceHandle);
+    SharedTsBlockQueue.MemoryReservationKey auditKey = queue.getMemoryReservationKey();
+    ResourceAuditManager.getInstance()
+        .registerObject(
+            localFragmentInstanceId.getQueryId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
+            localSourceHandle,
+            "SOURCE_HANDLE",
+            () -> localSourceHandle.isClosed() || localSourceHandle.isAborted(),
+            auditKey.queryId(),
+            auditKey.fragmentInstanceId(),
+            auditKey.planNodeId());
     return localSourceHandle;
   }
 
@@ -1061,7 +1138,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         false);
   }
 
-  public ISourceHandle createSourceHandle(
+  public synchronized ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       int indexOfUpstreamSinkHandle,
@@ -1069,6 +1146,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
       boolean isHighestPriority) {
+    rejectCancelledFragment(localFragmentInstanceId);
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(localFragmentInstanceId);
     if (sourceHandleMap != null && sourceHandleMap.containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -1102,6 +1180,18 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, sourceHandle);
+    ResourceAuditManager.getInstance()
+        .registerObject(
+            localFragmentInstanceId.getQueryId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
+            sourceHandle,
+            "SOURCE_HANDLE",
+            () -> sourceHandle.isClosed() || sourceHandle.isAborted(),
+            localFragmentInstanceId.getQueryId(),
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                localFragmentInstanceId),
+            localPlanNodeId);
     return sourceHandle;
   }
 
@@ -1111,7 +1201,7 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
    *
    * <p>This method should be called when a fragment instance finished in an abnormal state.
    */
-  public void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
+  public synchronized void forceDeregisterFragmentInstance(TFragmentInstanceId fragmentInstanceId) {
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.START_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE);
     }
@@ -1130,8 +1220,64 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       }
       sourceHandles.remove(fragmentInstanceId);
     }
+    // A consumer can create a local queue before its producer is dispatched. These queues
+    // belong to the producer account but are reachable through the consumer's source map.
+    String producer =
+        FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(fragmentInstanceId);
+    for (Map<String, ISourceHandle> sources : sourceHandles.values()) {
+      for (ISourceHandle source : sources.values()) {
+        if (source instanceof LocalSourceHandle) {
+          SharedTsBlockQueue.MemoryReservationKey owner =
+              ((LocalSourceHandle) source).getSharedTsBlockQueue().getMemoryReservationKey();
+          if (fragmentInstanceId.getQueryId().equals(owner.queryId())
+              && producer.equals(owner.fragmentInstanceId())) source.abort();
+        }
+      }
+    }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.END_FORCE_RELEASE_FI_DATA_EXCHANGE_RESOURCE);
+    }
+  }
+
+  private void rejectCancelledFragment(TFragmentInstanceId id) {
+    if (org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager
+        .isFragmentCancellationRequested(FragmentInstanceId.fromThrift(id))) {
+      throw new java.util.concurrent.CancellationException(
+          DataNodeQueryMessages.DRIVER_TASK_ABORTED_BY_ALREADY_BEING_CANCELLED);
+    }
+  }
+
+  /**
+   * Settle an actual cancellation received before dispatch under the resource creation monitor. The
+   * cancellation identity is already published before the caller acquires this monitor.
+   */
+  public synchronized void cancelUnstartedFragmentInstance(TFragmentInstanceId id) {
+    MemoryPool pool = localMemoryManager.getQueryPool();
+    String query = id.getQueryId();
+    String fragment = FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(id);
+    long before = pool.snapshotFragmentReservations(query, fragment).fragmentReservedBytes();
+    Throwable failure = null;
+    try {
+      forceDeregisterFragmentInstance(id);
+    } catch (RuntimeException | Error cleanupFailure) {
+      failure = cleanupFailure;
+    }
+    try {
+      deRegisterFragmentInstanceFromMemoryPool(query, fragment, true);
+    } catch (RuntimeException | Error deregistrationFailure) {
+      if (failure == null) failure = deregistrationFailure;
+      else if (failure != deregistrationFailure) failure.addSuppressed(deregistrationFailure);
+    }
+    if (failure != null) {
+      pool.recordDeregistrationReceipt(
+          query,
+          fragment,
+          before,
+          pool.snapshotFragmentReservations(query, fragment),
+          false,
+          failure);
+      if (failure instanceof RuntimeException) throw (RuntimeException) failure;
+      throw (Error) failure;
     }
   }
 

@@ -563,6 +563,23 @@ public class MemoryPoolTest {
   }
 
   @Test
+  public void testFragmentReservationSnapshot() {
+    MemoryPool.FragmentReservationSnapshot before =
+        pool.snapshotFragmentReservations(QUERY_ID, FRAGMENT_INSTANCE_ID);
+    Assert.assertTrue(before.present());
+    Assert.assertEquals(Long.valueOf(0L), before.byPlanNode().get(PLAN_NODE_ID));
+    Assert.assertEquals(0L, before.fragmentReservedBytes());
+
+    Assert.assertTrue(
+        pool.tryReserveForTest(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 128L, Long.MAX_VALUE));
+    MemoryPool.FragmentReservationSnapshot after =
+        pool.snapshotFragmentReservations(QUERY_ID, FRAGMENT_INSTANCE_ID);
+    Assert.assertEquals(Long.valueOf(128L), after.byPlanNode().get(PLAN_NODE_ID));
+    Assert.assertEquals(128L, after.fragmentReservedBytes());
+    Assert.assertFalse(pool.snapshotFragmentReservations(QUERY_ID, "missing").present());
+  }
+
+  @Test
   public void testTryReserveZero() {
 
     try {

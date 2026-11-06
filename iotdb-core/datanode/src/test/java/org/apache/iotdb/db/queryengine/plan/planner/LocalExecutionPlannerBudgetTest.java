@@ -229,14 +229,27 @@ public class LocalExecutionPlannerBudgetTest {
   }
 
   private static void registerInput(LocalExecutionPlanContext context, SourceHandle handle) {
-    ExchangeOperator exchange = mock(ExchangeOperator.class);
-    when(exchange.getSourceHandle()).thenReturn(handle);
+    int operatorId = context.getNextOperatorId();
+    PlanNodeId id = new PlanNodeId("budget_input_" + operatorId);
+    org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId thriftId =
+        context.getFragmentInstanceId().toThrift();
+    when(handle.getLocalFragmentInstanceId()).thenReturn(thriftId);
+    when(handle.getLocalPlanNodeId()).thenReturn(id.getId());
+    ExchangeOperator exchange =
+        new ExchangeOperator(
+            context.getDriverContext().addOperatorContext(operatorId, id, "ExchangeOperator"),
+            handle,
+            id);
     context.addExchangeOperator(exchange);
     context.addExchangeSumNum(1);
   }
 
   private static Operator input(boolean ready, long peak, long retained) {
     Operator operator = mock(Operator.class);
+    org.apache.iotdb.db.queryengine.execution.operator.OperatorContext op =
+        mock(org.apache.iotdb.db.queryengine.execution.operator.OperatorContext.class);
+    when(operator.getOperatorContext()).thenReturn(op);
+    when(op.getPlanNodeId()).thenReturn(new PlanNodeId("budget_leaf"));
     doReturn(ready ? Operator.NOT_BLOCKED : SettableFuture.create()).when(operator).isBlocked();
     when(operator.calculateMaxPeekMemoryWithCounter()).thenReturn(peak);
     when(operator.calculateRetainedSizeAfterCallingNext()).thenReturn(retained);

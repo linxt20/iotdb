@@ -47,6 +47,77 @@ import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorS
 
 public class ShuffleSinkHandleTest {
   @Test
+  public void parentCloseCompletesWhenLastChannelWasAlreadyClosed() {
+    ISinkChannel first = Mockito.mock(ISinkChannel.class), last = Mockito.mock(ISinkChannel.class);
+    Mockito.when(first.close()).thenReturn(true);
+    Mockito.when(last.close()).thenReturn(false);
+    MPPDataExchangeManager.SinkListener listener =
+        Mockito.mock(MPPDataExchangeManager.SinkListener.class);
+    ShuffleSinkHandle sink =
+        new ShuffleSinkHandle(
+            new TFragmentInstanceId("parent_close", 0, "0"),
+            java.util.Arrays.asList(first, last),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            listener);
+    Assert.assertTrue(sink.close());
+    Assert.assertTrue(sink.isClosed());
+    Assert.assertFalse(sink.close());
+    Mockito.verify(listener, Mockito.times(1)).onFinish(sink);
+    Mockito.verify(first, Mockito.times(1)).close();
+    Mockito.verify(last, Mockito.times(1)).close();
+  }
+
+  @Test
+  public void parentAbortCompletesWhenLastChannelWasAlreadyTerminal() {
+    ISinkChannel first = Mockito.mock(ISinkChannel.class), last = Mockito.mock(ISinkChannel.class);
+    Mockito.when(first.abort()).thenReturn(true);
+    Mockito.when(last.abort()).thenReturn(false);
+    MPPDataExchangeManager.SinkListener listener =
+        Mockito.mock(MPPDataExchangeManager.SinkListener.class);
+    ShuffleSinkHandle sink =
+        new ShuffleSinkHandle(
+            new TFragmentInstanceId("parent_abort", 0, "0"),
+            java.util.Arrays.asList(first, last),
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            listener);
+    Assert.assertTrue(sink.abort());
+    Assert.assertTrue(sink.isAborted());
+    Assert.assertFalse(sink.abort());
+    Mockito.verify(listener, Mockito.times(1)).onAborted(sink);
+    Mockito.verify(first, Mockito.times(1)).abort();
+    Mockito.verify(last, Mockito.times(1)).abort();
+  }
+
+  @Test
+  public void explicitRoutingOpensOnlyTheSelectedChannel() {
+    java.util.List<ISinkChannel> channels = new java.util.ArrayList<>();
+    for (int i = 0; i < 32; i++) {
+      ISinkChannel channel = Mockito.mock(ISinkChannel.class);
+      Mockito.doReturn(com.google.common.util.concurrent.Futures.immediateVoidFuture())
+          .when(channel)
+          .isFull();
+      channels.add(channel);
+    }
+    ShuffleSinkHandle sink =
+        new ShuffleSinkHandle(
+            new TFragmentInstanceId("routing", 0, "0"),
+            channels,
+            new DownStreamChannelIndex(0),
+            ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+            Mockito.mock(MPPDataExchangeManager.SinkListener.class));
+    sink.useExplicitChannelRouting();
+    Assert.assertTrue(sink.isFull().isDone());
+    for (ISinkChannel channel : channels) Mockito.verify(channel, Mockito.never()).open();
+    Assert.assertTrue(sink.isChannelNotFull(17).isDone());
+    Assert.assertTrue(sink.isChannelNotFull(17).isDone());
+    Mockito.verify(channels.get(17), Mockito.times(1)).open();
+    for (int i = 0; i < 32; i++)
+      if (i != 17) Mockito.verify(channels.get(i), Mockito.never()).open();
+  }
+
+  @Test
   public void testClosePreventsConcurrentAbort() throws Exception {
     TFragmentInstanceId fragmentInstanceId = new TFragmentInstanceId("q0", 0, "0");
     ISinkChannel channel = Mockito.mock(ISinkChannel.class);
@@ -268,7 +339,7 @@ public class ShuffleSinkHandleTest {
   @Test
   public void testAbort() {
     final String queryId = "q0";
-    final long mockTsBlockSize = 1024L * 1024L;
+    final long mockTsBlockSize = 1024L;
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
@@ -294,7 +365,8 @@ public class ShuffleSinkHandleTest {
     LocalSinkChannel localSinkChannel =
         new LocalSinkChannel(localFragmentInstanceId, queue, mockSinkListener);
 
-    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
+    final long queueCap = queue.getMaxBytesCanReserve();
+    Assert.assertTrue(queueCap >= 10 * mockTsBlockSize);
     ShuffleSinkHandle shuffleSinkHandle =
         new ShuffleSinkHandle(
             remoteFragmentInstanceId,
@@ -338,7 +410,7 @@ public class ShuffleSinkHandleTest {
                 remoteFragmentInstanceId),
             remotePlanNodeId,
             mockTsBlockSize,
-            Long.MAX_VALUE,
+            queueCap,
             false);
 
     // Abort.

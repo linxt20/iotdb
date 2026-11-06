@@ -1,0 +1,100 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.queryengine.execution.fragment;
+
+import org.apache.iotdb.db.queryengine.common.*;
+import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
+import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
+
+import org.junit.Test;
+import org.mockito.InOrder;
+
+import java.lang.reflect.*;
+import java.util.*;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+public class FragmentSnapshotFailureCleanupTest {
+  @Test
+  public void failedSnapshotStillClosesDriversAndReleasesBothMemoryOwners() throws Exception {
+    FragmentInstanceId id =
+        new FragmentInstanceId(new PlanFragmentId(new QueryId("snapshot_failure"), 1), "0");
+    FragmentInstanceContext context = mock(FragmentInstanceContext.class);
+    FragmentInstanceStateMachine state = new FragmentInstanceStateMachine(id, Runnable::run);
+    IDriver driver = mock(IDriver.class);
+    when(driver.getDriverContext()).thenReturn(new DriverContext());
+    doThrow(new IllegalArgumentException("injected statistics failure"))
+        .when(driver)
+        .recordMorselCompletionStatistics();
+    ISink sink = mock(ISink.class);
+    MPPDataExchangeManager exchange = mock(MPPDataExchangeManager.class);
+    Constructor<FragmentInstanceExecution> ctor =
+        FragmentInstanceExecution.class.getDeclaredConstructor(
+            FragmentInstanceId.class,
+            FragmentInstanceContext.class,
+            List.class,
+            ISink.class,
+            FragmentInstanceStateMachine.class,
+            long.class,
+            MPPDataExchangeManager.class);
+    ctor.setAccessible(true);
+    FragmentInstanceExecution execution =
+        ctor.newInstance(
+            id, context, Collections.singletonList(driver), sink, state, 1000L, exchange);
+    Method initialize =
+        FragmentInstanceExecution.class.getDeclaredMethod(
+            "initialize", IDriverScheduler.class, boolean.class);
+    initialize.setAccessible(true);
+    initialize.invoke(execution, mock(IDriverScheduler.class), true);
+    state.finished();
+    assertTrue(execution.isStaticsRemoved());
+    InOrder order = inOrder(sink, driver, context, exchange);
+    order.verify(sink).close();
+    order.verify(driver).close();
+    order.verify(context).releaseResourceWhenAllDriversAreClosed();
+    order
+        .verify(exchange)
+        .deRegisterFragmentInstanceFromMemoryPool("snapshot_failure", "1.0", true);
+    order.verify(context).releaseMemoryReservationManager();
+    // Lock must be available to a later statistics reader after the exception.
+    java.util.concurrent.ExecutorService reader =
+        java.util.concurrent.Executors.newSingleThreadExecutor();
+    try {
+      assertTrue(
+          reader
+              .submit(
+                  () -> {
+                    execution.lockStatistics();
+                    try {
+                      return true;
+                    } finally {
+                      execution.unlockStatistics();
+                    }
+                  })
+              .get(5, java.util.concurrent.TimeUnit.SECONDS));
+    } finally {
+      reader.shutdownNow();
+    }
+  }
+}

@@ -106,9 +106,9 @@ public class FragmentInstanceManagerTest {
       Future<FragmentInstanceInfo> cancellationFuture =
           executor.submit(() -> manager.cancelTask(instanceId, true));
 
-      // cancelTask removes the context before it waits for the in-progress computeIfAbsent on the
-      // execution map. This recreates the race that previously made the failure path look up a
-      // null context.
+      // cancelTask retains the internal cancellation context to reject late dispatch, while
+      // getInstanceInfo preserves cancellation's public null lookup before the in-progress
+      // execution-map compute completes. The failure path must still use its captured context.
       await().atMost(10, TimeUnit.SECONDS).until(() -> manager.getInstanceInfo(instanceId) == null);
       failPlanning.countDown();
 
@@ -126,6 +126,67 @@ public class FragmentInstanceManagerTest {
       executor.shutdownNow();
       assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
       manager.cancelTask(instanceId, true);
+    }
+  }
+
+  @Test
+  public void cancelledBeforeDispatchRejectsLateDataQuery() throws Exception {
+    assertCancelledIdentityRejectsLateDispatch(true);
+  }
+
+  @Test
+  public void cancelledBeforeDispatchRejectsLateSchemaQuery() throws Exception {
+    assertCancelledIdentityRejectsLateDispatch(false);
+  }
+
+  private void assertCancelledIdentityRejectsLateDispatch(boolean data) throws Exception {
+    QueryId query = new QueryId("cancel_before_late_" + (data ? "data" : "schema"));
+    FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(query, 0), "0");
+    FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
+    org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager exchange =
+        org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager();
+    org.apache.iotdb.db.queryengine.execution.memory.MemoryPool pool =
+        exchange.getLocalMemoryManager().getQueryPool();
+    org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager audit =
+        org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance();
+    String window = audit.openWindow(30_000, pool.getRemainingBytes(), 2048);
+    try {
+      assertNotNull(manager.cancelTask(id, true));
+      assertTrue(FragmentInstanceManager.isFragmentCancellationRequested(id));
+      FragmentInstance instance = mock(FragmentInstance.class);
+      when(instance.getId()).thenReturn(id);
+      when(instance.getTimeOut()).thenReturn(1000L);
+      org.apache.iotdb.commons.exception.IoTDBRuntimeException failure =
+          org.junit.Assert.assertThrows(
+              org.apache.iotdb.commons.exception.IoTDBRuntimeException.class,
+              () -> {
+                if (data)
+                  manager.execDataQueryFragmentInstance(instance, mock(IDataRegionForQuery.class));
+                else manager.execSchemaQueryFragmentInstance(instance, mock(ISchemaRegion.class));
+              });
+      assertEquals(TSStatusCode.REPEATED_RPC_CALL.getStatusCode(), failure.getErrorCode());
+      org.mockito.Mockito.verify(instance, org.mockito.Mockito.never()).getFragment();
+      org.junit.Assert.assertFalse(FragmentInstanceManager.hasDataNodeQueryContext(query));
+      org.junit.Assert.assertNull(manager.getInstanceInfo(id));
+      java.util.Map<String, Object> snapshot =
+          audit.snapshot(window, query.getId(), id.getFullId(), pool, 2048);
+      assertEquals(true, snapshot.get("complete"));
+      assertEquals(0, snapshot.get("createdDrivers"));
+      assertEquals(0, snapshot.get("unconsumedFactories"));
+      assertEquals(0, snapshot.get("liveQueues"));
+      assertEquals(0, snapshot.get("pendingFutures"));
+      assertEquals(false, snapshot.get("fragmentMapPresent"));
+      assertEquals(true, snapshot.get("released"));
+      assertNotNull(manager.cancelTask(id, true));
+      assertTrue(FragmentInstanceManager.isFragmentCancellationRequested(id));
+    } finally {
+      audit.closeWindow(window);
+      manager.cancelQuery(
+          query,
+          java.util.Collections.singletonList(id),
+          true,
+          FragmentInstanceManager.CancellationOrigin.LOCAL_CANCEL_TASK);
     }
   }
 }

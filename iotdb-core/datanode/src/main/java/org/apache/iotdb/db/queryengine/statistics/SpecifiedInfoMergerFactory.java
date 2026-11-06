@@ -36,9 +36,23 @@ public class SpecifiedInfoMergerFactory {
 
   private static final SpecifiedInfoMerger LONG_MERGER =
       (first, second) -> {
-        first.replaceAll(
-            (k, v) -> Long.toString(Long.parseLong(v) + Long.parseLong(second.get(k))));
-        return first;
+        Map<String, String> result = new java.util.HashMap<>();
+        if (first == null || second == null) {
+          return result;
+        }
+        for (Map.Entry<String, String> entry : first.entrySet()) {
+          String other = second.get(entry.getKey());
+          if (entry.getValue() == null || other == null) {
+            continue;
+          }
+          try {
+            long value = Math.addExact(Long.parseLong(entry.getValue()), Long.parseLong(other));
+            result.put(entry.getKey(), Long.toString(value));
+          } catch (NumberFormatException | ArithmeticException ignored) {
+            // An unavailable or overflowing statistic has no valid aggregate value.
+          }
+        }
+        return result;
       };
 
   // currently the sink and shuffle operator only have the field of string type,

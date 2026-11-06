@@ -198,7 +198,26 @@ public class LocalSourceHandle implements ISourceHandle {
   @Override
   public ListenableFuture<?> isBlocked() {
     checkState();
-    return nonCancellationPropagating(queue.isBlocked());
+    com.google.common.util.concurrent.ListenableFuture<?> future = queue.isBlocked();
+    if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .isEnabled()) {
+      SharedTsBlockQueue.MemoryReservationKey key = queue.getMemoryReservationKey();
+      String query =
+          localFragmentInstanceId == null ? key.queryId() : localFragmentInstanceId.getQueryId();
+      String fragment =
+          localFragmentInstanceId == null
+              ? key.fragmentInstanceId()
+              : org.apache.iotdb.db.queryengine.common.FragmentInstanceId
+                  .createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId);
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .trackFuture(query, fragment, future);
+    }
+    return nonCancellationPropagating(future);
+  }
+
+  @Override
+  public synchronized boolean isClosed() {
+    return closed;
   }
 
   @Override

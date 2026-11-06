@@ -222,6 +222,7 @@ public class FragmentInstanceStatisticsDrawer {
         addLine(singleFragmentInstanceArea, 1, String.format("blocking ratio: %.1f%%", blockRatio));
       }
 
+      renderRuntimeSnapshot(statistics, singleFragmentInstanceArea);
       renderQueryStatistics(statistics.getQueryStatistics(), singleFragmentInstanceArea, verbose);
 
       // render operator
@@ -239,6 +240,105 @@ public class FragmentInstanceStatisticsDrawer {
     }
 
     return table;
+  }
+
+  private void renderRuntimeSnapshot(
+      TFetchFragmentInstanceStatisticsResp statistics, List<StatisticLine> area) {
+    if (!statistics.isSetSnapshotGeneration() && !statistics.isSetDriverSnapshots()) {
+      return;
+    }
+    addLine(area, 1, "Runtime Snapshot:");
+    if (statistics.isSetSchemaVersion()) {
+      addLine(area, 2, "schemaVersion: " + statistics.getSchemaVersion());
+    }
+    if (statistics.isSetSnapshotGeneration()) {
+      addLine(area, 2, "generation: " + statistics.getSnapshotGeneration());
+    }
+    if (statistics.isSetPlannedDop()) {
+      addLine(area, 2, "plannedDop: " + statistics.getPlannedDop());
+    }
+    if (statistics.isSetActualPipelineCount()) {
+      addLine(area, 2, "actualPipelineCount: " + statistics.getActualPipelineCount());
+    }
+    if (statistics.isSetSplitMode()) {
+      addLine(area, 2, "splitMode: " + statistics.getSplitMode());
+    }
+    if (statistics.isSetSplitReason()) {
+      addLine(area, 2, "splitReason: " + statistics.getSplitReason());
+    }
+    if (statistics.isSetPlanIdentityChecksum()) {
+      addLine(area, 2, "planIdentityChecksum: " + statistics.getPlanIdentityChecksum());
+    }
+    if (statistics.isSetWorkUnitIds()) {
+      addLine(area, 2, "workUnitIds: " + statistics.getWorkUnitIds());
+    }
+    if (statistics.isSetBucketIds()) {
+      addLine(area, 2, "bucketIds: " + statistics.getBucketIds());
+    }
+    if (statistics.isSetExchangeEdgeIds()) {
+      addLine(area, 2, "exchangeEdgeIds: " + statistics.getExchangeEdgeIds());
+    }
+    if (statistics.isSetCanonicalFallbackReason()) {
+      addLine(area, 2, "canonicalFallbackReason: " + statistics.getCanonicalFallbackReason());
+    }
+    if (statistics.isSetAdmissionStatus()) {
+      addLine(area, 2, "admissionStatus: " + statistics.getAdmissionStatus());
+    }
+    if (statistics.isSetAdmissionReason()) {
+      addLine(area, 2, "admissionReason: " + statistics.getAdmissionReason());
+    }
+    if (statistics.isSetResourceObjectCount()) {
+      addLine(area, 2, "resourceObjectCount: " + statistics.getResourceObjectCount());
+    }
+    if (statistics.isSetResourceUniqueMemoryKeyCount()) {
+      addLine(
+          area, 2, "resourceUniqueMemoryKeyCount: " + statistics.getResourceUniqueMemoryKeyCount());
+    }
+    if (statistics.isSetResourceNominalShareBytes()) {
+      addLine(area, 2, "resourceNominalShareBytes: " + statistics.getResourceNominalShareBytes());
+    }
+    if (statistics.isSetSnapshotChecksum()) {
+      addLine(area, 2, "checksum: " + statistics.getSnapshotChecksum());
+    }
+    if (statistics.isSetValidityReasons()) {
+      addLine(area, 2, "validity: " + statistics.getValidityReasons());
+    }
+    if (statistics.isSetDriverSnapshots()) {
+      statistics.getDriverSnapshots().stream()
+          .sorted(
+              java.util.Comparator.comparing(
+                      org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot::getFragmentInstanceId)
+                  .thenComparing(
+                      org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot::getDriverPipelineId)
+                  .thenComparing(
+                      org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot::getDriverTaskId))
+          .forEach(
+              driver -> {
+                addLine(
+                    area,
+                    2,
+                    String.format(
+                        "DRIVER[id=%s][pipeline=%s][role=%s]",
+                        driver.getDriverTaskId(),
+                        driver.getDriverPipelineId(),
+                        driver.isSetDriverRole() ? driver.getDriverRole() : "unknown"));
+                if (driver.isSetDriverWallNanos()) {
+                  addLine(area, 3, "driverWallNanos: " + driver.getDriverWallNanos());
+                }
+                if (driver.isSetDriverOutputRows()) {
+                  addLine(area, 3, "driverOutputRows: " + driver.getDriverOutputRows());
+                }
+                if (driver.isSetDriverOutputBytes()) {
+                  addLine(area, 3, "driverOutputBytes: " + driver.getDriverOutputBytes());
+                }
+                if (driver.isSetDriverTsBlockCount()) {
+                  addLine(area, 3, "driverTsBlocks: " + driver.getDriverTsBlockCount());
+                }
+                if (driver.isSetValidityReasons()) {
+                  addLine(area, 3, "validity: " + driver.getValidityReasons());
+                }
+              });
+    }
   }
 
   private void addLineWithValueCheck(

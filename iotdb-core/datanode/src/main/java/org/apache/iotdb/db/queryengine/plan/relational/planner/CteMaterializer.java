@@ -294,7 +294,8 @@ public class CteMaterializer {
     IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
         coordinator.getInternalServiceClientManager();
     Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
-        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
+        QueryStatisticsFetcher.fetchAllTerminalStatisticsBestEffort(instances, clientManager, 5000)
+            .getResponses();
     List<StatisticLine> statisticLines =
         fragmentInstanceStatisticsDrawer.renderFragmentInstances(instances, allStatistics, verbose);
     return statisticLines.stream().map(StatisticLine::getValue).collect(Collectors.toList());

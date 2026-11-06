@@ -45,6 +45,8 @@ import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanContext;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionResourceRegistry;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.ThreadSafeMemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.read_tsfile.ExternalTsFileQueryDataSource;
@@ -173,7 +175,7 @@ public class FragmentInstanceContext extends QueryContext {
   private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
   private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
-  private CountDownLatch allDriversClosed;
+  private CountDownLatch allDriversClosed = new CountDownLatch(0);
 
   // session info
   private SessionInfo sessionInfo;
@@ -186,7 +188,26 @@ public class FragmentInstanceContext extends QueryContext {
 
   // Used for EXPLAIN ANALYZE to cache statistics result when the FI is finished,
   // it will not be released until it's fetched.
-  private TFetchFragmentInstanceStatisticsResp fragmentInstanceStatistics = null;
+  private volatile TFetchFragmentInstanceStatisticsResp fragmentInstanceStatistics = null;
+
+  // Planned scan metadata is written during local planning and read by the runtime snapshot.
+  private volatile int plannedDop = -1;
+  private volatile int actualPipelineCount = -1;
+  // Fragment-local planning epoch; independent from runtime snapshot generations.
+  private volatile long planGeneration = 1L;
+  private volatile String splitMode;
+  private volatile String splitReason;
+  private volatile String planIdentityChecksum;
+  private volatile List<String> workUnitIds = Collections.emptyList();
+  private volatile List<Integer> bucketIds = Collections.emptyList();
+  private volatile List<String> exchangeEdgeIds = Collections.emptyList();
+  private volatile String canonicalFallbackReason;
+  private volatile int resourceObjectCount = -1;
+  private volatile int resourceUniqueMemoryKeyCount = -1;
+  private volatile long resourceNominalShareBytes = -1;
+  private volatile String admissionStatus = "UNKNOWN";
+  private volatile String admissionReason;
+  private volatile LocalExecutionPlanContext planningContext;
 
   private final AtomicLong initQueryDataSourceCost = new AtomicLong(0);
   private final AtomicInteger initQueryDataSourceRetryCount = new AtomicInteger(0);
@@ -215,6 +236,26 @@ public class FragmentInstanceContext extends QueryContext {
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
+  }
+
+  /**
+   * A real cancellation received before dispatch. This context retains the existing cancellation
+   * identity cache without starting execution or initializing planning, region or driver resources.
+   */
+  static FragmentInstanceContext createCancellationContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, boolean hasThrowable) {
+    FragmentInstanceContext context =
+        new FragmentInstanceContext(id, stateMachine, null, false, false);
+    context.cancelledBeforeDispatch = true;
+    context.requestCancellation();
+    context.initialize();
+    if (hasThrowable) context.cancel();
+    else context.finished();
+    return context;
+  }
+
+  public boolean wasCancelledBeforeDispatch() {
+    return cancelledBeforeDispatch;
   }
 
   // This method is only used in groupby
@@ -1239,7 +1280,12 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void initializeNumOfDrivers(int numOfDrivers) {
-    // initialize with the num of Drivers
+    if (numOfDrivers < 0) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_NUMOFDRIVERS_MUST_NOT_BE_NEGATIVE_7D6E3815);
+    }
+    // initialize with the total number of factory slots, including factories that may fail before
+    // producing a driver. The manager settles an uncreated slot explicitly.
     allDriversClosed = new CountDownLatch(numOfDrivers);
   }
 
@@ -1630,5 +1676,194 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean isSingleSourcePath() {
     return singleSourcePath;
+  }
+
+  public void setScanParallelMetadata(
+      int plannedDop, int actualPipelineCount, String splitMode, String splitReason) {
+    this.plannedDop = plannedDop;
+    this.actualPipelineCount = actualPipelineCount;
+    this.splitMode = splitMode;
+    this.splitReason = splitReason;
+  }
+
+  public void setActualPipelineCount(int actualPipelineCount) {
+    this.actualPipelineCount = actualPipelineCount;
+  }
+
+  public long getPlanGeneration() {
+    return planGeneration;
+  }
+
+  public void setPlanGeneration(long planGeneration) {
+    if (planGeneration < 0) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_PLANGENERATION_MUST_BE_NON_NEGATIVE_225F3309);
+    }
+    this.planGeneration = planGeneration;
+  }
+
+  public void setScanParallelPlanIdentity(
+      String checksum,
+      List<String> workUnitIds,
+      List<Integer> bucketIds,
+      List<String> exchangeEdgeIds,
+      String canonicalFallbackReason) {
+    this.planIdentityChecksum = checksum;
+    this.workUnitIds = Collections.unmodifiableList(new ArrayList<>(workUnitIds));
+    this.bucketIds = Collections.unmodifiableList(new ArrayList<>(bucketIds));
+    this.exchangeEdgeIds = Collections.unmodifiableList(new ArrayList<>(exchangeEdgeIds));
+    this.canonicalFallbackReason = canonicalFallbackReason;
+  }
+
+  public void setScanParallelPlanIdentity(
+      String checksum, List<String> workUnitIds, List<Integer> bucketIds) {
+    setScanParallelPlanIdentity(
+        checksum, workUnitIds, bucketIds, Collections.emptyList(), splitReason);
+  }
+
+  public String getPlanIdentityChecksum() {
+    return planIdentityChecksum;
+  }
+
+  public List<String> getWorkUnitIds() {
+    return workUnitIds;
+  }
+
+  public List<Integer> getBucketIds() {
+    return bucketIds;
+  }
+
+  public List<String> getExchangeEdgeIds() {
+    return exchangeEdgeIds;
+  }
+
+  public String getCanonicalFallbackReason() {
+    return canonicalFallbackReason;
+  }
+
+  public int getPlannedDop() {
+    return plannedDop;
+  }
+
+  public int getActualPipelineCount() {
+    return actualPipelineCount;
+  }
+
+  public void setResourceQuotaSnapshot(LocalExecutionResourceRegistry.Snapshot snapshot) {
+    if (snapshot == null) return;
+    resourceObjectCount = snapshot.objectCount();
+    resourceUniqueMemoryKeyCount = snapshot.uniqueMemoryKeyCount();
+    resourceNominalShareBytes =
+        snapshot.nominalShareBytes().isPresent() ? snapshot.nominalShareBytes().getAsLong() : -1;
+  }
+
+  public int getResourceObjectCount() {
+    return resourceObjectCount;
+  }
+
+  public int getResourceUniqueMemoryKeyCount() {
+    return resourceUniqueMemoryKeyCount;
+  }
+
+  public long getResourceNominalShareBytes() {
+    return resourceNominalShareBytes;
+  }
+
+  public void setAdmissionAccepted() {
+    setAdmissionAccepted(null);
+  }
+
+  public void setAdmissionAccepted(String reason) {
+    admissionStatus = "ADMISSION_ACCEPTED";
+    admissionReason = reason;
+  }
+
+  public void setAdmissionRejected(String reason) {
+    admissionStatus = "ADMISSION_REJECTED";
+    admissionReason = reason;
+  }
+
+  public String getAdmissionStatus() {
+    return admissionStatus;
+  }
+
+  public String getAdmissionReason() {
+    return admissionReason;
+  }
+
+  public void setPlanningContext(LocalExecutionPlanContext context) {
+    planningContext = context;
+  }
+
+  public LocalExecutionPlanContext getPlanningContext() {
+    return planningContext;
+  }
+
+  public String getSplitMode() {
+    return splitMode;
+  }
+
+  public String getSplitReason() {
+    return splitReason;
+  }
+
+  private volatile boolean cancellationRequested;
+  private boolean cancelledBeforeDispatch;
+
+  public synchronized void requestCancellation() {
+    cancellationRequested = true;
+  }
+
+  public boolean isCancellationRequested() {
+    return cancellationRequested;
+  }
+
+  private final java.util.SortedMap<String, Integer> scanSourceDops = new java.util.TreeMap<>();
+  private final java.util.SortedMap<String, String> scanSourceChecksums = new java.util.TreeMap<>();
+  private final java.util.SortedMap<String, List<String>> scanSourceWorkUnits =
+      new java.util.TreeMap<>();
+  private final java.util.SortedMap<String, List<Integer>> scanSourceBuckets =
+      new java.util.TreeMap<>();
+
+  public synchronized void recordScanSourcePlanIdentity(
+      String sourceId,
+      String checksum,
+      List<String> workUnits,
+      List<Integer> buckets,
+      List<String> edges,
+      String fallback) {
+    scanSourceDops.put(sourceId, plannedDop);
+    scanSourceChecksums.put(sourceId, checksum);
+    scanSourceWorkUnits.put(sourceId, new ArrayList<>(workUnits));
+    scanSourceBuckets.put(sourceId, new ArrayList<>(buckets));
+    List<String> allWork = new ArrayList<>();
+    List<Integer> allBuckets = new ArrayList<>();
+    for (String source : scanSourceChecksums.keySet()) {
+      allWork.addAll(scanSourceWorkUnits.get(source));
+      for (int ignored : scanSourceBuckets.get(source)) allBuckets.add(allBuckets.size());
+    }
+    StringBuilder canonical = new StringBuilder();
+    for (java.util.Map.Entry<String, String> part : scanSourceChecksums.entrySet()) {
+      canonical
+          .append(part.getKey().length())
+          .append(':')
+          .append(part.getKey())
+          .append('|')
+          .append(part.getValue())
+          .append('|');
+    }
+    plannedDop = java.util.Collections.max(scanSourceDops.values());
+    String combined =
+        scanSourceChecksums.size() == 1
+            ? checksum
+            : org.apache.iotdb.db.queryengine.plan.planner.StaticParallelPlanChecksum.sha256(
+                canonical.toString());
+    setScanParallelPlanIdentity(combined, allWork, allBuckets, exchangeEdgeIds, fallback);
+  }
+
+  public synchronized void recordActualExchangeEdge(String edgeId) {
+    java.util.SortedSet<String> edges = new java.util.TreeSet<>(exchangeEdgeIds);
+    edges.add(edgeId);
+    exchangeEdgeIds = Collections.unmodifiableList(new ArrayList<>(edges));
   }
 }

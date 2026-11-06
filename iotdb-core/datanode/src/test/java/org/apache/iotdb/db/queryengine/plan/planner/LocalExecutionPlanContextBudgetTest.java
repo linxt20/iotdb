@@ -167,10 +167,29 @@ public class LocalExecutionPlanContextBudgetTest {
         plan.accept(new DataNodeTableOperatorGenerator(mock(Metadata.class)), context);
   }
 
+  private static ISinkHandle sinkHandle() {
+    ISinkHandle sink = mock(ISinkHandle.class);
+    when(sink.getChannel(0))
+        .thenReturn(
+            mock(org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel.class));
+    return sink;
+  }
+
+  private static ExchangeOperator exchange(
+      LocalExecutionPlanContext context, ISourceHandle source) {
+    int operatorId = context.getNextOperatorId();
+    PlanNodeId id = new PlanNodeId("budget_exchange_" + operatorId);
+    return new ExchangeOperator(
+        context.getDriverContext().addOperatorContext(operatorId, id, "ExchangeOperator"),
+        source,
+        id);
+  }
+
   private ISourceHandle addSource(LocalExecutionPlanContext target) {
-    ISourceHandle handle = mock(SourceHandle.class);
-    ExchangeOperator operator = mock(ExchangeOperator.class);
-    when(operator.getSourceHandle()).thenReturn(handle);
+    SourceHandle handle = mock(SourceHandle.class);
+    when(handle.getLocalFragmentInstanceId()).thenReturn(target.getFragmentInstanceId().toThrift());
+    when(handle.getLocalPlanNodeId()).thenReturn("budget_source");
+    ExchangeOperator operator = exchange(target, handle);
     target.addExchangeOperator(operator);
     return handle;
   }
@@ -220,12 +239,13 @@ public class LocalExecutionPlanContextBudgetTest {
     SourceHandle first = realSourceHandle(id, "first", manager);
     SourceHandle second = realSourceHandle(id, "second", manager);
     for (SourceHandle source : Arrays.asList(first, second)) {
-      ExchangeOperator exchange = mock(ExchangeOperator.class);
-      when(exchange.getSourceHandle()).thenReturn(source);
+      ExchangeOperator exchange = exchange(context, source);
       context.addExchangeOperator(exchange);
     }
     try {
+      context.setMaxBytesOneHandleCanReserve();
       context.setExchangeMemoryLimits(collect(), pool);
+      context.freezeResourceQuota();
       assertEquals(1024, context.getInstanceContext().getInputMaxBytes());
       first.isBlocked();
       second.isBlocked();
@@ -265,7 +285,7 @@ public class LocalExecutionPlanContextBudgetTest {
   public void testPureCollectUsesSharedSideBudgets() {
     ISourceHandle source = addSource(context);
     ISourceHandle secondSource = addSource(context);
-    ISinkHandle sink = mock(ISinkHandle.class);
+    ISinkHandle sink = sinkHandle();
     context.setISink(sink);
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(source).setMaxBytesCanReserve(512);
@@ -281,7 +301,7 @@ public class LocalExecutionPlanContextBudgetTest {
     pool = new MemoryPool("odd-budget", new MemoryManager(4096), 1025);
     context = newContext();
     ISourceHandle source = addSource(context);
-    ISinkHandle sink = mock(ISinkHandle.class);
+    ISinkHandle sink = sinkHandle();
     context.setISink(sink);
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(source).setMaxBytesCanReserve(512);
@@ -306,7 +326,7 @@ public class LocalExecutionPlanContextBudgetTest {
   public void testOutputOnlyCollectUsesFullBudgetEvenForOneFullBlock() {
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(1024);
     context.setExchangeSumNum(1);
-    ISinkHandle sink = mock(ISinkHandle.class);
+    ISinkHandle sink = sinkHandle();
     context.setISink(sink);
     context.setExchangeMemoryLimits(
         node(
@@ -322,8 +342,7 @@ public class LocalExecutionPlanContextBudgetTest {
   }
 
   private void addLocalInput() {
-    ExchangeOperator exchange = mock(ExchangeOperator.class);
-    when(exchange.getSourceHandle()).thenReturn(mock(LocalSourceHandle.class));
+    ExchangeOperator exchange = exchange(context, mock(LocalSourceHandle.class));
     context.addExchangeOperator(exchange);
   }
 
@@ -331,7 +350,7 @@ public class LocalExecutionPlanContextBudgetTest {
   public void testLocalInputsDoNotSplitOutputBudget() {
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(1024);
     addLocalInput();
-    ISinkHandle sink = mock(ISinkHandle.class);
+    ISinkHandle sink = sinkHandle();
     context.setISink(sink);
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(sink).setMaxBytesCanReserve(1024);
@@ -343,7 +362,7 @@ public class LocalExecutionPlanContextBudgetTest {
   public void testMixedLocalAndRemoteInputsStillSplitBidirectionalBudget() {
     addLocalInput();
     ISourceHandle source = addSource(context);
-    ISinkHandle sink = mock(ISinkHandle.class);
+    ISinkHandle sink = sinkHandle();
     context.setISink(sink);
     context.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
     verify(source).setMaxBytesCanReserve(512);
@@ -377,6 +396,7 @@ public class LocalExecutionPlanContextBudgetTest {
   public void testTreePlanningRetainsLegacySourceQuota() {
     ISourceHandle source = addSource(context);
     context.setMaxBytesOneHandleCanReserve();
+    context.freezeResourceQuota();
     verify(source).setMaxBytesCanReserve(256);
     assertFalse(
         SharedExchangeBudgetEligibility.isEligible(
@@ -471,7 +491,7 @@ public class LocalExecutionPlanContextBudgetTest {
           SharedExchangeBudgetEligibility.isEligible(node(dependency, collect(), collect())));
     }
     ISourceHandle source = addSource(context);
-    ISinkHandle sink = mock(ISinkHandle.class);
+    ISinkHandle sink = sinkHandle();
     context.setExchangeSumNum(2);
     context.setISink(sink);
     context.setExchangeSumNum(4);
@@ -557,8 +577,7 @@ public class LocalExecutionPlanContextBudgetTest {
     child.addPipelineDriverFactory(mock(Operator.class), child.getDriverContext(), 0);
     ISourceHandle source = addSource(child);
     PipelineSourceHandle pipelineSource = mock(PipelineSourceHandle.class);
-    ExchangeOperator exchange = mock(ExchangeOperator.class);
-    when(exchange.getSourceHandle()).thenReturn(pipelineSource);
+    ExchangeOperator exchange = exchange(context, pipelineSource);
     context.addExchangeOperator(exchange);
     context.setExchangeMemoryLimits(collect(), pool);
     verify(source).setMaxBytesCanReserve(256);
@@ -576,7 +595,7 @@ public class LocalExecutionPlanContextBudgetTest {
   @Test
   public void testSideSmallerThanOneBlockKeepsLegacyBudget() {
     addSource(context);
-    context.setISink(mock(ISinkHandle.class));
+    context.setISink(sinkHandle());
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(1024);
     context.setExchangeMemoryLimits(collect(), pool);
     assertAdmissionIsShared(false);
@@ -587,7 +606,7 @@ public class LocalExecutionPlanContextBudgetTest {
     IoTDBDescriptor.getInstance().getMemoryConfig().setMaxBytesPerFragmentInstance(64);
     context = newContext();
     context.setExchangeSumNum(1);
-    ISinkHandle sink = mock(ISinkHandle.class);
+    ISinkHandle sink = sinkHandle();
     context.setISink(sink);
     context.setExchangeMemoryLimits(
         node(PlanNodeType.IDENTITY_SINK, node(PlanNodeType.SERIES_SCAN)), pool);

@@ -115,9 +115,11 @@ public class LocalExecutionPlanner {
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
     Operator root = generateOperator(instanceContext, context, plan);
+    context.registerPipelineRoot(root);
 
-    // Select Collect consumption before estimating its retained input memory.
+    // Select the native shared/independent policy before freezing effective audit limits.
     setExchangeMemoryLimits(plan, context);
+    instanceContext.setResourceQuotaSnapshot(context.freezeResourceQuota());
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
@@ -128,6 +130,10 @@ public class LocalExecutionPlanner {
     long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
+    // The root driver is created after scan sub-pipelines; freeze the actual count at the final
+    // planner boundary rather than reporting only the bucket count.
+    instanceContext.setActualPipelineCount(context.getPipelineNumber());
+    recordFragmentPlanIdentity(plan, context);
 
     instanceContext.setSourcePaths(collectSourcePaths(context));
     instanceContext.setDevicePathsToContext(collectDevicePathsToContext(context));
@@ -155,9 +161,11 @@ public class LocalExecutionPlanner {
         new LocalExecutionPlanContext(types, instanceContext, schemaRegion);
 
     Operator root = generateOperator(instanceContext, context, plan);
+    context.registerPipelineRoot(root);
 
-    // Select Collect consumption before estimating its retained input memory.
+    // Select the native shared/independent policy before freezing effective audit limits.
     setExchangeMemoryLimits(plan, context);
+    instanceContext.setResourceQuotaSnapshot(context.freezeResourceQuota());
 
     PipelineMemoryEstimator memoryEstimator =
         context.constructPipelineMemoryEstimator(root, null, plan, -1);
@@ -168,8 +176,40 @@ public class LocalExecutionPlanner {
     checkMemory(memoryEstimator, instanceContext);
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
+    instanceContext.setActualPipelineCount(context.getPipelineNumber());
+    recordFragmentPlanIdentity(plan, context);
 
     return context.getPipelineDriverFactories();
+  }
+
+  static void recordFragmentPlanIdentity(PlanNode plan, LocalExecutionPlanContext context) {
+    FragmentInstanceContext instance = context.getInstanceContext();
+    if (instance.getPlanIdentityChecksum() != null) return;
+    // This fragment has no scan managed by the static scan planner. It can still
+    // own root/exchange drivers, whose real edge identities must survive transport.
+    String checksum =
+        StaticParallelPlanChecksum.computeFallback(
+            context.getFragmentInstanceId().getQueryId().getId(),
+            context.getFragmentInstanceId().getFragmentInstanceId(),
+            plan.getPlanNodeId().getId(),
+            "NO_MANAGED_SCAN",
+            "NO_MANAGED_SCAN",
+            context.getDegreeOfParallelism(),
+            0,
+            java.util.Collections.emptyList(),
+            java.util.Collections.emptyList(),
+            instance.getPlanGeneration());
+    StringBuilder canonical = new StringBuilder(checksum);
+    for (String edge : instance.getExchangeEdgeIds())
+      canonical.append('|').append(edge.length()).append(':').append(edge);
+    instance.setScanParallelMetadata(
+        0, context.getPipelineNumber(), "NO_MANAGED_SCAN", "NO_MANAGED_SCAN");
+    instance.setScanParallelPlanIdentity(
+        StaticParallelPlanChecksum.sha256(canonical.toString()),
+        java.util.Collections.emptyList(),
+        java.util.Collections.emptyList(),
+        instance.getExchangeEdgeIds(),
+        "NONE");
   }
 
   private Operator generateOperator(
@@ -220,6 +260,7 @@ public class LocalExecutionPlanner {
     // if it is disabled, just return
     if (!IoTDBDescriptor.getInstance().getMemoryConfig().isEnableQueryMemoryEstimation()
         && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
+      instanceContext.setAdmissionAccepted("CHECK_DISABLED");
       return 0;
     }
 
@@ -230,6 +271,7 @@ public class LocalExecutionPlanner {
     long reservedBytes =
         allocateOperatorsMemory(estimatedMemorySize, instanceContext.isHighestPriority());
     if (reservedBytes < 0) {
+      instanceContext.setAdmissionRejected("INSUFFICIENT_OPERATOR_MEMORY");
       throw new MemoryNotEnoughException(
           String.format(
               DataNodeQueryMessages
@@ -237,6 +279,8 @@ public class LocalExecutionPlanner {
               OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes(),
               estimatedMemorySize));
     }
+    instanceContext.setAdmissionAccepted(
+        reservedBytes == 0 && estimatedMemorySize > 0 ? "HIGHEST_PRIORITY_ZERO_RESERVATION" : null);
     FragmentInstanceStateMachine stateMachine = instanceContext.getStateMachine();
     if (reservedBytes > 0) {
       stateMachine.addStateChangeListener(

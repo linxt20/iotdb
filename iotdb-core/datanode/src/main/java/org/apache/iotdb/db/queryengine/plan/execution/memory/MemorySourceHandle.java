@@ -40,6 +40,7 @@ public class MemorySourceHandle implements ISourceHandle {
 
   private final TsBlock result;
   private boolean hasNext;
+  private volatile boolean closed;
 
   private static final TsBlockSerde serde = new TsBlockSerde();
 
@@ -107,7 +108,7 @@ public class MemorySourceHandle implements ISourceHandle {
 
   @Override
   public void abort() {
-    // do nothing
+    closed = true;
   }
 
   @Override
@@ -117,7 +118,12 @@ public class MemorySourceHandle implements ISourceHandle {
 
   @Override
   public void close() {
-    // do nothing
+    closed = true;
+  }
+
+  @Override
+  public boolean isClosed() {
+    return closed;
   }
 
   @Override

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -67,6 +69,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -77,13 +80,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.function.LongPredicate;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -556,23 +563,516 @@ public class DeviceTimePartitionMorselTest {
     assertEquals("time", ((SymbolReference) first.getLeft()).getName());
   }
 
-  /**
-   * The last representable partition must not have its upper bound overflow into a negative value,
-   * which would turn the range inside out and silently scan everything.
-   */
+  /** A last partition containing MAX_VALUE has no representable exclusive upper bound. */
   @Test
-  public void testLastPartitionUpperBoundDoesNotOverflow() {
+  public void testLastPartitionWithUnrepresentableUpperBoundIsRejected() {
     final long lastPartitionId = TimePartitionUtils.getTimePartitionId(Long.MAX_VALUE);
-    Expression predicate =
-        DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(
-            lastPartitionId, TP_INTERVAL, "time");
-    LogicalExpression and = (LogicalExpression) predicate;
-    long lower =
-        boundValue(and.getTerms().get(0), ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL);
-    long upper = boundValue(and.getTerms().get(1), ComparisonExpression.Operator.LESS_THAN);
-    assertTrue(
-        "upper bound must stay above the lower bound, got [" + lower + ", " + upper + ")",
-        upper > lower);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(
+                lastPartitionId, TP_INTERVAL, "time"));
+  }
+
+  @Test
+  public void testNegativePartitionUsesIndependentHalfOpenBounds() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () -> {
+          Expression predicate =
+              DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(-2L, 10L, "time");
+          assertPointwisePredicate(
+              predicate,
+              "time",
+              new long[] {Long.MIN_VALUE, -21L, -20L, -19L, -11L, -10L, -1L, 0L},
+              time -> time >= -20L && time < -10L);
+        });
+  }
+
+  @Test
+  public void testNonZeroOriginUsesIndependentExpectedBounds() throws Exception {
+    withTimePartitionConfiguration(
+        7L,
+        10L,
+        () -> {
+          Expression negative =
+              DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(-1L, 10L, "event_ts");
+          Expression positive =
+              DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(2L, 10L, "event_ts");
+          long[] points = {-4L, -3L, -2L, 6L, 7L, 26L, 27L, 36L, 37L};
+          assertPointwisePredicate(negative, "event_ts", points, time -> time >= -3L && time < 7L);
+          assertPointwisePredicate(positive, "event_ts", points, time -> time >= 27L && time < 37L);
+        });
+  }
+
+  @Test
+  public void testTimeAliasAndOriginalPredicateIntersectPointByPoint() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () -> {
+          DeviceTableScanNode node = initDeviceTableScanNode(4);
+          node.setAllowParallelScan(true);
+          Symbol originalTime = new Symbol("time");
+          Symbol alias = new Symbol("event_ts");
+          Map<Symbol, ColumnSchema> assignments = new HashMap<>(node.getAssignments());
+          ColumnSchema timeColumn = assignments.remove(originalTime);
+          assignments.put(alias, timeColumn);
+          node.setAssignments(assignments);
+          node.setOutputSymbols(Arrays.asList(alias, new Symbol("tag1"), new Symbol("s1")));
+          Expression userPredicate =
+              LogicalExpression.and(
+                  comparison("event_ts", ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL, -7L),
+                  comparison("event_ts", ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, 13L));
+          node.setTimePredicate(userPredicate);
+          List<DeviceEntry> originalDevices = new ArrayList<>(node.getDeviceEntries());
+          LocalExecutionPlanContext context =
+              createContext("alias_intersection", dataRegionWithPartitions(-1L, 0L, 1L));
+          context.setDegreeOfParallelism(2);
+          context
+              .getTypeProvider()
+              .putTableModelType(alias, TypeFactory.getType(TSDataType.TIMESTAMP));
+          Operator root = node.accept(generator, context);
+          try {
+            assertEquals(CollectOperator.class, root.getClass());
+            assertEquals("TIME_PARTITION", context.getInstanceContext().getSplitMode());
+            assertPointwiseScanCoverage(
+                context,
+                4,
+                new long[] {
+                  Long.MIN_VALUE,
+                  -11L,
+                  -10L,
+                  -8L,
+                  -7L,
+                  -1L,
+                  0L,
+                  9L,
+                  10L,
+                  13L,
+                  14L,
+                  19L,
+                  20L,
+                  Long.MAX_VALUE
+                },
+                time -> time >= -7L && time <= 13L);
+            assertSame(userPredicate, node.getTimePredicate().get());
+            assertEquals(originalDevices, node.getDeviceEntries());
+            assertEquals(alias, node.getTimeColumn().get());
+          } finally {
+            closeQuietly(root);
+            closePipelineOperations(context);
+          }
+        });
+  }
+
+  @Test
+  public void testMultiplePartitionOrPreservesGapsAndAllDevices() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () -> {
+          DeviceTableScanNode node = initDeviceTableScanNode(4);
+          node.setAllowParallelScan(true);
+          LocalExecutionPlanContext context =
+              createContext("partition_or_gaps", dataRegionWithPartitions(0L, 2L, 4L));
+          context.setDegreeOfParallelism(2);
+          Operator root = node.accept(generator, context);
+          try {
+            assertEquals("TIME_PARTITION", context.getInstanceContext().getSplitMode());
+            boolean foundDisjointRanges = false;
+            for (Operator scan : actualScanRoots(context)) {
+              foundDisjointRanges |= timeFilterOf(scan).getTimeRanges().size() > 1;
+            }
+            assertTrue("at least one morsel must carry the disjoint OR", foundDisjointRanges);
+            assertPointwiseScanCoverage(
+                context,
+                4,
+                new long[] {-1L, 0L, 9L, 10L, 19L, 20L, 29L, 30L, 39L, 40L, 49L, 50L},
+                time ->
+                    (time >= 0L && time < 10L)
+                        || (time >= 20L && time < 30L)
+                        || (time >= 40L && time < 50L));
+          } finally {
+            closeQuietly(root);
+            closePipelineOperations(context);
+          }
+        });
+  }
+
+  @Test
+  public void testNegativeIntervalFallsBackBeforeTimePartitionResources() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        -10L,
+        () ->
+            assertSafeDeviceFallback(
+                "negative_interval",
+                null,
+                new Long[] {0L, 1L},
+                new long[] {Long.MIN_VALUE, -1L, 0L, 1L, Long.MAX_VALUE},
+                time -> true));
+  }
+
+  @Test
+  public void testUnboundPartitionIdentityFallsBackWithoutNarrowing() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () ->
+            assertSafeDeviceFallback(
+                "unbound_partition",
+                comparison("time", ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL, -5L),
+                new Long[] {Long.MIN_VALUE, 0L},
+                new long[] {Long.MIN_VALUE, -6L, -5L, 0L, Long.MAX_VALUE},
+                time -> time >= -5L));
+  }
+
+  @Test
+  public void testLowerClampedPartitionFallsBackWithoutWideningPredicate() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () -> {
+          long first = Math.floorDiv(Long.MIN_VALUE, 10L);
+          assertSafeDeviceFallback(
+              "lower_clamped_partition",
+              comparison(
+                  "time", ComparisonExpression.Operator.LESS_THAN_OR_EQUAL, Long.MIN_VALUE + 9L),
+              new Long[] {first, first + 1L},
+              new long[] {
+                Long.MIN_VALUE,
+                Long.MIN_VALUE + 1L,
+                Long.MIN_VALUE + 7L,
+                Long.MIN_VALUE + 8L,
+                Long.MIN_VALUE + 9L,
+                Long.MIN_VALUE + 10L,
+                0L,
+                Long.MAX_VALUE
+              },
+              time -> time <= Long.MIN_VALUE + 9L);
+        });
+  }
+
+  @Test
+  public void testUpperClampedPartitionFallsBackWithoutDroppingMaxTimestamp() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () ->
+            assertSafeDeviceFallback(
+                "upper_clamped_partition",
+                comparison(
+                    "time",
+                    ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                    Long.MAX_VALUE - 1L),
+                new Long[] {0L, Math.floorDiv(Long.MAX_VALUE, 10L)},
+                new long[] {
+                  Long.MIN_VALUE, 0L, Long.MAX_VALUE - 2L, Long.MAX_VALUE - 1L, Long.MAX_VALUE
+                },
+                time -> time >= Long.MAX_VALUE - 1L));
+  }
+
+  @Test
+  public void testPartitionPredicateRejectsUnboundOrNonPositiveIntervals() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () -> {
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(0L, 11L, "time"));
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(0L, 0L, "time"));
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(
+                      Long.MIN_VALUE, 10L, "time"));
+        });
+  }
+
+  @Test
+  public void testTransparentFilterSurvivesUnsafePartitionFallback() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () -> {
+          DeviceTableScanNode node = initDeviceTableScanNode(4);
+          node.setAllowParallelScan(true);
+          FilterNode filter = new FilterNode(new PlanNodeId("unsafe_filter"), node, s1IsPositive());
+          LocalExecutionPlanContext context =
+              createTypedContext(
+                  "unsafe_partition_filter",
+                  dataRegionWithPartitions(0L, Math.floorDiv(Long.MAX_VALUE, 10L)));
+          context.setDegreeOfParallelism(2);
+          Operator root = filter.accept(generator, context);
+          try {
+            assertEquals(FilterAndProjectOperator.class, root.getClass());
+            assertEquals(
+                "UNSUPPORTED_TIME_PARTITION_RANGE", context.getInstanceContext().getSplitReason());
+            assertPointwiseScanCoverage(
+                context, 4, new long[] {Long.MIN_VALUE, 0L, Long.MAX_VALUE}, time -> true);
+          } finally {
+            closeQuietly(root);
+            closePipelineOperations(context);
+          }
+        });
+  }
+
+  @Test
+  public void testClonePreservesExecutionFieldsAndTopKWithoutChangingOriginal() throws Exception {
+    withTimePartitionConfiguration(
+        0L,
+        10L,
+        () -> {
+          DeviceTableScanNode origin = initDeviceTableScanNode(4);
+          origin.setAllowParallelScan(true);
+          origin.setScanOrder(Ordering.DESC);
+          origin.setPushLimitToEachDevice(true);
+          origin.setPushDownLimit(7L);
+          origin.setPushDownOffset(2L);
+          origin.setContainsNonAlignedDevice();
+          origin.setTopKRuntimeFilterSourceId("topk_contract_source");
+          Expression originalTime =
+              comparison("time", ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL, -7L);
+          Expression originalField = s1IsPositive();
+          origin.setTimePredicate(originalTime);
+          origin.setPushDownPredicate(originalField);
+          Filter originalDerivedTime = Mockito.mock(Filter.class);
+          origin.setTimeFilter(originalDerivedTime);
+          TRegionReplicaSet routing = new TRegionReplicaSet();
+          origin.setRegionReplicaSet(routing);
+          List<DeviceEntry> originalDevices = new ArrayList<>(origin.getDeviceEntries());
+          DeviceEntryDataSet dataSet = Mockito.mock(DeviceEntryDataSet.class);
+          Mockito.when(dataSet.getInlineEntries()).thenReturn(originalDevices);
+          Mockito.when(dataSet.getEntryCount()).thenReturn(4);
+          origin.setCoordinatorDeviceEntryDataSet(dataSet);
+          List<DeviceEntry> subset = new ArrayList<>(originalDevices.subList(0, 2));
+          PlanNodeId newId = new PlanNodeId("cloned_time_scan");
+          Expression range =
+              DataNodeTableOperatorGenerator.buildTimePartitionRangePredicate(-1L, 10L, "time");
+          Method clone =
+              DataNodeTableOperatorGenerator.class.getDeclaredMethod(
+                  "cloneSubScanNode",
+                  DeviceTableScanNode.class,
+                  PlanNodeId.class,
+                  List.class,
+                  Expression.class);
+          clone.setAccessible(true);
+          DeviceTableScanNode sub =
+              (DeviceTableScanNode) clone.invoke(null, origin, newId, subset, range);
+          assertNotSame(origin, sub);
+          assertEquals(newId, sub.getPlanNodeId());
+          assertEquals(origin.getQualifiedObjectName(), sub.getQualifiedObjectName());
+          assertEquals(origin.getOutputSymbols(), sub.getOutputSymbols());
+          assertEquals(origin.getAssignments(), sub.getAssignments());
+          assertEquals(origin.getTagAndAttributeIndexMap(), sub.getTagAndAttributeIndexMap());
+          assertEquals(Ordering.DESC, sub.getScanOrder());
+          assertSame(originalField, sub.getPushDownPredicate());
+          assertEquals(7L, sub.getPushDownLimit());
+          assertEquals(2L, sub.getPushDownOffset());
+          assertTrue(sub.isPushLimitToEachDevice());
+          assertTrue(sub.containsNonAlignedDevice());
+          assertTrue(sub.isAllowParallelScan());
+          assertEquals("topk_contract_source", sub.getTopKRuntimeFilterSourceId());
+          assertSame(dataSet, sub.getCoordinatorDeviceEntryDataSet());
+          assertEquals(subset, sub.getDeviceEntries());
+          assertFalse(sub.getDeviceEntryDataSetHandle().isPresent());
+          assertNotSame(originalTime, sub.getTimePredicate().get());
+          assertPointwisePredicate(
+              sub.getTimePredicate().get(),
+              "time",
+              new long[] {-11L, -10L, -8L, -7L, -1L, 0L, 1L},
+              time -> time >= -7L && time < 0L);
+          // The derived filter is rebuilt for the narrowed predicate. Region routing is rebound by
+          // distributed planning; local execution takes its DataRegion from the fragment context.
+          assertNull(sub.getTimeFilter());
+          assertNull(sub.getRegionReplicaSet());
+          assertSame(originalDerivedTime, origin.getTimeFilter());
+          assertSame(routing, origin.getRegionReplicaSet());
+          assertEquals(new PlanNodeId("DeviceTableScanNode"), origin.getPlanNodeId());
+          assertSame(originalTime, origin.getTimePredicate().get());
+          assertSame(originalField, origin.getPushDownPredicate());
+          assertEquals(originalDevices, origin.getDeviceEntries());
+          assertEquals(4, origin.getDeviceEntries().size());
+          assertEquals("topk_contract_source", origin.getTopKRuntimeFilterSourceId());
+          subset.clear();
+          assertEquals(4, origin.getDeviceEntries().size());
+        });
+  }
+
+  private void assertSafeDeviceFallback(
+      String queryId,
+      Expression userPredicate,
+      Long[] partitionIds,
+      long[] points,
+      LongPredicate expected)
+      throws Exception {
+    DeviceTableScanNode node = initDeviceTableScanNode(4);
+    node.setAllowParallelScan(true);
+    node.setTimePredicate(userPredicate);
+    List<DeviceEntry> devices = new ArrayList<>(node.getDeviceEntries());
+    DataRegion region = dataRegionWithPartitions(partitionIds);
+    LocalExecutionPlanContext context = createContext(queryId, region);
+    context.setDegreeOfParallelism(2);
+    Operator root = node.accept(generator, context);
+    try {
+      assertEquals(CollectOperator.class, root.getClass());
+      assertEquals("DEVICE", context.getInstanceContext().getSplitMode());
+      assertEquals(
+          "UNSUPPORTED_TIME_PARTITION_RANGE", context.getInstanceContext().getSplitReason());
+      assertEquals(
+          "UNSUPPORTED_TIME_PARTITION_RANGE",
+          context.getInstanceContext().getCanonicalFallbackReason());
+      assertEquals(2, context.getPipelineDriverFactories().size());
+      assertPointwiseScanCoverage(context, 4, points, expected);
+      for (Operator scan : actualScanRoots(context)) {
+        assertFalse(
+            scan.getOperatorContext().getSpecifiedInfo().containsKey("MORSEL_TIME_PARTITIONS"));
+      }
+      Mockito.verify(region.getTsFileManager(), Mockito.never())
+          .getTsFileListSnapshot(Mockito.anyLong());
+      assertEquals(devices, node.getDeviceEntries());
+      if (userPredicate == null) {
+        assertFalse(node.getTimePredicate().isPresent());
+      } else {
+        assertSame(userPredicate, node.getTimePredicate().get());
+      }
+    } finally {
+      closeQuietly(root);
+      closePipelineOperations(context);
+    }
+  }
+
+  private void assertPointwiseScanCoverage(
+      LocalExecutionPlanContext context, int deviceCount, long[] points, LongPredicate expected) {
+    List<Operator> scans = actualScanRoots(context);
+    for (long time : points) {
+      int devicesReadingTime = 0;
+      for (Operator scan : scans) {
+        Filter filter = timeFilterOf(scan);
+        boolean selected = filter == null;
+        if (filter != null) {
+          for (TimeRange range : filter.getTimeRanges()) {
+            selected |= time >= range.getMin() && time <= range.getMax();
+          }
+        }
+        if (selected) {
+          devicesReadingTime += deviceNumberOf(scan);
+        }
+      }
+      assertEquals(
+          "device coverage at time " + time,
+          expected.test(time) ? deviceCount : 0,
+          devicesReadingTime);
+    }
+  }
+
+  private List<Operator> actualScanRoots(LocalExecutionPlanContext context) {
+    List<Operator> scans = new ArrayList<>();
+    for (PipelineDriverFactory factory : context.getPipelineDriverFactories()) {
+      collectActualScans(factory.getOperation(), scans);
+    }
+    return scans;
+  }
+
+  private void collectActualScans(Operator operator, List<Operator> scans) {
+    if (operator instanceof AbstractTableScanOperator) {
+      scans.add(operator);
+    } else if (operator instanceof CollectOperator) {
+      for (Operator child : ((CollectOperator) operator).getChildren()) {
+        collectActualScans(child, scans);
+      }
+    } else {
+      throw new AssertionError("unexpected scan pipeline root: " + operator.getClass());
+    }
+  }
+
+  private static Expression comparison(
+      String symbol, ComparisonExpression.Operator operator, long value) {
+    return new ComparisonExpression(
+        operator, new SymbolReference(symbol), new LongLiteral(Long.toString(value)));
+  }
+
+  private void assertPointwisePredicate(
+      Expression predicate, String symbol, long[] points, LongPredicate expected) {
+    for (long time : points) {
+      assertEquals(
+          "predicate at time " + time,
+          expected.test(time),
+          evaluateTimePredicate(predicate, symbol, time));
+    }
+  }
+
+  private boolean evaluateTimePredicate(Expression predicate, String symbol, long time) {
+    if (predicate instanceof LogicalExpression) {
+      LogicalExpression logical = (LogicalExpression) predicate;
+      boolean result = logical.getOperator() == LogicalExpression.Operator.AND;
+      for (Expression term : logical.getTerms()) {
+        if (logical.getOperator() == LogicalExpression.Operator.AND) {
+          result &= evaluateTimePredicate(term, symbol, time);
+        } else {
+          result |= evaluateTimePredicate(term, symbol, time);
+        }
+      }
+      return result;
+    }
+    assertTrue(predicate instanceof ComparisonExpression);
+    ComparisonExpression comparison = (ComparisonExpression) predicate;
+    assertTrue(comparison.getLeft() instanceof SymbolReference);
+    assertEquals(symbol, ((SymbolReference) comparison.getLeft()).getName());
+    assertTrue(comparison.getRight() instanceof LongLiteral);
+    long value = ((LongLiteral) comparison.getRight()).getParsedValue();
+    switch (comparison.getOperator()) {
+      case GREATER_THAN_OR_EQUAL:
+        return time >= value;
+      case GREATER_THAN:
+        return time > value;
+      case LESS_THAN_OR_EQUAL:
+        return time <= value;
+      case LESS_THAN:
+        return time < value;
+      case EQUAL:
+        return time == value;
+      default:
+        throw new AssertionError("unexpected time comparison: " + comparison.getOperator());
+    }
+  }
+
+  @FunctionalInterface
+  private interface CheckedTimeAssertion {
+    void run() throws Exception;
+  }
+
+  private void withTimePartitionConfiguration(
+      long origin, long interval, CheckedTimeAssertion assertion) throws Exception {
+    Field originField = TimePartitionUtils.class.getDeclaredField("timePartitionOrigin");
+    originField.setAccessible(true);
+    long previousOrigin = originField.getLong(null);
+    long previousInterval = TimePartitionUtils.getTimePartitionInterval();
+    org.apache.iotdb.db.conf.IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean previousMorsel = config.isEnableTimePartitionMorsel();
+    boolean previousWeighting = config.isEnableTimePartitionMorselSizeWeighting();
+    boolean previousEstimation = config.isEnableDopEstimation();
+    try {
+      TimePartitionUtils.setTimePartitionOrigin(origin);
+      TimePartitionUtils.setTimePartitionInterval(interval);
+      config.setEnableTimePartitionMorsel(true);
+      config.setEnableTimePartitionMorselSizeWeighting(false);
+      config.setEnableDopEstimation(false);
+      assertion.run();
+    } finally {
+      TimePartitionUtils.setTimePartitionInterval(previousInterval);
+      TimePartitionUtils.setTimePartitionOrigin(previousOrigin);
+      config.setEnableTimePartitionMorsel(previousMorsel);
+      config.setEnableTimePartitionMorselSizeWeighting(previousWeighting);
+      config.setEnableDopEstimation(previousEstimation);
+    }
   }
 
   // ---------------------------------------------------------------------------------------------

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
+import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.commons.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.mpp.FragmentInstanceFetchException;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -63,6 +65,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.calc.execution.operator.Operator.NOT_BLOCKED;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.BLANK;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.CTE_QUERY;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAIN_QUERY;
@@ -81,6 +84,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private final Operator child;
   private final boolean verbose;
   private boolean outputResult = false;
+  private TsBlock pendingResult;
+  private int nextResultPosition;
   private final List<FragmentInstance> instances;
   private final ExplainOutputFormat outputFormat;
 
@@ -150,20 +155,52 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    if (child.hasNextWithTimer()) {
-      child.nextWithTimer();
-      return null;
+    if (pendingResult == null) {
+      if (child.hasNextWithTimer()) {
+        child.nextWithTimer();
+        return null;
+      }
+      if (outputFormat == ExplainOutputFormat.JSON) {
+        fragmentInstanceStatisticsJsonDrawer.renderDispatchCost(mppQueryContext);
+      } else {
+        fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+      }
+      pendingResult = buildResult();
+      nextResultPosition = 0;
     }
+    return nextResultBlock();
+  }
 
-    if (outputFormat == ExplainOutputFormat.JSON) {
-      fragmentInstanceStatisticsJsonDrawer.renderDispatchCost(mppQueryContext);
-    } else {
-      fragmentInstanceStatisticsDrawer.renderDispatchCost(mppQueryContext);
+  private TsBlock nextResultBlock() throws MemoryNotEnoughException {
+    long limit = IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    int remaining = pendingResult.getPositionCount() - nextResultPosition;
+    if (remaining == 0) {
+      TsBlock empty = pendingResult;
+      pendingResult = null;
+      outputResult = true;
+      return empty;
     }
-
-    // fetch statics from all fragment instances
-    TsBlock result = buildResult();
-    outputResult = true;
+    long rowBytes = pendingResult.getRegion(nextResultPosition, 1).getSizeInBytes();
+    if (rowBytes > limit) {
+      throw new MemoryNotEnoughException(
+          String.format(
+              DataNodeQueryMessages
+                  .EXCEPTION_EXPLAIN_ANALYZE_RESULT_ROW_REQUIRES_ARG_BYTES_BUT_EXCHANGE_LIMIT_IS_ARG_BYTES_DE8EAAD6,
+              rowBytes,
+              limit));
+    }
+    int low = 1, high = remaining;
+    while (low < high) {
+      int count = low + (high - low + 1) / 2;
+      if (pendingResult.getRegion(nextResultPosition, count).getSizeInBytes() <= limit) low = count;
+      else high = count - 1;
+    }
+    TsBlock result = pendingResult.getRegion(nextResultPosition, low);
+    nextResultPosition += low;
+    if (nextResultPosition == pendingResult.getPositionCount()) {
+      pendingResult = null;
+      outputResult = true;
+    }
     return result;
   }
 
@@ -171,7 +208,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       List<FragmentInstance> instances, boolean verbose) throws FragmentInstanceFetchException {
 
     Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
-        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
+        QueryStatisticsFetcher.fetchAllTerminalStatisticsBestEffort(instances, clientManager, 5000)
+            .getResponses();
     List<StatisticLine> statisticLines =
         fragmentInstanceStatisticsDrawer.renderFragmentInstances(instances, allStatistics, verbose);
 
@@ -192,7 +230,8 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
   private String buildFragmentInstanceStatisticsJson(
       List<FragmentInstance> instances, boolean verbose) throws FragmentInstanceFetchException {
     Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics =
-        QueryStatisticsFetcher.fetchAllStatistics(instances, clientManager);
+        QueryStatisticsFetcher.fetchAllTerminalStatisticsBestEffort(instances, clientManager, 5000)
+            .getResponses();
     return fragmentInstanceStatisticsJsonDrawer.renderFragmentInstancesAsJson(
         instances, allStatistics, verbose);
   }
@@ -323,21 +362,24 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
+    return pendingResult == null ? child.isBlocked() : NOT_BLOCKED;
   }
 
   @Override
   public void close() throws Exception {
-    child.close();
-
-    if (logRecordTask != null) {
-      boolean cancelResult = logRecordTask.cancel(true);
-      if (!cancelResult) {
-        logger.debug(
-            DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, logRecordTask.isCancelled());
+    pendingResult = null;
+    try {
+      child.close();
+    } finally {
+      if (logRecordTask != null) {
+        boolean cancelResult = logRecordTask.cancel(true);
+        if (!cancelResult) {
+          logger.debug(
+              DataNodeQueryMessages.CANCEL_STATE_TRACKING_TASK_FAILED, logRecordTask.isCancelled());
+        }
+      } else {
+        logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
       }
-    } else {
-      logger.debug(DataNodeQueryMessages.TRACK_TASK_NOT_STARTED);
     }
   }
 
@@ -348,17 +390,17 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    return 0;
+    return calculateMaxReturnSize();
   }
 
   @Override
   public long calculateMaxReturnSize() {
-    return 0;
+    return IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
   }
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return 0;
+    return pendingResult == null ? 0 : pendingResult.getRetainedSizeInBytes();
   }
 
   @Override

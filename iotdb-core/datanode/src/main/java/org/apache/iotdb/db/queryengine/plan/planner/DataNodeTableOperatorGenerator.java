@@ -78,9 +78,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelIndex;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.IChannelRoutingSinkHandle;
-import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
-import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.TsBlockHashPartitioner;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
@@ -380,11 +378,15 @@ public class DataNodeTableOperatorGenerator
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
+    context
+        .getResourceRegistry()
+        .registerSinkHandle(sinkHandle, localInstanceId, node.getPlanNodeId().getId());
 
     if (node.getChildren().size() == 1) {
       Operator child = node.getChildren().get(0).accept(this, context);
       List<Operator> children = new ArrayList<>(1);
       children.add(child);
+      context.recordLegacySinkQuota(sinkHandle, context.getMaxBytesOneHandleCanReserve());
       context.setISink(sinkHandle);
       return new IdentitySinkOperator(
           operatorContext, children, downStreamChannelIndex, sinkHandle);
@@ -432,6 +434,9 @@ public class DataNodeTableOperatorGenerator
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
+    context
+        .getResourceRegistry()
+        .registerSinkHandle(sinkHandle, localInstanceId, node.getPlanNodeId().getId());
     checkArgument(
         sinkHandle instanceof IChannelRoutingSinkHandle,
         DataNodeQueryMessages
@@ -462,8 +467,8 @@ public class DataNodeTableOperatorGenerator
     }
 
     Operator child = node.getChildren().get(0).accept(this, context);
-    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSink(sinkHandle);
+    context.recordLegacySinkQuota(sinkHandle, context.getMaxBytesOneHandleCanReserve());
+    context.setISink(sinkHandle);
     return new HashPartitioningSinkOperator(
         operatorContext,
         child,
@@ -505,6 +510,7 @@ public class DataNodeTableOperatorGenerator
     if (!isSameNode) {
       context.addExchangeSumNum(1);
     }
+    context.recordLegacySourceQuota(sourceHandle, context.getMaxBytesOneHandleCanReserve());
     ExchangeOperator exchangeOperator =
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     context.addExchangeOperator(exchangeOperator);
@@ -1383,7 +1389,9 @@ public class DataNodeTableOperatorGenerator
     final List<Long> timePartitions =
         new ArrayList<>(dataRegion.getTsFileManager().getTimePartitions());
     Collections.sort(timePartitions);
-    return constructParallelDeviceTpMorselScan(scanNode, context, timePartitions, node);
+    Operator operator =
+        constructParallelDeviceTpMorselScan(scanNode, context, timePartitions, node);
+    return operator;
   }
 
   private boolean canPushTransparentFilterIntoParallelMorsels(
@@ -1427,13 +1435,218 @@ public class DataNodeTableOperatorGenerator
         DataNodeQueryMessages.VALID_TREEDEVICEVIEWSCANNODE_IS_NOT_EXPECTED_HERE);
   }
 
+  private void recordSerialScanMetadata(
+      LocalExecutionPlanContext context, DeviceTableScanNode node) {
+    String reason = fallbackReason(node, context);
+    List<String> devices =
+        node.getDeviceEntries().stream()
+            .map(entry -> String.valueOf(entry.getDeviceID()))
+            .collect(Collectors.toList());
+    ScanParallelPlan.SourceKey key =
+        new ScanParallelPlan.SourceKey(
+            context.getFragmentInstanceId().getQueryId().getId(),
+            context.getFragmentInstanceId().getFragmentInstanceId(),
+            node.getPlanNodeId().getId(),
+            "SERIAL",
+            "ALL",
+            node.getDeviceEntryDataSetHandle().isPresent() ? "SPILLED" : "ALL");
+    ScanParallelPlan.WorkUnit unit =
+        new ScanParallelPlan.WorkUnit(
+            key, devices, Collections.emptyList(), Math.max(1, devices.size()), false);
+    List<ScanParallelPlan.WorkUnit> units = Collections.singletonList(unit);
+    ScanParallelPlan serial =
+        new ScanParallelPlan(
+            ScanParallelPlan.Mode.SERIAL,
+            ScanParallelPlan.FallbackReason.valueOf(reason),
+            context.getDegreeOfParallelism(),
+            1,
+            Collections.singletonList(devices),
+            Collections.emptyList(),
+            units,
+            Collections.singletonList(
+                new ScanParallelPlan.Bucket(0, units, unit.getEstimatedCost())));
+    recordScanParallelMetadata(context, serial);
+  }
+
+  private static String fallbackReason(
+      DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    if (context.getDegreeOfParallelism() <= 1) return "DOP_NOT_GREATER_THAN_ONE";
+    if (node.getDeviceEntries().size() <= 1) return "SINGLE_DEVICE";
+    if (node.getDeviceEntryDataSetHandle().isPresent()) return "SPILLED_DEVICE_ENTRIES";
+    if ((node.getPushDownLimit() > 0 && !node.isPushLimitToEachDevice())
+        || (node.getPushDownOffset() > 0 && !node.isPushLimitToEachDevice())) {
+      return "GLOBAL_LIMIT_OR_OFFSET";
+    }
+    if (!node.isAllowParallelScan()) return "PARALLEL_SCAN_NOT_ALLOWED";
+    return "PARALLEL_SCAN_NOT_SELECTED";
+  }
+
+  private static String canonicalFallbackReason(String rawReason) {
+    if (rawReason == null) {
+      return "PLAN_ERROR";
+    }
+    switch (rawReason) {
+      case "PARALLEL_SCAN_NOT_SELECTED":
+      case "ORDERING_NOT_PROVEN":
+      case "EMPTY_INPUT":
+      case "SPILLED_DEVICE_ENTRIES":
+      case "ESTIMATE_UNAVAILABLE":
+      case "INVALID_COST":
+      case "UNSUPPORTED_TIME_PARTITION_RANGE":
+      case "NONE":
+        return rawReason;
+      case "GLOBAL_LIMIT_OR_OFFSET":
+      case "PARALLEL_SCAN_NOT_ALLOWED":
+      case "DOP_NOT_GREATER_THAN_ONE":
+      case "SINGLE_DEVICE":
+        return rawReason;
+      case "OVERFLOW":
+      case "INVALID_METADATA":
+      default:
+        return "PLAN_ERROR";
+    }
+  }
+
+  private void recordScanParallelMetadata(
+      LocalExecutionPlanContext context, ScanParallelPlan plan) {
+    final org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext instance =
+        context.getInstanceContext();
+    instance.setScanParallelMetadata(
+        plan.getTargetParallelism(),
+        plan.getBuckets().size(),
+        plan.getMode().name(),
+        plan.getRawSplitReason());
+    final String checksum =
+        StaticParallelPlanChecksum.withGeneration(
+            plan.getPlanIdentityChecksum(), instance.getPlanGeneration());
+    instance.recordScanSourcePlanIdentity(
+        plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId(),
+        checksum,
+        plan.getWorkUnits().stream()
+            .map(ScanParallelPlan.WorkUnit::getSourceId)
+            .collect(Collectors.toList()),
+        plan.getBuckets().stream()
+            .map(ScanParallelPlan.Bucket::getBucketId)
+            .collect(Collectors.toList()),
+        Collections.emptyList(),
+        plan.getCanonicalFallbackReason());
+  }
+
+  private void recordActualPipelineCount(LocalExecutionPlanContext context) {
+    context.getInstanceContext().setActualPipelineCount(context.getPipelineNumber());
+  }
+
+  private ScanParallelPlan createStaticScanPlan(
+      DeviceTableScanNode node,
+      LocalExecutionPlanContext context,
+      List<Long> timePartitions,
+      boolean ordered,
+      boolean timePartitionMorsel) {
+    List<String> devices =
+        node.getDeviceEntries().stream()
+            .map(entry -> String.valueOf(entry.getDeviceID()))
+            .collect(Collectors.toList());
+    String queryId = context.getFragmentInstanceId().getQueryId().getId();
+    String fragmentId = context.getFragmentInstanceId().getFragmentInstanceId();
+    int plannerInputDop = context.getDegreeOfParallelism();
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation()) {
+      plannerInputDop =
+          Math.max(
+              1,
+              Math.min(
+                  plannerInputDop,
+                  estimatePipelineNumByDataSize(
+                      context.getInstanceContext().getDataRegion(), devices.size())));
+    }
+    ScanParallelPlanner.Input input =
+        new ScanParallelPlanner.Input(
+            devices,
+            timePartitions,
+            estimateDeviceCosts(context.getInstanceContext().getDataRegion(), devices.size()),
+            plannerInputDop,
+            node.isAllowParallelScan(),
+            node.getDeviceEntryDataSetHandle().isPresent(),
+            node.getPushDownLimit() > 0 && !node.isPushLimitToEachDevice()
+                || node.getPushDownOffset() > 0 && !node.isPushLimitToEachDevice(),
+            ordered,
+            ordered,
+            timePartitionMorsel,
+            queryId,
+            fragmentId,
+            node.getPlanNodeId().getId());
+    return new ScanParallelPlanner().plan(input);
+  }
+
+  private static List<List<DeviceEntry>> mapDeviceGroups(
+      List<List<String>> groups, List<DeviceEntry> entries) {
+    Map<String, DeviceEntry> byId = new LinkedHashMap<>();
+    for (DeviceEntry entry : entries) {
+      byId.put(String.valueOf(entry.getDeviceID()), entry);
+    }
+    List<List<DeviceEntry>> result = new ArrayList<>(groups.size());
+    for (List<String> group : groups) {
+      List<DeviceEntry> mapped = new ArrayList<>(group.size());
+      for (String id : group) {
+        DeviceEntry entry = byId.get(id);
+        if (entry == null) {
+          throw new IllegalStateException(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572, id));
+        }
+        mapped.add(entry);
+      }
+      result.add(mapped);
+    }
+    return result;
+  }
+
+  private static List<DeviceEntry> mapBucketDevices(
+      ScanParallelPlan.Bucket bucket, List<DeviceEntry> entries) {
+    Map<String, DeviceEntry> byId = new LinkedHashMap<>();
+    for (DeviceEntry entry : entries) {
+      byId.put(String.valueOf(entry.getDeviceID()), entry);
+    }
+    List<DeviceEntry> result = new ArrayList<>();
+    for (ScanParallelPlan.WorkUnit workUnit : bucket.getWorkUnits()) {
+      for (String id : workUnit.getDevices()) {
+        DeviceEntry entry = byId.get(id);
+        if (entry == null) {
+          throw new IllegalStateException(
+              String.format(
+                  DataNodeQueryMessages.EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572, id));
+        }
+        result.add(entry);
+      }
+    }
+    return result;
+  }
+
+  private static List<DeviceEntry> mapDeviceIds(List<String> deviceIds, List<DeviceEntry> entries) {
+    Map<String, DeviceEntry> byId = new LinkedHashMap<>();
+    for (DeviceEntry entry : entries) {
+      byId.put(String.valueOf(entry.getDeviceID()), entry);
+    }
+    List<DeviceEntry> result = new ArrayList<>(deviceIds.size());
+    for (String id : deviceIds) {
+      DeviceEntry entry = byId.get(id);
+      if (entry == null) {
+        throw new IllegalStateException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572, id));
+      }
+      result.add(entry);
+    }
+    return result;
+  }
+
   @Override
   public Operator visitDeviceTableScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
     TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
 
     if (canSplitDeviceTableScanIntoParallelPipelines(node, context)) {
-      return constructParallelDeviceTableScan(node, context);
+      Operator operator = constructParallelDeviceTableScan(node, context);
+      return operator;
     }
 
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
@@ -1450,6 +1663,7 @@ public class DataNodeTableOperatorGenerator
         parameter.measurementSchemas,
         parameter.allSensors,
         DeviceTableScanNode.class.getSimpleName());
+    recordSerialScanMetadata(context, node);
 
     return tableScanOperator;
   }
@@ -1478,7 +1692,8 @@ public class DataNodeTableOperatorGenerator
         || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
       return super.visitSort(node, context);
     }
-    return constructParallelOrderedDeviceTableScan(scanNode, node, context);
+    Operator operator = constructParallelOrderedDeviceTableScan(scanNode, node, context);
+    return operator;
   }
 
   @Override
@@ -1493,7 +1708,8 @@ public class DataNodeTableOperatorGenerator
         || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
       return super.visitStreamSort(node, context);
     }
-    return constructParallelOrderedDeviceTableScan(scanNode, node, context);
+    Operator operator = constructParallelOrderedDeviceTableScan(scanNode, node, context);
+    return operator;
   }
 
   @Override
@@ -1581,8 +1797,9 @@ public class DataNodeTableOperatorGenerator
       return false;
     }
     for (int i = 0; i < orderBy.size(); i++) {
-      final ColumnSchema column = node.getAssignments().get(orderBy.get(i));
-      if (column == null) {
+      final Symbol orderingSymbol = orderBy.get(i);
+      final ColumnSchema column = node.getAssignments().get(orderingSymbol);
+      if (column == null || !node.getOutputSymbols().contains(orderingSymbol)) {
         return false;
       }
       if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
@@ -1607,8 +1824,9 @@ public class DataNodeTableOperatorGenerator
   private Operator constructParallelOrderedDeviceTableScan(
       DeviceTableScanNode node, SortNode sortNode, LocalExecutionPlanContext context) {
     final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
-    final int pipelineNum = decideParallelScanPipelineNum(context, deviceEntries.size());
-    final List<List<DeviceEntry>> deviceGroups = partitionIntoGroups(deviceEntries, pipelineNum);
+    final ScanParallelPlan plan =
+        createStaticScanPlan(node, context, Collections.emptyList(), true, false);
+    recordScanParallelMetadata(context, plan);
     final List<TSDataType> dataTypes =
         getOutputColumnTypes(sortNode, context.getTableTypeProvider());
     final List<Integer> sortItemIndexes =
@@ -1623,67 +1841,56 @@ public class DataNodeTableOperatorGenerator
         context.getTableTypeProvider());
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
-    final List<Operator> exchangeOperators = new ArrayList<>(deviceGroups.size());
-    for (int groupIndex = 0; groupIndex < deviceGroups.size(); groupIndex++) {
-      final LocalExecutionPlanContext subContext = context.createSubContext();
-      final List<Operator> deviceScanOperators =
-          new ArrayList<>(deviceGroups.get(groupIndex).size());
-      for (int deviceIndex = 0; deviceIndex < deviceGroups.get(groupIndex).size(); deviceIndex++) {
-        final DeviceTableScanNode deviceScanNode = node.clone();
-        deviceScanNode.setPlanNodeId(
-            new PlanNodeId(
-                node.getPlanNodeId().getId() + "-ordered-" + groupIndex + "-" + deviceIndex));
-        deviceScanNode.setDeviceEntries(
-            Collections.singletonList(deviceGroups.get(groupIndex).get(deviceIndex)));
-        final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
-            constructAbstractTableScanOperatorParameter(deviceScanNode, subContext, null);
-        final TableScanOperator deviceScanOperator = new TableScanOperator(parameter);
-        addSource(
-            deviceScanOperator,
-            subContext,
-            deviceScanNode,
-            parameter.measurementColumnNames,
-            parameter.measurementSchemas,
-            parameter.allSensors,
-            DeviceTableScanNode.class.getSimpleName());
-        deviceScanOperators.add(deviceScanOperator);
-      }
+    final List<Operator> exchangeOperators =
+        LocalScanPipelineBuilder.build(
+            context,
+            plan,
+            (groupIndex, subContext) -> {
+              final List<DeviceEntry> bucketDevices =
+                  mapBucketDevices(plan.getBuckets().get(groupIndex), deviceEntries);
+              final List<Operator> deviceScanOperators = new ArrayList<>(bucketDevices.size());
+              for (int deviceIndex = 0; deviceIndex < bucketDevices.size(); deviceIndex++) {
+                final DeviceTableScanNode deviceScanNode = node.clone();
+                deviceScanNode.setPlanNodeId(
+                    new PlanNodeId(
+                        node.getPlanNodeId().getId()
+                            + "-ordered-"
+                            + groupIndex
+                            + "-"
+                            + deviceIndex));
+                deviceScanNode.setDeviceEntries(
+                    Collections.singletonList(bucketDevices.get(deviceIndex)));
+                final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+                    constructAbstractTableScanOperatorParameter(deviceScanNode, subContext, null);
+                final TableScanOperator deviceScanOperator = new TableScanOperator(parameter);
+                addSource(
+                    deviceScanOperator,
+                    subContext,
+                    deviceScanNode,
+                    parameter.measurementColumnNames,
+                    parameter.measurementSchemas,
+                    parameter.allSensors,
+                    DeviceTableScanNode.class.getSimpleName());
+                deviceScanOperators.add(deviceScanOperator);
+              }
 
-      final PlanNodeId localMergeId =
-          new PlanNodeId(node.getPlanNodeId().getId() + "-ordered-local-merge-" + groupIndex);
-      final TableMergeSortOperator localMergeOperator =
-          new TableMergeSortOperator(
-              addOperatorContext(
-                  subContext, localMergeId, TableMergeSortOperator.class.getSimpleName()),
-              deviceScanOperators,
-              dataTypes,
-              getComparatorForTable(
-                  sortNode.getOrderingScheme().getOrderingList(),
-                  sortItemIndexes,
-                  sortItemDataTypes));
-      final ISinkChannel localSinkChannel =
-          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
-              subContext.getDriverContext(), localMergeId.getId());
-      subContext.setISink(localSinkChannel);
-      subContext.addPipelineDriverFactory(localMergeOperator, subContext.getDriverContext(), 0);
-      subContext.constructPipelineMemoryEstimator(
-          localMergeOperator, sortNode.getPlanNodeId(), sortNode, -1);
-
-      final ExchangeOperator exchangeOperator =
-          new ExchangeOperator(
-              context
-                  .getDriverContext()
-                  .addOperatorContext(
-                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
-              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
-                  ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
-                  context.getDriverContext()),
-              localMergeId,
-              localMergeOperator.calculateMaxReturnSize());
-      context.addExchangeOperator(exchangeOperator);
-      exchangeOperators.add(exchangeOperator);
-    }
-    context.addExchangeSumNum(deviceGroups.size());
+              final PlanNodeId localMergeId =
+                  new PlanNodeId(
+                      node.getPlanNodeId().getId() + "-ordered-local-merge-" + groupIndex);
+              final TableMergeSortOperator localMergeOperator =
+                  new TableMergeSortOperator(
+                      addOperatorContext(
+                          subContext, localMergeId, TableMergeSortOperator.class.getSimpleName()),
+                      deviceScanOperators,
+                      dataTypes,
+                      getComparatorForTable(
+                          sortNode.getOrderingScheme().getOrderingList(),
+                          sortItemIndexes,
+                          sortItemDataTypes));
+              return new LocalScanPipelineBuilder.PipelineSpec(
+                  localMergeOperator, sortNode, sortNode.getPlanNodeId(), localMergeId);
+            });
+    recordActualPipelineCount(context);
 
     return new TableMergeSortOperator(
         addOperatorContext(
@@ -1733,6 +1940,34 @@ public class DataNodeTableOperatorGenerator
    * On a small dataset (e.g. a quick functional demo) this flag alone will therefore suppress the
    * split; observing parallel scan splitting on such a dataset requires this flag to stay off.
    */
+  private List<Long> estimateDeviceCosts(
+      final IDataRegionForQuery dataRegion, final int deviceCount) {
+    if (!(dataRegion instanceof DataRegion) || deviceCount <= 0) {
+      return null;
+    }
+    TsFileManager manager = ((DataRegion) dataRegion).getTsFileManager();
+    if (manager == null) return null;
+    Pair<List<TsFileResource>, List<TsFileResource>> files =
+        manager.getAllTsFileListForQuery(null, null);
+    if (files == null || files.left == null || files.right == null) return null;
+    long total = 0L;
+    for (TsFileResource file : files.left) {
+      total =
+          total > Long.MAX_VALUE - Math.max(0L, file.getTsFileSize())
+              ? Long.MAX_VALUE
+              : total + Math.max(0L, file.getTsFileSize());
+    }
+    for (TsFileResource file : files.right) {
+      total =
+          total > Long.MAX_VALUE - Math.max(0L, file.getTsFileSize())
+              ? Long.MAX_VALUE
+              : total + Math.max(0L, file.getTsFileSize());
+    }
+    if (total <= 0) return null;
+    long perDevice = Math.max(1L, total / deviceCount);
+    return new ArrayList<>(Collections.nCopies(deviceCount, perDevice));
+  }
+
   private int estimatePipelineNumByDataSize(
       final IDataRegionForQuery dataRegion, final int deviceCount) {
     if (!(dataRegion instanceof DataRegion)) {
@@ -1742,26 +1977,31 @@ public class DataNodeTableOperatorGenerator
     if (tsFileManager == null) {
       return deviceCount;
     }
-    final int timePartitionCount = tsFileManager.getTimePartitions().size();
-    if (timePartitionCount <= 0) {
+    final Set<Long> timePartitions = tsFileManager.getTimePartitions();
+    if (timePartitions == null || timePartitions.isEmpty()) {
       return deviceCount;
     }
     final Pair<List<TsFileResource>, List<TsFileResource>> allTsFiles =
         tsFileManager.getAllTsFileListForQuery(null, null);
-    final int fileCount = allTsFiles.left.size() + allTsFiles.right.size();
-    if (fileCount <= 0) {
+    if (allTsFiles == null || allTsFiles.left == null || allTsFiles.right == null) {
       return deviceCount;
     }
-    long totalSize = 0L;
+    final List<Long> fileSizes = new ArrayList<>();
     for (final TsFileResource resource : allTsFiles.left) {
-      totalSize += resource.getTsFileSize();
+      if (resource == null) {
+        return deviceCount;
+      }
+      fileSizes.add(resource.getTsFileSize());
     }
     for (final TsFileResource resource : allTsFiles.right) {
-      totalSize += resource.getTsFileSize();
+      if (resource == null) {
+        return deviceCount;
+      }
+      fileSizes.add(resource.getTsFileSize());
     }
-    // One driver per TARGET_BYTES_PER_SCAN_DRIVER worth of data, rounded up, so that a region
-    // holding less than one target's worth still gets a single driver rather than none.
-    return (int) Math.ceil((double) totalSize / TARGET_BYTES_PER_SCAN_DRIVER);
+    return ScanParallelPlanner.estimateDopByBytes(
+            fileSizes, TARGET_BYTES_PER_SCAN_DRIVER, deviceCount)
+        .getPipelineCount();
   }
 
   /**
@@ -1817,132 +2057,151 @@ public class DataNodeTableOperatorGenerator
       LocalExecutionPlanContext context,
       List<Long> sortedTpIds,
       FilterNode transparentFilter) {
-    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
-    final int deviceCount = deviceEntries.size();
     final long interval = TimePartitionUtils.getTimePartitionInterval();
+    if (!node.getTimeColumn().isPresent()
+        || !hasRepresentableTimePartitionRanges(sortedTpIds, interval)) {
+      final Operator fallback =
+          constructParallelDeviceScan(
+              node, context, ScanParallelPlan.FallbackReason.UNSUPPORTED_TIME_PARTITION_RANGE);
+      return transparentFilter == null
+          ? fallback
+          : constructTransparentMorselFilter(transparentFilter, fallback, context);
+    }
+    final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
     final String timeColumnName = requireTimeColumnName(node);
-
-    // Decompose the target parallelism over the two axes as K = Kt × Kd, using the largest device
-    // group count that keeps the product within budget. Time partitions are spread over first: they
-    // are a natural, already-disjoint way to cut the work.
-    final int targetParallelism =
-        Math.min(
-            decideParallelScanPipelineNum(context, deviceCount), deviceCount * sortedTpIds.size());
-    final int tpGroupCount = Math.min(sortedTpIds.size(), targetParallelism);
-    final int deviceGroupCount =
-        Math.max(1, Math.min(deviceCount, targetParallelism / tpGroupCount));
-
-    // File sizes make a much better static work estimate than the number of time partitions. A
-    // missing or incomplete metadata snapshot falls back to the original contiguous, equal-count
-    // split, preserving its established behavior and leaving no estimate annotation behind.
+    final ScanParallelPlan plan = createStaticScanPlan(node, context, sortedTpIds, false, true);
+    final List<List<Long>> tpGroups = plan.getTimePartitionGroups();
+    final List<List<DeviceEntry>> deviceGroups =
+        mapDeviceGroups(plan.getDeviceGroups(), deviceEntries);
     final TsFileManager tsFileManager =
         ((DataRegion) context.getInstanceContext().getDataRegion()).getTsFileManager();
-    // Read the same optional, read-only size snapshot for both scheduling arms. The equal-count
-    // control must retain its deterministic contiguous groups, but it still needs to expose the
-    // resulting group-byte estimates in EXPLAIN ANALYZE; otherwise the two arms cannot be compared
-    // for a skewed workload without reconstructing the plan externally.
     final Optional<TimePartitionMorselSchedule> sizeSchedule =
-        partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroupCount);
+        partitionTimePartitionsBySize(tsFileManager, sortedTpIds, tpGroups.size());
     final boolean useSizeWeightedSchedule =
         IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorselSizeWeighting()
             && sizeSchedule.isPresent();
-    final List<List<Long>> tpGroups =
+    // The weighted schedule is an existing runtime optimization. Preserve its exact partition
+    // groups; the static planner buckets are used when no weighted metadata is available.
+    final List<List<Long>> scheduledTpGroups =
+        useSizeWeightedSchedule ? sizeSchedule.get().groups() : tpGroups;
+    final ScanParallelPlan effectivePlan =
         useSizeWeightedSchedule
-            ? sizeSchedule
-                .map(TimePartitionMorselSchedule::groups)
-                .orElseThrow(IllegalStateException::new)
-            : partitionIntoGroups(sortedTpIds, tpGroupCount);
-    final List<List<DeviceEntry>> deviceGroups =
-        partitionIntoGroups(deviceEntries, deviceGroupCount);
-
-    final int pipelineNum = tpGroups.size() * deviceGroups.size();
-    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
-
-    final List<Operator> exchangeOperators = new ArrayList<>(pipelineNum);
-    int morselIdx = 0;
-    for (final List<Long> tpGroup : tpGroups) {
-      for (final List<DeviceEntry> deviceGroup : deviceGroups) {
-        // A pipeline covering several partitions OR-s their ranges together, so that one scan can
-        // serve the whole group.
-        Expression tpPredicate =
-            buildTimePartitionRangePredicate(tpGroup.get(0), interval, timeColumnName);
-        for (int m = 1; m < tpGroup.size(); m++) {
-          tpPredicate =
-              LogicalExpression.or(
-                  tpPredicate,
-                  buildTimePartitionRangePredicate(tpGroup.get(m), interval, timeColumnName));
+            ? ScanParallelPlan.withTimePartitionGroups(plan, scheduledTpGroups)
+            : plan;
+    final List<List<Long>> pipelineTpGroups = new ArrayList<>();
+    final List<List<DeviceEntry>> pipelineDeviceGroups = new ArrayList<>();
+    if (useSizeWeightedSchedule) {
+      for (List<Long> tpGroup : scheduledTpGroups) {
+        for (List<DeviceEntry> deviceGroup : deviceGroups) {
+          pipelineTpGroups.add(tpGroup);
+          pipelineDeviceGroups.add(deviceGroup);
         }
-
-        final DeviceTableScanNode subScanNode =
-            cloneSubScanNode(
-                node,
-                new PlanNodeId(node.getPlanNodeId().getId() + "-morsel-" + morselIdx),
-                new ArrayList<>(deviceGroup),
-                tpPredicate);
-        morselIdx++;
-
-        // Build a sub pipeline (driver) exactly as in the plain device-parallel case.
-        final LocalExecutionPlanContext subContext = context.createSubContext();
-        final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
-            constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
-        annotateTimePartitionMorsel(
-            parameter,
-            tpGroup,
-            deviceGroup.size(),
-            sizeSchedule.map(schedule -> schedule.estimatedBytes(tpGroup)).orElse(-1L),
-            useSizeWeightedSchedule);
-        final TableScanOperator subScanOperator = new TableScanOperator(parameter);
-        addSource(
-            subScanOperator,
-            subContext,
-            subScanNode,
-            parameter.measurementColumnNames,
-            parameter.measurementSchemas,
-            parameter.allSensors,
-            DeviceTableScanNode.class.getSimpleName());
-
-        final Operator pipelineRoot =
-            transparentFilter == null
-                ? subScanOperator
-                : constructTransparentMorselFilter(transparentFilter, subScanOperator, subContext);
-        if (transparentFilter != null) {
-          // Per-driver EXPLAIN snapshots are keyed by the sub-scan PlanNodeId. The filter retains
-          // its original id so its aggregate statistics remain attached to the logical FilterNode;
-          // carry the physical pipeline root alongside the scan snapshot to make the fusion
-          // visible.
-          subScanOperator
-              .getOperatorContext()
-              .getSpecifiedInfo()
-              .put("MORSEL_PIPELINE_ROOT", FilterAndProjectOperator.class.getSimpleName());
-        }
-
-        final ISinkChannel localSinkChannel =
-            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
-                subContext.getDriverContext(), subScanNode.getPlanNodeId().getId());
-        subContext.setISink(localSinkChannel);
-        subContext.addPipelineDriverFactory(pipelineRoot, subContext.getDriverContext(), 0);
-        subContext.constructPipelineMemoryEstimator(
-            pipelineRoot,
-            transparentFilter == null ? node.getPlanNodeId() : transparentFilter.getPlanNodeId(),
-            subScanNode,
-            -1);
-
-        final ExchangeOperator exchangeOperator =
-            new ExchangeOperator(
-                context
-                    .getDriverContext()
-                    .addOperatorContext(
-                        context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
-                MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
-                    ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
-                    context.getDriverContext()),
-                subScanNode.getPlanNodeId(),
-                pipelineRoot.calculateMaxReturnSize());
-        context.addExchangeOperator(exchangeOperator);
-        exchangeOperators.add(exchangeOperator);
       }
     }
-    context.addExchangeSumNum(pipelineNum);
+    recordScanParallelMetadata(context, effectivePlan);
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+    final List<Operator> exchangeOperators =
+        LocalScanPipelineBuilder.build(
+            context,
+            effectivePlan,
+            (pipelineIndex, subContext) -> {
+              final ScanParallelPlan.Bucket bucket = effectivePlan.getBuckets().get(pipelineIndex);
+              final List<Operator> bucketOperators = new ArrayList<>();
+              PlanNode firstRootNode = null;
+              PlanNodeId firstUpstreamId = null;
+              final int unitCount = useSizeWeightedSchedule ? 1 : bucket.getWorkUnits().size();
+              for (int unitIndex = 0; unitIndex < unitCount; unitIndex++) {
+                final List<Long> tpGroup;
+                final List<DeviceEntry> deviceGroup;
+                if (useSizeWeightedSchedule) {
+                  tpGroup = pipelineTpGroups.get(pipelineIndex);
+                  deviceGroup = pipelineDeviceGroups.get(pipelineIndex);
+                } else {
+                  final ScanParallelPlan.WorkUnit workUnit = bucket.getWorkUnits().get(unitIndex);
+                  tpGroup = workUnit.getTimePartitions();
+                  deviceGroup = mapDeviceIds(workUnit.getDevices(), deviceEntries);
+                }
+                Expression tpPredicate =
+                    buildTimePartitionRangePredicate(tpGroup.get(0), interval, timeColumnName);
+                for (int m = 1; m < tpGroup.size(); m++) {
+                  tpPredicate =
+                      LogicalExpression.or(
+                          tpPredicate,
+                          buildTimePartitionRangePredicate(
+                              tpGroup.get(m), interval, timeColumnName));
+                }
+                final PlanNodeId subScanId =
+                    new PlanNodeId(
+                        node.getPlanNodeId().getId()
+                            + "-morsel-"
+                            + pipelineIndex
+                            + "-"
+                            + unitIndex);
+                final DeviceTableScanNode subScanNode =
+                    cloneSubScanNode(node, subScanId, new ArrayList<>(deviceGroup), tpPredicate);
+                final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+                    constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
+                annotateTimePartitionMorsel(
+                    parameter,
+                    tpGroup,
+                    deviceGroup.size(),
+                    sizeSchedule.map(schedule -> schedule.estimatedBytes(tpGroup)).orElse(-1L),
+                    useSizeWeightedSchedule);
+                final TableScanOperator subScanOperator = new TableScanOperator(parameter);
+                addSource(
+                    subScanOperator,
+                    subContext,
+                    subScanNode,
+                    parameter.measurementColumnNames,
+                    parameter.measurementSchemas,
+                    parameter.allSensors,
+                    DeviceTableScanNode.class.getSimpleName());
+                Operator unitRoot =
+                    transparentFilter == null
+                        ? subScanOperator
+                        : constructTransparentMorselFilter(
+                            transparentFilter, subScanOperator, subContext);
+                if (transparentFilter != null) {
+                  subScanOperator
+                      .getOperatorContext()
+                      .getSpecifiedInfo()
+                      .put("MORSEL_PIPELINE_ROOT", FilterAndProjectOperator.class.getSimpleName());
+                }
+                bucketOperators.add(unitRoot);
+                if (firstRootNode == null) {
+                  firstRootNode = subScanNode;
+                  firstUpstreamId = subScanId;
+                }
+              }
+              if (bucketOperators.isEmpty()) {
+                throw new IllegalStateException(
+                    DataNodeQueryMessages
+                        .EXCEPTION_PARALLEL_PLAN_CONTAINS_AN_EMPTY_BUCKET_0766733B);
+              }
+              final Operator pipelineRoot;
+              final PlanNodeId upstreamId;
+              if (bucketOperators.size() == 1) {
+                pipelineRoot = bucketOperators.get(0);
+                upstreamId = firstUpstreamId;
+              } else {
+                upstreamId =
+                    new PlanNodeId(
+                        node.getPlanNodeId().getId() + "-morsel-bucket-" + pipelineIndex);
+                pipelineRoot =
+                    new CollectOperator(
+                        addOperatorContext(
+                            subContext, upstreamId, CollectOperator.class.getSimpleName()),
+                        bucketOperators);
+              }
+              return new LocalScanPipelineBuilder.PipelineSpec(
+                  pipelineRoot,
+                  firstRootNode,
+                  transparentFilter == null
+                      ? node.getPlanNodeId()
+                      : transparentFilter.getPlanNodeId(),
+                  upstreamId);
+            });
+    recordActualPipelineCount(context);
 
     final OperatorContext collectOperatorContext =
         addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
@@ -2194,10 +2453,12 @@ public class DataNodeTableOperatorGenerator
    */
   static Expression buildTimePartitionRangePredicate(
       long tpId, long interval, String timeColumnName) {
+    if (!isRepresentableTimePartitionRange(tpId, interval)) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_UNSUPPORTED_TIME_PARTITION_RANGE);
+    }
     final long lower = TimePartitionUtils.getStartTimeByPartitionId(tpId);
-    // Saturated so that the last, clamped partition does not wrap around to a negative bound and
-    // turn an upper bound into a lower one.
-    final long upper = LongMath.saturatedAdd(lower, interval);
+    final long upper = Math.addExact(lower, interval);
     final Expression timeColumn = new SymbolReference(timeColumnName);
     return LogicalExpression.and(
         new ComparisonExpression(
@@ -2208,6 +2469,38 @@ public class DataNodeTableOperatorGenerator
             ComparisonExpression.Operator.LESS_THAN,
             timeColumn,
             new LongLiteral(String.valueOf(upper))));
+  }
+
+  private static boolean hasRepresentableTimePartitionRanges(
+      List<Long> timePartitions, long interval) {
+    if (timePartitions == null || timePartitions.isEmpty()) {
+      return false;
+    }
+    for (Long partition : timePartitions) {
+      if (partition == null || !isRepresentableTimePartitionRange(partition, interval)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean isRepresentableTimePartitionRange(long partition, long interval) {
+    if (interval <= 0
+        || interval != TimePartitionUtils.getTimePartitionInterval()
+        || partition == Long.MAX_VALUE) {
+      return false;
+    }
+    try {
+      final long lower = TimePartitionUtils.getStartTimeByPartitionId(partition);
+      final long upper = Math.addExact(lower, interval);
+      final long nextPartition = Math.addExact(partition, 1L);
+      return upper > lower
+          && TimePartitionUtils.getTimePartitionId(lower) == partition
+          && TimePartitionUtils.getStartTimeByPartitionId(nextPartition) == upper
+          && TimePartitionUtils.getTimePartitionId(upper) == nextPartition;
+    } catch (ArithmeticException unsupportedBoundary) {
+      return false;
+    }
   }
 
   /**
@@ -2249,64 +2542,58 @@ public class DataNodeTableOperatorGenerator
    */
   private Operator constructParallelDeviceScan(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
+    return constructParallelDeviceScan(node, context, null);
+  }
+
+  private Operator constructParallelDeviceScan(
+      DeviceTableScanNode node,
+      LocalExecutionPlanContext context,
+      ScanParallelPlan.FallbackReason fallback) {
     final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
-    final int deviceCount = deviceEntries.size();
-    final int pipelineNum = decideParallelScanPipelineNum(context, deviceCount);
+    final ScanParallelPlan selected =
+        createStaticScanPlan(node, context, Collections.emptyList(), false, false);
+    final ScanParallelPlan plan =
+        fallback == null
+            ? selected
+            : new ScanParallelPlan(
+                selected.getMode(),
+                fallback,
+                selected.getInputDop(),
+                selected.getTargetParallelism(),
+                selected.getDeviceGroups(),
+                selected.getTimePartitionGroups(),
+                selected.getWorkUnits(),
+                selected.getBuckets());
+    recordScanParallelMetadata(context, plan);
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+    final List<Operator> exchangeOperators =
+        LocalScanPipelineBuilder.build(
+            context,
+            plan,
+            (pipelineIndex, subContext) -> {
+              final DeviceTableScanNode subScanNode = node.clone();
+              subScanNode.setPlanNodeId(
+                  new PlanNodeId(node.getPlanNodeId().getId() + "-parallel-" + pipelineIndex));
+              subScanNode.setDeviceEntries(
+                  new ArrayList<>(
+                      mapBucketDevices(plan.getBuckets().get(pipelineIndex), deviceEntries)));
 
-    final List<Operator> exchangeOperators = new ArrayList<>(pipelineNum);
-    final int avgDeviceNum = deviceCount / pipelineNum;
-    final int remainder = deviceCount % pipelineNum;
-    int startIndex = 0;
-    for (int i = 0; i < pipelineNum; i++) {
-      final int endIndex = startIndex + avgDeviceNum + (i < remainder ? 1 : 0);
-      // construct a sub scan node which is same as the origin node except deviceEntries and
-      // planNodeId, the new planNodeId is only used in execution level (never serialized)
-      final DeviceTableScanNode subScanNode = node.clone();
-      subScanNode.setPlanNodeId(new PlanNodeId(node.getPlanNodeId().getId() + "-parallel-" + i));
-      subScanNode.setDeviceEntries(new ArrayList<>(deviceEntries.subList(startIndex, endIndex)));
-      startIndex = endIndex;
-
-      // each sub scan is executed by a new pipeline (a new driver)
-      final LocalExecutionPlanContext subContext = context.createSubContext();
-      final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
-          constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
-      final TableScanOperator subScanOperator = new TableScanOperator(parameter);
-      addSource(
-          subScanOperator,
-          subContext,
-          subScanNode,
-          parameter.measurementColumnNames,
-          parameter.measurementSchemas,
-          parameter.allSensors,
-          DeviceTableScanNode.class.getSimpleName());
-
-      // connect the sub pipeline with current pipeline via local sink/source handle pair
-      final ISinkChannel localSinkChannel =
-          MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
-              subContext.getDriverContext(), subScanNode.getPlanNodeId().getId());
-      subContext.setISink(localSinkChannel);
-      subContext.addPipelineDriverFactory(subScanOperator, subContext.getDriverContext(), 0);
-      subContext.constructPipelineMemoryEstimator(
-          subScanOperator, node.getPlanNodeId(), subScanNode, -1);
-
-      final ExchangeOperator exchangeOperator =
-          new ExchangeOperator(
-              context
-                  .getDriverContext()
-                  .addOperatorContext(
-                      context.getNextOperatorId(), null, ExchangeOperator.class.getSimpleName()),
-              MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
-                  ((LocalSinkChannel) localSinkChannel).getSharedTsBlockQueue(),
-                  context.getDriverContext()),
-              subScanNode.getPlanNodeId(),
-              subScanOperator.calculateMaxReturnSize());
-      context.addExchangeOperator(exchangeOperator);
-      exchangeOperators.add(exchangeOperator);
-    }
-    // one local exchange pair for each sub pipeline
-    context.addExchangeSumNum(pipelineNum);
+              final AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
+                  constructAbstractTableScanOperatorParameter(subScanNode, subContext, null);
+              final TableScanOperator subScanOperator = new TableScanOperator(parameter);
+              addSource(
+                  subScanOperator,
+                  subContext,
+                  subScanNode,
+                  parameter.measurementColumnNames,
+                  parameter.measurementSchemas,
+                  parameter.allSensors,
+                  DeviceTableScanNode.class.getSimpleName());
+              return new LocalScanPipelineBuilder.PipelineSpec(
+                  subScanOperator, subScanNode, node.getPlanNodeId(), subScanNode.getPlanNodeId());
+            });
+    recordActualPipelineCount(context);
 
     final OperatorContext collectOperatorContext =
         addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());

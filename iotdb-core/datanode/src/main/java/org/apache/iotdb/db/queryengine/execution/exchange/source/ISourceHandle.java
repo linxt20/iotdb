@@ -61,6 +61,11 @@ public interface ISourceHandle extends Accountable {
   @SuppressWarnings("squid:S1452")
   ListenableFuture<?> isBlocked();
 
+  /** Returns the actual close state for resource-lifecycle observations. */
+  default boolean isClosed() {
+    return false;
+  }
+
   /** If this handle is aborted. */
   boolean isAborted();
 

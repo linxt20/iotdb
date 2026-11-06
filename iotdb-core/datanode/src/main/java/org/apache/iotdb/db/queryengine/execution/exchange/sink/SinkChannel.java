@@ -250,6 +250,14 @@ public class SinkChannel implements ISinkChannel {
     if (closed) {
       return immediateVoidFuture();
     }
+    if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .isEnabled())
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .trackFuture(
+              localFragmentInstanceId.getQueryId(),
+              org.apache.iotdb.db.queryengine.common.FragmentInstanceId
+                  .createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId),
+              blocked);
     return nonCancellationPropagating(blocked);
   }
 
@@ -488,6 +496,10 @@ public class SinkChannel implements ISinkChannel {
     if (isFinished()) {
       invokeOnFinished();
     }
+  }
+
+  public String getLocalPlanNodeId() {
+    return localPlanNodeId;
   }
 
   @Override

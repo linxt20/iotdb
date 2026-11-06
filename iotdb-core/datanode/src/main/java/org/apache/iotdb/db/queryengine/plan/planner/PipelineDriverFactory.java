@@ -30,29 +30,66 @@ import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import static java.util.Objects.requireNonNull;
 
 public class PipelineDriverFactory {
 
   private final DriverContext driverContext;
+  private final LocalExecutionResourceRegistry resourceRegistry;
   // TODO Use OperatorFactory to replace operator to generate multiple drivers for on pipeline
   private final Operator operation;
   private final long estimatedMemorySize;
+  private final AtomicBoolean driverCreated = new AtomicBoolean(false);
+  private final AtomicBoolean operationClosed = new AtomicBoolean(false);
+  private final AtomicBoolean operationCloseSucceeded = new AtomicBoolean(false);
 
   public PipelineDriverFactory(
       Operator operation, DriverContext driverContext, long estimatedMemorySize) {
+    this(operation, driverContext, estimatedMemorySize, null);
+  }
+
+  public PipelineDriverFactory(
+      Operator operation,
+      DriverContext driverContext,
+      long estimatedMemorySize,
+      LocalExecutionResourceRegistry resourceRegistry) {
+    this.resourceRegistry = resourceRegistry;
     this.operation =
         requireNonNull(operation, DataNodeQueryMessages.EXCEPTION_ROOTOPERATOR_IS_NULL_050A1E79);
     this.driverContext = driverContext;
     this.estimatedMemorySize = estimatedMemorySize;
+    if (driverContext != null
+        && org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+            .isEnabled()) {
+      org.apache.iotdb.db.queryengine.common.FragmentInstanceId id =
+          driverContext.getFragmentInstanceContext().getId();
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .registerObject(
+              id.getQueryId().getId(),
+              id.getFullId(),
+              this,
+              "FACTORY",
+              () -> driverCreated.get() || operationCloseSucceeded.get(),
+              null,
+              null,
+              null);
+    }
   }
 
   public DriverContext getDriverContext() {
     return driverContext;
   }
 
-  public Driver createDriver() {
+  public synchronized Driver createDriver() {
     requireNonNull(driverContext, DataNodeQueryMessages.EXCEPTION_DRIVERCONTEXT_IS_NULL_4FEBE55F);
+
+    if (driverCreated.get() || operationClosed.get()) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages
+              .EXCEPTION_DRIVER_FACTORY_HAS_ALREADY_BEEN_CONSUMED_OR_CLOSED_354A2854);
+    }
     try {
       Driver driver = null;
       if (driverContext instanceof DataDriverContext) {
@@ -60,10 +97,20 @@ public class PipelineDriverFactory {
       } else {
         driver = new SchemaDriver(operation, (SchemaDriverContext) driverContext);
       }
+      driverCreated.set(true);
+      if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .isEnabled()) {
+        org.apache.iotdb.db.queryengine.common.FragmentInstanceId id =
+            driverContext.getFragmentInstanceContext().getId();
+        org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+            .driverCreated(id.getQueryId().getId(), id.getFullId(), driver);
+      }
+
+      if (resourceRegistry != null) resourceRegistry.releaseOperatorRoot(operation);
       return driver;
     } catch (Throwable failure) {
       try {
-        operation.close();
+        closeUncreated();
       } catch (Throwable closeFailure) {
         if (failure != closeFailure) {
           failure.addSuppressed(closeFailure);
@@ -71,6 +118,20 @@ public class PipelineDriverFactory {
       }
       throw failure;
     }
+  }
+
+  /** Close a factory whose driver has not been created; repeated calls are harmless. */
+  public synchronized boolean closeUncreated() throws Exception {
+    if (driverCreated.get() || !operationClosed.compareAndSet(false, true)) {
+      return false;
+    }
+    try {
+      operation.close();
+      operationCloseSucceeded.set(true);
+    } finally {
+      if (resourceRegistry != null) resourceRegistry.releaseOperatorRoot(operation);
+    }
+    return true;
   }
 
   public void setDependencyPipeline(int dependencyDriverIndex) {

@@ -78,6 +78,13 @@ public class DataDriverContext extends DriverContext {
   }
 
   public void addSourceOperator(DataSourceOperator sourceOperator) {
+    if (getFragmentInstanceContext() != null
+        && getFragmentInstanceContext().getPlanningContext() != null) {
+      getFragmentInstanceContext()
+          .getPlanningContext()
+          .getResourceRegistry()
+          .registerOperatorRoot(sourceOperator);
+    }
     this.sourceOperators.add(sourceOperator);
   }
 

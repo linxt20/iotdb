@@ -93,6 +93,53 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   }
 
   @Override
+  public String openResourceAuditWindow() {
+    return openResourceAuditWindow(120_000L);
+  }
+
+  @Override
+  public String openResourceAuditWindow(long durationMs) {
+    return ResourceAuditManager.getInstance()
+        .openWindow(
+            durationMs,
+            mppDataExchangeManager.getLocalMemoryManager().getQueryPool().getRemainingBytes(),
+            org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner.getInstance()
+                .getFreeMemoryForOperators());
+  }
+
+  @Override
+  public String listResourceAuditFragments(String windowId, String queryId) {
+    return new com.google.gson.GsonBuilder()
+        .serializeNulls()
+        .create()
+        .toJson(ResourceAuditManager.getInstance().listFragments(windowId, queryId));
+  }
+
+  @Override
+  public String readResourceAudit(String windowId, String queryId, String fragmentInstanceId) {
+    java.util.Map<String, Object> observation =
+        new java.util.LinkedHashMap<>(
+            ResourceAuditManager.getInstance()
+                .snapshot(
+                    windowId,
+                    queryId,
+                    fragmentInstanceId,
+                    mppDataExchangeManager.getLocalMemoryManager().getQueryPool(),
+                    org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner.getInstance()
+                        .getFreeMemoryForOperators()));
+    observation.put(
+        "sharedQueryContextPresent",
+        org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager
+            .hasDataNodeQueryContext(new org.apache.iotdb.db.queryengine.common.QueryId(queryId)));
+    return new com.google.gson.GsonBuilder().serializeNulls().create().toJson(observation);
+  }
+
+  @Override
+  public void closeResourceAuditWindow(String windowId) {
+    ResourceAuditManager.getInstance().closeWindow(windowId);
+  }
+
+  @Override
   public void initThriftServiceThread() throws IllegalAccessException {
     try {
       thriftServiceThread =

@@ -146,6 +146,10 @@ public class FragmentInstanceStatisticsJsonDrawer {
       // Query statistics
       JsonObject queryStats = renderQueryStatisticsJson(statistics.getQueryStatistics(), verbose);
       fiJson.add("queryStatistics", queryStats);
+      JsonObject runtimeSnapshot = renderRuntimeSnapshotJson(statistics);
+      if (runtimeSnapshot.size() > 0) {
+        fiJson.add("runtimeSnapshot", runtimeSnapshot);
+      }
 
       // Operators
       PlanNode planNodeTree = instance.getFragment().getPlanNodeTree();
@@ -168,6 +172,141 @@ public class FragmentInstanceStatisticsJsonDrawer {
 
     root.add("fragmentInstances", fragmentInstancesArray);
     return GSON.toJson(root);
+  }
+
+  private JsonObject renderRuntimeSnapshotJson(TFetchFragmentInstanceStatisticsResp statistics) {
+    JsonObject result = new JsonObject();
+    if (statistics.isSetSchemaVersion()) {
+      result.addProperty("schemaVersion", statistics.getSchemaVersion());
+    }
+    if (statistics.isSetSnapshotGeneration()) {
+      result.addProperty("generation", statistics.getSnapshotGeneration());
+    }
+    if (statistics.isSetCapturedAtNanos()) {
+      result.addProperty("capturedAtNanos", statistics.getCapturedAtNanos());
+    }
+    if (statistics.isSetSourceNodeId()) {
+      result.addProperty("sourceNodeId", statistics.getSourceNodeId());
+    }
+    if (statistics.isSetSourceEndpoint()) {
+      result.addProperty("sourceEndpoint", statistics.getSourceEndpoint());
+    }
+    if (statistics.isSetSnapshotChecksum()) {
+      result.addProperty("checksum", statistics.getSnapshotChecksum());
+    }
+    if (statistics.isSetIsTerminal()) {
+      result.addProperty("isTerminal", statistics.isIsTerminal());
+    }
+    if (statistics.isSetPlannedDop()) {
+      result.addProperty("plannedDop", statistics.getPlannedDop());
+    }
+    if (statistics.isSetActualPipelineCount()) {
+      result.addProperty("actualPipelineCount", statistics.getActualPipelineCount());
+    }
+    if (statistics.isSetSplitMode()) {
+      result.addProperty("splitMode", statistics.getSplitMode());
+    }
+    if (statistics.isSetSplitReason()) {
+      result.addProperty("splitReason", statistics.getSplitReason());
+    }
+    if (statistics.isSetAdmissionStatus()) {
+      result.addProperty("admissionStatus", statistics.getAdmissionStatus());
+    }
+    if (statistics.isSetAdmissionReason()) {
+      result.addProperty("admissionReason", statistics.getAdmissionReason());
+    }
+    if (statistics.isSetResourceObjectCount()) {
+      result.addProperty("resourceObjectCount", statistics.getResourceObjectCount());
+    }
+    if (statistics.isSetResourceUniqueMemoryKeyCount()) {
+      result.addProperty(
+          "resourceUniqueMemoryKeyCount", statistics.getResourceUniqueMemoryKeyCount());
+    }
+    if (statistics.isSetResourceNominalShareBytes()) {
+      result.addProperty("resourceNominalShareBytes", statistics.getResourceNominalShareBytes());
+    }
+    if (statistics.isSetPlanIdentityChecksum()) {
+      result.addProperty("planIdentityChecksum", statistics.getPlanIdentityChecksum());
+    }
+    if (statistics.isSetWorkUnitIds()) {
+      JsonArray workUnits = new JsonArray();
+      for (String workUnitId : statistics.getWorkUnitIds()) {
+        workUnits.add(workUnitId);
+      }
+      result.add("workUnitIds", workUnits);
+    }
+    if (statistics.isSetBucketIds()) {
+      JsonArray buckets = new JsonArray();
+      for (Integer bucketId : statistics.getBucketIds()) {
+        buckets.add(bucketId);
+      }
+      result.add("bucketIds", buckets);
+    }
+    if (statistics.isSetExchangeEdgeIds()) {
+      JsonArray exchangeEdges = new JsonArray();
+      for (String exchangeEdgeId : statistics.getExchangeEdgeIds()) {
+        exchangeEdges.add(exchangeEdgeId);
+      }
+      result.add("exchangeEdgeIds", exchangeEdges);
+    }
+    if (statistics.isSetCanonicalFallbackReason()) {
+      result.addProperty("canonicalFallbackReason", statistics.getCanonicalFallbackReason());
+    }
+    if (statistics.isSetValidityReasons()) {
+      JsonArray validity = new JsonArray();
+      for (String reason : statistics.getValidityReasons()) {
+        validity.add(reason);
+      }
+      result.add("validity", validity);
+    }
+    if (statistics.isSetDriverSnapshots()) {
+      JsonArray drivers = new JsonArray();
+      statistics.getDriverSnapshots().stream()
+          .sorted(
+              java.util.Comparator.comparing(
+                      org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot::getFragmentInstanceId)
+                  .thenComparing(
+                      org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot::getDriverPipelineId)
+                  .thenComparing(
+                      org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot::getDriverTaskId))
+          .forEach(
+              driver -> {
+                JsonObject value = new JsonObject();
+                value.addProperty("fragmentInstanceId", driver.getFragmentInstanceId());
+                value.addProperty("driverPipelineId", driver.getDriverPipelineId());
+                value.addProperty("driverTaskId", driver.getDriverTaskId());
+                if (driver.isSetDriverRole()) {
+                  value.addProperty("driverRole", driver.getDriverRole());
+                }
+                value.addProperty("driverSampleGeneration", driver.getDriverSampleGeneration());
+                if (driver.isSetDriverFirstProcessNanos()) {
+                  value.addProperty("driverFirstProcessNanos", driver.getDriverFirstProcessNanos());
+                }
+                if (driver.isSetDriverLastProcessNanos()) {
+                  value.addProperty("driverLastProcessNanos", driver.getDriverLastProcessNanos());
+                }
+                if (driver.isSetDriverWallNanos()) {
+                  value.addProperty("driverWallNanos", driver.getDriverWallNanos());
+                }
+                if (driver.isSetDriverOutputRows()) {
+                  value.addProperty("driverOutputRows", driver.getDriverOutputRows());
+                }
+                if (driver.isSetDriverOutputBytes()) {
+                  value.addProperty("driverOutputBytes", driver.getDriverOutputBytes());
+                }
+                if (driver.isSetDriverTsBlockCount()) {
+                  value.addProperty("driverTsBlocks", driver.getDriverTsBlockCount());
+                }
+                if (driver.isSetValidityReasons()) {
+                  JsonArray reasons = new JsonArray();
+                  driver.getValidityReasons().forEach(reasons::add);
+                  value.add("validity", reasons);
+                }
+                drivers.add(value);
+              });
+      result.add("drivers", drivers);
+    }
+    return result;
   }
 
   private JsonObject renderQueryStatisticsJson(TQueryStatistics qs, boolean verbose) {

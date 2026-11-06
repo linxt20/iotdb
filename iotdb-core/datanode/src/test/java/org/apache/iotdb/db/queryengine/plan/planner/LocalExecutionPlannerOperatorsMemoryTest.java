@@ -207,4 +207,64 @@ public class LocalExecutionPlannerOperatorsMemoryTest {
     Assert.assertEquals(0L, manager.getReservedBytesInTotalForTest());
     Assert.assertEquals(freeBefore, PLANNER.getFreeMemoryForOperators());
   }
+
+  @Test
+  public void memoryChecksDisabledRecordAnExplicitReason() throws Exception {
+    org.apache.iotdb.db.conf.IoTDBDescriptor descriptor =
+        org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance();
+    boolean estimate = descriptor.getMemoryConfig().isEnableQueryMemoryEstimation();
+    boolean quota = descriptor.getConfig().isQuotaEnable();
+    org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext context =
+        org.mockito.Mockito.mock(
+            org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.class);
+    try {
+      descriptor.getMemoryConfig().setEnableQueryMemoryEstimation(false);
+      descriptor.getConfig().setQuotaEnable(false);
+      Assert.assertEquals(0L, invokeCheckMemory(context, 1024));
+      org.mockito.Mockito.verify(context).setAdmissionAccepted("CHECK_DISABLED");
+    } finally {
+      descriptor.getMemoryConfig().setEnableQueryMemoryEstimation(estimate);
+      descriptor.getConfig().setQuotaEnable(quota);
+    }
+  }
+
+  @Test
+  public void highestPriorityZeroReservationIsRecordedAndDoesNotConsumeMemory() throws Exception {
+    org.apache.iotdb.db.conf.IoTDBDescriptor descriptor =
+        org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance();
+    boolean estimate = descriptor.getMemoryConfig().isEnableQueryMemoryEstimation();
+    int dataNodeId = descriptor.getConfig().getDataNodeId();
+    org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext context =
+        org.mockito.Mockito.mock(
+            org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.class);
+    org.mockito.Mockito.when(context.isHighestPriority()).thenReturn(true);
+    long free = PLANNER.getFreeMemoryForOperators();
+    try {
+      descriptor.getConfig().setDataNodeId(0);
+      descriptor.getMemoryConfig().setEnableQueryMemoryEstimation(true);
+      Assert.assertEquals(0L, invokeCheckMemory(context, free + 1024));
+      org.mockito.Mockito.verify(context).setAdmissionAccepted("HIGHEST_PRIORITY_ZERO_RESERVATION");
+      Assert.assertEquals(free, PLANNER.getFreeMemoryForOperators());
+    } finally {
+      descriptor.getMemoryConfig().setEnableQueryMemoryEstimation(estimate);
+      descriptor.getConfig().setDataNodeId(dataNodeId);
+    }
+  }
+
+  private long invokeCheckMemory(
+      org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext context,
+      long estimate)
+      throws Exception {
+    org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator estimator =
+        org.mockito.Mockito.mock(
+            org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator.class);
+    org.mockito.Mockito.when(estimator.getEstimatedMemoryUsageInBytes()).thenReturn(estimate);
+    java.lang.reflect.Method method =
+        LocalExecutionPlanner.class.getDeclaredMethod(
+            "checkMemory",
+            org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator.class,
+            org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.class);
+    method.setAccessible(true);
+    return (Long) method.invoke(PLANNER, estimator, context);
+  }
 }

@@ -334,6 +334,14 @@ public class QueryStatistics {
     this.rowScanFilteredRows.addAndGet(count);
   }
 
+  /**
+   * Copies every counter under one monitor boundary. Writers remain lock-free AtomicLong updates,
+   * while callers get a single method boundary for a checksum input.
+   */
+  public synchronized TQueryStatistics snapshotToThrift() {
+    return toThrift();
+  }
+
   public TQueryStatistics toThrift() {
     return new TQueryStatistics(
         loadTimeSeriesMetadataDiskSeqCount.get(),

@@ -76,7 +76,9 @@ public abstract class Driver implements IDriver {
   protected final DriverLock exclusiveLock = new DriverLock();
 
   private boolean isHighestPriority;
-  private long firstProcessNanos = -1;
+  private volatile long firstProcessNanos = -1;
+  private volatile long lastProcessNanos = -1;
+  private volatile long wallNanos = -1;
 
   protected enum State {
     ALIVE,
@@ -167,7 +169,35 @@ public abstract class Driver implements IDriver {
               return NOT_BLOCKED;
             });
 
+    long now = System.nanoTime();
+    if (firstProcessNanos >= 0) {
+      lastProcessNanos = now;
+      wallNanos = Math.max(0, now - firstProcessNanos);
+    }
     return result.orElse(NOT_BLOCKED);
+  }
+
+  /** Runtime snapshot side-channel. CPU is intentionally absent until ThreadMXBean is enabled. */
+  public long getFirstProcessNanos() {
+    return firstProcessNanos;
+  }
+
+  public long getLastProcessNanos() {
+    return lastProcessNanos;
+  }
+
+  public long getWallNanos() {
+    return wallNanos;
+  }
+
+  @Override
+  public long getRuntimeOutputRows() {
+    return root.getOperatorContext().getOutputRows();
+  }
+
+  @Override
+  public long getRuntimeTsBlockCount() {
+    return root.getOperatorContext().getTsBlockOutputCount();
   }
 
   @Override
@@ -418,7 +448,17 @@ public abstract class Driver implements IDriver {
               DataNodeQueryMessages.EXCEPTION_ERROR_DESTROYING_DRIVER_FOR_TASK_ARG_D695D81F,
               driverContext.getDriverTaskID());
     } finally {
-      releaseResource();
+      try {
+        releaseResource();
+      } finally {
+        if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+            .isEnabled()) {
+          org.apache.iotdb.db.queryengine.common.FragmentInstanceId id =
+              driverContext.getFragmentInstanceContext().getId();
+          org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+              .driverClosed(id.getQueryId().getId(), id.getFullId(), this);
+        }
+      }
     }
 
     if (inFlightException != null) {

@@ -364,14 +364,23 @@ public class SourceHandle implements ISourceHandle {
       final long blockedRetainedSize = blockedSize;
       blockedOnMemory.addListener(
           () ->
-              executorService.submit(
-                  new GetDataBlocksTask(
-                      blockedSequenceId, blockedSequenceId + 1, blockedRetainedSize)),
+              org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+                  .trackFuture(
+                      localFragmentInstanceId.getQueryId(),
+                      fullFragmentInstanceId,
+                      executorService.submit(
+                          new GetDataBlocksTask(
+                              blockedSequenceId, blockedSequenceId + 1, blockedRetainedSize))),
           executorService);
     }
 
     if (endSequenceId > startSequenceId) {
-      executorService.submit(new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes));
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .trackFuture(
+              localFragmentInstanceId.getQueryId(),
+              fullFragmentInstanceId,
+              executorService.submit(
+                  new GetDataBlocksTask(startSequenceId, endSequenceId, reservedBytes)));
     }
   }
 
@@ -384,6 +393,14 @@ public class SourceHandle implements ISourceHandle {
       // completed in case that trySubmitGetDataBlocksTask() is not called.
       trySubmitGetDataBlocksTask();
     }
+    if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .isEnabled())
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .trackFuture(
+              localFragmentInstanceId.getQueryId(),
+              org.apache.iotdb.db.queryengine.common.FragmentInstanceId
+                  .createFragmentInstanceIdFromTFragmentInstanceId(localFragmentInstanceId),
+              blocked);
     return nonCancellationPropagating(blocked);
   }
 
@@ -556,6 +573,11 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
     this.maxBytesCanReserve = Math.min(this.maxBytesCanReserve, maxBytesCanReserve);
+  }
+
+  @Override
+  public synchronized boolean isClosed() {
+    return closed;
   }
 
   @Override

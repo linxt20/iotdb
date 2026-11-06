@@ -30,6 +30,12 @@ import java.util.List;
 
 /** The interface of fragment instance scheduling. */
 public interface IDriverScheduler {
+  /** Point-in-time scheduler counters reused by runtime snapshot consumers. */
+  record RuntimeMetrics(long active, long ready, long blocked, long completed) {}
+
+  default RuntimeMetrics getRuntimeMetrics() {
+    return new RuntimeMetrics(0, 0, 0, 0);
+  }
 
   /**
    * Submit one or more {@link IDriver} in one query for later scheduling.

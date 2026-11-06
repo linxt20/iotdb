@@ -53,6 +53,10 @@ import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 @NotThreadSafe
 public class SharedTsBlockQueue {
 
+  /** Immutable memory-account identity captured when this physical queue is created. */
+  public record MemoryReservationKey(
+      String queryId, String fragmentInstanceId, String planNodeId) {}
+
   private static final Logger LOGGER = LoggerFactory.getLogger(SharedTsBlockQueue.class);
 
   private final TFragmentInstanceId localFragmentInstanceId;
@@ -85,8 +89,9 @@ public class SharedTsBlockQueue {
   private LocalSourceHandle sourceHandle;
   private LocalSinkChannel sinkChannel;
 
-  private long maxBytesCanReserve =
-      IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+  private final java.util.concurrent.atomic.AtomicLong maxBytesCanReserve =
+      new java.util.concurrent.atomic.AtomicLong(
+          IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance());
   private final boolean isHighestPriority;
 
   private volatile Throwable abortedCause = null;
@@ -127,6 +132,16 @@ public class SharedTsBlockQueue {
             executorService,
             DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_220C966B);
     this.isHighestPriority = isHighestPriority;
+    ResourceAuditManager.getInstance()
+        .registerObject(
+            fragmentInstanceId.getQueryId(),
+            fullFragmentInstanceId,
+            this,
+            "LOCAL_QUEUE",
+            this::isClosed,
+            fragmentInstanceId.getQueryId(),
+            fullFragmentInstanceId,
+            planNodeId);
   }
 
   public boolean hasNoMoreTsBlocks() {
@@ -142,11 +157,17 @@ public class SharedTsBlockQueue {
   }
 
   public void setMaxBytesCanReserve(long maxBytesCanReserve) {
-    this.maxBytesCanReserve = maxBytesCanReserve;
+    this.maxBytesCanReserve.accumulateAndGet(maxBytesCanReserve, Math::min);
   }
 
   public long getMaxBytesCanReserve() {
-    return maxBytesCanReserve;
+    return maxBytesCanReserve.get();
+  }
+
+  /** Returns the exact key used by MemoryPool for this queue's reservations. */
+  public MemoryReservationKey getMemoryReservationKey() {
+    return new MemoryReservationKey(
+        localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
   }
 
   /** Allow adding data to queue manually. */
@@ -280,7 +301,7 @@ public class SharedTsBlockQueue {
                 fullFragmentInstanceId,
                 localPlanNodeId,
                 tsBlock.getSizeInBytes(),
-                maxBytesCanReserve,
+                maxBytesCanReserve.get(),
                 isHighestPriority);
     blockedOnMemory = reserveResult.getFuture();
     long reservedBytes = reserveResult.getReservedBytes();

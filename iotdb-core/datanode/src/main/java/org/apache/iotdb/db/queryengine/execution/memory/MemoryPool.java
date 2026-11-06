@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -264,6 +266,11 @@ public class MemoryPool {
     }
   }
 
+  public void registerPlanNodeIdToQueryMemoryMap(
+      String queryId, String fragmentInstanceId, String planNodeId) {
+    registerPlanNodeIdToQueryMemoryMap(queryId, fragmentInstanceId, planNodeId, MemorySide.INPUT);
+  }
+
   /** Enable shared accounting after the complete FI has been checked by local planning. */
   public void registerFragmentInstanceSharedBudget(String queryId, String fragmentInstanceId) {
     synchronized (queryMemoryReservations) {
@@ -443,6 +450,8 @@ public class MemoryPool {
         removePendingReservation(result);
         throw e;
       }
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .trackFuture(queryId, fragmentInstanceId, result);
       return new MemoryReservationResult(result, false, bytesToReserve);
     }
   }
@@ -586,6 +595,68 @@ public class MemoryPool {
       // Owner callbacks may register or release other accounts.
       future.set(null);
       return true;
+    }
+  }
+
+  /** Immutable fragment-level reservation snapshot for lifecycle acceptance checks. */
+  public record FragmentReservationSnapshot(
+      boolean present, Map<String, Long> byPlanNode, long fragmentReservedBytes) {}
+
+  public record DeregistrationReceipt(
+      long bytesBefore,
+      boolean presentAfter,
+      long bytesAfter,
+      boolean success,
+      String exceptionType) {}
+
+  private final Map<String, DeregistrationReceipt> deregistrationReceipts =
+      java.util.Collections.synchronizedMap(
+          new java.util.LinkedHashMap<String, DeregistrationReceipt>() {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, DeregistrationReceipt> entry) {
+              return size() > 4096;
+            }
+          });
+
+  public void recordDeregistrationReceipt(
+      String queryId,
+      String fragmentInstanceId,
+      long bytesBefore,
+      FragmentReservationSnapshot after,
+      boolean success,
+      Throwable failure) {
+    DeregistrationReceipt receipt =
+        new DeregistrationReceipt(
+            bytesBefore,
+            after.present(),
+            after.fragmentReservedBytes(),
+            success,
+            failure == null ? null : failure.getClass().getName());
+    deregistrationReceipts.put(queryId + "\0" + fragmentInstanceId, receipt);
+    org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .recordDeregistration(queryId, fragmentInstanceId, receipt);
+  }
+
+  public DeregistrationReceipt getDeregistrationReceipt(String queryId, String fragmentInstanceId) {
+    return deregistrationReceipts.get(queryId + "\0" + fragmentInstanceId);
+  }
+
+  public FragmentReservationSnapshot snapshotFragmentReservations(
+      String queryId, String fragmentInstanceId) {
+    synchronized (queryMemoryReservations) {
+      Map<String, FragmentMemoryReservation> fragments = queryMemoryReservations.get(queryId);
+      FragmentMemoryReservation fragment =
+          fragments == null ? null : fragments.get(fragmentInstanceId);
+      if (fragment == null) {
+        return new FragmentReservationSnapshot(false, Collections.emptyMap(), 0L);
+      }
+      synchronized (fragment) {
+        Map<String, Long> snapshot = new HashMap<>();
+        fragment.planNodes.forEach(
+            (id, reservation) -> snapshot.put(id, reservation.bytesReserved));
+        long total = snapshot.values().stream().mapToLong(Long::longValue).sum();
+        return new FragmentReservationSnapshot(true, Collections.unmodifiableMap(snapshot), total);
+      }
     }
   }
 

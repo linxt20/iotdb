@@ -99,21 +99,30 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   public Boolean syncTerminate() {
     boolean succeed = true;
+    Throwable localFailure = null;
     for (final TEndPoint endPoint : relatedHost) {
-      // We only send cancel query request if there is remaining unfinished FI in that node
+      // Every related host retires its query-level metadata at actual query termination, even
+      // when no individual fragment still needs cancelling.
       final List<FragmentInstanceId> unfinishedFIs =
           stateTracker.filterUnFinishedFIs(ownedFragmentInstance.get(endPoint));
-      if (unfinishedFIs.isEmpty()) {
-        continue;
-      }
 
       final String internalAddress = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
       final int internalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
       if (internalAddress.equalsIgnoreCase(endPoint.getIp())
           && internalPort == endPoint.getPort()) {
-        for (final FragmentInstanceId insId : unfinishedFIs) {
-          FragmentInstanceManager.getInstance().cancelTask(insId, hasThrowable);
+        try {
+          FragmentInstanceManager.getInstance()
+              .cancelQuery(
+                  queryId,
+                  unfinishedFIs,
+                  hasThrowable,
+                  FragmentInstanceManager.CancellationOrigin.LOCAL_CANCEL_TASK);
+        } catch (RuntimeException | Error cancellationFailure) {
+          if (localFailure == null) localFailure = cancellationFailure;
+          else if (localFailure != cancellationFailure)
+            localFailure.addSuppressed(cancellationFailure);
         }
+        // Try all other hosts even if local cleanup failed, then propagate that failure.
         continue;
       }
 
@@ -137,6 +146,8 @@ public class SimpleQueryTerminator implements IQueryTerminator {
         succeed = false;
       }
     }
+    if (localFailure instanceof RuntimeException) throw (RuntimeException) localFailure;
+    if (localFailure instanceof Error) throw (Error) localFailure;
     return succeed;
   }
 

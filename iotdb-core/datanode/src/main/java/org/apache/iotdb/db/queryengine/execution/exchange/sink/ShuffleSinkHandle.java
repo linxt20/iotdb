@@ -79,6 +79,37 @@ public class ShuffleSinkHandle implements IChannelRoutingSinkHandle {
   private long maxBytesCanReserve =
       IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
 
+  private final long constructorMaxBytesCanReserve = maxBytesCanReserve;
+  private LegacyChannelLimits legacyChannelLimits;
+
+  public record LegacyChannelLimits(
+      long constructorCapBytes,
+      long publishedCapBytes,
+      Long roundRobinThresholdBytes,
+      int channelCount,
+      boolean explicitRouting) {}
+
+  public void publishLegacyHandleCap(long cap) {
+    this.maxBytesCanReserve = cap;
+  }
+
+  public synchronized LegacyChannelLimits freezeLegacyChannelLimits() {
+    if (legacyChannelLimits == null) {
+      Long threshold =
+          shuffleStrategy instanceof SimpleRoundRobinStrategy
+              ? ((SimpleRoundRobinStrategy) shuffleStrategy).channelMemoryThreshold
+              : null;
+      legacyChannelLimits =
+          new LegacyChannelLimits(
+              constructorMaxBytesCanReserve,
+              maxBytesCanReserve,
+              threshold,
+              channelNum,
+              explicitChannelRouting);
+    }
+    return legacyChannelLimits;
+  }
+
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ShuffleSinkHandle.class)
           + RamUsageEstimator.shallowSizeOfInstance(TFragmentInstanceId.class)
@@ -124,6 +155,11 @@ public class ShuffleSinkHandle implements IChannelRoutingSinkHandle {
 
   public ISinkChannel getChannel(int index) {
     return downStreamChannelList.get(index);
+  }
+
+  /** Snapshot real children for complete cleanup even if later per-channel planning fails. */
+  public List<ISinkChannel> getChannelsForLifecycle() {
+    return List.copyOf(downStreamChannelList);
   }
 
   @Override
@@ -277,30 +313,27 @@ public class ShuffleSinkHandle implements IChannelRoutingSinkHandle {
       }
       boolean meetError = false;
       Exception firstException = null;
-      boolean selfAborted = true;
       for (ISink channel : downStreamChannelList) {
         try {
-          selfAborted = channel.abort();
+          channel.abort();
         } catch (Exception e) {
           if (!meetError) {
             firstException = e;
             meetError = true;
+          } else if (firstException != e) {
+            firstException.addSuppressed(e);
           }
         }
       }
       if (meetError) {
         LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_ABORT_CHANNEL, firstException);
       }
-      if (selfAborted) {
-        sinkListener.onAborted(this);
-        aborted = true;
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
-        }
-        return true;
-      } else {
-        return false;
+      aborted = true;
+      sinkListener.onAborted(this);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.END_ABORT_SHUFFLE_SINK_HANDLE);
       }
+      return true;
     } finally {
       releaseTerminationClaim(claim);
     }
@@ -322,30 +355,27 @@ public class ShuffleSinkHandle implements IChannelRoutingSinkHandle {
       }
       boolean meetError = false;
       Exception firstException = null;
-      boolean selfClosed = true;
       for (ISink channel : downStreamChannelList) {
         try {
-          selfClosed = channel.close();
+          channel.close();
         } catch (Exception e) {
           if (!meetError) {
             firstException = e;
             meetError = true;
+          } else if (firstException != e) {
+            firstException.addSuppressed(e);
           }
         }
       }
       if (meetError) {
         LOGGER.warn(DataNodeQueryMessages.ERROR_OCCURRED_WHEN_TRY_TO_CLOSE_CHANNEL, firstException);
       }
-      if (selfClosed) {
-        sinkListener.onFinish(this);
-        closed = true;
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
-        }
-        return true;
-      } else {
-        return false;
+      closed = true;
+      sinkListener.onFinish(this);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SHUFFLE_SINK_HANDLE);
       }
+      return true;
     } finally {
       releaseTerminationClaim(claim);
     }

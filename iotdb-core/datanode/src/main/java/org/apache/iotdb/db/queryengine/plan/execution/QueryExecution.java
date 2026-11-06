@@ -328,6 +328,22 @@ public class QueryExecution implements IQueryExecution {
   private void constructResultForMemorySource() {
     TsBlock tsBlock = analysis.constructResultForMemorySource(context);
     this.resultHandle = new MemorySourceHandle(tsBlock);
+    if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .isEnabled()) {
+      FragmentInstanceId resultId = context.getResultNodeContext().getVirtualFragmentInstanceId();
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .beginFragment(resultId.getQueryId().getId(), resultId.getFullId());
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .registerObject(
+              resultId.getQueryId().getId(),
+              resultId.getFullId(),
+              resultHandle,
+              "MEMORY_RESULT",
+              resultHandle::isClosed,
+              null,
+              null,
+              null);
+    }
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
@@ -411,19 +427,21 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void cleanUpResultHandle() {
-    // Result handle belongs to special fragment instance, so we need to deregister it alone
-    // We don't need to deal with MemorySourceHandle because it doesn't register to memory pool
-    // We don't need to deal with LocalSourceHandle because the SharedTsBlockQueue uses the upstream
-    // FragmentInstanceId to register
     if (resultHandle instanceof SourceHandle) {
-      TFragmentInstanceId fragmentInstanceId = resultHandle.getLocalFragmentInstanceId();
+      TFragmentInstanceId fragment = resultHandle.getLocalFragmentInstanceId();
       MPPDataExchangeService.getInstance()
           .getMPPDataExchangeManager()
           .deRegisterFragmentInstanceFromMemoryPool(
-              fragmentInstanceId.queryId,
-              FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
-                  fragmentInstanceId),
+              fragment.queryId,
+              FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(fragment),
               true);
+    } else if (org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .isEnabled()) {
+      FragmentInstanceId resultId = context.getResultNodeContext().getVirtualFragmentInstanceId();
+      MPPDataExchangeService.getInstance()
+          .getMPPDataExchangeManager()
+          .deRegisterFragmentInstanceFromMemoryPool(
+              resultId.getQueryId().getId(), resultId.getFragmentInstanceId(), true);
     }
   }
 
@@ -685,6 +703,11 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void initResultHandle() {
+    org.apache.iotdb.db.queryengine.common.FragmentInstanceId auditResultId =
+        context.getResultNodeContext().getVirtualFragmentInstanceId();
+    org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+        .beginFragment(auditResultId.getQueryId().getId(), auditResultId.getFullId());
+
     TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
 
     this.resultHandle =

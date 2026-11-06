@@ -819,6 +819,26 @@ struct TOperatorStatistics{
   7: required i64 outputRows
   8: required i64 memoryUsage
   9: optional i64 count
+  10: optional i64 outputBytes
+  11: optional i64 tsBlockCount
+}
+
+struct TDriverRuntimeSnapshot {
+  1: required string fragmentInstanceId
+  2: required string driverPipelineId
+  3: required string driverTaskId
+  4: optional string driverRole
+  5: required i64 driverSampleGeneration
+  6: optional i64 driverFirstProcessNanos
+  7: optional i64 driverLastProcessNanos
+  8: optional i64 driverCpuNanos
+  9: optional i64 driverWallNanos
+  10: optional i64 driverReadyNanos
+  11: optional i64 driverBlockedNanos
+  12: optional i64 driverOutputRows
+  13: optional i64 driverOutputBytes
+  14: optional i64 driverTsBlockCount
+  15: optional list<string> validityReasons
 }
 
 struct TQueryStatistics {
@@ -909,6 +929,31 @@ struct TFetchFragmentInstanceStatisticsResp {
   15: optional string ip
   16: optional string state
   17: optional i32 initDataQuerySourceRetryCount
+  18: optional i32 schemaVersion
+  19: optional i64 snapshotGeneration
+  20: optional i64 capturedAtNanos
+  21: optional string sourceNodeId
+  22: optional string sourceEndpoint
+  23: optional list<string> validityReasons
+  24: optional string snapshotChecksum
+  25: optional bool isTerminal
+  26: optional string ignoredFragmentReason
+  27: optional list<TDriverRuntimeSnapshot> driverSnapshots
+  28: optional i32 plannedDop
+  29: optional i32 actualPipelineCount
+  30: optional string splitMode
+  31: optional string splitReason
+  32: optional string planIdentityChecksum
+  33: optional list<string> workUnitIds
+  34: optional list<i32> bucketIds
+  35: optional list<string> exchangeEdgeIds
+  36: optional string canonicalFallbackReason
+  37: optional i64 planGeneration
+  38: optional i32 resourceObjectCount
+  39: optional i32 resourceUniqueMemoryKeyCount
+  40: optional i64 resourceNominalShareBytes
+  41: optional string admissionStatus
+  42: optional string admissionReason
 }
 
 struct TKillQueryInstanceReq {
