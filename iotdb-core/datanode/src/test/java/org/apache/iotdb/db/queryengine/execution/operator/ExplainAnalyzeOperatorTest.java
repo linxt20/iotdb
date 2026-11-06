@@ -107,6 +107,8 @@ public class ExplainAnalyzeOperatorTest {
         assertTrue(operator.isBlocked().isDone());
         TsBlock block = operator.next();
         assertTrue(block.getSizeInBytes() <= 4096);
+        assertTrue(
+            "exchange accounts retained backing arrays", block.getRetainedSizeInBytes() <= 4096);
         for (int i = 0; i < block.getPositionCount(); i++)
           actual.add(block.getColumn(0).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
         blocks++;

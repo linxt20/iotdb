@@ -368,15 +368,46 @@ public class FragmentInstanceExecution {
       snapshot.setDriverPipelineId(Integer.toString(taskId.getPipelineId()));
       snapshot.setDriverTaskId(taskId.toString());
       snapshot.setDriverRole(driver.getDriverContext().isInputDriver() ? "input" : "root");
+      org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry scanAssignments =
+          context.getDynamicScanAssignments();
+      if (scanAssignments != null) {
+        List<org.apache.iotdb.db.queryengine.plan.planner.DynamicDriverBucketAssignment> owned =
+            scanAssignments.assignmentsFor(taskId.getPipelineId());
+        if (owned != null) {
+          List<org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment> wire =
+              new java.util.ArrayList<>();
+          for (org.apache.iotdb.db.queryengine.plan.planner.DynamicDriverBucketAssignment
+              assignment : owned) {
+            org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment a =
+                new org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment();
+            a.setSourcePlanNodeId(assignment.getSourcePlanNodeId());
+            a.setBucketId(assignment.getBucketId());
+            a.setWorkUnitIds(new java.util.ArrayList<>(assignment.getWorkUnitIds()));
+            wire.add(a);
+          }
+          snapshot.setScanAssignments(wire);
+        }
+      }
       snapshot.setDriverSampleGeneration(snapshotGeneration.get());
-      if (driver.getFirstProcessNanos() >= 0) {
-        snapshot.setDriverFirstProcessNanos(driver.getFirstProcessNanos());
+      // Driver publishes first before volatile last. Read last first, once, so a concurrent
+      // processFor completion cannot mix a missing last with a newer independently read wall.
+      // The first endpoint is immutable after publication; derive the interval from this pair.
+      long lastProcessNanos = driver.getLastProcessNanos();
+      long firstProcessNanos = driver.getFirstProcessNanos();
+      if (firstProcessNanos >= 0) {
+        snapshot.setDriverFirstProcessNanos(firstProcessNanos);
+      } else {
+        snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverFirstProcessNanos");
       }
-      if (driver.getLastProcessNanos() >= 0) {
-        snapshot.setDriverLastProcessNanos(driver.getLastProcessNanos());
+      if (lastProcessNanos >= 0) {
+        snapshot.setDriverLastProcessNanos(lastProcessNanos);
+      } else {
+        snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverLastProcessNanos");
       }
-      if (driver.getWallNanos() >= 0) {
-        snapshot.setDriverWallNanos(driver.getWallNanos());
+      if (firstProcessNanos >= 0 && lastProcessNanos >= firstProcessNanos) {
+        snapshot.setDriverWallNanos(lastProcessNanos - firstProcessNanos);
+      } else if (firstProcessNanos >= 0 && lastProcessNanos >= 0) {
+        snapshot.addToValidityReasons("CLOCK_INVALID:driverWallNanos");
       } else {
         snapshot.addToValidityReasons("UNSUPPORTED_FIELD:driverWallNanos");
       }
@@ -413,7 +444,7 @@ public class FragmentInstanceExecution {
     TFetchFragmentInstanceStatisticsResp statistics = new TFetchFragmentInstanceStatisticsResp();
     statistics.setStatus(org.apache.iotdb.rpc.RpcUtils.SUCCESS_STATUS);
     long generation = snapshotGeneration.incrementAndGet();
-    statistics.setSchemaVersion(1);
+    statistics.setSchemaVersion(2);
     statistics.setSnapshotGeneration(generation);
     statistics.setCapturedAtNanos(System.nanoTime());
     statistics.setSourceNodeId(Integer.toString(CONFIG.getDataNodeId()));
@@ -422,6 +453,19 @@ public class FragmentInstanceExecution {
         getInstanceState().isDone() && statisticsLock.isWriteLockedByCurrentThread());
     List<TDriverRuntimeSnapshot> driverSnapshots = buildDriverSnapshots();
     statistics.setDriverSnapshots(driverSnapshots);
+    if (context.getDynamicFeedbackDropReason() != null)
+      statistics.setDynamicFeedbackDropReason(context.getDynamicFeedbackDropReason());
+    org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry registry =
+        context.getDynamicScanAssignments();
+    if (registry != null && !registry.receipts().isEmpty()) {
+      java.util.List<org.apache.iotdb.mpp.rpc.thrift.TDynamicDecisionTrace> decisions =
+          new java.util.ArrayList<>();
+      for (org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionReceipt receipt :
+          registry.receipts())
+        decisions.add(
+            org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionTrace.fromReceipt(receipt));
+      statistics.setDynamicDecisions(decisions);
+    }
     boolean res = fillFragmentInstanceStatistics(context, statistics);
     if (!res) {
       runtimeSnapshot = buildJavaRuntimeSnapshot(statistics, driverSnapshots);
@@ -491,6 +535,12 @@ public class FragmentInstanceExecution {
               LOGGER.debug(DataNodeQueryMessages.ENTER_STATE_CHANGE_LISTENER);
             }
 
+            org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord.Payload
+                feedbackPayload = null;
+            org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry
+                scanAssignments = context.getDynamicScanAssignments();
+            boolean dynamicEnabled =
+                scanAssignments != null && scanAssignments.wantsTerminalFeedback();
             statisticsLock.writeLock().lock();
             try {
               // Ask the drivers to record what only they can record, before the snapshot below
@@ -501,12 +551,59 @@ public class FragmentInstanceExecution {
                 driver.recordMorselCompletionStatistics();
               }
               // Store statistics in context for EXPLAIN ANALYZE to avoid being released.
-              if (isExplainAnalyze) {
-                context.setFragmentInstanceStatistics(buildStatistics());
+              if (isExplainAnalyze || dynamicEnabled) {
+                TFetchFragmentInstanceStatisticsResp frozen = null;
+                if (isExplainAnalyze) {
+                  frozen = buildStatistics();
+                  context.setFragmentInstanceStatistics(frozen);
+                } else {
+                  try {
+                    frozen = buildStatistics();
+                  } catch (Throwable publicationFailure) {
+                    LOGGER.warn(
+                        DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED,
+                        publicationFailure);
+                  }
+                }
+                if (dynamicEnabled && frozen != null) {
+                  try {
+                    feedbackPayload =
+                        org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord
+                            .capture(
+                                instanceId.getQueryId().getId(),
+                                instanceId.getFragmentInstanceId(),
+                                org.apache.iotdb.db.queryengine.plan.planner
+                                    .DynamicParallelPlanningService.localEndpoint(),
+                                frozen,
+                                scanAssignments.sourcePlans(),
+                                scanAssignments.receipts());
+                  } catch (Throwable publicationFailure) {
+                    LOGGER.warn(
+                        DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED,
+                        publicationFailure);
+                  }
+                }
               }
             } finally {
               staticsRemoved = true;
               statisticsLock.writeLock().unlock();
+              // The payload already owns immutable metadata; terminal RPC uses the frozen
+              // response. Do not retain source coverage in the fragment-context cache as well.
+              context.setDynamicScanAssignments(null);
+            }
+
+            // Publication is independent of the old cleanup exception path and occurs after unlock.
+            if (feedbackPayload != null) {
+              try {
+                org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelPlanningService
+                    .historyStore()
+                    .publish(
+                        org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord
+                            .validate(feedbackPayload));
+              } catch (Throwable publicationFailure) {
+                LOGGER.warn(
+                    DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED, publicationFailure);
+              }
             }
 
             // must clear shuffle sink handle before driver close

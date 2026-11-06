@@ -69,6 +69,36 @@ public final class RuntimeSnapshotBuilder {
       List<OperatorRuntimeSnapshot> operators,
       RuntimeSnapshotValiditySet validity,
       StaticParallelPlanIdentity planIdentity) {
+    return buildFragment(
+        queryId,
+        fragmentInstanceId,
+        generation,
+        capturedAtNanos,
+        sourceNodeId,
+        sourceEndpoint,
+        state,
+        terminal,
+        drivers,
+        operators,
+        validity,
+        planIdentity,
+        1);
+  }
+
+  public static FragmentRuntimeSnapshot buildFragment(
+      String queryId,
+      String fragmentInstanceId,
+      long generation,
+      long capturedAtNanos,
+      String sourceNodeId,
+      String sourceEndpoint,
+      String state,
+      boolean terminal,
+      List<DriverRuntimeSnapshot> drivers,
+      List<OperatorRuntimeSnapshot> operators,
+      RuntimeSnapshotValiditySet validity,
+      StaticParallelPlanIdentity planIdentity,
+      Integer schemaVersion) {
     List<DriverRuntimeSnapshot> sortedDrivers =
         drivers == null ? Collections.emptyList() : new ArrayList<>(drivers);
     sortedDrivers.sort(RuntimeSnapshotDerivation.stableDriverOrder());
@@ -86,7 +116,8 @@ public final class RuntimeSnapshotBuilder {
             operators,
             validity,
             null,
-            planIdentity);
+            planIdentity,
+            schemaVersion);
     return snapshot.withChecksum(RuntimeSnapshotChecksum.forFragment(snapshot));
   }
 }

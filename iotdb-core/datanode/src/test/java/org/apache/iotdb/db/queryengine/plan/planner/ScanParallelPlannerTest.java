@@ -316,4 +316,41 @@ public class ScanParallelPlannerTest {
         .getAllTsFileListForQuery(org.mockito.Mockito.isNull(), org.mockito.Mockito.isNull());
     return result;
   }
+
+  @org.junit.Test
+  public void largeDeviceCostVectorPreservesCompleteCostAndCoverage() {
+    java.util.List<String> devices = new java.util.ArrayList<>();
+    java.util.List<Long> costs = new java.util.ArrayList<>();
+    for (int i = 0; i < 100000; i++) {
+      devices.add("device_" + i);
+      costs.add((long) i + 1);
+    }
+    ScanParallelPlan plan =
+        new ScanParallelPlanner()
+            .plan(
+                new ScanParallelPlanner.Input(
+                    devices,
+                    java.util.Collections.emptyList(),
+                    costs,
+                    8,
+                    true,
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                    "large_cost",
+                    "0.i",
+                    "source"));
+    long total = 0;
+    java.util.Set<String> coverage = new java.util.HashSet<>();
+    for (ScanParallelPlan.WorkUnit work : plan.getWorkUnits()) {
+      total += work.getEstimatedCost();
+      coverage.addAll(work.getDevices());
+    }
+    org.junit.Assert.assertEquals(5000050000L, total);
+    org.junit.Assert.assertEquals(100000, coverage.size());
+    org.junit.Assert.assertEquals(8, plan.getBuckets().size());
+    org.junit.Assert.assertEquals(8, plan.getWorkUnits().size());
+  }
 }

@@ -162,6 +162,7 @@ public class AnnotationTest {
       }
     }
     command.add("-Xmx4g");
+    command.add("-Djava.io.tmpdir=" + System.getProperty("java.io.tmpdir"));
     command.add("-cp");
     command.add(System.getProperty("java.class.path"));
     command.add(AnnotationTest.class.getName());

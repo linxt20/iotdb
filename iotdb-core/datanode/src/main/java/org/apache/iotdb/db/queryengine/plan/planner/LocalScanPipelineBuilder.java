@@ -98,7 +98,16 @@ public final class LocalScanPipelineBuilder {
         () ->
             String.format(
                 DataNodeQueryMessages.EXCEPTION_ARGUMENT_MUST_NOT_BE_NULL_ARG_A1C0C918, "plan"));
-    return build(parentContext, plan.getBuckets().size(), factory);
+    return build(
+        parentContext,
+        plan.getBuckets().size(),
+        (index, subContext) -> {
+          subContext
+              .getDynamicScanAssignments()
+              .registerBucket(
+                  subContext.getDriverContext().getDriverTaskID().getPipelineId(), plan, index);
+          return factory.create(index, subContext);
+        });
   }
 
   /** Build all unordered scan pipelines and return the parent exchange operators in order. */

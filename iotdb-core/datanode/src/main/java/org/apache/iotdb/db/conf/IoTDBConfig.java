@@ -382,6 +382,17 @@ public class IoTDBConfig implements DefaultEncodingProvider {
    */
   private boolean enableDopEstimation = false;
 
+  /** Select future scan plans from validated terminal feedback. Captured once per fragment. */
+  private boolean enableDynamicScanParallelism = false;
+
+  public boolean isEnableDynamicScanParallelism() {
+    return enableDynamicScanParallelism;
+  }
+
+  public void setEnableDynamicScanParallelism(boolean value) {
+    enableDynamicScanParallelism = value;
+  }
+
   /**
    * Whether a device table scan may be split along the device x time partition dimension instead of
    * the device dimension only. When false, only the device dimension is used.

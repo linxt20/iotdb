@@ -108,6 +108,7 @@ public class FragmentRuntimeSnapshotProductionTest {
       when(context.getDataRegion()).thenReturn(region);
     }
     TFetchFragmentInstanceStatisticsResp response = execution.buildStatistics();
+    assertEquals(2, response.getSchemaVersion());
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), response.getStatus().getCode());
     assertEquals(id.toThrift(), response.getFragmentInstanceId());
     FragmentRuntimeSnapshot adapted = RuntimeSnapshotAdapters.fromResponse(response);

@@ -63,18 +63,26 @@ public class FragmentInstanceStatisticsDrawerTest {
     response.setEndTimeInMS(2L);
     response.setQueryStatistics(new TQueryStatistics());
     response.setOperatorStatisticsMap(new HashMap<>());
-    response.setSchemaVersion(1);
+    response.setSchemaVersion(2);
     response.setSnapshotGeneration(2L);
     response.setSnapshotChecksum("checksum");
     response.setPlannedDop(2);
     response.setActualPipelineCount(2);
     response.setSplitMode("DEVICE");
+    response.setDynamicFeedbackDropReason("DYNAMIC_FEEDBACK_METADATA_BUDGET_EXCEEDED");
+    response.setDynamicDecisions(
+        Collections.singletonList(
+            org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionTraceTest.fixture()));
     TDriverRuntimeSnapshot driver = new TDriverRuntimeSnapshot();
     driver.setFragmentInstanceId(id.toString());
     driver.setDriverPipelineId("1");
     driver.setDriverTaskId("q.1-1");
     driver.setDriverSampleGeneration(2L);
     driver.setDriverWallNanos(10L);
+    driver.setScanAssignments(
+        Collections.singletonList(
+            new org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment(
+                "actual_source", 3, java.util.Arrays.asList("work_a", "work_b"))));
     response.setDriverSnapshots(Collections.singletonList(driver));
 
     Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> all = new HashMap<>();
@@ -87,5 +95,69 @@ public class FragmentInstanceStatisticsDrawerTest {
     assertTrue(rendered.contains("generation: 2"));
     assertTrue(rendered.contains("driverWallNanos: 10"));
     assertTrue(rendered.contains("plannedDop: 2"));
+    assertTrue(
+        rendered.contains("dynamicFeedbackDropReason: DYNAMIC_FEEDBACK_METADATA_BUDGET_EXCEEDED"));
+    assertTrue(rendered.contains("contextDop: 8"));
+    assertTrue(rendered.contains("inputDop: 4"));
+    assertTrue(rendered.contains("action: KEEP_STATIC"));
+    assertTrue(
+        rendered.contains(
+            "SCAN_ASSIGNMENT[source=actual_source][bucket=3][workUnits=[work_a, work_b]]"));
+    String json =
+        new FragmentInstanceStatisticsJsonDrawer()
+            .renderFragmentInstancesAsJson(Collections.singletonList(instance), all, false);
+    com.google.gson.JsonObject parsed =
+        com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+    org.junit.Assert.assertEquals(
+        8,
+        parsed
+            .getAsJsonArray("fragmentInstances")
+            .get(0)
+            .getAsJsonObject()
+            .getAsJsonObject("runtimeSnapshot")
+            .getAsJsonArray("dynamicDecisions")
+            .get(0)
+            .getAsJsonObject()
+            .get("contextDop")
+            .getAsInt());
+    com.google.gson.JsonObject driverJson =
+        parsed
+            .getAsJsonArray("fragmentInstances")
+            .get(0)
+            .getAsJsonObject()
+            .getAsJsonObject("runtimeSnapshot")
+            .getAsJsonArray("drivers")
+            .get(0)
+            .getAsJsonObject();
+    org.junit.Assert.assertEquals(
+        "actual_source",
+        driverJson
+            .getAsJsonArray("scanAssignments")
+            .get(0)
+            .getAsJsonObject()
+            .get("sourcePlanNodeId")
+            .getAsString());
+    driver.unsetScanAssignments();
+    String missing =
+        new FragmentInstanceStatisticsJsonDrawer()
+            .renderFragmentInstancesAsJson(Collections.singletonList(instance), all, false);
+    org.junit.Assert.assertFalse(missing.contains("\"scanAssignments\""));
+    driver.setScanAssignments(Collections.emptyList());
+    String empty =
+        new FragmentInstanceStatisticsJsonDrawer()
+            .renderFragmentInstancesAsJson(Collections.singletonList(instance), all, false);
+    org.junit.Assert.assertEquals(
+        0,
+        com.google.gson.JsonParser.parseString(empty)
+            .getAsJsonObject()
+            .getAsJsonArray("fragmentInstances")
+            .get(0)
+            .getAsJsonObject()
+            .getAsJsonObject("runtimeSnapshot")
+            .getAsJsonArray("drivers")
+            .get(0)
+            .getAsJsonObject()
+            .getAsJsonArray("scanAssignments")
+            .size());
   }
 }

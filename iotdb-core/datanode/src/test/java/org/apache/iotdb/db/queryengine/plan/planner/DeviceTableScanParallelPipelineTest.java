@@ -20,10 +20,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
-import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableSortOperator;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
@@ -42,6 +40,7 @@ import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableReadyCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -103,7 +102,7 @@ public class DeviceTableScanParallelPipelineTest {
   /**
    * dop = 4, 8 devices, no ordering requirement (allowParallelScan == true). Expected result is 4
    * sub scan pipelines, each of which scans 2 devices, and the root operator of current pipeline is
-   * a CollectOperator merging 4 ExchangeOperators.
+   * a TableReadyCollectOperator merging 4 ExchangeOperators.
    */
   @Test
   public void testParallelScanWithDop4And8Devices() throws Exception {
@@ -114,8 +113,8 @@ public class DeviceTableScanParallelPipelineTest {
 
     Operator root = node.accept(generator, context);
     try {
-      assertEquals(CollectOperator.class, root.getClass());
-      List<Operator> children = ((CollectOperator) root).getChildren();
+      assertEquals(TableReadyCollectOperator.class, root.getClass());
+      List<Operator> children = ((TableReadyCollectOperator) root).getChildren();
       assertEquals(4, children.size());
       for (Operator child : children) {
         assertEquals(ExchangeOperator.class, child.getClass());
@@ -135,13 +134,16 @@ public class DeviceTableScanParallelPipelineTest {
       assertEquals(8, totalDeviceNum);
 
       // the source operators are moved into sub driver contexts, the root driver context only holds
-      // the CollectOperator
+      // the TableReadyCollectOperator
       DataDriverContext rootDriverContext = (DataDriverContext) context.getDriverContext();
       assertEquals(0, rootDriverContext.getSourceOperators().size());
 
-      // one local exchange pair and one registered physical queue for each sub pipeline
+      // Source and sink aliases share one physical queue for each sub pipeline.
       assertEquals(4, context.getExchangeSumNum());
-      assertEquals(12, context.getResourceRegistry().getObjectCount());
+      assertEquals(4, context.getResourceRegistry().getObjectCount());
+      assertTrue(
+          context.getResourceRegistry().snapshotEntries().stream()
+              .allMatch(entry -> "LOCAL_QUEUE".equals(entry.kind())));
     } finally {
       closeQuietly(root);
       for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
@@ -163,8 +165,8 @@ public class DeviceTableScanParallelPipelineTest {
 
     Operator root = node.accept(generator, context);
     try {
-      assertEquals(CollectOperator.class, root.getClass());
-      assertEquals(3, ((CollectOperator) root).getChildren().size());
+      assertEquals(TableReadyCollectOperator.class, root.getClass());
+      assertEquals(3, ((TableReadyCollectOperator) root).getChildren().size());
       assertEquals(3, context.getPipelineNumber());
       for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
         assertEquals(TableScanOperator.class, driverFactory.getOperation().getClass());
@@ -263,7 +265,7 @@ public class DeviceTableScanParallelPipelineTest {
         new DeviceEntryDataSetHandle(
             "parallel_scan_test_6",
             node.getPlanNodeId(),
-            new TEndPoint("1.2.3.4", 9999),
+            org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
             /* segmentCount= */ 4,
             /* entryCount= */ 8,
             /* ordered= */ false));
@@ -281,10 +283,10 @@ public class DeviceTableScanParallelPipelineTest {
   }
 
   /**
-   * ORDER BY time is not safe with a CollectOperator: every table scan emits one device at a time.
-   * With the experiment enabled, each sub driver therefore merges its single-device scans first,
-   * and the root merges those already sorted streams. This asserts the operator-tree shape that
-   * protects that invariant rather than merely counting drivers.
+   * ORDER BY time is not safe with a TableReadyCollectOperator: every table scan emits one device
+   * at a time. With the experiment enabled, each sub driver therefore merges its single-device
+   * scans first, and the root merges those already sorted streams. This asserts the operator-tree
+   * shape that protects that invariant rather than merely counting drivers.
    */
   /** Unordered time-partition morsels use the same local pipeline builder as device splits. */
   @Test
@@ -307,11 +309,14 @@ public class DeviceTableScanParallelPipelineTest {
 
       Operator root = node.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
-        assertEquals(4, ((CollectOperator) root).getChildren().size());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
+        assertEquals(4, ((TableReadyCollectOperator) root).getChildren().size());
         assertEquals(4, context.getPipelineNumber());
         assertEquals(4, context.getExchangeSumNum());
-        assertEquals(12, context.getResourceRegistry().getObjectCount());
+        assertEquals(4, context.getResourceRegistry().getObjectCount());
+        assertTrue(
+            context.getResourceRegistry().snapshotEntries().stream()
+                .allMatch(entry -> "LOCAL_QUEUE".equals(entry.kind())));
         for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
           assertEquals(TableScanOperator.class, driverFactory.getOperation().getClass());
         }
@@ -519,8 +524,8 @@ public class DeviceTableScanParallelPipelineTest {
     Operator root = node.accept(generator, context);
     try {
       // With the flag off the split is exactly min(4, 8) = 4 no matter what the region holds.
-      assertEquals(CollectOperator.class, root.getClass());
-      assertEquals(4, ((CollectOperator) root).getChildren().size());
+      assertEquals(TableReadyCollectOperator.class, root.getClass());
+      assertEquals(4, ((TableReadyCollectOperator) root).getChildren().size());
       assertEquals(4, context.getPipelineNumber());
     } finally {
       closeQuietly(root);
@@ -581,8 +586,8 @@ public class DeviceTableScanParallelPipelineTest {
       // 256 MiB total / 128 MiB target = 2 drivers; min(min(8,8), 2) = 2
       Operator root = node.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
-        assertEquals(2, ((CollectOperator) root).getChildren().size());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
+        assertEquals(2, ((TableReadyCollectOperator) root).getChildren().size());
         assertEquals(2, context.getPipelineNumber());
       } finally {
         closeQuietly(root);

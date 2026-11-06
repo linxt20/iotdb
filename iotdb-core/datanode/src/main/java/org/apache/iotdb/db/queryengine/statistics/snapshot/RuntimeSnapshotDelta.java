@@ -18,54 +18,166 @@
 
 package org.apache.iotdb.db.queryengine.statistics.snapshot;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
-/** Non-negative per-driver counter delta for dynamic scheduling inputs. */
+/** Same-query counter intervals. Invalid scope or counters never become scheduling deltas. */
 public final class RuntimeSnapshotDelta {
-
-  private final long fromGeneration;
-  private final long toGeneration;
-  private final long intervalNanos;
-  private final Map<String, Long> outputRowsByDriver;
+  private final long fromGeneration, toGeneration, intervalNanos;
+  private final Map<RuntimeSnapshotDriverKey, Long> outputRows, wallNanos, tsBlocks;
   private final RuntimeSnapshotValiditySet validity;
 
   private RuntimeSnapshotDelta(
-      long fromGeneration,
-      long toGeneration,
-      long intervalNanos,
-      Map<String, Long> outputRowsByDriver,
+      long from,
+      long to,
+      long interval,
+      Map<RuntimeSnapshotDriverKey, Long> rows,
+      Map<RuntimeSnapshotDriverKey, Long> wall,
+      Map<RuntimeSnapshotDriverKey, Long> blocks,
       RuntimeSnapshotValiditySet validity) {
-    this.fromGeneration = fromGeneration;
-    this.toGeneration = toGeneration;
-    this.intervalNanos = intervalNanos;
-    this.outputRowsByDriver = Collections.unmodifiableMap(new LinkedHashMap<>(outputRowsByDriver));
+    fromGeneration = from;
+    toGeneration = to;
+    intervalNanos = interval;
+    outputRows = Collections.unmodifiableMap(new LinkedHashMap<>(rows));
+    wallNanos = Collections.unmodifiableMap(new LinkedHashMap<>(wall));
+    tsBlocks = Collections.unmodifiableMap(new LinkedHashMap<>(blocks));
     this.validity = validity;
   }
 
   public static RuntimeSnapshotDelta between(
       QueryRuntimeSnapshot previous, QueryRuntimeSnapshot current) {
     RuntimeSnapshotValiditySet validity = RuntimeSnapshotValiditySet.empty();
-    if (!previous.getQueryId().equals(current.getQueryId())
-        || current.getGeneration() < previous.getGeneration()
-        || current.getCapturedAtNanos() < previous.getCapturedAtNanos()) {
-      validity = validity.plus(RuntimeSnapshotValidity.STALE);
+    for (RuntimeSnapshotValidity reason : previous.getValidity().asSet())
+      validity = validity.plus(reason);
+    for (RuntimeSnapshotValidity reason : current.getValidity().asSet())
+      validity = validity.plus(reason);
+    Map<RuntimeSnapshotDriverKey, Long> rows = new LinkedHashMap<>(),
+        wall = new LinkedHashMap<>(),
+        blocks = new LinkedHashMap<>();
+    long interval = 0;
+    try {
+      interval = Math.subtractExact(current.getCapturedAtNanos(), previous.getCapturedAtNanos());
+    } catch (ArithmeticException e) {
+      validity = validity.plus(RuntimeSnapshotValidity.OVERFLOW);
     }
-    long interval = current.getCapturedAtNanos() - previous.getCapturedAtNanos();
-    Map<String, Long> previousRows = collectRows(previous);
-    Map<String, Long> currentRows = collectRows(current);
-    Map<String, Long> deltas = new LinkedHashMap<>();
-    for (Map.Entry<String, Long> entry : currentRows.entrySet()) {
-      Long old = previousRows.get(entry.getKey());
-      if (old == null || entry.getValue() < old) {
+    if (!previous.getQueryId().equals(current.getQueryId())
+        || current.getGeneration() <= previous.getGeneration())
+      validity = validity.plus(RuntimeSnapshotValidity.STALE);
+    if (interval <= 0) validity = validity.plus(RuntimeSnapshotValidity.CLOCK_INVALID);
+    if (!validity.isEmpty())
+      return new RuntimeSnapshotDelta(
+          previous.getGeneration(),
+          current.getGeneration(),
+          interval,
+          rows,
+          wall,
+          blocks,
+          validity);
+    Map<String, FragmentRuntimeSnapshot> oldFragments = new LinkedHashMap<>(),
+        newFragments = new LinkedHashMap<>();
+    for (FragmentRuntimeSnapshot f : previous.getFragments())
+      if (oldFragments.put(f.getFragmentInstanceId(), f) != null)
         validity = validity.plus(RuntimeSnapshotValidity.INVALID_VALUE);
-      } else {
-        deltas.put(entry.getKey(), entry.getValue() - old);
+    for (FragmentRuntimeSnapshot f : current.getFragments())
+      if (newFragments.put(f.getFragmentInstanceId(), f) != null)
+        validity = validity.plus(RuntimeSnapshotValidity.INVALID_VALUE);
+    if (!oldFragments.keySet().equals(newFragments.keySet()))
+      validity = validity.plus(RuntimeSnapshotValidity.PARTIAL);
+    for (FragmentRuntimeSnapshot now : newFragments.values()) {
+      FragmentRuntimeSnapshot old = oldFragments.get(now.getFragmentInstanceId());
+      if (old == null) continue;
+      if (!old.getQueryId().equals(current.getQueryId())
+          || !now.getQueryId().equals(current.getQueryId())
+          || now.getGeneration() <= old.getGeneration()) {
+        validity = validity.plus(RuntimeSnapshotValidity.STALE);
+        continue;
+      }
+      if (!Objects.equals(old.getSourceEndpoint(), now.getSourceEndpoint())
+          || !Objects.equals(old.getSourceNodeId(), now.getSourceNodeId())) {
+        validity = validity.plus(RuntimeSnapshotValidity.ENDPOINT_MISMATCH);
+        continue;
+      }
+      if (old.getPlanIdentity() == null || now.getPlanIdentity() == null) {
+        validity = validity.plus(RuntimeSnapshotValidity.UNSUPPORTED_FIELD);
+        continue;
+      }
+      if (!old.getPlanIdentity().equals(now.getPlanIdentity())) {
+        validity = validity.plus(RuntimeSnapshotValidity.STALE);
+        continue;
+      }
+      if (!old.getValidity().isEmpty() || !now.getValidity().isEmpty()) {
+        for (RuntimeSnapshotValidity reason : old.getValidity().asSet())
+          validity = validity.plus(reason);
+        for (RuntimeSnapshotValidity reason : now.getValidity().asSet())
+          validity = validity.plus(reason);
+        continue;
+      }
+      Map<RuntimeSnapshotDriverKey, DriverRuntimeSnapshot>
+          oldDrivers = drivers(previous.getQueryId(), old),
+          newDrivers = drivers(current.getQueryId(), now);
+      if (oldDrivers.size() != old.getDrivers().size()
+          || newDrivers.size() != now.getDrivers().size()) {
+        validity = validity.plus(RuntimeSnapshotValidity.INVALID_VALUE);
+        continue;
+      }
+      if (!oldDrivers.keySet().equals(newDrivers.keySet()))
+        validity = validity.plus(RuntimeSnapshotValidity.PARTIAL);
+      for (Map.Entry<RuntimeSnapshotDriverKey, DriverRuntimeSnapshot> e : newDrivers.entrySet()) {
+        DriverRuntimeSnapshot before = oldDrivers.get(e.getKey()), after = e.getValue();
+        if (before == null) continue;
+        if (after.getSampleGeneration() <= before.getSampleGeneration()
+            || !Objects.equals(before.getScanAssignments(), after.getScanAssignments())) {
+          validity = validity.plus(RuntimeSnapshotValidity.STALE);
+          continue;
+        }
+        if (before.getWallNanos() == null || after.getWallNanos() == null) {
+          validity = validity.plus(RuntimeSnapshotValidity.UNSUPPORTED_FIELD);
+          continue;
+        }
+        if (after.getWallNanos() < before.getWallNanos()) {
+          validity = validity.plus(RuntimeSnapshotValidity.INVALID_VALUE);
+          continue;
+        }
+        if ((before.getTsBlocks() == null) != (after.getTsBlocks() == null)) {
+          validity = validity.plus(RuntimeSnapshotValidity.UNSUPPORTED_FIELD);
+        } else if (before.getTsBlocks() != null) {
+          if (after.getTsBlocks() < before.getTsBlocks())
+            validity = validity.plus(RuntimeSnapshotValidity.INVALID_VALUE);
+          else blocks.put(e.getKey(), after.getTsBlocks() - before.getTsBlocks());
+        }
+        wall.put(e.getKey(), after.getWallNanos() - before.getWallNanos());
+        if (before.getOutputRows() != null && after.getOutputRows() != null) {
+          if (after.getOutputRows() < before.getOutputRows())
+            validity = validity.plus(RuntimeSnapshotValidity.INVALID_VALUE);
+          else rows.put(e.getKey(), after.getOutputRows() - before.getOutputRows());
+        }
       }
     }
+    // Partial or invalid intervals are diagnostic only; consumers cannot accidentally use a subset.
+    if (!validity.isEmpty()) {
+      rows.clear();
+      wall.clear();
+      blocks.clear();
+    }
     return new RuntimeSnapshotDelta(
-        previous.getGeneration(), current.getGeneration(), interval, deltas, validity);
+        previous.getGeneration(), current.getGeneration(), interval, rows, wall, blocks, validity);
+  }
+
+  private static Map<RuntimeSnapshotDriverKey, DriverRuntimeSnapshot> drivers(
+      String query, FragmentRuntimeSnapshot fragment) {
+    Map<RuntimeSnapshotDriverKey, DriverRuntimeSnapshot> result = new LinkedHashMap<>();
+    for (DriverRuntimeSnapshot driver : fragment.getDrivers()) {
+      if (!fragment.getFragmentInstanceId().equals(driver.getFragmentInstanceId())
+          && !(query + "." + fragment.getFragmentInstanceId())
+              .equals(driver.getFragmentInstanceId())) continue;
+      result.put(
+          new RuntimeSnapshotDriverKey(
+              query,
+              fragment.getFragmentInstanceId(),
+              driver.getDriverPipelineId(),
+              driver.getDriverTaskId()),
+          driver);
+    }
+    return result;
   }
 
   public long getFromGeneration() {
@@ -80,23 +192,31 @@ public final class RuntimeSnapshotDelta {
     return intervalNanos;
   }
 
+  public Map<RuntimeSnapshotDriverKey, Long> getOutputRowsByDriverKey() {
+    return outputRows;
+  }
+
+  public Map<RuntimeSnapshotDriverKey, Long> getWallNanosByDriverKey() {
+    return wallNanos;
+  }
+
+  public Map<RuntimeSnapshotDriverKey, Long> getTsBlocksByDriverKey() {
+    return tsBlocks;
+  }
+
+  /** Compatibility view omits ambiguous task labels; scheduling uses the structured-key maps. */
   public Map<String, Long> getOutputRowsByDriver() {
-    return outputRowsByDriver;
+    Map<String, Long> values = new LinkedHashMap<>();
+    Set<String> ambiguous = new HashSet<>();
+    for (Map.Entry<RuntimeSnapshotDriverKey, Long> e : outputRows.entrySet()) {
+      String task = e.getKey().getTaskId();
+      if (values.putIfAbsent(task, e.getValue()) != null) ambiguous.add(task);
+    }
+    for (String task : ambiguous) values.remove(task);
+    return Collections.unmodifiableMap(values);
   }
 
   public RuntimeSnapshotValiditySet getValidity() {
     return validity;
-  }
-
-  private static Map<String, Long> collectRows(QueryRuntimeSnapshot snapshot) {
-    Map<String, Long> rows = new LinkedHashMap<>();
-    for (FragmentRuntimeSnapshot fragment : snapshot.getFragments()) {
-      for (DriverRuntimeSnapshot driver : fragment.getDrivers()) {
-        if (driver.getOutputRows() != null) {
-          rows.put(driver.getDriverTaskId(), driver.getOutputRows());
-        }
-      }
-    }
-    return rows;
   }
 }

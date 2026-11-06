@@ -114,10 +114,13 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
+    context.getDynamicParallelPlanningService().prepare(plan, context);
     Operator root = generateOperator(instanceContext, context, plan);
+    context.freezeDynamicScanAssignments();
     context.registerPipelineRoot(root);
 
-    // Select the native shared/independent policy before freezing effective audit limits.
+    // Master selects the final shared/independent exchange policy before the observer freezes it.
+    // Publishing the old per-handle limits first would permanently reduce monotone handle caps.
     setExchangeMemoryLimits(plan, context);
     instanceContext.setResourceQuotaSnapshot(context.freezeResourceQuota());
 
@@ -127,9 +130,17 @@ public class LocalExecutionPlanner {
     context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
+    instanceContext.setActualPipelineCount(context.getPipelineNumber() + 1);
     long estimatedMemorySize = checkMemory(memoryEstimator, instanceContext);
+    context.finalizeDynamicAdmission();
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
+    java.util.Set<Integer> actualPipelines = new java.util.HashSet<>();
+    for (PipelineDriverFactory factory : context.getPipelineDriverFactories())
+      actualPipelines.add(factory.getDriverContext().getDriverTaskID().getPipelineId());
+    context.getDynamicScanAssignments().verifyFinalPipelines(actualPipelines);
+    if (context.getDynamicScanAssignments().getFeedbackDropReason() != null)
+      instanceContext.setDynamicScanAssignments(null);
     // The root driver is created after scan sub-pipelines; freeze the actual count at the final
     // planner boundary rather than reporting only the bucket count.
     instanceContext.setActualPipelineCount(context.getPipelineNumber());
@@ -160,10 +171,13 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, schemaRegion);
 
+    context.getDynamicParallelPlanningService().prepare(plan, context);
     Operator root = generateOperator(instanceContext, context, plan);
+    context.freezeDynamicScanAssignments();
     context.registerPipelineRoot(root);
 
-    // Select the native shared/independent policy before freezing effective audit limits.
+    // Master selects the final shared/independent exchange policy before the observer freezes it.
+    // Publishing the old per-handle limits first would permanently reduce monotone handle caps.
     setExchangeMemoryLimits(plan, context);
     instanceContext.setResourceQuotaSnapshot(context.freezeResourceQuota());
 
@@ -173,9 +187,17 @@ public class LocalExecutionPlanner {
     context.invalidateParentPlanNodeIdToMemoryEstimator();
 
     // check whether current free memory is enough to execute current query
+    instanceContext.setActualPipelineCount(context.getPipelineNumber() + 1);
     checkMemory(memoryEstimator, instanceContext);
+    context.finalizeDynamicAdmission();
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
+    java.util.Set<Integer> actualPipelines = new java.util.HashSet<>();
+    for (PipelineDriverFactory factory : context.getPipelineDriverFactories())
+      actualPipelines.add(factory.getDriverContext().getDriverTaskID().getPipelineId());
+    context.getDynamicScanAssignments().verifyFinalPipelines(actualPipelines);
+    if (context.getDynamicScanAssignments().getFeedbackDropReason() != null)
+      instanceContext.setDynamicScanAssignments(null);
     instanceContext.setActualPipelineCount(context.getPipelineNumber());
     recordFragmentPlanIdentity(plan, context);
 
@@ -257,6 +279,8 @@ public class LocalExecutionPlanner {
       final PipelineMemoryEstimator memoryEstimator, FragmentInstanceContext instanceContext)
       throws MemoryNotEnoughException {
 
+    final AdmissionMemoryAccount admissionAccount = instanceContext.getAdmissionMemoryAccount();
+    if (admissionAccount != null) admissionAccount.checked();
     // if it is disabled, just return
     if (!IoTDBDescriptor.getInstance().getMemoryConfig().isEnableQueryMemoryEstimation()
         && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
@@ -268,8 +292,10 @@ public class LocalExecutionPlanner {
 
     QueryRelatedResourceMetricSet.getInstance().updateEstimatedMemory(estimatedMemorySize);
 
+    if (admissionAccount != null && estimatedMemorySize > 0) admissionAccount.attempted();
     long reservedBytes =
         allocateOperatorsMemory(estimatedMemorySize, instanceContext.isHighestPriority());
+    if (admissionAccount != null && reservedBytes > 0) admissionAccount.reserved(reservedBytes);
     if (reservedBytes < 0) {
       instanceContext.setAdmissionRejected("INSUFFICIENT_OPERATOR_MEMORY");
       throw new MemoryNotEnoughException(
@@ -289,6 +315,7 @@ public class LocalExecutionPlanner {
               try (SetThreadName fragmentInstanceName =
                   new SetThreadName(stateMachine.getFragmentInstanceId().getFullId())) {
                 OPERATORS_MEMORY_BLOCK.release(reservedBytes);
+                if (admissionAccount != null) admissionAccount.released(reservedBytes);
                 if (LOGGER.isDebugEnabled()) {
                   LOGGER.debug(
                       DataNodeQueryMessages.RELEASEMEMORY_RELEASE_ARG_CURRENT_REMAINING_MEMORY_ARG,

@@ -823,6 +823,12 @@ struct TOperatorStatistics{
   11: optional i64 tsBlockCount
 }
 
+struct TDriverBucketAssignment {
+  1: required string sourcePlanNodeId
+  2: required i32 bucketId
+  3: required list<string> workUnitIds
+}
+
 struct TDriverRuntimeSnapshot {
   1: required string fragmentInstanceId
   2: required string driverPipelineId
@@ -839,6 +845,7 @@ struct TDriverRuntimeSnapshot {
   13: optional i64 driverOutputBytes
   14: optional i64 driverTsBlockCount
   15: optional list<string> validityReasons
+  16: optional list<TDriverBucketAssignment> scanAssignments
 }
 
 struct TQueryStatistics {
@@ -911,6 +918,60 @@ struct TFetchFragmentInstanceStatisticsReq {
   1: required TFragmentInstanceId fragmentInstanceId
 }
 
+struct TDynamicFeedbackIdentity {
+  1: optional string queryId
+  2: optional string fragmentId
+  3: optional string endpoint
+  4: optional string sourceId
+  5: optional string snapshotChecksum
+  6: optional string fragmentPlanChecksum
+  7: optional string sourcePlanChecksum
+  8: optional string groupingChecksum
+  9: optional string shapeChecksum
+  10: optional i64 sequence
+  11: optional i64 snapshotGeneration
+  12: optional i64 planGeneration
+}
+
+struct TAdmissionMemoryAccount {
+  1: optional i64 checks
+  2: optional i64 allocationAttempts
+  3: optional i64 reservations
+  4: optional i64 reservedBytes
+  5: optional i64 releases
+  6: optional i64 releasedBytes
+}
+
+struct TDynamicDecisionTrace {
+  1: optional string queryId
+  2: optional string fragmentId
+  3: optional string endpoint
+  4: optional string sourcePlanNodeId
+  5: optional i64 checkSequence
+  6: optional i32 contextDop
+  7: optional i32 inputDop
+  8: optional i32 previousDop
+  9: optional i32 targetDop
+  10: optional bool dopEstimationEnabled
+  11: optional string estimateStatus
+  12: optional i32 estimatedDop
+  13: optional string action
+  14: optional string rawReason
+  15: optional string canonicalReason
+  16: optional bool dynamicGrouping
+  17: optional i32 workUnitCount
+  18: optional i32 actualBucketCount
+  19: optional string shapeChecksum
+  20: optional string sourcePlanChecksum
+  21: optional string groupingChecksum
+  22: optional string admissionStatus
+  23: optional string admissionReason
+  24: optional list<TDynamicFeedbackIdentity> inputs
+  25: optional TAdmissionMemoryAccount admissionMemory
+  26: optional string receiptChecksum
+  27: optional string traceChecksum
+}
+
 struct TFetchFragmentInstanceStatisticsResp {
   1: required common.TSStatus status
   2: optional TFragmentInstanceId fragmentInstanceId
@@ -954,6 +1015,8 @@ struct TFetchFragmentInstanceStatisticsResp {
   40: optional i64 resourceNominalShareBytes
   41: optional string admissionStatus
   42: optional string admissionReason
+  43: optional list<TDynamicDecisionTrace> dynamicDecisions
+  44: optional string dynamicFeedbackDropReason
 }
 
 struct TKillQueryInstanceReq {

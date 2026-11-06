@@ -195,13 +195,37 @@ public class ExplainAnalyzeOperator implements ProcessOperator {
       if (pendingResult.getRegion(nextResultPosition, count).getSizeInBytes() <= limit) low = count;
       else high = count - 1;
     }
-    TsBlock result = pendingResult.getRegion(nextResultPosition, low);
+    // Exchange admission charges retained backing arrays, not only logical slice bytes.
+    // A region view still retains the complete pending result, so detach the selected rows.
+    TsBlock result = copyResultRegion(nextResultPosition, low);
+    while (result.getRetainedSizeInBytes() > limit) {
+      if (low == 1) {
+        throw new MemoryNotEnoughException(
+            String.format(
+                DataNodeQueryMessages
+                    .EXCEPTION_EXPLAIN_ANALYZE_RESULT_ROW_REQUIRES_ARG_BYTES_BUT_EXCHANGE_LIMIT_IS_ARG_BYTES_DE8EAAD6,
+                result.getRetainedSizeInBytes(),
+                limit));
+      }
+      low = Math.max(1, low / 2);
+      result = copyResultRegion(nextResultPosition, low);
+    }
     nextResultPosition += low;
     if (nextResultPosition == pendingResult.getPositionCount()) {
       pendingResult = null;
       outputResult = true;
     }
     return result;
+  }
+
+  private TsBlock copyResultRegion(int offset, int count) {
+    TsBlockBuilder builder = new TsBlockBuilder(count, Collections.singletonList(TSDataType.TEXT));
+    for (int i = offset; i < offset + count; i++) {
+      builder.getTimeColumnBuilder().writeLong(pendingResult.getTimeByIndex(i));
+      builder.getColumnBuilder(0).writeBinary(pendingResult.getColumn(0).getBinary(i));
+      builder.declarePosition();
+    }
+    return builder.build();
   }
 
   private List<String> buildFragmentInstanceStatistics(

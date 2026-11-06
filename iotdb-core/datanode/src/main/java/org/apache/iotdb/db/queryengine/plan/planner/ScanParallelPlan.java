@@ -50,7 +50,9 @@ public final class ScanParallelPlan {
     ESTIMATE_UNAVAILABLE,
     INVALID_COST,
     PLAN_ERROR,
-    UNSUPPORTED_TIME_PARTITION_RANGE
+    UNSUPPORTED_TIME_PARTITION_RANGE,
+    DYNAMIC_GROUPING_BUDGET_EXCEEDED,
+    DYNAMIC_GROUPING_COVERAGE_MISMATCH
   }
 
   private final Mode mode;
@@ -348,28 +350,23 @@ public final class ScanParallelPlan {
   }
 
   private static String canonicalReason(FallbackReason reason) {
-    switch (reason) {
-      case NONE:
-        return "NONE";
-      case PARALLEL_SCAN_NOT_SELECTED:
-        return "PARALLEL_SCAN_NOT_SELECTED";
-      case ORDERING_NOT_PROVEN:
-        return "ORDERING_NOT_PROVEN";
-      case EMPTY_INPUT:
-        return "EMPTY_INPUT";
-      case SPILLED_DEVICE_ENTRIES:
-        return "SPILLED_DEVICE_ENTRIES";
-      case ESTIMATE_UNAVAILABLE:
-        return "ESTIMATE_UNAVAILABLE";
-      case UNSUPPORTED_TIME_PARTITION_RANGE:
-        return "UNSUPPORTED_TIME_PARTITION_RANGE";
-      case INVALID_COST:
-      case INVALID_METADATA:
-      case OVERFLOW:
-        return "INVALID_COST";
-      default:
-        return "PLAN_ERROR";
-    }
+    return switch (reason) {
+      case NONE -> "NONE";
+      case DOP_NOT_GREATER_THAN_ONE,
+          SINGLE_DEVICE,
+          GLOBAL_LIMIT_OR_OFFSET,
+          PARALLEL_SCAN_NOT_ALLOWED,
+          PARALLEL_SCAN_NOT_SELECTED ->
+          "PARALLEL_SCAN_NOT_SELECTED";
+      case ORDERING_NOT_PROVEN -> "ORDERING_NOT_PROVEN";
+      case EMPTY_INPUT -> "EMPTY_INPUT";
+      case SPILLED_DEVICE_ENTRIES -> "SPILLED_DEVICE_ENTRIES";
+      case ESTIMATE_UNAVAILABLE -> "ESTIMATE_UNAVAILABLE";
+      case UNSUPPORTED_TIME_PARTITION_RANGE -> "UNSUPPORTED_TIME_PARTITION_RANGE";
+      case INVALID_COST, INVALID_METADATA, OVERFLOW -> "INVALID_COST";
+      case PLAN_ERROR, DYNAMIC_GROUPING_BUDGET_EXCEEDED, DYNAMIC_GROUPING_COVERAGE_MISMATCH ->
+          "PLAN_ERROR";
+    };
   }
 
   private static <T> List<T> immutableCopy(List<T> value, String name) {

@@ -222,6 +222,16 @@ public class FragmentInstanceManager {
                   context.setPlanningContext(null);
                   return createdExecution;
                 } catch (Throwable t) {
+                  if ("ADMISSION_REJECTED".equals(context.getAdmissionStatus())
+                      && context.getPlanningContext() != null) {
+                    try {
+                      context.getPlanningContext().finalizeDynamicAdmission();
+                    } catch (Throwable receiptFailure) {
+                      logger.warn(
+                          DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED,
+                          receiptFailure);
+                    }
+                  }
                   if (driverFactories.isEmpty() && context.getPlanningContext() != null) {
                     driverFactories.addAll(
                         context.getPlanningContext().getPipelineDriverFactories());
@@ -346,6 +356,7 @@ public class FragmentInstanceManager {
         context.getPlanningContext().getResourceRegistry().abortUntransferred(primary);
       } finally {
         context.setPlanningContext(null);
+        context.setDynamicScanAssignments(null);
       }
     }
   }

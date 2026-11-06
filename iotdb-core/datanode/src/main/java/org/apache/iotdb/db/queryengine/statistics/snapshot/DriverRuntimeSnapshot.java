@@ -19,14 +19,20 @@
 package org.apache.iotdb.db.queryengine.statistics.snapshot;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.DynamicDriverBucketAssignment;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Immutable driver-level runtime values. Nullable measurements mean unsupported or missing. */
 public final class DriverRuntimeSnapshot {
 
+  private final List<DynamicDriverBucketAssignment> scanAssignments;
   private final String fragmentInstanceId;
   private final String driverPipelineId;
   private final String driverTaskId;
@@ -45,6 +51,20 @@ public final class DriverRuntimeSnapshot {
   private final Map<String, String> fieldValidityReasons;
 
   private DriverRuntimeSnapshot(Builder builder) {
+    if (builder.scanAssignments == null) {
+      scanAssignments = null;
+    } else {
+      Set<String> seen = new HashSet<>();
+      for (DynamicDriverBucketAssignment assignment : builder.scanAssignments) {
+        if (assignment == null
+            || !seen.add(assignment.getSourcePlanNodeId() + "|" + assignment.getBucketId())) {
+          throw new IllegalArgumentException(
+              org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                  .EXCEPTION_INVALID_DYNAMIC_SCAN_GROUPING_8A0E09F6);
+        }
+      }
+      scanAssignments = Collections.unmodifiableList(new ArrayList<>(builder.scanAssignments));
+    }
     fragmentInstanceId = requireId(builder.fragmentInstanceId, "fragmentInstanceId");
     driverPipelineId = requireId(builder.driverPipelineId, "driverPipelineId");
     driverTaskId = requireId(builder.driverTaskId, "driverTaskId");
@@ -67,6 +87,10 @@ public final class DriverRuntimeSnapshot {
   public static Builder builder(
       String fragmentInstanceId, String driverPipelineId, String driverTaskId) {
     return new Builder(fragmentInstanceId, driverPipelineId, driverTaskId);
+  }
+
+  public List<DynamicDriverBucketAssignment> getScanAssignments() {
+    return scanAssignments;
   }
 
   public String getFragmentInstanceId() {
@@ -166,6 +190,7 @@ public final class DriverRuntimeSnapshot {
   }
 
   public static final class Builder {
+    private List<DynamicDriverBucketAssignment> scanAssignments;
     private final String fragmentInstanceId;
     private final String driverPipelineId;
     private final String driverTaskId;
@@ -251,6 +276,11 @@ public final class DriverRuntimeSnapshot {
 
     public Builder fieldValidityReason(String fieldName, String reason) {
       fieldValidityReasons.put(fieldName, reason);
+      return this;
+    }
+
+    public Builder scanAssignments(List<DynamicDriverBucketAssignment> assignments) {
+      this.scanAssignments = assignments == null ? null : new ArrayList<>(assignments);
       return this;
     }
 

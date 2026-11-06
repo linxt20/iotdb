@@ -18,6 +18,8 @@
 package org.apache.iotdb.db.queryengine.statistics.snapshot;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
+import org.apache.iotdb.db.queryengine.plan.planner.DynamicDriverBucketAssignment;
+import org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment;
 import org.apache.iotdb.mpp.rpc.thrift.TDriverRuntimeSnapshot;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
@@ -62,6 +64,20 @@ public final class RuntimeSnapshotAdapters {
                 DataNodeQueryMessages.EXCEPTION_DUPLICATE_DRIVER_IDENTITY_ARG_9439336C, key));
     }
     RuntimeSnapshotValiditySet validity = RuntimeSnapshotValiditySet.empty();
+    Integer schema = response.isSetSchemaVersion() ? response.getSchemaVersion() : null;
+    if (schema == null) {
+      validity = validity.plus(RuntimeSnapshotValidity.LEGACY_UNVERSIONED);
+    } else if (schema != 1 && schema != 2) {
+      validity = validity.plus(RuntimeSnapshotValidity.UNSUPPORTED_SCHEMA_VERSION);
+    }
+    if (schema != null
+        && schema == 1
+        && (response.isSetDynamicDecisions()
+            || response.isSetDynamicFeedbackDropReason()
+            || drivers.stream().anyMatch(driver -> driver.getScanAssignments() != null))) {
+      validity = validity.plus(RuntimeSnapshotValidity.INCONSISTENT_SCHEMA_VERSION);
+    }
+
     if (!response.isSetSnapshotGeneration() || !response.isSetCapturedAtNanos()) {
       validity = validity.plus(RuntimeSnapshotValidity.LEGACY_UNVERSIONED);
     }
@@ -111,8 +127,11 @@ public final class RuntimeSnapshotAdapters {
             drivers,
             operators,
             validity,
-            identity);
-    if (response.isSetSnapshotChecksum()
+            identity,
+            schema);
+    if (schema != null
+        && (schema == 1 || schema == 2)
+        && response.isSetSnapshotChecksum()
         && !response.getSnapshotChecksum().equals(snapshot.getChecksum())) {
       RuntimeSnapshotValiditySet mismatch =
           validity.plus(RuntimeSnapshotValidity.CHECKSUM_MISMATCH);
@@ -129,7 +148,8 @@ public final class RuntimeSnapshotAdapters {
               drivers,
               operators,
               mismatch,
-              identity);
+              identity,
+              schema);
     }
     return snapshot;
   }
@@ -204,6 +224,17 @@ public final class RuntimeSnapshotAdapters {
             builder.fieldValidityReason(reason.substring(separator + 1), reason);
           }
         }
+      }
+      if (thrift.isSetScanAssignments()) {
+        List<DynamicDriverBucketAssignment> assignments = new ArrayList<>();
+        for (TDriverBucketAssignment assignment : thrift.getScanAssignments()) {
+          assignments.add(
+              new DynamicDriverBucketAssignment(
+                  assignment.getSourcePlanNodeId(),
+                  assignment.getBucketId(),
+                  assignment.getWorkUnitIds()));
+        }
+        builder.scanAssignments(assignments);
       }
       result.add(builder.build());
     }

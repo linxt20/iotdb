@@ -3608,6 +3608,22 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_LOCAL_MEMORY_MANAGER_CANNOT_BE_NULL_54701481 = "local memory manager cannot be null";
   public static final String EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_220C966B = "ExecutorService can not be null.";
   public static final String EXCEPTION_TSBLOCK_CANNOT_BE_NULL_E7EA3BDA = "TsBlock cannot be null";
+  public static final String EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923 =
+      "bucketCount must be positive";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_NULL_0D281214 =
+      "keyColumnIndexes must not be null";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41 =
+      "keyColumnIndexes must not be empty";
+  public static final String EXCEPTION_KEYCOLUMNTYPES_MUST_NOT_BE_NULL_5C3A17B9 =
+      "keyColumnTypes must not be null";
+  public static final String EXCEPTION_KEYCOLUMNTYPES_LENGTH_MUST_MATCH_KEYCOLUMNINDEXES_8B41D0C7 =
+      "keyColumnTypes length must match keyColumnIndexes length";
+  public static final String EXCEPTION_KEYCOLUMNTYPE_HAS_NO_CANONICAL_ENCODING_2F6B9E14 =
+      "key column type has no canonical hash encoding: %s";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554 =
+      "keyColumnIndexes must not contain duplicates";
+  public static final String EXCEPTION_KEYCOLUMNINDEX_IS_OUT_OF_BOUNDS_EE53523F =
+      "keyColumnIndex is out of bounds";
   public static final String EXCEPTION_BYTESTORESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_56D15DE0 = "bytesToReserve should be greater than zero.";
   public static final String EXCEPTION_MAXBYTESCANRESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_E9F7D365 = "maxBytesCanReserve should be greater than zero.";
   public static final String EXCEPTION_MAX_BYTES_SHOULD_BE_GREATER_THAN_ZERO_COLON_ARG_EA1FB495 = "max bytes should be greater than zero: %d";
@@ -4925,29 +4941,28 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s: %s ms, %s invocations, %s applications";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
+          "Table hash partitioning requires a channel-routing sink handle.";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
+          "Table hash partitioning needs exactly one source operator.";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
+          "Table hash partitioning symbols must be output by its source operator.";
 
-  public static final String EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923 =
-      "bucketCount must be positive";
   public static final String
       EXCEPTION_CANNOT_ENFORCE_PLAN_PROPERTIES_FOR_INCOMPATIBLE_BRANCH_OUTPUT_SYMBOLS_5B0AFEA7 =
           "Cannot enforce plan properties for incompatible branch output symbols.";
-  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41 =
-      "keyColumnIndexes must not be empty";
-  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_NULL_0D281214 =
-      "keyColumnIndexes must not be null";
-  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554 =
-      "keyColumnIndexes must not contain duplicates";
-  public static final String EXCEPTION_KEYCOLUMNINDEX_IS_OUT_OF_BOUNDS_EE53523F =
-      "keyColumnIndex is out of bounds";
-  public static final String EXCEPTION_KEYCOLUMNTYPES_LENGTH_MUST_MATCH_KEYCOLUMNINDEXES_8B41D0C7 =
-      "keyColumnTypes length must match keyColumnIndexes length";
-  public static final String EXCEPTION_KEYCOLUMNTYPES_MUST_NOT_BE_NULL_5C3A17B9 =
-      "keyColumnTypes must not be null";
-  public static final String EXCEPTION_KEYCOLUMNTYPE_HAS_NO_CANONICAL_ENCODING_2F6B9E14 =
-      "key column type has no canonical hash encoding: %s";
   public static final String
       EXCEPTION_REQUIRED_PROPERTY_SYMBOLS_ARE_MISSING_FROM_A_BRANCH_OUTPUT_826CB07E =
           "Required property symbols are missing from a branch output.";
+  public static final String
+      EXCEPTION_PROPERTY_ENFORCEMENT_REQUIRES_EXACTLY_ONE_OUTPUT_BRANCH_4C5CCDDF =
+          "Property enforcement requires exactly one output branch.";
+  public static final String
+      MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7 =
+          "Property enforcement:";
   public static final String
       MESSAGE_ARG_RULE_ARG_EVENT_ARG_INPUTS_ARG_OUTPUTS_ARG_REQUIRED_ARG_PROVIDED_ARG_PROVIDEDAFTER_ARG_ARG_OUTCOME_ARG_REASON_ARG_67571BFD =
           "%s: rule=%s event=%s inputs=%s outputs=%s required=%s provided=%s providedAfter=%s -> %s outcome=%s reason=%s";
@@ -4955,83 +4970,73 @@ public final class DataNodeQueryMessages {
       MESSAGE_ARG_RULE_ARG_EVENT_HASH_REPARTITION_APPLIED_REQUIRED_ARG_PROVIDED_ARG_TABLEHASHPARTITIONINGSHUFFLESINKNODE_TABLE_HASH_V1_SOURCES_ARG_PARTITIONS_ARG_N_X_P_EXPERIMENTAL_PATH_HASH_TOPOLOGY_SOURCEIDS_ARG_BUCKETIDS_ARG_EXCHANGEIDS_ARG_316A0F0F =
           "%s: rule=%s event=HASH_REPARTITION_APPLIED required=%s provided=%s -> TableHashPartitioningShuffleSinkNode TABLE_HASH_V1 sources=%s partitions=%s (N x P experimental path) hash-topology sourceIds=%s bucketIds=%s exchangeIds=%s";
   public static final String
-      MESSAGE_ARG_RULE_ARG_EVENT_SPECIALIZED_INPUTS_ARG_OUTPUTS_ARG_PROVIDED_ARG_REASON_ARG_04563442 =
-          "%s: rule=%s event=SPECIALIZED inputs=%s outputs=%s provided=%s reason=%s";
-  public static final String
       MESSAGE_ARG_RULE_ARG_REQUIRED_COMPATIBLE_PARTITIONED_JOINKEYS_ON_BOTH_INPUTS_PROVIDED_ARG_SERIAL_JOIN_FALLBACK_ARG_INPUTS_ARG_OUTPUTS_ARG_E30CFBBA =
           "%s: rule=%s required=compatible Partitioned(joinKeys) on both inputs provided=%s -> serial join fallback (%s) inputs=%s outputs=%s";
-
-  public static final String EXCEPTION_GROUPED_HASH_EXCHANGE_LOST_THE_FRAGMENT_OWNERSHIP_ITS_ARG_SOURCES_X_ARG_BUCKETS_MATRIX_REQUIRES_ARG_THE_QUERY_CANNOT_RUN_ON_THE_KEY_PARTITIONED_PATH_029F18C2 = "Grouped hash exchange lost the fragment ownership its %d sources x %d buckets matrix requires: %s. The query cannot run on the key-partitioned path.";
-  public static final String EXCEPTION_HASH_SHUFFLE_SINK_DOES_NOT_OWN_EXCHANGE_ARG_E56CC023 = "Hash shuffle sink does not own exchange %s";
   public static final String
-      EXCEPTION_PROPERTY_ENFORCEMENT_REQUIRES_EXACTLY_ONE_OUTPUT_BRANCH_4C5CCDDF =
-          "Property enforcement requires exactly one output branch.";
-  public static final String
-      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
-          "Table hash partitioning needs exactly one source operator.";
-  public static final String
-      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
-          "Table hash partitioning requires a channel-routing sink handle.";
-  public static final String
-      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
-          "Table hash partitioning symbols must be output by its source operator.";
-  public static final String
-      MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7 =
-          "Property enforcement:";
-
-  public static final String EXCEPTION_ARGUMENT_MUST_NOT_BE_NULL_ARG_A1C0C918 = "Argument must not be null: %s";
-  public static final String EXCEPTION_ARG_MUST_BE_NON_NEGATIVE_F31E7CAD = "%s must be non-negative";
-  public static final String EXCEPTION_ARG_MUST_NOT_BE_EMPTY_313AFCE2 = "%s must not be empty";
-  public static final String EXCEPTION_BUCKETID_MUST_BE_NON_NEGATIVE_90E5ABD9 = "bucketId must be non-negative";
-  public static final String EXCEPTION_CANCEL_FRAGMENT_QUERY_MISMATCH =
-      "Cancellation fragment %s does not belong to query %s";
-  public static final String EXCEPTION_CANNOT_REGISTER_RESOURCES_AFTER_QUOTA_FREEZE_416641B9 = "Cannot register resources after quota freeze";
-  public static final String EXCEPTION_CHILD_RETURNED_A_NULL_BLOCKED_FUTURE_41941EB3 = "Child returned a null blocked future";
-  public static final String EXCEPTION_DRIVER_BELONGS_TO_ANOTHER_FRAGMENT_9BDC9524 = "driver belongs to another fragment";
+      MESSAGE_ARG_RULE_ARG_EVENT_SPECIALIZED_INPUTS_ARG_OUTPUTS_ARG_PROVIDED_ARG_REASON_ARG_04563442 =
+          "%s: rule=%s event=SPECIALIZED inputs=%s outputs=%s provided=%s reason=%s";
   public static final String EXCEPTION_DRIVER_FACTORY_HAS_ALREADY_BEEN_CONSUMED_OR_CLOSED_354A2854 = "Driver factory has already been consumed or closed";
-  public static final String EXCEPTION_DUPLICATE_DRIVER_IDENTITY_ARG_9439336C = "duplicate driver identity: %s";
-  public static final String EXCEPTION_DUPLICATE_FRAGMENT_INSTANCE_IN_DISPATCH_GRAPH_ARG_EF1BADDC = "Duplicate fragment instance in dispatch graph: %s";
-  public static final String EXCEPTION_DURATIONMS_MUST_BE_IN_0_600000_25F6A63F = "durationMs must be in (0, 600000]";
-  public static final String EXCEPTION_EXPLAIN_ANALYZE_RESULT_ROW_REQUIRES_ARG_BYTES_BUT_EXCHANGE_LIMIT_IS_ARG_BYTES_DE8EAAD6 = "EXPLAIN ANALYZE result row requires %s bytes but exchange limit is %s bytes";
-  public static final String EXCEPTION_FALLBACK_PLAN_IDENTITY_FIELD_4136E13B = "fallback plan identity field";
-  public static final String EXCEPTION_FRAGMENT_ARG_REFERENCES_AN_UNKNOWN_DOWNSTREAM_INSTANCE_ARG_8EA16E6A = "Fragment %s references an unknown downstream instance %s";
-  public static final String EXCEPTION_FRAGMENT_DISPATCH_DEPENDENCIES_CONTAIN_A_CYCLE_E133EC40 = "Fragment dispatch dependencies contain a cycle";
-  public static final String EXCEPTION_FRAGMENT_HAS_AN_UNBOUND_DOWNSTREAM_INSTANCE_ARG_9361033B = "Fragment has an unbound downstream instance: %s";
-  public static final String EXCEPTION_FRAGMENT_HAS_NO_EXCHANGE_SINK_IN_DISPATCH_GRAPH_ARG_D95FD948 = "Fragment has no exchange sink in dispatch graph: %s";
-  public static final String EXCEPTION_FRAGMENT_WAS_CANCELLED_DURING_DRIVER_CREATION_D031E9B1 = "Fragment was cancelled during driver creation";
-  public static final String EXCEPTION_GENERATION_AND_CAPTUREDATNANOS_MUST_BE_NON_NEGATIVE_B9AD4F5E = "generation and capturedAtNanos must be non-negative";
-  public static final String EXCEPTION_GROUPCOUNT_MUST_BE_POSITIVE_AA4A1FB8 = "groupCount must be positive";
-  public static final String EXCEPTION_INPUTDOP_MUST_BE_NON_NEGATIVE_A43328B5 = "inputDop must be non-negative";
-  public static final String EXCEPTION_NEGATIVE_TABLE_COLLECT_MEMORY_ESTIMATE_ARG_FC2C4F0B = "Negative table collect memory estimate: %s";
-  public static final String EXCEPTION_NEGATIVE_TABLE_PIPELINE_MEMORY_ESTIMATE_ARG_40A30A53 = "Negative table pipeline memory estimate: %s";
-  public static final String EXCEPTION_NEGATIVE_VALUE_62B19D51 = "negative value";
-  public static final String EXCEPTION_NUMOFDRIVERS_MUST_NOT_BE_NEGATIVE_7D6E3815 = "numOfDrivers must not be negative";
-  public static final String EXCEPTION_PARALLEL_PLAN_CONTAINS_AN_EMPTY_BUCKET_0766733B = "parallel plan contains an empty bucket";
-  public static final String EXCEPTION_PIPELINECOUNT_MUST_NOT_BE_NEGATIVE_AB4936D3 = "pipelineCount must not be negative";
-  public static final String EXCEPTION_PLANCHECKSUM_MUST_NOT_BE_EMPTY_7470325F = "planChecksum must not be empty";
-  public static final String EXCEPTION_PLANGENERATION_MUST_BE_NON_NEGATIVE_225F3309 = "planGeneration must be non-negative";
-  public static final String EXCEPTION_PLANGENERATION_MUST_NOT_BE_NEGATIVE_B8792414 = "planGeneration must not be negative";
-  public static final String EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572 = "planner source is missing: %s";
+  public static final String EXCEPTION_CANNOT_REGISTER_RESOURCES_AFTER_QUOTA_FREEZE_416641B9 = "Cannot register resources after quota freeze";
   public static final String EXCEPTION_PLANNING_RESOURCE_OWNERSHIP_HAS_ALREADY_BEEN_ABORTED_432B8254 = "Planning resource ownership has already been aborted";
-  public static final String EXCEPTION_PLAN_IDENTITY_COUNTERS_MUST_BE_NON_NEGATIVE_52E192F8 = "plan identity counters must be non-negative";
-  public static final String EXCEPTION_QUERYID_MUST_NOT_BE_EMPTY_C9669429 = "queryId must not be empty";
-  public static final String EXCEPTION_RESOURCE_AUDIT_WINDOW_IS_MISSING_OR_EXPIRED_D052202A = "resource audit window is missing or expired";
+  public static final String EXCEPTION_FRAGMENT_WAS_CANCELLED_DURING_DRIVER_CREATION_D031E9B1 = "Fragment was cancelled during driver creation";
   public static final String EXCEPTION_RESOURCE_BUDGETS_MUST_BE_POSITIVE_F3EA50E8 = "resource budgets must be positive";
   public static final String EXCEPTION_RESOURCE_QUOTA_IS_ALREADY_FROZEN_33314DF3 = "resource quota is already frozen";
-  public static final String EXCEPTION_SAMPLE_KEY_3434C941 = "sample key";
-  public static final String EXCEPTION_SHA_256_IS_UNAVAILABLE_6140A4E9 = "SHA-256 is unavailable";
-  public static final String EXCEPTION_SNAPSHOT_RESPONSE_HAS_NO_FRAGMENT_INSTANCE_ID_5099B351 = "snapshot response has no fragment instance id";
+  public static final String EXCEPTION_PIPELINECOUNT_MUST_NOT_BE_NEGATIVE_AB4936D3 = "pipelineCount must not be negative";
+  public static final String EXCEPTION_UNORDERED_SCAN_PIPELINE_MUST_USE_A_LOCAL_SINK_CHANNEL_8F69FB47 = "unordered scan pipeline must use a local sink channel";
   public static final String EXCEPTION_SOURCEKEY_C1E2B835 = "sourceKey";
+  public static final String EXCEPTION_BUCKETID_MUST_BE_NON_NEGATIVE_90E5ABD9 = "bucketId must be non-negative";
+  public static final String EXCEPTION_GROUPCOUNT_MUST_BE_POSITIVE_AA4A1FB8 = "groupCount must be positive";
+  public static final String EXCEPTION_SAMPLE_KEY_3434C941 = "sample key";
+  public static final String EXCEPTION_PLANCHECKSUM_MUST_NOT_BE_EMPTY_7470325F = "planChecksum must not be empty";
+  public static final String EXCEPTION_PLANGENERATION_MUST_NOT_BE_NEGATIVE_B8792414 = "planGeneration must not be negative";
+  public static final String EXCEPTION_FALLBACK_PLAN_IDENTITY_FIELD_4136E13B = "fallback plan identity field";
+  public static final String EXCEPTION_SHA_256_IS_UNAVAILABLE_6140A4E9 = "SHA-256 is unavailable";
+  public static final String EXCEPTION_INPUTDOP_MUST_BE_NON_NEGATIVE_A43328B5 = "inputDop must be non-negative";
   public static final String EXCEPTION_SPLIT_REASON_2528562A = "split reason";
   public static final String EXCEPTION_STATISTICS_A912A94D = "statistics";
-  public static final String EXCEPTION_TABLE_COLLECT_CHILD_FAILED_FBD7C950 = "Table collect child failed";
-  public static final String EXCEPTION_TABLE_COLLECT_CHILD_WAS_CANCELLED_A320FDF9 = "Table collect child was cancelled";
-  public static final String EXCEPTION_TABLE_PIPELINE_CONTAINS_AN_UNCHECKED_CHILD_ESTIMATOR_55F7B9C4 = "Table pipeline contains an unchecked child estimator";
-  public static final String EXCEPTION_TIMEOUTMILLIS_MUST_BE_POSITIVE_B8EC8967 = "timeoutMillis must be positive";
-  public static final String EXCEPTION_TOO_MANY_RESOURCE_AUDIT_WINDOWS_E2E7CD0B = "too many resource audit windows";
+  public static final String EXCEPTION_QUERYID_MUST_NOT_BE_EMPTY_C9669429 = "queryId must not be empty";
+  public static final String EXCEPTION_GENERATION_AND_CAPTUREDATNANOS_MUST_BE_NON_NEGATIVE_B9AD4F5E = "generation and capturedAtNanos must be non-negative";
+  public static final String EXCEPTION_DUPLICATE_DRIVER_IDENTITY_ARG_9439336C = "duplicate driver identity: %s";
   public static final String EXCEPTION_UNKNOWN_DRIVER_FIELD_ARG_AC56F319 = "unknown driver field: %s";
-  public static final String EXCEPTION_UNORDERED_SCAN_PIPELINE_MUST_USE_A_LOCAL_SINK_CHANNEL_8F69FB47 = "unordered scan pipeline must use a local sink channel";
+  public static final String EXCEPTION_SNAPSHOT_RESPONSE_HAS_NO_FRAGMENT_INSTANCE_ID_5099B351 = "snapshot response has no fragment instance id";
+  public static final String EXCEPTION_DRIVER_BELONGS_TO_ANOTHER_FRAGMENT_9BDC9524 = "driver belongs to another fragment";
+  public static final String EXCEPTION_NEGATIVE_VALUE_62B19D51 = "negative value";
+  public static final String EXCEPTION_PLAN_IDENTITY_COUNTERS_MUST_BE_NON_NEGATIVE_52E192F8 = "plan identity counters must be non-negative";
+  public static final String EXCEPTION_DURATIONMS_MUST_BE_IN_0_600000_25F6A63F = "durationMs must be in (0, 600000]";
+  public static final String EXCEPTION_TOO_MANY_RESOURCE_AUDIT_WINDOWS_E2E7CD0B = "too many resource audit windows";
+  public static final String EXCEPTION_RESOURCE_AUDIT_WINDOW_IS_MISSING_OR_EXPIRED_D052202A = "resource audit window is missing or expired";
+  public static final String EXCEPTION_NUMOFDRIVERS_MUST_NOT_BE_NEGATIVE_7D6E3815 = "numOfDrivers must not be negative";
+  public static final String EXCEPTION_PLANGENERATION_MUST_BE_NON_NEGATIVE_225F3309 = "planGeneration must be non-negative";
+  public static final String MESSAGE_FRAGMENT_INSTANCE_NOT_FOUND_ARG_A6E7A870 = "Fragment instance not found: %s";
+  public static final String EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572 = "planner source is missing: %s";
+  public static final String EXCEPTION_PARALLEL_PLAN_CONTAINS_AN_EMPTY_BUCKET_0766733B = "parallel plan contains an empty bucket";
+  public static final String EXCEPTION_TIMEOUTMILLIS_MUST_BE_POSITIVE_B8EC8967 = "timeoutMillis must be positive";
+  public static final String EXCEPTION_DUPLICATE_FRAGMENT_INSTANCE_IN_DISPATCH_GRAPH_ARG_EF1BADDC = "Duplicate fragment instance in dispatch graph: %s";
+  public static final String EXCEPTION_FRAGMENT_HAS_NO_EXCHANGE_SINK_IN_DISPATCH_GRAPH_ARG_D95FD948 = "Fragment has no exchange sink in dispatch graph: %s";
+  public static final String EXCEPTION_FRAGMENT_HAS_AN_UNBOUND_DOWNSTREAM_INSTANCE_ARG_9361033B = "Fragment has an unbound downstream instance: %s";
+  public static final String EXCEPTION_FRAGMENT_ARG_REFERENCES_AN_UNKNOWN_DOWNSTREAM_INSTANCE_ARG_8EA16E6A = "Fragment %s references an unknown downstream instance %s";
+  public static final String EXCEPTION_FRAGMENT_DISPATCH_DEPENDENCIES_CONTAIN_A_CYCLE_E133EC40 = "Fragment dispatch dependencies contain a cycle";
+  public static final String EXCEPTION_EXPLAIN_ANALYZE_RESULT_ROW_REQUIRES_ARG_BYTES_BUT_EXCHANGE_LIMIT_IS_ARG_BYTES_DE8EAAD6 = "EXPLAIN ANALYZE result row requires %s bytes but exchange limit is %s bytes";
+  public static final String EXCEPTION_ARGUMENT_MUST_NOT_BE_NULL_ARG_A1C0C918 = "Argument must not be null: %s";
+
+  public static final String EXCEPTION_ARG_MUST_NOT_BE_EMPTY_313AFCE2 = "%s must not be empty";
+  public static final String EXCEPTION_ARG_MUST_BE_NON_NEGATIVE_F31E7CAD = "%s must be non-negative";
+  public static final String EXCEPTION_CANCEL_FRAGMENT_QUERY_MISMATCH =
+      "Cancellation fragment %s does not belong to query %s";
   public static final String EXCEPTION_UNSUPPORTED_TIME_PARTITION_RANGE =
       "Time partition bounds cannot be represented as an exact half-open interval";
-  public static final String MESSAGE_FRAGMENT_INSTANCE_NOT_FOUND_ARG_A6E7A870 = "Fragment instance not found: %s";
+  public static final String EXCEPTION_INVALID_DYNAMIC_SCAN_GROUPING_8A0E09F6 = "Invalid dynamic scan grouping";
+  public static final String EXCEPTION_INVALID_DYNAMIC_PARALLEL_POLICY_INPUT_FAD0AEB0 = "Invalid dynamic parallel policy input";
+  public static final String EXCEPTION_INVALID_DYNAMIC_SNAPSHOT_RECORD_F2BC0753 = "Invalid dynamic snapshot record";
+  public static final String DYNAMIC_SNAPSHOT_PUBLICATION_FAILED = "Failed to publish independent dynamic scan feedback";
+  public static final String EXCEPTION_CHILD_RETURNED_A_NULL_BLOCKED_FUTURE_41941EB3 = "Child returned a null blocked future";
+  public static final String EXCEPTION_TABLE_COLLECT_CHILD_FAILED_FBD7C950 = "Table collect child failed";
+  public static final String EXCEPTION_TABLE_COLLECT_CHILD_WAS_CANCELLED_A320FDF9 = "Table collect child was cancelled";
+  public static final String EXCEPTION_NEGATIVE_TABLE_COLLECT_MEMORY_ESTIMATE_ARG_FC2C4F0B = "Negative table collect memory estimate: %s";
+  public static final String EXCEPTION_NEGATIVE_TABLE_PIPELINE_MEMORY_ESTIMATE_ARG_40A30A53 = "Negative table pipeline memory estimate: %s";
+  public static final String EXCEPTION_TABLE_PIPELINE_CONTAINS_AN_UNCHECKED_CHILD_ESTIMATOR_55F7B9C4 = "Table pipeline contains an unchecked child estimator";
+  public static final String EXCEPTION_GROUPED_HASH_EXCHANGE_LOST_THE_FRAGMENT_OWNERSHIP_ITS_ARG_SOURCES_X_ARG_BUCKETS_MATRIX_REQUIRES_ARG_THE_QUERY_CANNOT_RUN_ON_THE_KEY_PARTITIONED_PATH_029F18C2 = "Grouped hash exchange lost the fragment ownership its %d sources x %d buckets matrix requires: %s. The query cannot run on the key-partitioned path.";
+  public static final String EXCEPTION_HASH_SHUFFLE_SINK_DOES_NOT_OWN_EXCHANGE_ARG_E56CC023 = "Hash shuffle sink does not own exchange %s";
+  public static final String LOG_ARG_VERSION_1_DIRECTION_REJECTED_QUERY_MISMATCH_CONSUMER_QUERY_ID_ARG_PRODUCER_QUERY_ID_ARG_CONSUMER_FRAGMENT_ARG_PRODUCER_FRAGMENT_ARG_CHANNEL_ARG_A367770C = "{} version=1 direction=rejected_query_mismatch consumer_query_id={} producer_query_id={} consumer_fragment={} producer_fragment={} channel={}";
+  public static final String LOG_ARG_VERSION_1_DIRECTION_ARG_QUERY_ID_ARG_PRODUCER_FRAGMENT_ARG_CONSUMER_FRAGMENT_ARG_CHANNEL_ARG_PAYLOAD_BYTES_ARG_PAYLOAD_BLOCKS_ARG_A9F2EB1A = "{} version=1 direction={} query_id={} producer_fragment={} consumer_fragment={} channel={} payload_bytes={} payload_blocks={}";
 }

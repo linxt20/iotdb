@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import org.slf4j.Logger;
@@ -97,8 +98,8 @@ public class RemoteShufflePayloadByteTracker {
     }
     if (!consumer.queryId.equals(producer.queryId)) {
       AUDIT_LOGGER.warn(
-          "{} version=1 direction=rejected_query_mismatch consumer_query_id={} "
-              + "producer_query_id={} consumer_fragment={} producer_fragment={} channel={}",
+          DataNodeQueryMessages
+              .LOG_ARG_VERSION_1_DIRECTION_REJECTED_QUERY_MISMATCH_CONSUMER_QUERY_ID_ARG_PRODUCER_QUERY_ID_ARG_CONSUMER_FRAGMENT_ARG_PRODUCER_FRAGMENT_ARG_CHANNEL_ARG_A367770C,
           AUDIT_MARKER,
           safe(consumer.queryId),
           safe(producer.queryId),
@@ -168,8 +169,8 @@ public class RemoteShufflePayloadByteTracker {
       int channelIndex,
       Payload payload) {
     AUDIT_LOGGER.info(
-        "{} version=1 direction={} query_id={} producer_fragment={} consumer_fragment={} "
-            + "channel={} payload_bytes={} payload_blocks={}",
+        DataNodeQueryMessages
+            .LOG_ARG_VERSION_1_DIRECTION_ARG_QUERY_ID_ARG_PRODUCER_FRAGMENT_ARG_CONSUMER_FRAGMENT_ARG_CHANNEL_ARG_PAYLOAD_BYTES_ARG_PAYLOAD_BLOCKS_ARG_A9F2EB1A,
         AUDIT_MARKER,
         direction,
         safe(queryId),

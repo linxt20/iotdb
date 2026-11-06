@@ -95,6 +95,42 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private final long fragmentExchangeMaxBytes;
   private Map<ISink, Long> legacySinkLimits = new IdentityHashMap<>();
   private final LocalExecutionResourceRegistry resourceRegistry;
+  private final DynamicScanAssignmentRegistry dynamicScanAssignments;
+  private final DynamicParallelPlanningService dynamicParallelPlanningService;
+
+  public DynamicScanAssignmentRegistry getDynamicScanAssignments() {
+    return dynamicScanAssignments;
+  }
+
+  public DynamicParallelPlanningService getDynamicParallelPlanningService() {
+    return dynamicParallelPlanningService;
+  }
+
+  public void finalizeDynamicAdmission() {
+    if (!dynamicScanAssignments.isEnabled()) return;
+    for (DynamicDecisionReceipt receipt :
+        dynamicScanAssignments.finishAdmission(
+            getInstanceContext().getAdmissionStatus(),
+            getInstanceContext().getAdmissionReason(),
+            getInstanceContext().getAdmissionMemoryAccount() == null
+                ? null
+                : getInstanceContext().getAdmissionMemoryAccount().snapshot())) {
+      try {
+        DynamicParallelPlanningService.historyStore().publishAdmission(receipt);
+      } catch (Throwable failure) {
+        LOGGER.warn(DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED, failure);
+      }
+    }
+  }
+
+  public void freezeDynamicScanAssignments() {
+    java.util.Set<Integer> pipelines = new java.util.HashSet<>();
+    pipelines.add(getDriverContext().getDriverTaskID().getPipelineId());
+    for (PipelineDriverFactory factory : pipelineDriverFactories)
+      pipelines.add(factory.getDriverContext().getDriverTaskID().getPipelineId());
+    dynamicScanAssignments.freeze(pipelines);
+  }
+
   private LocalExecutionResourceRegistry.Snapshot frozenResourceSnapshot;
 
   private List<TSDataType> cachedDataTypes;
@@ -133,6 +169,11 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.pipelineDriverFactories = new ArrayList<>();
     this.dataNodeQueryContext = dataNodeQueryContext;
     this.resourceRegistry = new LocalExecutionResourceRegistry();
+    this.dynamicScanAssignments =
+        new DynamicScanAssignmentRegistry(
+            IoTDBDescriptor.getInstance().getConfig().isEnableDynamicScanParallelism());
+    this.dynamicParallelPlanningService = new DynamicParallelPlanningService();
+    instanceContext.setDynamicScanAssignments(dynamicScanAssignments);
     instanceContext.setPlanningContext(this);
     resourceRegistry.bindResourceAudit(instanceContext.getId());
   }
@@ -156,6 +197,8 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.timePartitions = parentContext.timePartitions;
     this.parentPlanNodeIdToMemoryEstimator = parentContext.parentPlanNodeIdToMemoryEstimator;
     this.resourceRegistry = parentContext.resourceRegistry;
+    this.dynamicScanAssignments = parentContext.dynamicScanAssignments;
+    this.dynamicParallelPlanningService = parentContext.dynamicParallelPlanningService;
   }
 
   // for schema region
@@ -175,6 +218,11 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.pipelineDriverFactories = new ArrayList<>();
     this.dataNodeQueryContext = null;
     this.resourceRegistry = new LocalExecutionResourceRegistry();
+    this.dynamicScanAssignments =
+        new DynamicScanAssignmentRegistry(
+            IoTDBDescriptor.getInstance().getConfig().isEnableDynamicScanParallelism());
+    this.dynamicParallelPlanningService = new DynamicParallelPlanningService();
+    instanceContext.setDynamicScanAssignments(dynamicScanAssignments);
     instanceContext.setPlanningContext(this);
     resourceRegistry.bindResourceAudit(instanceContext.getId());
   }

@@ -80,6 +80,9 @@ public abstract class Driver implements IDriver {
   private volatile long lastProcessNanos = -1;
   private volatile long wallNanos = -1;
 
+  @GuardedBy("this")
+  private boolean terminalTimingRecorded;
+
   protected enum State {
     ALIVE,
     NEED_DESTRUCTION,
@@ -148,33 +151,44 @@ public abstract class Driver implements IDriver {
                 if (firstProcessNanos < 0) {
                   firstProcessNanos = System.nanoTime();
                 }
-                long start = System.nanoTime();
-                // initialization may be time-consuming, so we keep it in the processFor method
-                // in normal case, it won't cause deadlock and should finish soon, otherwise it will
-                // be a
-                // critical bug
-                // We should do initialization after holding the lock to avoid parallelism problems
-                // with close
-                if (!init(blockedFuture)) {
-                  return blockedFuture;
-                }
-
-                do {
-                  ListenableFuture<?> future = processInternal();
-                  if (!future.isDone()) {
-                    return updateDriverBlockedFuture(future);
+                try {
+                  long start = System.nanoTime();
+                  // initialization may be time-consuming, so we keep it in the processFor method
+                  // in normal case, it won't cause deadlock and should finish soon, otherwise it
+                  // will
+                  // be a
+                  // critical bug
+                  // We should do initialization after holding the lock to avoid parallelism
+                  // problems
+                  // with close
+                  if (!init(blockedFuture)) {
+                    return blockedFuture;
                   }
-                } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+
+                  do {
+                    ListenableFuture<?> future = processInternal();
+                    if (!future.isDone()) {
+                      return updateDriverBlockedFuture(future);
+                    }
+                  } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+                } finally {
+                  recordProcessTiming(false);
+                }
               }
               return NOT_BLOCKED;
             });
 
-    long now = System.nanoTime();
-    if (firstProcessNanos >= 0) {
-      lastProcessNanos = now;
-      wallNanos = Math.max(0, now - firstProcessNanos);
-    }
     return result.orElse(NOT_BLOCKED);
+  }
+
+  private synchronized void recordProcessTiming(boolean terminal) {
+    if (terminalTimingRecorded || firstProcessNanos < 0) {
+      return;
+    }
+    long now = System.nanoTime();
+    lastProcessNanos = now;
+    wallNanos = Math.max(0, now - firstProcessNanos);
+    terminalTimingRecorded = terminal;
   }
 
   /** Runtime snapshot side-channel. CPU is intentionally absent until ThreadMXBean is enabled. */
@@ -235,6 +249,8 @@ public abstract class Driver implements IDriver {
 
   @Override
   public void failed(Throwable t) {
+    // The failure listener can freeze statistics synchronously before processFor unwinds.
+    recordProcessTiming(true);
     driverContext.failed(t);
   }
 
@@ -298,7 +314,7 @@ public abstract class Driver implements IDriver {
       }
       List<StackTraceElement> interrupterStack = exclusiveLock.getInterrupterStack();
       if (interrupterStack == null) {
-        driverContext.failed(actualCause);
+        failed(actualCause);
         if (actualCause instanceof RuntimeException) {
           throw (RuntimeException) actualCause;
         } else {
@@ -316,7 +332,7 @@ public abstract class Driver implements IDriver {
           new RuntimeException(
               DataNodeQueryMessages.QUERY_EXCEPTION_DRIVER_WAS_INTERRUPTED_737358E4, exception);
       newException.addSuppressed(actualCause);
-      driverContext.failed(newException);
+      failed(newException);
       throw newException;
     } finally {
       QUERY_EXECUTION_METRICS.recordExecutionCost(

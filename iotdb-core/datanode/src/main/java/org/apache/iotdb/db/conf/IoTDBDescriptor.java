@@ -596,6 +596,12 @@ public class IoTDBDescriptor {
                 "table_group_by_hash_repartition_partition_count",
                 Integer.toString(conf.getTableGroupByHashRepartitionPartitionCount()))));
 
+    conf.setEnableDynamicScanParallelism(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_dynamic_scan_parallelism",
+                Boolean.toString(conf.isEnableDynamicScanParallelism()))));
+
     conf.setEnableDopEstimation(
         Boolean.parseBoolean(
             properties.getProperty(

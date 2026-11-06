@@ -259,6 +259,19 @@ public class FragmentInstanceStatisticsJsonDrawer {
       }
       result.add("validity", validity);
     }
+    if (statistics.isSetDynamicFeedbackDropReason())
+      result.addProperty("dynamicFeedbackDropReason", statistics.getDynamicFeedbackDropReason());
+    if (statistics.isSetDynamicDecisions()) {
+      JsonArray decisions = new JsonArray();
+      for (org.apache.iotdb.mpp.rpc.thrift.TDynamicDecisionTrace trace :
+          statistics.getDynamicDecisions())
+        decisions.add(
+            new com.google.gson.Gson()
+                .toJsonTree(
+                    org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionTrace.display(
+                        trace)));
+      result.add("dynamicDecisions", decisions);
+    }
     if (statistics.isSetDriverSnapshots()) {
       JsonArray drivers = new JsonArray();
       statistics.getDriverSnapshots().stream()
@@ -284,6 +297,28 @@ public class FragmentInstanceStatisticsJsonDrawer {
                 }
                 if (driver.isSetDriverLastProcessNanos()) {
                   value.addProperty("driverLastProcessNanos", driver.getDriverLastProcessNanos());
+                }
+                if (driver.isSetScanAssignments()) {
+                  JsonArray assignments = new JsonArray();
+                  driver.getScanAssignments().stream()
+                      .sorted(
+                          java.util.Comparator.comparing(
+                                  org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment
+                                      ::getSourcePlanNodeId)
+                              .thenComparingInt(
+                                  org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment
+                                      ::getBucketId))
+                      .forEach(
+                          assignment -> {
+                            JsonObject item = new JsonObject();
+                            item.addProperty("sourcePlanNodeId", assignment.getSourcePlanNodeId());
+                            item.addProperty("bucketId", assignment.getBucketId());
+                            JsonArray work = new JsonArray();
+                            assignment.getWorkUnitIds().forEach(work::add);
+                            item.add("workUnitIds", work);
+                            assignments.add(item);
+                          });
+                  value.add("scanAssignments", assignments);
                 }
                 if (driver.isSetDriverWallNanos()) {
                   value.addProperty("driverWallNanos", driver.getDriverWallNanos());

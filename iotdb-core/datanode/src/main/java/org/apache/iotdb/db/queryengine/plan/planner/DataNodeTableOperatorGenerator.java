@@ -50,6 +50,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedOb
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
@@ -87,6 +88,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableReadyCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.copyto.TableCopyToOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
@@ -510,6 +512,15 @@ public class DataNodeTableOperatorGenerator
     if (!isSameNode) {
       context.addExchangeSumNum(1);
     }
+    FragmentInstanceId accountFragment = isSameNode ? remoteInstanceId : localInstanceId;
+    String accountPlanNodeId =
+        isSameNode ? node.getUpstreamPlanNodeId().getId() : node.getPlanNodeId().getId();
+    context
+        .getResourceRegistry()
+        .register(
+            sourceHandle,
+            "SOURCE_HANDLE",
+            LocalExecutionResourceRegistry.memoryKey(accountFragment, accountPlanNodeId));
     context.recordLegacySourceQuota(sourceHandle, context.getMaxBytesOneHandleCanReserve());
     ExchangeOperator exchangeOperator =
         new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
@@ -1466,6 +1477,9 @@ public class DataNodeTableOperatorGenerator
             Collections.singletonList(
                 new ScanParallelPlan.Bucket(0, units, unit.getEstimatedCost())));
     recordScanParallelMetadata(context, serial);
+    context
+        .getDynamicScanAssignments()
+        .registerBucket(context.getDriverContext().getDriverTaskID().getPipelineId(), serial, 0);
   }
 
   private static String fallbackReason(
@@ -1509,6 +1523,7 @@ public class DataNodeTableOperatorGenerator
 
   private void recordScanParallelMetadata(
       LocalExecutionPlanContext context, ScanParallelPlan plan) {
+    context.getDynamicParallelPlanningService().registerFinal(plan, context);
     final org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext instance =
         context.getInstanceContext();
     instance.setScanParallelMetadata(
@@ -1549,20 +1564,25 @@ public class DataNodeTableOperatorGenerator
     String queryId = context.getFragmentInstanceId().getQueryId().getId();
     String fragmentId = context.getFragmentInstanceId().getFragmentInstanceId();
     int plannerInputDop = context.getDegreeOfParallelism();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation()) {
-      plannerInputDop =
-          Math.max(
-              1,
-              Math.min(
-                  plannerInputDop,
-                  estimatePipelineNumByDataSize(
-                      context.getInstanceContext().getDataRegion(), devices.size())));
+    final boolean dopEstimationEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation();
+    final List<Long> deviceCosts =
+        estimateDeviceCosts(context.getInstanceContext().getDataRegion(), devices.size());
+    Integer estimatedDop = null;
+    String estimateStatus = "DISABLED";
+    if (dopEstimationEnabled) {
+      estimatedDop =
+          estimatePipelineNumByDataSize(
+              context.getInstanceContext().getDataRegion(), devices.size());
+      estimateStatus =
+          deviceCosts == null ? "FALLBACK_DEVICE_COUNT" : "ESTIMATED_FROM_TSFILE_BYTES";
+      plannerInputDop = Math.max(1, Math.min(plannerInputDop, estimatedDop));
     }
     ScanParallelPlanner.Input input =
         new ScanParallelPlanner.Input(
             devices,
             timePartitions,
-            estimateDeviceCosts(context.getInstanceContext().getDataRegion(), devices.size()),
+            deviceCosts,
             plannerInputDop,
             node.isAllowParallelScan(),
             node.getDeviceEntryDataSetHandle().isPresent(),
@@ -1574,7 +1594,10 @@ public class DataNodeTableOperatorGenerator
             queryId,
             fragmentId,
             node.getPlanNodeId().getId());
-    return new ScanParallelPlanner().plan(input);
+    return context
+        .getDynamicParallelPlanningService()
+        .select(input, context, dopEstimationEnabled, estimateStatus, estimatedDop)
+        .getPlan();
   }
 
   private static List<List<DeviceEntry>> mapDeviceGroups(
@@ -1606,7 +1629,7 @@ public class DataNodeTableOperatorGenerator
     for (DeviceEntry entry : entries) {
       byId.put(String.valueOf(entry.getDeviceID()), entry);
     }
-    List<DeviceEntry> result = new ArrayList<>();
+    java.util.Set<String> selected = new java.util.HashSet<>();
     for (ScanParallelPlan.WorkUnit workUnit : bucket.getWorkUnits()) {
       for (String id : workUnit.getDevices()) {
         DeviceEntry entry = byId.get(id);
@@ -1615,9 +1638,14 @@ public class DataNodeTableOperatorGenerator
               String.format(
                   DataNodeQueryMessages.EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572, id));
         }
-        result.add(entry);
+        if (!selected.add(id))
+          throw new IllegalStateException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_DYNAMIC_SCAN_GROUPING_8A0E09F6);
       }
     }
+    List<DeviceEntry> result = new ArrayList<>();
+    for (DeviceEntry entry : entries)
+      if (selected.contains(String.valueOf(entry.getDeviceID()))) result.add(entry);
     return result;
   }
 
@@ -1644,13 +1672,31 @@ public class DataNodeTableOperatorGenerator
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
     TopKRuntimeFilter topKRuntimeFilter = resolveTopKRuntimeFilterForDeviceScan(node, context);
 
+    if (context
+        .getDynamicParallelPlanningService()
+        .isSerialSelected(node.getPlanNodeId().getId())) {
+      return constructSerialDeviceTableScan(node, context, topKRuntimeFilter);
+    }
     if (canSplitDeviceTableScanIntoParallelPipelines(node, context)) {
       Operator operator = constructParallelDeviceTableScan(node, context);
       return operator;
     }
 
+    recordSerialScanMetadata(context, node);
+    return constructSerialDeviceTableScan(node, context, topKRuntimeFilter);
+  }
+
+  private Operator constructSerialDeviceTableScan(
+      DeviceTableScanNode node,
+      LocalExecutionPlanContext context,
+      TopKRuntimeFilter topKRuntimeFilter) {
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
-        constructAbstractTableScanOperatorParameter(node, context, topKRuntimeFilter);
+        constructAbstractTableScanOperatorParameter(
+            node,
+            context,
+            topKRuntimeFilter == null
+                ? resolveTopKRuntimeFilterForDeviceScan(node, context)
+                : topKRuntimeFilter);
 
     TableScanOperator tableScanOperator = new TableScanOperator(parameter);
 
@@ -1663,8 +1709,6 @@ public class DataNodeTableOperatorGenerator
         parameter.measurementSchemas,
         parameter.allSensors,
         DeviceTableScanNode.class.getSimpleName());
-    recordSerialScanMetadata(context, node);
-
     return tableScanOperator;
   }
 
@@ -1821,12 +1865,24 @@ public class DataNodeTableOperatorGenerator
    * device: grouping raw multi-device scans would be incorrect for ORDER BY time because such a
    * scan emits all of one device before advancing to the next.
    */
+  private Operator constructSingleStreamOrderedFallback(
+      DeviceTableScanNode node, SortNode sort, LocalExecutionPlanContext context) {
+    // The source remains in the current driver. Let the established sort build its child once.
+    return super.visitSort(sort, context);
+  }
+
   private Operator constructParallelOrderedDeviceTableScan(
       DeviceTableScanNode node, SortNode sortNode, LocalExecutionPlanContext context) {
     final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
     final ScanParallelPlan plan =
         createStaticScanPlan(node, context, Collections.emptyList(), true, false);
     recordScanParallelMetadata(context, plan);
+    if (plan.getMode() == ScanParallelPlan.Mode.SERIAL) {
+      context
+          .getDynamicScanAssignments()
+          .registerBucket(context.getDriverContext().getDriverTaskID().getPipelineId(), plan, 0);
+      return constructSingleStreamOrderedFallback(node, sortNode, context);
+    }
     final List<TSDataType> dataTypes =
         getOutputColumnTypes(sortNode, context.getTableTypeProvider());
     final List<Integer> sortItemIndexes =
@@ -1848,6 +1904,17 @@ public class DataNodeTableOperatorGenerator
             (groupIndex, subContext) -> {
               final List<DeviceEntry> bucketDevices =
                   mapBucketDevices(plan.getBuckets().get(groupIndex), deviceEntries);
+              if (bucketDevices.isEmpty()) {
+                PlanNodeId emptyId =
+                    new PlanNodeId(node.getPlanNodeId().getId() + "-ordered-empty-" + groupIndex);
+                return new LocalScanPipelineBuilder.PipelineSpec(
+                    new EmptyDataOperator(
+                        addOperatorContext(
+                            subContext, emptyId, EmptyDataOperator.class.getSimpleName())),
+                    sortNode,
+                    sortNode.getPlanNodeId(),
+                    emptyId);
+              }
               final List<Operator> deviceScanOperators = new ArrayList<>(bucketDevices.size());
               for (int deviceIndex = 0; deviceIndex < bucketDevices.size(); deviceIndex++) {
                 final DeviceTableScanNode deviceScanNode = node.clone();
@@ -2070,6 +2137,16 @@ public class DataNodeTableOperatorGenerator
     final List<DeviceEntry> deviceEntries = node.getDeviceEntries();
     final String timeColumnName = requireTimeColumnName(node);
     final ScanParallelPlan plan = createStaticScanPlan(node, context, sortedTpIds, false, true);
+    if (plan.getMode() == ScanParallelPlan.Mode.SERIAL) {
+      recordScanParallelMetadata(context, plan);
+      context
+          .getDynamicScanAssignments()
+          .registerBucket(context.getDriverContext().getDriverTaskID().getPipelineId(), plan, 0);
+      Operator fallback = constructSerialDeviceTableScan(node, context, null);
+      return transparentFilter == null
+          ? fallback
+          : constructTransparentMorselFilter(transparentFilter, fallback, context);
+    }
     final List<List<Long>> tpGroups = plan.getTimePartitionGroups();
     final List<List<DeviceEntry>> deviceGroups =
         mapDeviceGroups(plan.getDeviceGroups(), deviceEntries);
@@ -2080,17 +2157,21 @@ public class DataNodeTableOperatorGenerator
     final boolean useSizeWeightedSchedule =
         IoTDBDescriptor.getInstance().getConfig().isEnableTimePartitionMorselSizeWeighting()
             && sizeSchedule.isPresent();
+    final boolean effectiveUseSizeWeightedSchedule =
+        useSizeWeightedSchedule
+            && !context.getDynamicParallelPlanningService().isDynamic(plan)
+            && plan.getMode() == ScanParallelPlan.Mode.TIME_PARTITION;
     // The weighted schedule is an existing runtime optimization. Preserve its exact partition
     // groups; the static planner buckets are used when no weighted metadata is available.
     final List<List<Long>> scheduledTpGroups =
-        useSizeWeightedSchedule ? sizeSchedule.get().groups() : tpGroups;
+        effectiveUseSizeWeightedSchedule ? sizeSchedule.get().groups() : tpGroups;
     final ScanParallelPlan effectivePlan =
-        useSizeWeightedSchedule
+        effectiveUseSizeWeightedSchedule
             ? ScanParallelPlan.withTimePartitionGroups(plan, scheduledTpGroups)
             : plan;
     final List<List<Long>> pipelineTpGroups = new ArrayList<>();
     final List<List<DeviceEntry>> pipelineDeviceGroups = new ArrayList<>();
-    if (useSizeWeightedSchedule) {
+    if (effectiveUseSizeWeightedSchedule) {
       for (List<Long> tpGroup : scheduledTpGroups) {
         for (List<DeviceEntry> deviceGroup : deviceGroups) {
           pipelineTpGroups.add(tpGroup);
@@ -2099,6 +2180,16 @@ public class DataNodeTableOperatorGenerator
       }
     }
     recordScanParallelMetadata(context, effectivePlan);
+    if (effectivePlan.getMode() == ScanParallelPlan.Mode.SERIAL) {
+      context
+          .getDynamicScanAssignments()
+          .registerBucket(
+              context.getDriverContext().getDriverTaskID().getPipelineId(), effectivePlan, 0);
+      Operator fallback = constructSerialDeviceTableScan(node, context, null);
+      return transparentFilter == null
+          ? fallback
+          : constructTransparentMorselFilter(transparentFilter, fallback, context);
+    }
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
     final List<Operator> exchangeOperators =
         LocalScanPipelineBuilder.build(
@@ -2109,11 +2200,12 @@ public class DataNodeTableOperatorGenerator
               final List<Operator> bucketOperators = new ArrayList<>();
               PlanNode firstRootNode = null;
               PlanNodeId firstUpstreamId = null;
-              final int unitCount = useSizeWeightedSchedule ? 1 : bucket.getWorkUnits().size();
+              final int unitCount =
+                  effectiveUseSizeWeightedSchedule ? 1 : bucket.getWorkUnits().size();
               for (int unitIndex = 0; unitIndex < unitCount; unitIndex++) {
                 final List<Long> tpGroup;
                 final List<DeviceEntry> deviceGroup;
-                if (useSizeWeightedSchedule) {
+                if (effectiveUseSizeWeightedSchedule) {
                   tpGroup = pipelineTpGroups.get(pipelineIndex);
                   deviceGroup = pipelineDeviceGroups.get(pipelineIndex);
                 } else {
@@ -2146,7 +2238,10 @@ public class DataNodeTableOperatorGenerator
                     tpGroup,
                     deviceGroup.size(),
                     sizeSchedule.map(schedule -> schedule.estimatedBytes(tpGroup)).orElse(-1L),
-                    useSizeWeightedSchedule);
+                    effectiveUseSizeWeightedSchedule);
+                if (context.getDynamicParallelPlanningService().isDynamic(effectivePlan))
+                  parameter.context.recordSpecifiedInfo(
+                      "MORSEL_SCHEDULING", "DYNAMIC_WORK_UNIT_LPT");
                 final TableScanOperator subScanOperator = new TableScanOperator(parameter);
                 addSource(
                     subScanOperator,
@@ -2174,9 +2269,17 @@ public class DataNodeTableOperatorGenerator
                 }
               }
               if (bucketOperators.isEmpty()) {
-                throw new IllegalStateException(
-                    DataNodeQueryMessages
-                        .EXCEPTION_PARALLEL_PLAN_CONTAINS_AN_EMPTY_BUCKET_0766733B);
+                PlanNodeId emptyId =
+                    new PlanNodeId(node.getPlanNodeId().getId() + "-morsel-empty-" + pipelineIndex);
+                return new LocalScanPipelineBuilder.PipelineSpec(
+                    new EmptyDataOperator(
+                        addOperatorContext(
+                            subContext, emptyId, EmptyDataOperator.class.getSimpleName())),
+                    node,
+                    transparentFilter == null
+                        ? node.getPlanNodeId()
+                        : transparentFilter.getPlanNodeId(),
+                    emptyId);
               }
               final Operator pipelineRoot;
               final PlanNodeId upstreamId;
@@ -2187,11 +2290,7 @@ public class DataNodeTableOperatorGenerator
                 upstreamId =
                     new PlanNodeId(
                         node.getPlanNodeId().getId() + "-morsel-bucket-" + pipelineIndex);
-                pipelineRoot =
-                    new CollectOperator(
-                        addOperatorContext(
-                            subContext, upstreamId, CollectOperator.class.getSimpleName()),
-                        bucketOperators);
+                pipelineRoot = createUnorderedCollect(subContext, upstreamId, bucketOperators);
               }
               return new LocalScanPipelineBuilder.PipelineSpec(
                   pipelineRoot,
@@ -2203,9 +2302,21 @@ public class DataNodeTableOperatorGenerator
             });
     recordActualPipelineCount(context);
 
-    final OperatorContext collectOperatorContext =
-        addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
-    return new CollectOperator(collectOperatorContext, exchangeOperators);
+    return createUnorderedCollect(context, node.getPlanNodeId(), exchangeOperators);
+  }
+
+  @Override
+  public Operator visitCollect(CollectNode node, LocalExecutionPlanContext context) {
+    // The master CollectOperator already waits for any ready input and shares FI budgets.
+    // Retain that implementation for distributed fan-in; scan-local queues keep their adapter.
+    return super.visitCollect(node, context);
+  }
+
+  private Operator createUnorderedCollect(
+      LocalExecutionPlanContext context, PlanNodeId id, List<Operator> children) {
+    // Preserve the existing statistics type; the table implementation permits ready-child fan-in.
+    return new TableReadyCollectOperator(
+        addOperatorContext(context, id, CollectOperator.class.getSimpleName()), children);
   }
 
   private Operator constructTransparentMorselFilter(
@@ -2553,7 +2664,7 @@ public class DataNodeTableOperatorGenerator
     final ScanParallelPlan selected =
         createStaticScanPlan(node, context, Collections.emptyList(), false, false);
     final ScanParallelPlan plan =
-        fallback == null
+        fallback == null || selected.getMode() == ScanParallelPlan.Mode.SERIAL
             ? selected
             : new ScanParallelPlan(
                 selected.getMode(),
@@ -2565,6 +2676,12 @@ public class DataNodeTableOperatorGenerator
                 selected.getWorkUnits(),
                 selected.getBuckets());
     recordScanParallelMetadata(context, plan);
+    if (plan.getMode() == ScanParallelPlan.Mode.SERIAL) {
+      context
+          .getDynamicScanAssignments()
+          .registerBucket(context.getDriverContext().getDriverTaskID().getPipelineId(), plan, 0);
+      return constructSerialDeviceTableScan(node, context, null);
+    }
 
     context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
     final List<Operator> exchangeOperators =
@@ -2595,9 +2712,7 @@ public class DataNodeTableOperatorGenerator
             });
     recordActualPipelineCount(context);
 
-    final OperatorContext collectOperatorContext =
-        addOperatorContext(context, node.getPlanNodeId(), CollectOperator.class.getSimpleName());
-    return new CollectOperator(collectOperatorContext, exchangeOperators);
+    return createUnorderedCollect(context, node.getPlanNodeId(), exchangeOperators);
   }
 
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(

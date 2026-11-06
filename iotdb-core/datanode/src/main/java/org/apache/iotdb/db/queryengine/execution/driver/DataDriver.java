@@ -84,7 +84,7 @@ public class DataDriver extends Driver {
   }
 
   private void handleInitFailure(Throwable t, SettableFuture<?> blockedFuture) {
-    driverContext.failed(t);
+    failed(t);
     blockedFuture.setException(t);
     throwIfUnchecked(t);
     // should never happen

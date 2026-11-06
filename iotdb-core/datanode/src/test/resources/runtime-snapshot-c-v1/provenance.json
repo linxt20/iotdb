@@ -1,0 +1,8 @@
+{
+  "server": "/root/rivermind-data/iotdb-ad-acceptance-20261103/AD-final-canonical-20261103-r2/verified-runtime-zip-cache/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar",
+  "serverSha256": "1d5b31f67594ceb52cb30d571ad191c49544ba2930b593f2274104f6a2686777",
+  "protocol": "/root/rivermind-data/iotdb-ad-acceptance-20261103/AD-final-canonical-20261103-r2/verified-runtime-zip-cache/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-2.0.11-SNAPSHOT.jar",
+  "protocolSha256": "e5894926f850171625263e483e3cfac68055e97bbc0dc1a4cf9bd0bea1ff3e2d",
+  "fixtureSha256": "e95a5a6f875cd47d727bdd78044e1f2944fdb8a27b2212a42500ba6cd7577915",
+  "scope": "actual frozen C adapter and actual old mpp thrift classes, both child-loaded; old protocol deserializes current wire bytes"
+}

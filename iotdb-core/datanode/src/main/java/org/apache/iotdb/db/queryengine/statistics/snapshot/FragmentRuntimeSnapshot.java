@@ -27,6 +27,7 @@ import java.util.List;
 /** Immutable fragment-level runtime snapshot. */
 public final class FragmentRuntimeSnapshot {
 
+  private final Integer schemaVersion;
   private final String queryId;
   private final String fragmentInstanceId;
   private final long generation;
@@ -84,6 +85,39 @@ public final class FragmentRuntimeSnapshot {
       RuntimeSnapshotValiditySet validity,
       String checksum,
       StaticParallelPlanIdentity planIdentity) {
+    this(
+        queryId,
+        fragmentInstanceId,
+        generation,
+        capturedAtNanos,
+        sourceNodeId,
+        sourceEndpoint,
+        state,
+        terminal,
+        drivers,
+        operators,
+        validity,
+        checksum,
+        planIdentity,
+        1);
+  }
+
+  public FragmentRuntimeSnapshot(
+      String queryId,
+      String fragmentInstanceId,
+      long generation,
+      long capturedAtNanos,
+      String sourceNodeId,
+      String sourceEndpoint,
+      String state,
+      boolean terminal,
+      List<DriverRuntimeSnapshot> drivers,
+      List<OperatorRuntimeSnapshot> operators,
+      RuntimeSnapshotValiditySet validity,
+      String checksum,
+      StaticParallelPlanIdentity planIdentity,
+      Integer schemaVersion) {
+    this.schemaVersion = schemaVersion;
     this.queryId = requireText(queryId, "queryId");
     this.fragmentInstanceId = requireText(fragmentInstanceId, "fragmentInstanceId");
     this.generation = nonNegative(generation, "generation");
@@ -97,6 +131,10 @@ public final class FragmentRuntimeSnapshot {
     this.validity = validity == null ? RuntimeSnapshotValiditySet.empty() : validity;
     this.checksum = checksum;
     this.planIdentity = planIdentity;
+  }
+
+  public Integer getSchemaVersion() {
+    return schemaVersion;
   }
 
   public String getQueryId() {
@@ -165,7 +203,8 @@ public final class FragmentRuntimeSnapshot {
         operators,
         validity,
         value,
-        planIdentity);
+        planIdentity,
+        schemaVersion);
   }
 
   private static <T> List<T> immutableCopy(List<T> values) {

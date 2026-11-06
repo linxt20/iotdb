@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
-import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableReadyCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -103,7 +103,7 @@ public class ScanSourceIdentityIntegrationTest {
     try {
       List<String> edges = context.getInstanceContext().getExchangeEdgeIds();
       assertEquals(2, edges.size());
-      for (Operator child : ((CollectOperator) root).getChildren()) {
+      for (Operator child : ((TableReadyCollectOperator) root).getChildren()) {
         ExchangeOperator exchange = (ExchangeOperator) child;
         String expected =
             context.getFragmentInstanceId().getFullId()

@@ -207,6 +207,14 @@ public class FragmentInstanceContext extends QueryContext {
   private volatile long resourceNominalShareBytes = -1;
   private volatile String admissionStatus = "UNKNOWN";
   private volatile String admissionReason;
+  private volatile org.apache.iotdb.db.queryengine.plan.planner.AdmissionMemoryAccount
+      admissionMemoryAccount;
+
+  public org.apache.iotdb.db.queryengine.plan.planner.AdmissionMemoryAccount
+      getAdmissionMemoryAccount() {
+    return admissionMemoryAccount;
+  }
+
   private volatile LocalExecutionPlanContext planningContext;
 
   private final AtomicLong initQueryDataSourceCost = new AtomicLong(0);
@@ -1793,6 +1801,35 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void setPlanningContext(LocalExecutionPlanContext context) {
     planningContext = context;
+  }
+
+  // Frozen scan ownership must outlive the resource-generating planning context. The manager
+  // clears that context after driver creation; this registry contains no operator or queue.
+  private volatile org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry
+      dynamicScanAssignments;
+
+  private volatile String dynamicFeedbackDropReason;
+
+  public String getDynamicFeedbackDropReason() {
+    org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry registry =
+        dynamicScanAssignments;
+    return registry == null ? dynamicFeedbackDropReason : registry.getFeedbackDropReason();
+  }
+
+  public org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry
+      getDynamicScanAssignments() {
+    return dynamicScanAssignments;
+  }
+
+  public void setDynamicScanAssignments(
+      org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry value) {
+    if (value == null && dynamicScanAssignments != null)
+      dynamicFeedbackDropReason = dynamicScanAssignments.getFeedbackDropReason();
+    else if (value != null) dynamicFeedbackDropReason = null;
+    dynamicScanAssignments = value;
+    if (value != null && value.isEnabled() && admissionMemoryAccount == null)
+      admissionMemoryAccount =
+          new org.apache.iotdb.db.queryengine.plan.planner.AdmissionMemoryAccount();
   }
 
   public LocalExecutionPlanContext getPlanningContext() {

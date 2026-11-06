@@ -55,6 +55,11 @@ public final class RuntimeSnapshotChecksum {
   }
 
   public static String forFragment(FragmentRuntimeSnapshot snapshot) {
+    Integer schema = snapshot.getSchemaVersion();
+    if (schema == null || schema != 1 && schema != 2) {
+      return null;
+    }
+
     List<String> fields =
         new java.util.ArrayList<>(
             java.util.Arrays.asList(
@@ -66,6 +71,10 @@ public final class RuntimeSnapshotChecksum {
                 String.valueOf(snapshot.getSourceEndpoint()),
                 snapshot.getState(),
                 Boolean.toString(snapshot.isTerminal())));
+    if (schema == 2) {
+      fields.add(0, "2");
+      fields.add(0, "IOTDB_RUNTIME_SNAPSHOT");
+    }
     for (DriverRuntimeSnapshot driver : snapshot.getDrivers()) {
       fields.add(driver.getFragmentInstanceId());
       fields.add(driver.getDriverPipelineId());
@@ -88,6 +97,31 @@ public final class RuntimeSnapshotChecksum {
                 fields.add(entry.getKey());
                 fields.add(entry.getValue());
               });
+      if (schema == 2) {
+        java.util.List<org.apache.iotdb.db.queryengine.plan.planner.DynamicDriverBucketAssignment>
+            assignments = driver.getScanAssignments();
+        if (assignments == null) {
+          fields.add("ASSIGNMENTS_MISSING");
+        } else {
+          fields.add("ASSIGNMENTS_PRESENT");
+          fields.add(Integer.toString(assignments.size()));
+          assignments.stream()
+              .sorted(
+                  java.util.Comparator.comparing(
+                          org.apache.iotdb.db.queryengine.plan.planner.DynamicDriverBucketAssignment
+                              ::getSourcePlanNodeId)
+                      .thenComparingInt(
+                          org.apache.iotdb.db.queryengine.plan.planner.DynamicDriverBucketAssignment
+                              ::getBucketId))
+              .forEach(
+                  assignment -> {
+                    fields.add(assignment.getSourcePlanNodeId());
+                    fields.add(Integer.toString(assignment.getBucketId()));
+                    fields.add(Integer.toString(assignment.getWorkUnitIds().size()));
+                    assignment.getWorkUnitIds().stream().sorted().forEach(fields::add);
+                  });
+        }
+      }
     }
     for (OperatorRuntimeSnapshot operator : snapshot.getOperators()) {
       fields.add(operator.getPlanNodeId());

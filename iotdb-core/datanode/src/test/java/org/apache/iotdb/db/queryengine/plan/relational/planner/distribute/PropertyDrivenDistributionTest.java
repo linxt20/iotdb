@@ -688,6 +688,111 @@ public class PropertyDrivenDistributionTest {
     return scans;
   }
 
+  @Test
+  public void pushedScanContractsSurviveParallelFeatureCombinations() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    boolean dynamic = config.isEnableDynamicScanParallelism();
+    boolean morsel = config.isEnableTimePartitionMorsel();
+    boolean topK = config.isEnableTopKRuntimeFilter();
+    String[] queries = {
+      "SELECT s1 FROM testdb.table1 WHERE time >= 10 AND time < 20 AND s1 > 1",
+      "SELECT s1 + 1 AS projected FROM testdb.table1 WHERE tag1 = 'd1' AND s1 IS NOT NULL",
+      "SELECT * FROM testdb.table1 ORDER BY time DESC LIMIT 5",
+      "SELECT s1 FROM testdb.table1 WHERE s1 > 1 ORDER BY s1 DESC LIMIT 3 OFFSET 2",
+      "SELECT * FROM testdb.table1 LIMIT 5 OFFSET 2",
+      "SELECT diff(s1) FROM testdb.table1 WHERE time >= 10",
+      "SELECT count(*) FROM testdb.table1 WHERE time >= 10",
+      "SELECT tag1, count(s1) FROM testdb.table1 WHERE s1 > 0 GROUP BY tag1",
+      "SELECT row_number() OVER (ORDER BY time) AS rn, s1 FROM testdb.table1 WHERE s1 > 0"
+    };
+    try {
+      config.setEnableTopKRuntimeFilter(true);
+      config.setEnableTableGroupByHashRepartition(false);
+      config.setEnableOrderedParallelScan(false);
+      config.setEnableTimePartitionMorsel(false);
+      config.setEnableDynamicScanParallelism(false);
+      List<List<String>> expected = new ArrayList<>();
+      for (String query : queries) expected.add(scanOptimizationContracts(query));
+      List<PlanNode> filtered = planAndCollectNodes(queries[0]);
+      List<DeviceTableScanNode> scans =
+          filtered.stream()
+              .filter(DeviceTableScanNode.class::isInstance)
+              .map(DeviceTableScanNode.class::cast)
+              .collect(Collectors.toList());
+      assertFalse(scans.isEmpty());
+      for (DeviceTableScanNode scan : scans) {
+        assertTrue("time predicate must reach the scan", scan.getTimePredicate().isPresent());
+        assertTrue(
+            "value predicate must reach the storage scan", scan.getPushDownPredicate() != null);
+        assertEquals(
+            "unused fields must stay pruned",
+            Collections.singletonList(new Symbol("s1")),
+            scan.getOutputSymbols());
+      }
+      for (int mask = 0; mask < 16; mask++) {
+        config.setEnableTableGroupByHashRepartition((mask & 1) != 0);
+        config.setEnableOrderedParallelScan((mask & 2) != 0);
+        config.setEnableTimePartitionMorsel((mask & 4) != 0);
+        config.setEnableDynamicScanParallelism((mask & 8) != 0);
+        for (int query = 0; query < queries.length; query++) {
+          assertEquals(
+              "pushed scan contract changed for mask=" + mask + " SQL=" + queries[query],
+              expected.get(query),
+              scanOptimizationContracts(queries[query]));
+        }
+      }
+    } finally {
+      config.setEnableTableGroupByHashRepartition(false);
+      config.setEnableOrderedParallelScan(false);
+      config.setEnableDynamicScanParallelism(dynamic);
+      config.setEnableTimePartitionMorsel(morsel);
+      config.setEnableTopKRuntimeFilter(topK);
+    }
+  }
+
+  private static List<String> scanOptimizationContracts(String sql) {
+    List<String> contracts = new ArrayList<>();
+    for (PlanNode node : planAndCollectNodes(sql)) {
+      if (!(node instanceof DeviceTableScanNode)) continue;
+      DeviceTableScanNode scan = (DeviceTableScanNode) node;
+      List<String> columns =
+          scan.getAssignments().entrySet().stream()
+              .map(
+                  entry ->
+                      entry.getKey()
+                          + ":"
+                          + entry.getValue().getName()
+                          + ":"
+                          + entry.getValue().getType()
+                          + ":"
+                          + entry.getValue().getColumnCategory())
+              .sorted()
+              .collect(Collectors.toList());
+      contracts.add(
+          scan.getQualifiedObjectName()
+              + "|"
+              + scan.getOutputSymbols()
+              + "|"
+              + columns
+              + "|time="
+              + scan.getTimePredicate()
+              + "|value="
+              + scan.getPushDownPredicate()
+              + "|limit="
+              + scan.getPushDownLimit()
+              + "|offset="
+              + scan.getPushDownOffset()
+              + "|perDevice="
+              + scan.isPushLimitToEachDevice()
+              + "|order="
+              + scan.getScanOrder()
+              + "|topK="
+              + (scan.getTopKRuntimeFilterSourceId() != null));
+    }
+    Collections.sort(contracts);
+    return contracts;
+  }
+
   private static DistributedQueryPlan plan(String sql) {
     // A fresh context per plan: an MPPQueryContext remembers whether the statement it analyzed was
     // an EXPLAIN ANALYZE, so reusing one across these cases would make a plain query be planned as

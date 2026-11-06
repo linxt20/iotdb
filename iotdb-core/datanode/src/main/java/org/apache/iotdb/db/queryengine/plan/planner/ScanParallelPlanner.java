@@ -30,42 +30,9 @@ import java.util.List;
 public final class ScanParallelPlanner {
 
   public ScanParallelPlan plan(Input input) {
-    if (input.devices.isEmpty() || (input.timePartitionMorsel && input.timePartitions.isEmpty())) {
-      return serial(input, ScanParallelPlan.FallbackReason.EMPTY_INPUT);
-    }
-    if (hasDuplicates(input.devices) || hasDuplicates(input.timePartitions)) {
-      return serial(input, ScanParallelPlan.FallbackReason.INVALID_METADATA);
-    }
-    if (input.deviceCosts != null && input.deviceCosts.size() != input.devices.size()) {
-      return serial(input, ScanParallelPlan.FallbackReason.INVALID_METADATA);
-    }
-    if (input.deviceCosts != null) {
-      for (Long cost : input.deviceCosts) {
-        if (cost == null || cost < 0) {
-          return serial(input, ScanParallelPlan.FallbackReason.INVALID_COST);
-        }
-      }
-      if (hasCostOverflow(input)) {
-        return serial(input, ScanParallelPlan.FallbackReason.OVERFLOW);
-      }
-    }
-    if (input.dop <= 1) {
-      return serial(input, ScanParallelPlan.FallbackReason.DOP_NOT_GREATER_THAN_ONE);
-    }
-    if (input.devices.size() <= 1) {
-      return serial(input, ScanParallelPlan.FallbackReason.SINGLE_DEVICE);
-    }
-    if (input.spilledDeviceEntries) {
-      return serial(input, ScanParallelPlan.FallbackReason.SPILLED_DEVICE_ENTRIES);
-    }
-    if (input.hasGlobalLimitOrOffset) {
-      return serial(input, ScanParallelPlan.FallbackReason.GLOBAL_LIMIT_OR_OFFSET);
-    }
-    if (input.ordered && !input.orderingProven) {
-      return serial(input, ScanParallelPlan.FallbackReason.ORDERING_NOT_PROVEN);
-    }
-    if (!input.allowParallelScan && !input.ordered) {
-      return serial(input, ScanParallelPlan.FallbackReason.PARALLEL_SCAN_NOT_ALLOWED);
+    ScanParallelPlan.FallbackReason rejected = qualificationFailure(input);
+    if (rejected != null) {
+      return serial(input, rejected);
     }
 
     ScanParallelPlan.Mode mode =
@@ -110,6 +77,175 @@ public final class ScanParallelPlanner {
         timeGroups,
         workUnits,
         target);
+  }
+
+  static ScanParallelPlan.FallbackReason qualificationFailure(Input input) {
+    if (input.devices.isEmpty() || (input.timePartitionMorsel && input.timePartitions.isEmpty())) {
+      return ScanParallelPlan.FallbackReason.EMPTY_INPUT;
+    }
+    if (hasDuplicates(input.devices) || hasDuplicates(input.timePartitions)) {
+      return ScanParallelPlan.FallbackReason.INVALID_METADATA;
+    }
+    if (input.deviceCosts != null && input.deviceCosts.size() != input.devices.size()) {
+      return ScanParallelPlan.FallbackReason.INVALID_METADATA;
+    }
+    if (input.deviceCosts != null) {
+      for (Long cost : input.deviceCosts) {
+        if (cost == null || cost < 0) {
+          return ScanParallelPlan.FallbackReason.INVALID_COST;
+        }
+      }
+      if (hasCostOverflow(input)) {
+        return ScanParallelPlan.FallbackReason.OVERFLOW;
+      }
+    }
+    if (input.dop <= 1) {
+      return ScanParallelPlan.FallbackReason.DOP_NOT_GREATER_THAN_ONE;
+    }
+    if (input.devices.size() <= 1) {
+      return ScanParallelPlan.FallbackReason.SINGLE_DEVICE;
+    }
+    if (input.spilledDeviceEntries) {
+      return ScanParallelPlan.FallbackReason.SPILLED_DEVICE_ENTRIES;
+    }
+    if (input.hasGlobalLimitOrOffset) {
+      return ScanParallelPlan.FallbackReason.GLOBAL_LIMIT_OR_OFFSET;
+    }
+    if (input.ordered && !input.orderingProven) {
+      return ScanParallelPlan.FallbackReason.ORDERING_NOT_PROVEN;
+    }
+    if (!input.allowParallelScan && !input.ordered) {
+      return ScanParallelPlan.FallbackReason.PARALLEL_SCAN_NOT_ALLOWED;
+    }
+
+    return null;
+  }
+
+  /** Uses original input.dop as a safety cap; targetDop is a separate policy request. */
+  public ScanParallelPlan planWithGrouping(
+      Input input, DynamicScanGrouping grouping, int targetDop) {
+    ScanParallelPlan.FallbackReason rejected = qualificationFailure(input);
+    if (rejected != null) {
+      return rejected == ScanParallelPlan.FallbackReason.EMPTY_INPUT
+          ? plan(input)
+          : serialForDynamicFallback(input, rejected);
+    }
+    if (grouping == null) {
+      return serialForDynamicFallback(
+          input, ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_COVERAGE_MISMATCH);
+    }
+    long count = grouping.getWorkUnitCount();
+    if (count > DynamicScanGrouping.MAX_WORK_UNITS
+        || grouping.getGroupedReferenceCount() > DynamicScanGrouping.MAX_GROUPED_REFERENCES) {
+      return serialForDynamicFallback(
+          input, ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_BUDGET_EXCEEDED);
+    }
+    ScanParallelPlan.Mode expected =
+        input.ordered
+            ? ScanParallelPlan.Mode.ORDERED
+            : input.timePartitionMorsel && input.timePartitions.size() > 1
+                ? ScanParallelPlan.Mode.TIME_PARTITION
+                : ScanParallelPlan.Mode.DEVICE;
+    List<String> devices = new ArrayList<>();
+    for (List<String> group : grouping.getDeviceGroups()) {
+      if (group.isEmpty()) {
+        return serialForDynamicFallback(
+            input, ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_COVERAGE_MISMATCH);
+      }
+      devices.addAll(group);
+    }
+    List<Long> partitions = new ArrayList<>();
+    for (List<Long> group : grouping.getTimeGroups()) {
+      if (group.isEmpty() && !input.timePartitions.isEmpty()) {
+        return serialForDynamicFallback(
+            input, ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_COVERAGE_MISMATCH);
+      }
+      partitions.addAll(group);
+    }
+    if (count < 1
+        || grouping.getMode() != expected
+        || !devices.equals(input.devices)
+        || !partitions.equals(input.timePartitions)
+        || grouping.getTimeGroups().isEmpty()
+        || (expected != ScanParallelPlan.Mode.TIME_PARTITION
+            && grouping.getTimeGroups().size() != 1)
+        || grouping.getCosts().size() != count
+        || grouping.getCostSources().size() != count) {
+      return serialForDynamicFallback(
+          input, ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_COVERAGE_MISMATCH);
+    }
+    long total = 0;
+    try {
+      for (int i = 0; i < count; i++) {
+        Long cost = grouping.getCosts().get(i);
+        if (cost == null || cost < 0 || grouping.getCostSources().get(i) == null) {
+          return serialForDynamicFallback(input, ScanParallelPlan.FallbackReason.INVALID_COST);
+        }
+        total = Math.addExact(total, cost);
+      }
+    } catch (ArithmeticException e) {
+      return serialForDynamicFallback(input, ScanParallelPlan.FallbackReason.OVERFLOW);
+    }
+    if (targetDop < 1) {
+      return serialForDynamicFallback(input, ScanParallelPlan.FallbackReason.INVALID_METADATA);
+    }
+    List<ScanParallelPlan.WorkUnit> units = new ArrayList<>();
+    int index = 0;
+    for (int d = 0; d < grouping.getDeviceGroups().size(); d++) {
+      for (int t = 0; t < grouping.getTimeGroups().size(); t++) {
+        ScanParallelPlan.SourceKey key =
+            new ScanParallelPlan.SourceKey(
+                input.queryId,
+                input.fragmentId,
+                input.planNodeId,
+                expected.name(),
+                Integer.toString(t),
+                Integer.toString(d));
+        units.add(
+            new ScanParallelPlan.WorkUnit(
+                key,
+                grouping.getDeviceGroups().get(d),
+                grouping.getTimeGroups().get(t),
+                grouping.getCosts().get(index),
+                grouping.getCostSources().get(index).isEstimateSupported()));
+        index++;
+      }
+    }
+    int buckets = Math.min(input.dop, Math.min(targetDop, units.size()));
+    return buildPlan(
+        expected,
+        ScanParallelPlan.FallbackReason.NONE,
+        input,
+        buckets,
+        grouping.getDeviceGroups(),
+        grouping.getTimeGroups(),
+        units,
+        buckets);
+  }
+
+  /** Mirrors the single-unit serial metadata contract even for unrestricted time ranges. */
+  static ScanParallelPlan serialForDynamicFallback(
+      Input input, ScanParallelPlan.FallbackReason reason) {
+    ScanParallelPlan.SourceKey key =
+        new ScanParallelPlan.SourceKey(
+            input.queryId, input.fragmentId, input.planNodeId, "SERIAL", "ALL", "ALL");
+    ScanParallelPlan.WorkUnit unit =
+        new ScanParallelPlan.WorkUnit(
+            key,
+            input.devices,
+            input.timePartitions,
+            (long) Math.max(1, input.devices.size()) * Math.max(1, input.timePartitions.size()),
+            false);
+    List<ScanParallelPlan.WorkUnit> units = Collections.singletonList(unit);
+    return buildPlan(
+        ScanParallelPlan.Mode.SERIAL,
+        reason,
+        input,
+        1,
+        Collections.singletonList(input.devices),
+        Collections.singletonList(input.timePartitions),
+        units,
+        1);
   }
 
   public static Estimate estimateDopByBytes(
@@ -192,6 +328,12 @@ public final class ScanParallelPlanner {
       List<List<String>> deviceGroups,
       List<List<Long>> timeGroups) {
     List<ScanParallelPlan.WorkUnit> workUnits = new ArrayList<>();
+    java.util.Map<String, Long> costByDevice = new java.util.HashMap<>();
+    if (input.deviceCosts != null && input.deviceCosts.size() == input.devices.size()) {
+      for (int i = 0; i < input.devices.size(); i++)
+        if (!costByDevice.containsKey(input.devices.get(i)))
+          costByDevice.put(input.devices.get(i), input.deviceCosts.get(i));
+    }
     for (int deviceIndex = 0; deviceIndex < deviceGroups.size(); deviceIndex++) {
       List<String> devices = deviceGroups.get(deviceIndex);
       long deviceCost = 0;
@@ -201,8 +343,7 @@ public final class ScanParallelPlanner {
         deviceCost = devices.size();
       } else {
         for (String device : devices) {
-          int index = input.devices.indexOf(device);
-          Long cost = input.deviceCosts.get(index);
+          Long cost = costByDevice.get(device);
           if (cost == null || cost < 0) {
             deviceCost = devices.size();
             estimateSupported = false;
@@ -412,6 +553,42 @@ public final class ScanParallelPlanner {
       this.queryId = requireNonNull(queryId, "queryId");
       this.fragmentId = requireNonNull(fragmentId, "fragmentId");
       this.planNodeId = requireNonNull(planNodeId, "planNodeId");
+    }
+
+    public List<String> getDevices() {
+      return devices;
+    }
+
+    public List<Long> getTimePartitions() {
+      return timePartitions;
+    }
+
+    public List<Long> getDeviceCosts() {
+      return deviceCosts;
+    }
+
+    public int getDop() {
+      return dop;
+    }
+
+    public boolean isOrdered() {
+      return ordered;
+    }
+
+    public boolean isTimePartitionMorsel() {
+      return timePartitionMorsel;
+    }
+
+    public String getQueryId() {
+      return queryId;
+    }
+
+    public String getFragmentId() {
+      return fragmentId;
+    }
+
+    public String getPlanNodeId() {
+      return planNodeId;
     }
 
     private static <T> List<T> immutableCopy(List<T> value, String name) {

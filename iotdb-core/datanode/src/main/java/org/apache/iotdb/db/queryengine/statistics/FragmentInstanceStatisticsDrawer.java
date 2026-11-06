@@ -303,6 +303,16 @@ public class FragmentInstanceStatisticsDrawer {
     if (statistics.isSetValidityReasons()) {
       addLine(area, 2, "validity: " + statistics.getValidityReasons());
     }
+    if (statistics.isSetDynamicFeedbackDropReason())
+      addLine(area, 2, "dynamicFeedbackDropReason: " + statistics.getDynamicFeedbackDropReason());
+    if (statistics.isSetDynamicDecisions()) {
+      for (org.apache.iotdb.mpp.rpc.thrift.TDynamicDecisionTrace trace :
+          statistics.getDynamicDecisions()) {
+        addLine(area, 2, "Dynamic decision:");
+        org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionTrace.display(trace)
+            .forEach((key, value) -> addLine(area, 3, key + ": " + value));
+      }
+    }
     if (statistics.isSetDriverSnapshots()) {
       statistics.getDriverSnapshots().stream()
           .sorted(
@@ -322,6 +332,28 @@ public class FragmentInstanceStatisticsDrawer {
                         driver.getDriverTaskId(),
                         driver.getDriverPipelineId(),
                         driver.isSetDriverRole() ? driver.getDriverRole() : "unknown"));
+                if (driver.isSetScanAssignments()) {
+                  driver.getScanAssignments().stream()
+                      .sorted(
+                          java.util.Comparator.comparing(
+                                  org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment
+                                      ::getSourcePlanNodeId)
+                              .thenComparingInt(
+                                  org.apache.iotdb.mpp.rpc.thrift.TDriverBucketAssignment
+                                      ::getBucketId))
+                      .forEach(
+                          assignment ->
+                              addLine(
+                                  area,
+                                  3,
+                                  "SCAN_ASSIGNMENT[source="
+                                      + assignment.getSourcePlanNodeId()
+                                      + "][bucket="
+                                      + assignment.getBucketId()
+                                      + "][workUnits="
+                                      + assignment.getWorkUnitIds()
+                                      + "]"));
+                }
                 if (driver.isSetDriverWallNanos()) {
                   addLine(area, 3, "driverWallNanos: " + driver.getDriverWallNanos());
                 }

@@ -102,7 +102,8 @@ public class PropertyPlanningConfigurationIsolationTest {
                 WindowFunctionOptimizationTest.class,
                 PlanPropertyMetadataCoverageTest.class);
     assertTrue(result.getFailures().toString(), result.wasSuccessful());
-    assertEquals(79, result.getRunCount());
+    // The new scan-contract matrix runs for both property-planning parameter values.
+    assertEquals(81, result.getRunCount());
     assertEquals(before.values(), new State().values());
   }
 }

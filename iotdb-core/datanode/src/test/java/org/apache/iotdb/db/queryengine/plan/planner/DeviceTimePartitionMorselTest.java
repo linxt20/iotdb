@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.calc.execution.operator.Operator;
-import org.apache.iotdb.calc.execution.operator.process.CollectOperator;
 import org.apache.iotdb.calc.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
@@ -43,6 +42,7 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableReadyCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -149,8 +149,8 @@ public class DeviceTimePartitionMorselTest {
 
       Operator root = node.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
-        assertEquals(4, ((CollectOperator) root).getChildren().size());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
+        assertEquals(4, ((TableReadyCollectOperator) root).getChildren().size());
         assertEquals(4, context.getPipelineNumber());
         for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
           assertNull(
@@ -186,8 +186,8 @@ public class DeviceTimePartitionMorselTest {
 
       Operator root = node.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
-        assertEquals(3, ((CollectOperator) root).getChildren().size());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
+        assertEquals(3, ((TableReadyCollectOperator) root).getChildren().size());
         assertEquals(3, context.getPipelineNumber());
 
         int totalDeviceScans = 0;
@@ -231,8 +231,8 @@ public class DeviceTimePartitionMorselTest {
 
       Operator root = node.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
-        assertEquals(4, ((CollectOperator) root).getChildren().size());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
+        assertEquals(4, ((TableReadyCollectOperator) root).getChildren().size());
         assertEquals(4, context.getPipelineNumber());
 
         int totalDeviceScans = 0;
@@ -424,8 +424,8 @@ public class DeviceTimePartitionMorselTest {
 
       Operator root = node.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
-        assertEquals(4, ((CollectOperator) root).getChildren().size());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
+        assertEquals(4, ((TableReadyCollectOperator) root).getChildren().size());
         assertEquals(4, context.getPipelineNumber());
         for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
           assertEquals(2, deviceNumberOf(driverFactory.getOperation()));
@@ -512,7 +512,7 @@ public class DeviceTimePartitionMorselTest {
 
       Operator root = node.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
         long tightestLowerBound = Long.MAX_VALUE;
         for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
           Filter filter = timeFilterOf(driverFactory.getOperation());
@@ -635,7 +635,7 @@ public class DeviceTimePartitionMorselTest {
               .putTableModelType(alias, TypeFactory.getType(TSDataType.TIMESTAMP));
           Operator root = node.accept(generator, context);
           try {
-            assertEquals(CollectOperator.class, root.getClass());
+            assertEquals(TableReadyCollectOperator.class, root.getClass());
             assertEquals("TIME_PARTITION", context.getInstanceContext().getSplitMode());
             assertPointwiseScanCoverage(
                 context,
@@ -922,7 +922,7 @@ public class DeviceTimePartitionMorselTest {
     context.setDegreeOfParallelism(2);
     Operator root = node.accept(generator, context);
     try {
-      assertEquals(CollectOperator.class, root.getClass());
+      assertEquals(TableReadyCollectOperator.class, root.getClass());
       assertEquals("DEVICE", context.getInstanceContext().getSplitMode());
       assertEquals(
           "UNSUPPORTED_TIME_PARTITION_RANGE", context.getInstanceContext().getSplitReason());
@@ -984,8 +984,8 @@ public class DeviceTimePartitionMorselTest {
   private void collectActualScans(Operator operator, List<Operator> scans) {
     if (operator instanceof AbstractTableScanOperator) {
       scans.add(operator);
-    } else if (operator instanceof CollectOperator) {
-      for (Operator child : ((CollectOperator) operator).getChildren()) {
+    } else if (operator instanceof TableReadyCollectOperator) {
+      for (Operator child : ((TableReadyCollectOperator) operator).getChildren()) {
         collectActualScans(child, scans);
       }
     } else {
@@ -1326,9 +1326,9 @@ public class DeviceTimePartitionMorselTest {
       Operator root = filterNode.accept(generator, context);
       try {
         assertFalse(
-            "the CollectOperator of the morsel split concatenates streams in arrival order,"
+            "the TableReadyCollectOperator of the morsel split concatenates streams in arrival order,"
                 + " so it may not be used when the parent relies on the scan ordering",
-            root instanceof CollectOperator);
+            root instanceof TableReadyCollectOperator);
         assertEquals(
             "the filter stays at the root, above the single unsplit scan stream",
             FilterAndProjectOperator.class,
@@ -1362,8 +1362,8 @@ public class DeviceTimePartitionMorselTest {
 
       Operator root = filterNode.accept(generator, context);
       try {
-        assertEquals(CollectOperator.class, root.getClass());
-        assertEquals(3, ((CollectOperator) root).getChildren().size());
+        assertEquals(TableReadyCollectOperator.class, root.getClass());
+        assertEquals(3, ((TableReadyCollectOperator) root).getChildren().size());
         assertEquals(3, context.getPipelineNumber());
         for (PipelineDriverFactory driverFactory : context.getPipelineDriverFactories()) {
           assertEquals(
@@ -1463,6 +1463,122 @@ public class DeviceTimePartitionMorselTest {
     DataRegion dataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
     return dataRegion;
+  }
+
+  @Test
+  public void testDeviceConsumerPreservesPredicatePaginationAndSharedTopK() throws Exception {
+    assertConsumerScanOptions("DEVICE");
+  }
+
+  @Test
+  public void testTimePartitionConsumerPreservesPushedPredicatesAndSharedTopK() throws Exception {
+    assertConsumerScanOptions("TIME_PARTITION");
+  }
+
+  @Test
+  public void testOrderedConsumerPreservesPredicatePaginationAndSharedTopK() throws Exception {
+    assertConsumerScanOptions("ORDERED");
+  }
+
+  private void assertConsumerScanOptions(String mode) throws Exception {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    boolean oldDynamic = config.isEnableDynamicScanParallelism();
+    boolean oldOrdered = config.isEnableOrderedParallelScan();
+    try {
+      for (boolean dynamic : new boolean[] {false, true}) {
+        config.setEnableDynamicScanParallelism(dynamic);
+        config.setEnableOrderedParallelScan("ORDERED".equals(mode));
+        withTimePartitionConfiguration(
+            0L,
+            10L,
+            () -> {
+              config.setEnableTimePartitionMorsel("TIME_PARTITION".equals(mode));
+              DeviceTableScanNode node = initDeviceTableScanNode(4);
+              node.setAllowParallelScan(true);
+              node.setTimePredicate(
+                  LogicalExpression.and(
+                      comparison("time", ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL, 3L),
+                      comparison("time", ComparisonExpression.Operator.LESS_THAN, 17L)));
+              node.setPushDownPredicate(s1IsPositive());
+              node.setPushLimitToEachDevice(true);
+              // Time-partition splitting retains the parent pagination safety assumptions.
+              // Exercise per-device pagination where each device belongs to exactly one scan.
+              long limit = "TIME_PARTITION".equals(mode) ? 0L : 7L;
+              long offset = "TIME_PARTITION".equals(mode) ? 0L : 2L;
+              node.setPushDownLimit(limit);
+              node.setPushDownOffset(offset);
+              node.setTopKRuntimeFilterSourceId("compatibility_topk");
+              DataRegion region = dataRegionWithPartitions(0L, 1L);
+              Mockito.when(region.getDataRegionIdString()).thenReturn("compatibility_region");
+              LocalExecutionPlanContext context =
+                  createTypedContext(
+                      "scan_options_" + mode.toLowerCase(java.util.Locale.ROOT) + "_" + dynamic,
+                      region);
+              context.setDegreeOfParallelism(2);
+              org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter runtimeFilter =
+                  new org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter(true);
+              context.dataNodeQueryContext.registerTopKRuntimeFilter(
+                  "compatibility_topk", runtimeFilter);
+              org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode input = node;
+              if ("ORDERED".equals(mode)) {
+                Symbol time = new Symbol("time");
+                input =
+                    new org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode(
+                        new PlanNodeId("compatibility_sort"),
+                        node,
+                        new org.apache.iotdb.commons.queryengine.plan.relational.planner
+                            .OrderingScheme(
+                            Collections.singletonList(time),
+                            Collections.singletonMap(
+                                time,
+                                org.apache.iotdb.commons.queryengine.plan.relational.planner
+                                    .SortOrder.ASC_NULLS_LAST)),
+                        false,
+                        false);
+              }
+              context.getDynamicParallelPlanningService().prepare(input, context);
+              Operator root = input.accept(generator, context);
+              try {
+                assertEquals(2, context.getPipelineDriverFactories().size());
+                int scans = 0;
+                for (PipelineDriverFactory factory : context.getPipelineDriverFactories()) {
+                  org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext driver =
+                      (org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext)
+                          factory.getDriverContext();
+                  for (Operator scan : driver.getSourceOperators()) {
+                    Field field =
+                        AbstractTableScanOperator.class.getDeclaredField("seriesScanOptions");
+                    field.setAccessible(true);
+                    SeriesScanOptions options = (SeriesScanOptions) field.get(scan);
+                    assertNotNull(options.getPushDownFilter());
+                    assertFalse(options.getPushDownFilter().satisfyRow(5L, new Object[] {-1}));
+                    assertFalse(options.getPushDownFilter().satisfyRow(5L, new Object[] {0}));
+                    assertFalse(options.getPushDownFilter().satisfyRow(5L, new Object[] {null}));
+                    assertTrue(options.getPushDownFilter().satisfyRow(5L, new Object[] {1}));
+                    assertNotNull(options.getGlobalTimeFilter());
+                    for (TimeRange range : options.getGlobalTimeFilter().getTimeRanges()) {
+                      assertTrue(range.getMin() >= 3L);
+                      assertTrue(range.getMax() < 17L);
+                    }
+                    assertEquals(limit, options.getPushDownLimit());
+                    assertEquals(offset, options.getPushDownOffset());
+                    assertTrue(options.getPushLimitToEachDevice());
+                    assertEquals(Collections.singleton("s1"), options.getAllSensors());
+                    assertSame(runtimeFilter, options.getTopKRuntimeFilter());
+                    scans++;
+                  }
+                }
+                assertEquals("ORDERED".equals(mode) ? 4 : 2, scans);
+              } finally {
+                closeQuietly(root);
+                closePipelineOperations(context);
+              }
+            });
+      }
+    } finally {
+      config.setEnableDynamicScanParallelism(oldDynamic);
+      config.setEnableOrderedParallelScan(oldOrdered);
+    }
   }
 
   private DeviceTableScanNode initDeviceTableScanNode(int deviceNum) {

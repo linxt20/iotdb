@@ -4289,6 +4289,21 @@ public final class DataNodeQueryMessages {
   public static final String EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_220C966B =
       "ExecutorService 不能为空";
   public static final String EXCEPTION_TSBLOCK_CANNOT_BE_NULL_E7EA3BDA = "TsBlock 不能为空";
+  public static final String EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923 = "bucketCount 必须为正数";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_NULL_0D281214 =
+      "keyColumnIndexes 不能为空";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41 =
+      "keyColumnIndexes 不能为空列表";
+  public static final String EXCEPTION_KEYCOLUMNTYPES_MUST_NOT_BE_NULL_5C3A17B9 =
+      "keyColumnTypes 不能为空";
+  public static final String EXCEPTION_KEYCOLUMNTYPES_LENGTH_MUST_MATCH_KEYCOLUMNINDEXES_8B41D0C7 =
+      "keyColumnTypes 的长度必须与 keyColumnIndexes 一致";
+  public static final String EXCEPTION_KEYCOLUMNTYPE_HAS_NO_CANONICAL_ENCODING_2F6B9E14 =
+      "键列类型没有规范化的哈希编码: %s";
+  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554 =
+      "keyColumnIndexes 不能包含重复项";
+  public static final String EXCEPTION_KEYCOLUMNINDEX_IS_OUT_OF_BOUNDS_EE53523F =
+      "keyColumnIndex 越界";
   public static final String EXCEPTION_BYTESTORESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_56D15DE0 =
       "bytesToReserve 应大于 0";
   public static final String EXCEPTION_MAXBYTESCANRESERVE_SHOULD_BE_GREATER_THAN_ZERO_DOT_E9F7D365 =
@@ -5625,28 +5640,28 @@ public final class DataNodeQueryMessages {
 
   public static final String EXCEPTION_ARG_ARG_MS_ARG_INVOCATIONS_ARG_APPLICATIONS_F056BD84 =
       "%s：%s ms，调用 %s 次，应用 %s 次";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
+          "表模型 hash 分区需要支持通道路由的 sink handle。";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
+          "表模型 hash 分区需要且仅需要一个源算子。";
+  public static final String
+      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
+          "表模型 hash 分区符号必须由源算子输出。";
 
-  public static final String EXCEPTION_BUCKETCOUNT_MUST_BE_POSITIVE_47976923 = "bucketCount 必须为正数";
   public static final String
       EXCEPTION_CANNOT_ENFORCE_PLAN_PROPERTIES_FOR_INCOMPATIBLE_BRANCH_OUTPUT_SYMBOLS_5B0AFEA7 =
           "无法对输出符号不兼容的分支强制应用计划属性。";
-  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_EMPTY_892EAD41 =
-      "keyColumnIndexes 不能为空列表";
-  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_BE_NULL_0D281214 =
-      "keyColumnIndexes 不能为空";
-  public static final String EXCEPTION_KEYCOLUMNINDEXES_MUST_NOT_CONTAIN_DUPLICATES_79E02554 =
-      "keyColumnIndexes 不能包含重复项";
-  public static final String EXCEPTION_KEYCOLUMNINDEX_IS_OUT_OF_BOUNDS_EE53523F =
-      "keyColumnIndex 越界";
-  public static final String EXCEPTION_KEYCOLUMNTYPES_LENGTH_MUST_MATCH_KEYCOLUMNINDEXES_8B41D0C7 =
-      "keyColumnTypes 的长度必须与 keyColumnIndexes 一致";
-  public static final String EXCEPTION_KEYCOLUMNTYPES_MUST_NOT_BE_NULL_5C3A17B9 =
-      "keyColumnTypes 不能为空";
-  public static final String EXCEPTION_KEYCOLUMNTYPE_HAS_NO_CANONICAL_ENCODING_2F6B9E14 =
-      "键列类型没有规范化的哈希编码: %s";
   public static final String
       EXCEPTION_REQUIRED_PROPERTY_SYMBOLS_ARE_MISSING_FROM_A_BRANCH_OUTPUT_826CB07E =
           "分支输出缺少所需属性引用的符号。";
+  public static final String
+      EXCEPTION_PROPERTY_ENFORCEMENT_REQUIRES_EXACTLY_ONE_OUTPUT_BRANCH_4C5CCDDF =
+          "属性强制入口要求恰好一个输出分支。";
+  public static final String
+      MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7 =
+          "属性强制：";
   public static final String
       MESSAGE_ARG_RULE_ARG_EVENT_ARG_INPUTS_ARG_OUTPUTS_ARG_REQUIRED_ARG_PROVIDED_ARG_PROVIDEDAFTER_ARG_ARG_OUTCOME_ARG_REASON_ARG_67571BFD =
           "%s: rule=%s event=%s inputs=%s outputs=%s required=%s provided=%s providedAfter=%s -> %s outcome=%s reason=%s";
@@ -5654,83 +5669,73 @@ public final class DataNodeQueryMessages {
       MESSAGE_ARG_RULE_ARG_EVENT_HASH_REPARTITION_APPLIED_REQUIRED_ARG_PROVIDED_ARG_TABLEHASHPARTITIONINGSHUFFLESINKNODE_TABLE_HASH_V1_SOURCES_ARG_PARTITIONS_ARG_N_X_P_EXPERIMENTAL_PATH_HASH_TOPOLOGY_SOURCEIDS_ARG_BUCKETIDS_ARG_EXCHANGEIDS_ARG_316A0F0F =
           "%s: rule=%s event=HASH_REPARTITION_APPLIED required=%s provided=%s -> TableHashPartitioningShuffleSinkNode TABLE_HASH_V1 sources=%s partitions=%s（N x P 实验路径）hash-topology sourceIds=%s bucketIds=%s exchangeIds=%s";
   public static final String
-      MESSAGE_ARG_RULE_ARG_EVENT_SPECIALIZED_INPUTS_ARG_OUTPUTS_ARG_PROVIDED_ARG_REASON_ARG_04563442 =
-          "%s: rule=%s event=SPECIALIZED inputs=%s outputs=%s provided=%s reason=%s";
-  public static final String
       MESSAGE_ARG_RULE_ARG_REQUIRED_COMPATIBLE_PARTITIONED_JOINKEYS_ON_BOTH_INPUTS_PROVIDED_ARG_SERIAL_JOIN_FALLBACK_ARG_INPUTS_ARG_OUTPUTS_ARG_E30CFBBA =
           "%s: rule=%s required=两侧输入兼容的 Partitioned(joinKeys) provided=%s -> 串行连接退回（%s）inputs=%s outputs=%s";
-
-  public static final String EXCEPTION_GROUPED_HASH_EXCHANGE_LOST_THE_FRAGMENT_OWNERSHIP_ITS_ARG_SOURCES_X_ARG_BUCKETS_MATRIX_REQUIRES_ARG_THE_QUERY_CANNOT_RUN_ON_THE_KEY_PARTITIONED_PATH_029F18C2 = "分组 Hash Exchange 丢失了 %d 个源 × %d 个桶矩阵所需的 Fragment 归属关系：%s。查询无法在按键分区路径上执行。";
-  public static final String EXCEPTION_HASH_SHUFFLE_SINK_DOES_NOT_OWN_EXCHANGE_ARG_E56CC023 = "Hash Shuffle 输出端不拥有 Exchange %s";
   public static final String
-      EXCEPTION_PROPERTY_ENFORCEMENT_REQUIRES_EXACTLY_ONE_OUTPUT_BRANCH_4C5CCDDF =
-          "属性强制入口要求恰好一个输出分支。";
-  public static final String
-      EXCEPTION_TABLE_HASH_PARTITIONING_NEEDS_EXACTLY_ONE_SOURCE_OPERATOR_7FD4AE00 =
-          "表模型 hash 分区需要且仅需要一个源算子。";
-  public static final String
-      EXCEPTION_TABLE_HASH_PARTITIONING_REQUIRES_A_CHANNEL_ROUTING_SINK_HANDLE_34C9205B =
-          "表模型 hash 分区需要支持通道路由的 sink handle。";
-  public static final String
-      EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F =
-          "表模型 hash 分区符号必须由源算子输出。";
-  public static final String
-      MESSAGE_PROPERTY_ENFORCEMENT_AF0893E7 =
-          "属性强制：";
-
-  public static final String EXCEPTION_ARGUMENT_MUST_NOT_BE_NULL_ARG_A1C0C918 = "参数不能为空：%s";
-  public static final String EXCEPTION_ARG_MUST_BE_NON_NEGATIVE_F31E7CAD = "%s 必须非负";
-  public static final String EXCEPTION_ARG_MUST_NOT_BE_EMPTY_313AFCE2 = "%s 不能为空";
-  public static final String EXCEPTION_BUCKETID_MUST_BE_NON_NEGATIVE_90E5ABD9 = "bucketId 不能为负数";
-  public static final String EXCEPTION_CANCEL_FRAGMENT_QUERY_MISMATCH =
-      "待取消的片段实例 %s 不属于查询 %s";
-  public static final String EXCEPTION_CANNOT_REGISTER_RESOURCES_AFTER_QUOTA_FREEZE_416641B9 = "资源额度冻结后不能登记资源";
-  public static final String EXCEPTION_CHILD_RETURNED_A_NULL_BLOCKED_FUTURE_41941EB3 = "子算子返回了空的阻塞 Future";
-  public static final String EXCEPTION_DRIVER_BELONGS_TO_ANOTHER_FRAGMENT_9BDC9524 = "驱动属于另一片段";
+      MESSAGE_ARG_RULE_ARG_EVENT_SPECIALIZED_INPUTS_ARG_OUTPUTS_ARG_PROVIDED_ARG_REASON_ARG_04563442 =
+          "%s: rule=%s event=SPECIALIZED inputs=%s outputs=%s provided=%s reason=%s";
   public static final String EXCEPTION_DRIVER_FACTORY_HAS_ALREADY_BEEN_CONSUMED_OR_CLOSED_354A2854 = "驱动工厂已经创建驱动或已关闭";
-  public static final String EXCEPTION_DUPLICATE_DRIVER_IDENTITY_ARG_9439336C = "驱动身份重复：%s";
-  public static final String EXCEPTION_DUPLICATE_FRAGMENT_INSTANCE_IN_DISPATCH_GRAPH_ARG_EF1BADDC = "派发依赖图包含重复片段实例：%s";
-  public static final String EXCEPTION_DURATIONMS_MUST_BE_IN_0_600000_25F6A63F = "durationMs 必须大于 0 且不超过 600000";
-  public static final String EXCEPTION_EXPLAIN_ANALYZE_RESULT_ROW_REQUIRES_ARG_BYTES_BUT_EXCHANGE_LIMIT_IS_ARG_BYTES_DE8EAAD6 = "EXPLAIN ANALYZE 结果行需要 %s 字节，但交换上限为 %s 字节";
-  public static final String EXCEPTION_FALLBACK_PLAN_IDENTITY_FIELD_4136E13B = "回退计划身份字段";
-  public static final String EXCEPTION_FRAGMENT_ARG_REFERENCES_AN_UNKNOWN_DOWNSTREAM_INSTANCE_ARG_8EA16E6A = "片段 %s 引用了未知下游实例 %s";
-  public static final String EXCEPTION_FRAGMENT_DISPATCH_DEPENDENCIES_CONTAIN_A_CYCLE_E133EC40 = "片段派发依赖包含环";
-  public static final String EXCEPTION_FRAGMENT_HAS_AN_UNBOUND_DOWNSTREAM_INSTANCE_ARG_9361033B = "片段的下游实例尚未绑定：%s";
-  public static final String EXCEPTION_FRAGMENT_HAS_NO_EXCHANGE_SINK_IN_DISPATCH_GRAPH_ARG_D95FD948 = "派发依赖图中的片段缺少交换 sink：%s";
-  public static final String EXCEPTION_FRAGMENT_WAS_CANCELLED_DURING_DRIVER_CREATION_D031E9B1 = "片段在驱动创建期间被取消";
-  public static final String EXCEPTION_GENERATION_AND_CAPTUREDATNANOS_MUST_BE_NON_NEGATIVE_B9AD4F5E = "generation 和 capturedAtNanos 不能为负数";
-  public static final String EXCEPTION_GROUPCOUNT_MUST_BE_POSITIVE_AA4A1FB8 = "groupCount 必须为正数";
-  public static final String EXCEPTION_INPUTDOP_MUST_BE_NON_NEGATIVE_A43328B5 = "inputDop 不能为负数";
-  public static final String EXCEPTION_NEGATIVE_TABLE_COLLECT_MEMORY_ESTIMATE_ARG_FC2C4F0B = "表模型 Collect 的内存估算值为负数：%s";
-  public static final String EXCEPTION_NEGATIVE_TABLE_PIPELINE_MEMORY_ESTIMATE_ARG_40A30A53 = "表模型流水线的内存估算值为负数：%s";
-  public static final String EXCEPTION_NEGATIVE_VALUE_62B19D51 = "数值为负数";
-  public static final String EXCEPTION_NUMOFDRIVERS_MUST_NOT_BE_NEGATIVE_7D6E3815 = "numOfDrivers 不能为负数";
-  public static final String EXCEPTION_PARALLEL_PLAN_CONTAINS_AN_EMPTY_BUCKET_0766733B = "并行计划含有空桶";
-  public static final String EXCEPTION_PIPELINECOUNT_MUST_NOT_BE_NEGATIVE_AB4936D3 = "pipelineCount 不能为负数";
-  public static final String EXCEPTION_PLANCHECKSUM_MUST_NOT_BE_EMPTY_7470325F = "planChecksum 不能为空";
-  public static final String EXCEPTION_PLANGENERATION_MUST_BE_NON_NEGATIVE_225F3309 = "planGeneration 不能为负数";
-  public static final String EXCEPTION_PLANGENERATION_MUST_NOT_BE_NEGATIVE_B8792414 = "planGeneration 不能为负数";
-  public static final String EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572 = "规划器缺少扫描源：%s";
+  public static final String EXCEPTION_CANNOT_REGISTER_RESOURCES_AFTER_QUOTA_FREEZE_416641B9 = "资源额度冻结后不能登记资源";
   public static final String EXCEPTION_PLANNING_RESOURCE_OWNERSHIP_HAS_ALREADY_BEEN_ABORTED_432B8254 = "规划资源所有权已中止";
-  public static final String EXCEPTION_PLAN_IDENTITY_COUNTERS_MUST_BE_NON_NEGATIVE_52E192F8 = "计划身份计数不能为负数";
-  public static final String EXCEPTION_QUERYID_MUST_NOT_BE_EMPTY_C9669429 = "queryId 不能为空";
-  public static final String EXCEPTION_RESOURCE_AUDIT_WINDOW_IS_MISSING_OR_EXPIRED_D052202A = "资源审计窗口不存在或已过期";
+  public static final String EXCEPTION_FRAGMENT_WAS_CANCELLED_DURING_DRIVER_CREATION_D031E9B1 = "片段在驱动创建期间被取消";
   public static final String EXCEPTION_RESOURCE_BUDGETS_MUST_BE_POSITIVE_F3EA50E8 = "资源预算必须为正数";
   public static final String EXCEPTION_RESOURCE_QUOTA_IS_ALREADY_FROZEN_33314DF3 = "资源额度已经冻结";
-  public static final String EXCEPTION_SAMPLE_KEY_3434C941 = "样本键";
-  public static final String EXCEPTION_SHA_256_IS_UNAVAILABLE_6140A4E9 = "SHA-256 不可用";
-  public static final String EXCEPTION_SNAPSHOT_RESPONSE_HAS_NO_FRAGMENT_INSTANCE_ID_5099B351 = "快照响应缺少片段实例 ID";
+  public static final String EXCEPTION_PIPELINECOUNT_MUST_NOT_BE_NEGATIVE_AB4936D3 = "pipelineCount 不能为负数";
+  public static final String EXCEPTION_UNORDERED_SCAN_PIPELINE_MUST_USE_A_LOCAL_SINK_CHANNEL_8F69FB47 = "无序扫描流水线必须使用本地 sink 通道";
   public static final String EXCEPTION_SOURCEKEY_C1E2B835 = "sourceKey";
+  public static final String EXCEPTION_BUCKETID_MUST_BE_NON_NEGATIVE_90E5ABD9 = "bucketId 不能为负数";
+  public static final String EXCEPTION_GROUPCOUNT_MUST_BE_POSITIVE_AA4A1FB8 = "groupCount 必须为正数";
+  public static final String EXCEPTION_SAMPLE_KEY_3434C941 = "样本键";
+  public static final String EXCEPTION_PLANCHECKSUM_MUST_NOT_BE_EMPTY_7470325F = "planChecksum 不能为空";
+  public static final String EXCEPTION_PLANGENERATION_MUST_NOT_BE_NEGATIVE_B8792414 = "planGeneration 不能为负数";
+  public static final String EXCEPTION_FALLBACK_PLAN_IDENTITY_FIELD_4136E13B = "回退计划身份字段";
+  public static final String EXCEPTION_SHA_256_IS_UNAVAILABLE_6140A4E9 = "SHA-256 不可用";
+  public static final String EXCEPTION_INPUTDOP_MUST_BE_NON_NEGATIVE_A43328B5 = "inputDop 不能为负数";
   public static final String EXCEPTION_SPLIT_REASON_2528562A = "拆分原因";
   public static final String EXCEPTION_STATISTICS_A912A94D = "统计信息";
-  public static final String EXCEPTION_TABLE_COLLECT_CHILD_FAILED_FBD7C950 = "表模型 Collect 的子算子执行失败";
-  public static final String EXCEPTION_TABLE_COLLECT_CHILD_WAS_CANCELLED_A320FDF9 = "表模型 Collect 的子算子已被取消";
-  public static final String EXCEPTION_TABLE_PIPELINE_CONTAINS_AN_UNCHECKED_CHILD_ESTIMATOR_55F7B9C4 = "表模型流水线包含未经检查的子内存估算器";
-  public static final String EXCEPTION_TIMEOUTMILLIS_MUST_BE_POSITIVE_B8EC8967 = "timeoutMillis 必须为正数";
-  public static final String EXCEPTION_TOO_MANY_RESOURCE_AUDIT_WINDOWS_E2E7CD0B = "资源审计窗口数量超过上限";
+  public static final String EXCEPTION_QUERYID_MUST_NOT_BE_EMPTY_C9669429 = "queryId 不能为空";
+  public static final String EXCEPTION_GENERATION_AND_CAPTUREDATNANOS_MUST_BE_NON_NEGATIVE_B9AD4F5E = "generation 和 capturedAtNanos 不能为负数";
+  public static final String EXCEPTION_DUPLICATE_DRIVER_IDENTITY_ARG_9439336C = "驱动身份重复：%s";
   public static final String EXCEPTION_UNKNOWN_DRIVER_FIELD_ARG_AC56F319 = "未知驱动字段：%s";
-  public static final String EXCEPTION_UNORDERED_SCAN_PIPELINE_MUST_USE_A_LOCAL_SINK_CHANNEL_8F69FB47 = "无序扫描流水线必须使用本地 sink 通道";
+  public static final String EXCEPTION_SNAPSHOT_RESPONSE_HAS_NO_FRAGMENT_INSTANCE_ID_5099B351 = "快照响应缺少片段实例 ID";
+  public static final String EXCEPTION_DRIVER_BELONGS_TO_ANOTHER_FRAGMENT_9BDC9524 = "驱动属于另一片段";
+  public static final String EXCEPTION_NEGATIVE_VALUE_62B19D51 = "数值为负数";
+  public static final String EXCEPTION_PLAN_IDENTITY_COUNTERS_MUST_BE_NON_NEGATIVE_52E192F8 = "计划身份计数不能为负数";
+  public static final String EXCEPTION_DURATIONMS_MUST_BE_IN_0_600000_25F6A63F = "durationMs 必须大于 0 且不超过 600000";
+  public static final String EXCEPTION_TOO_MANY_RESOURCE_AUDIT_WINDOWS_E2E7CD0B = "资源审计窗口数量超过上限";
+  public static final String EXCEPTION_RESOURCE_AUDIT_WINDOW_IS_MISSING_OR_EXPIRED_D052202A = "资源审计窗口不存在或已过期";
+  public static final String EXCEPTION_NUMOFDRIVERS_MUST_NOT_BE_NEGATIVE_7D6E3815 = "numOfDrivers 不能为负数";
+  public static final String EXCEPTION_PLANGENERATION_MUST_BE_NON_NEGATIVE_225F3309 = "planGeneration 不能为负数";
+  public static final String MESSAGE_FRAGMENT_INSTANCE_NOT_FOUND_ARG_A6E7A870 = "未找到片段实例：%s";
+  public static final String EXCEPTION_PLANNER_SOURCE_IS_MISSING_ARG_8D78E572 = "规划器缺少扫描源：%s";
+  public static final String EXCEPTION_PARALLEL_PLAN_CONTAINS_AN_EMPTY_BUCKET_0766733B = "并行计划含有空桶";
+  public static final String EXCEPTION_TIMEOUTMILLIS_MUST_BE_POSITIVE_B8EC8967 = "timeoutMillis 必须为正数";
+  public static final String EXCEPTION_DUPLICATE_FRAGMENT_INSTANCE_IN_DISPATCH_GRAPH_ARG_EF1BADDC = "派发依赖图包含重复片段实例：%s";
+  public static final String EXCEPTION_FRAGMENT_HAS_NO_EXCHANGE_SINK_IN_DISPATCH_GRAPH_ARG_D95FD948 = "派发依赖图中的片段缺少交换 sink：%s";
+  public static final String EXCEPTION_FRAGMENT_HAS_AN_UNBOUND_DOWNSTREAM_INSTANCE_ARG_9361033B = "片段的下游实例尚未绑定：%s";
+  public static final String EXCEPTION_FRAGMENT_ARG_REFERENCES_AN_UNKNOWN_DOWNSTREAM_INSTANCE_ARG_8EA16E6A = "片段 %s 引用了未知下游实例 %s";
+  public static final String EXCEPTION_FRAGMENT_DISPATCH_DEPENDENCIES_CONTAIN_A_CYCLE_E133EC40 = "片段派发依赖包含环";
+  public static final String EXCEPTION_EXPLAIN_ANALYZE_RESULT_ROW_REQUIRES_ARG_BYTES_BUT_EXCHANGE_LIMIT_IS_ARG_BYTES_DE8EAAD6 = "EXPLAIN ANALYZE 结果行需要 %s 字节，但交换上限为 %s 字节";
+  public static final String EXCEPTION_ARGUMENT_MUST_NOT_BE_NULL_ARG_A1C0C918 = "参数不能为空：%s";
+
+  public static final String EXCEPTION_ARG_MUST_NOT_BE_EMPTY_313AFCE2 = "%s 不能为空";
+  public static final String EXCEPTION_ARG_MUST_BE_NON_NEGATIVE_F31E7CAD = "%s 必须非负";
+  public static final String EXCEPTION_CANCEL_FRAGMENT_QUERY_MISMATCH =
+      "待取消的片段实例 %s 不属于查询 %s";
   public static final String EXCEPTION_UNSUPPORTED_TIME_PARTITION_RANGE =
       "时间分区边界无法表示为精确的左闭右开区间";
-  public static final String MESSAGE_FRAGMENT_INSTANCE_NOT_FOUND_ARG_A6E7A870 = "未找到片段实例：%s";
+  public static final String EXCEPTION_INVALID_DYNAMIC_SCAN_GROUPING_8A0E09F6 = "动态扫描分组无效";
+  public static final String EXCEPTION_INVALID_DYNAMIC_PARALLEL_POLICY_INPUT_FAD0AEB0 = "动态并行策略输入无效";
+  public static final String EXCEPTION_INVALID_DYNAMIC_SNAPSHOT_RECORD_F2BC0753 = "动态快照记录无效";
+  public static final String DYNAMIC_SNAPSHOT_PUBLICATION_FAILED = "发布独立动态扫描反馈失败";
+  public static final String EXCEPTION_CHILD_RETURNED_A_NULL_BLOCKED_FUTURE_41941EB3 = "子算子返回了空的阻塞 Future";
+  public static final String EXCEPTION_TABLE_COLLECT_CHILD_FAILED_FBD7C950 = "表模型 Collect 的子算子执行失败";
+  public static final String EXCEPTION_TABLE_COLLECT_CHILD_WAS_CANCELLED_A320FDF9 = "表模型 Collect 的子算子已被取消";
+  public static final String EXCEPTION_NEGATIVE_TABLE_COLLECT_MEMORY_ESTIMATE_ARG_FC2C4F0B = "表模型 Collect 的内存估算值为负数：%s";
+  public static final String EXCEPTION_NEGATIVE_TABLE_PIPELINE_MEMORY_ESTIMATE_ARG_40A30A53 = "表模型流水线的内存估算值为负数：%s";
+  public static final String EXCEPTION_TABLE_PIPELINE_CONTAINS_AN_UNCHECKED_CHILD_ESTIMATOR_55F7B9C4 = "表模型流水线包含未经检查的子内存估算器";
+  public static final String EXCEPTION_GROUPED_HASH_EXCHANGE_LOST_THE_FRAGMENT_OWNERSHIP_ITS_ARG_SOURCES_X_ARG_BUCKETS_MATRIX_REQUIRES_ARG_THE_QUERY_CANNOT_RUN_ON_THE_KEY_PARTITIONED_PATH_029F18C2 = "分组 Hash Exchange 丢失了 %d 个源 × %d 个桶矩阵所需的 Fragment 归属关系：%s。查询无法在按键分区路径上执行。";
+  public static final String EXCEPTION_HASH_SHUFFLE_SINK_DOES_NOT_OWN_EXCHANGE_ARG_E56CC023 = "Hash Shuffle 输出端不拥有 Exchange %s";
+  public static final String LOG_ARG_VERSION_1_DIRECTION_REJECTED_QUERY_MISMATCH_CONSUMER_QUERY_ID_ARG_PRODUCER_QUERY_ID_ARG_CONSUMER_FRAGMENT_ARG_PRODUCER_FRAGMENT_ARG_CHANNEL_ARG_A367770C = "{} version=1 direction=rejected_query_mismatch consumer_query_id={} producer_query_id={} consumer_fragment={} producer_fragment={} channel={}";
+  public static final String LOG_ARG_VERSION_1_DIRECTION_ARG_QUERY_ID_ARG_PRODUCER_FRAGMENT_ARG_CONSUMER_FRAGMENT_ARG_CHANNEL_ARG_PAYLOAD_BYTES_ARG_PAYLOAD_BLOCKS_ARG_A9F2EB1A = "{} version=1 direction={} query_id={} producer_fragment={} consumer_fragment={} channel={} payload_bytes={} payload_blocks={}";
 }

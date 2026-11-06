@@ -97,4 +97,91 @@ public class FragmentSnapshotFailureCleanupTest {
       reader.shutdownNow();
     }
   }
+
+  @Test
+  public void ordinaryQueryFeedbackFailureDoesNotEnterOuterFallbackCleanup() throws Exception {
+    FragmentInstanceId id =
+        new FragmentInstanceId(
+            new PlanFragmentId(new QueryId("optional_feedback_failure"), 1), "0");
+    FragmentInstanceContext context = mock(FragmentInstanceContext.class);
+    org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry registry =
+        new org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry(true);
+    java.util.List<String> devices = java.util.Arrays.asList("d0", "d1");
+    org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlanner.Input input =
+        new org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlanner.Input(
+            devices,
+            Collections.emptyList(),
+            null,
+            2,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            "optional_feedback_failure",
+            "1.0",
+            "scan");
+    org.apache.iotdb.db.queryengine.plan.planner.DynamicScanGrouping grouping =
+        new org.apache.iotdb.db.queryengine.plan.planner.DynamicScanGroupingBuilder().build(input);
+    org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlan plan =
+        new org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlanner()
+            .planWithGrouping(input, grouping, 1);
+    org.apache.iotdb.db.queryengine.plan.planner.DynamicQueryShape shape =
+        new org.apache.iotdb.db.queryengine.plan.planner.DynamicQueryShape(
+            "db",
+            "table",
+            "region",
+            "source",
+            devices,
+            null,
+            null,
+            Collections.emptyMap(),
+            "ASC",
+            org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlan.Mode.DEVICE);
+    registry.registerSource(
+        new org.apache.iotdb.db.queryengine.plan.planner.DynamicSourcePlan(shape, plan, grouping));
+    registry.registerBucket(0, plan, 0);
+    registry.freeze(Collections.singleton(0));
+    when(context.getDynamicScanAssignments()).thenReturn(registry);
+    when(context.getId()).thenReturn(id);
+    FragmentInstanceStateMachine state = new FragmentInstanceStateMachine(id, Runnable::run);
+    IDriver driver = mock(IDriver.class);
+    when(driver.getDriverContext()).thenReturn(new DriverContext());
+    // buildStatistics fails at the absent task identity. This failure is optional feedback only.
+    ISink sink = mock(ISink.class);
+    MPPDataExchangeManager exchange = mock(MPPDataExchangeManager.class);
+    Constructor<FragmentInstanceExecution> ctor =
+        FragmentInstanceExecution.class.getDeclaredConstructor(
+            FragmentInstanceId.class,
+            FragmentInstanceContext.class,
+            List.class,
+            ISink.class,
+            FragmentInstanceStateMachine.class,
+            long.class,
+            MPPDataExchangeManager.class);
+    ctor.setAccessible(true);
+    FragmentInstanceExecution execution =
+        ctor.newInstance(
+            id, context, Collections.singletonList(driver), sink, state, 1000L, exchange);
+    Method initialize =
+        FragmentInstanceExecution.class.getDeclaredMethod(
+            "initialize", IDriverScheduler.class, boolean.class);
+    initialize.setAccessible(true);
+    initialize.invoke(execution, mock(IDriverScheduler.class), false);
+    state.finished();
+    InOrder order = inOrder(sink, driver, context, exchange);
+    order.verify(sink).close();
+    order.verify(driver).close();
+    order.verify(context).releaseResourceWhenAllDriversAreClosed();
+    order
+        .verify(exchange)
+        .deRegisterFragmentInstanceFromMemoryPool("optional_feedback_failure", "1.0", true);
+    order.verify(context).releaseMemoryReservationManager();
+    verify(sink, times(1)).close();
+    verify(driver, times(1)).close();
+    verify(context, times(1)).releaseResourceWhenAllDriversAreClosed();
+    verify(context).setDynamicScanAssignments(null);
+    assertTrue(execution.isStaticsRemoved());
+  }
 }
