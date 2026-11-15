@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-15",
+  "repo": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo",
+  "validation_run": "/root/rivermind-data/iotdb-runtime-dop-20261115/resource-run-20261115T074126Z",
+  "review_scope": "Independent component review before production activation",
+  "findings_closed": [
+    {
+      "id": "frontier-eof-after-abort",
+      "fix": "Queue first terminal transition and cause preserved across sink/source close and abort; late EOF cannot report success",
+      "coverage": "Exchange JUnit actual MemoryPool and queues"
+    },
+    {
+      "id": "sink-unsafe-constructor-publication",
+      "fix": "Initialize blocked future before publishing this to queue in both constructors",
+      "coverage": "Spy on actual queue observes non-null isFull during registration; both constructors"
+    },
+    {
+      "id": "driver-close-is-not-destruction-state",
+      "fix": "requestClose waits destructionComplete after final resource release and driver unlock; repeat calls share acknowledgment",
+      "coverage": "Root close and releaseResource barriers plus exceptional release and observer cancellation"
+    },
+    {
+      "id": "independent-notification-errors",
+      "fix": "Stop/wakeup, close/quiescence, and unsafe-completion notifications cannot skip independent acknowledgements or cleanup dispatch",
+      "coverage": "Direct-executor AssertionError observer regressions"
+    },
+    {
+      "id": "one-owner-close-throws",
+      "fix": "Attempt remaining independent driver closures, withhold shared releases without complete cessation proof",
+      "coverage": "Two-owner controlled close failure"
+    },
+    {
+      "id": "construction-cancel-late-owner",
+      "fix": "Stop current and late owners; wait construction seal before cleanup",
+      "coverage": "Late owner and seal barriers"
+    },
+    {
+      "id": "credit-owner-close-races",
+      "fix": "Existing reservation locking linearizes acquire/close and claim/acquire",
+      "coverage": "Two tests, each 32 CyclicBarrier rounds"
+    }
+  ],
+  "open_production_gates": [
+    "Wire authoritative FI shared OUTPUT cap consistently to every runtime group/handle; shared mode enabled by tryCreate and cannot silently revert after rejection",
+    "ResourceRegistry and ResourceAudit need separate queue identity and actual shared group account with unique physical-byte reporting",
+    "Replace all legacy early-release, context-release, execution fallback and scheduler force-deregister paths with coordinator ownership before enabling runtime mode",
+    "Register native scheduler removal acknowledgments before closure/freeze to exclude late blocked-to-ready fragment queue-time writes",
+    "Same user ledger must include default/native tasks and runtime pending/live tasks; current ticket component alone is not a global guarantee",
+    "Prove actual two-layer MergeSort DOP=1 liveness and stable Hash ownership under native scheduling",
+    "Planner, controller, V3 observation and real SQL / two-DataNode acceptance remain unimplemented"
+  ],
+  "targeted_totals": {
+    "tests": 184,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "full_regression": "passed: 7698 tests, 0 failures/errors, 56 skipped",
+  "service_acceptance": "not run",
+  "performance_claim": "none",
+  "english_full_compile": "passed",
+  "chinese_full_compile": "passed"
+}

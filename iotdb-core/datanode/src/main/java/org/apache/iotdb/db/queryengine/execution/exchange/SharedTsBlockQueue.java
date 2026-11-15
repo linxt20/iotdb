@@ -28,6 +28,8 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHand
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.BlockCredit;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
@@ -42,10 +44,12 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 
 import java.util.LinkedList;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
@@ -86,8 +90,15 @@ public class SharedTsBlockQueue {
   private volatile boolean closed = false;
   private boolean alreadyRegistered = false;
 
-  private LocalSourceHandle sourceHandle;
-  private LocalSinkChannel sinkChannel;
+  private volatile LocalSourceHandle sourceHandle;
+  private volatile LocalSinkChannel sinkChannel;
+
+  private final RuntimeFrontierReservation frontierReservation;
+  private final int frontierLaneIndex;
+  private BlockCredit frontierCredit;
+  private volatile boolean frontierAborted;
+  private final Queue<Runnable> frontierNotifications = new LinkedList<>();
+  private boolean drainingFrontierNotifications;
 
   private final java.util.concurrent.atomic.AtomicLong maxBytesCanReserve =
       new java.util.concurrent.atomic.AtomicLong(
@@ -114,6 +125,49 @@ public class SharedTsBlockQueue {
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
       boolean isHighestPriority) {
+    this(
+        fragmentInstanceId,
+        planNodeId,
+        localMemoryManager,
+        executorService,
+        isHighestPriority,
+        null,
+        -1,
+        false);
+  }
+
+  /**
+   * Construct a queue backed by a prepaid, fixed lane. Closing this queue returns its block credit;
+   * the enclosing group remains responsible for closing the reservation.
+   */
+  public SharedTsBlockQueue(
+      TFragmentInstanceId fragmentInstanceId,
+      String planNodeId,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      boolean isHighestPriority,
+      RuntimeFrontierReservation frontierReservation,
+      int frontierLaneIndex) {
+    this(
+        fragmentInstanceId,
+        planNodeId,
+        localMemoryManager,
+        executorService,
+        isHighestPriority,
+        Objects.requireNonNull(frontierReservation),
+        frontierLaneIndex,
+        true);
+  }
+
+  private SharedTsBlockQueue(
+      TFragmentInstanceId fragmentInstanceId,
+      String planNodeId,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      boolean isHighestPriority,
+      RuntimeFrontierReservation frontierReservation,
+      int frontierLaneIndex,
+      boolean frontierMode) {
     this.localFragmentInstanceId =
         Validate.notNull(
             fragmentInstanceId,
@@ -132,6 +186,19 @@ public class SharedTsBlockQueue {
             executorService,
             DataNodeQueryMessages.EXCEPTION_EXECUTORSERVICE_CAN_NOT_BE_NULL_DOT_220C966B);
     this.isHighestPriority = isHighestPriority;
+    this.frontierReservation = frontierReservation;
+    this.frontierLaneIndex = frontierLaneIndex;
+    if (frontierMode) {
+      MemoryReservationKey account = frontierReservation.getMemoryReservationKey();
+      if (frontierLaneIndex < 0
+          || frontierLaneIndex >= frontierReservation.getLaneCount()
+          || !frontierReservation.isBackedBy(localMemoryManager.getQueryPool())
+          || !localFragmentInstanceId.getQueryId().equals(account.queryId())
+          || !fullFragmentInstanceId.equals(account.fragmentInstanceId())) {
+        throw new IllegalArgumentException();
+      }
+      frontierReservation.claimQueueLane(frontierLaneIndex, this);
+    }
     ResourceAuditManager.getInstance()
         .registerObject(
             fragmentInstanceId.getQueryId(),
@@ -145,10 +212,20 @@ public class SharedTsBlockQueue {
   }
 
   public boolean hasNoMoreTsBlocks() {
+    if (isFrontierMode()) {
+      synchronized (this) {
+        return noMoreTsBlocks;
+      }
+    }
     return noMoreTsBlocks;
   }
 
   public long getBufferRetainedSizeInBytes() {
+    if (isFrontierMode()) {
+      synchronized (this) {
+        return bufferRetainedSizeInBytes;
+      }
+    }
     return bufferRetainedSizeInBytes;
   }
 
@@ -164,20 +241,132 @@ public class SharedTsBlockQueue {
     return maxBytesCanReserve.get();
   }
 
-  /** Returns the exact key used by MemoryPool for this queue's reservations. */
+  /** Queue identity retained for compatibility with existing resource-audit records. */
   public MemoryReservationKey getMemoryReservationKey() {
     return new MemoryReservationKey(
         localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId);
   }
 
+  public MemoryReservationKey getQueueIdentityKey() {
+    return getMemoryReservationKey();
+  }
+
+  /** The physical pool account, shared by all prepaid lanes of a group. */
+  public MemoryReservationKey getActualAccountKey() {
+    return isFrontierMode()
+        ? frontierReservation.getMemoryReservationKey()
+        : getMemoryReservationKey();
+  }
+
+  public boolean isFrontierMode() {
+    return frontierReservation != null;
+  }
+
+  /**
+   * Distinguishes abort without a cause from normal close in the prepaid queue's first terminal.
+   */
+  public boolean wasFrontierAborted() {
+    return frontierAborted;
+  }
+
+  public int getFrontierLaneIndex() {
+    return frontierLaneIndex;
+  }
+
+  /**
+   * Enqueue a frontier notification without invoking user code. Handles call flushNotifications
+   * after leaving both their own monitor and the queue monitor.
+   */
+  public void deferNotification(Runnable notification) {
+    if (!isFrontierMode()) {
+      throw new IllegalStateException();
+    }
+    synchronized (this) {
+      frontierNotifications.add(Objects.requireNonNull(notification));
+    }
+  }
+
+  /**
+   * Drain outside all exchange monitors, including with a direct executor. Reentrant actions append
+   * to this same outbox. A failed callback does not prevent later resource returns or
+   * notifications.
+   */
+  public void flushNotifications() {
+    LocalSinkChannel sink = sinkChannel;
+    LocalSourceHandle source = sourceHandle;
+    if (!isFrontierMode()
+        || Thread.holdsLock(this)
+        || (sink != null && Thread.holdsLock(sink))
+        || (source != null && Thread.holdsLock(source))) {
+      return;
+    }
+    synchronized (this) {
+      if (drainingFrontierNotifications) {
+        return;
+      }
+      drainingFrontierNotifications = true;
+    }
+    Throwable failure = null;
+    while (true) {
+      Runnable notification;
+      synchronized (this) {
+        notification = frontierNotifications.poll();
+        if (notification == null) {
+          drainingFrontierNotifications = false;
+          break;
+        }
+      }
+      try {
+        notification.run();
+      } catch (Throwable t) {
+        if (failure == null) {
+          failure = t;
+        } else if (failure != t) {
+          failure.addSuppressed(t);
+        }
+      }
+    }
+    if (failure != null) {
+      rethrowNotificationFailure(failure);
+    }
+  }
+
+  private static void rethrowNotificationFailure(Throwable failure) {
+    if (failure instanceof Error) {
+      throw (Error) failure;
+    }
+    if (failure instanceof RuntimeException) {
+      throw (RuntimeException) failure;
+    }
+    throw new RuntimeException(failure);
+  }
+
   /** Allow adding data to queue manually. */
   public void allowAddingTsBlock() {
+    if (isFrontierMode()) {
+      try {
+        deferNotification(() -> canAddTsBlock.set(null));
+      } finally {
+        flushNotifications();
+      }
+      return;
+    }
     if (!canAddTsBlock.isDone()) {
       canAddTsBlock.set(null);
     }
   }
 
   public ListenableFuture<Void> isBlocked() {
+    if (isFrontierMode()) {
+      try {
+        synchronized (this) {
+          frontierNotifications.add(() -> canAddTsBlock.set(null));
+          return blocked;
+        }
+      } finally {
+        flushNotifications();
+      }
+    }
     if (!canAddTsBlock.isDone()) {
       canAddTsBlock.set(null);
     }
@@ -185,6 +374,11 @@ public class SharedTsBlockQueue {
   }
 
   public boolean isEmpty() {
+    if (isFrontierMode()) {
+      synchronized (this) {
+        return queue.isEmpty();
+      }
+    }
     return queue.isEmpty();
   }
 
@@ -193,6 +387,11 @@ public class SharedTsBlockQueue {
   }
 
   public int getNumOfBufferedTsBlocks() {
+    if (isFrontierMode()) {
+      synchronized (this) {
+        return queue.size();
+      }
+    }
     return queue.size();
   }
 
@@ -206,6 +405,24 @@ public class SharedTsBlockQueue {
 
   /** Notify no more TsBlocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
+    if (isFrontierMode()) {
+      try {
+        synchronized (this) {
+          if (closed || this.noMoreTsBlocks || !noMoreTsBlocks) {
+            return;
+          }
+          this.noMoreTsBlocks = true;
+          SettableFuture<Void> ready = blocked;
+          frontierNotifications.add(() -> ready.set(null));
+          if (sourceHandle != null) {
+            frontierNotifications.add(sourceHandle::checkAndInvokeOnFinished);
+          }
+        }
+      } finally {
+        flushNotifications();
+      }
+      return;
+    }
     LOGGER.debug(DataNodeQueryMessages.SIGNAL_NO_MORE_TSBLOCK_ON_QUEUE);
     if (closed) {
       LOGGER.debug(DataNodeQueryMessages.QUEUE_DESTROYED_WHEN_SET_NO_MORE_TSBLOCKS);
@@ -227,6 +444,9 @@ public class SharedTsBlockQueue {
    * @throws IllegalStateException Cannot remove TsBlock from closed queue.
    */
   public TsBlock remove() {
+    if (isFrontierMode()) {
+      return removeFrontier();
+    }
     if (closed) {
       // try throw underlying exception instead of "Source handle is aborted."
       if (abortedCause != null) {
@@ -271,6 +491,9 @@ public class SharedTsBlockQueue {
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
+    if (isFrontierMode()) {
+      return addFrontier(tsBlock);
+    }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.ADD_TSBLOCK, CommonUtils.toString(tsBlock));
     }
@@ -350,6 +573,10 @@ public class SharedTsBlockQueue {
 
   /** Destroy the queue and complete the future. Should only be called in normal case */
   public void close() {
+    if (isFrontierMode()) {
+      terminateFrontier(null, false, true);
+      return;
+    }
     if (closed) {
       return;
     }
@@ -394,6 +621,10 @@ public class SharedTsBlockQueue {
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
   public void abort() {
+    if (isFrontierMode()) {
+      terminateFrontier(null, true, false);
+      return;
+    }
     if (closed) {
       return;
     }
@@ -422,6 +653,10 @@ public class SharedTsBlockQueue {
 
   /** Destroy the queue and cancel the future. Should only be called in abnormal case */
   public void abort(Throwable t) {
+    if (isFrontierMode()) {
+      terminateFrontier(Objects.requireNonNull(t), true, false);
+      return;
+    }
     if (closed) {
       return;
     }
@@ -446,6 +681,152 @@ public class SharedTsBlockQueue {
               localPlanNodeId,
               bufferRetainedSizeInBytes);
       bufferRetainedSizeInBytes = 0;
+    }
+  }
+
+  private ListenableFuture<Void> addFrontier(TsBlock tsBlock) {
+    try {
+      synchronized (this) {
+        if (closed) {
+          return immediateVoidFuture();
+        }
+        Objects.requireNonNull(tsBlock);
+        if (noMoreTsBlocks || frontierCredit != null || !queue.isEmpty()) {
+          throw new IllegalStateException(
+              DataNodeQueryMessages.EXCEPTION_SHAREDTSBLOCKQUEUE_IS_FULL_87493E26);
+        }
+        long retainedBytes = tsBlock.getRetainedSizeInBytes();
+        BlockCredit credit = frontierReservation.acquire(frontierLaneIndex, this, retainedBytes);
+        try {
+          queue.add(new Pair<>(tsBlock, retainedBytes));
+        } catch (Throwable t) {
+          frontierNotifications.add(() -> frontierReservation.release(credit));
+          throw t;
+        }
+        frontierCredit = credit;
+        bufferRetainedSizeInBytes = retainedBytes;
+        SettableFuture<Void> ready = blocked;
+        frontierNotifications.add(() -> ready.set(null));
+        return credit.getWritableFuture();
+      }
+    } finally {
+      flushNotifications();
+    }
+  }
+
+  private TsBlock removeFrontier() {
+    try {
+      synchronized (this) {
+        if (closed) {
+          if (abortedCause != null) {
+            throw new IllegalStateException(abortedCause);
+          }
+          throw new IllegalStateException(DataNodeQueryMessages.QUEUE_HAS_BEEN_DESTROYED);
+        }
+        if (queue.isEmpty() && noMoreTsBlocks) {
+          return null;
+        }
+        Pair<TsBlock, Long> block = queue.remove();
+        releaseFrontierCredit();
+        if (sinkChannel != null) {
+          frontierNotifications.add(sinkChannel::checkAndInvokeOnFinished);
+        }
+        if (queue.isEmpty() && !noMoreTsBlocks) {
+          blocked = SettableFuture.create();
+        }
+        return block.left;
+      }
+    } finally {
+      flushNotifications();
+    }
+  }
+
+  // Only detach under the queue monitor. The outbox returns the credit outside every handle lock.
+  private void releaseFrontierCredit() {
+    BlockCredit credit = frontierCredit;
+    frontierCredit = null;
+    bufferRetainedSizeInBytes = 0L;
+    if (credit != null) {
+      frontierNotifications.add(() -> frontierReservation.release(credit));
+    }
+  }
+
+  private void terminateFrontier(Throwable cause, boolean abort, boolean notifySink) {
+    try {
+      synchronized (this) {
+        if (closed) {
+          return;
+        }
+        abortedCause = cause;
+        frontierAborted = abort;
+        closed = true;
+        queue.clear();
+        releaseFrontierCredit();
+        SettableFuture<Void> ready = blocked;
+        frontierNotifications.add(() -> completeFrontierTerminal(ready, cause, abort));
+        frontierNotifications.add(() -> canAddTsBlock.set(null));
+        if (notifySink && sinkChannel != null) {
+          frontierNotifications.add(sinkChannel::close);
+        }
+      }
+    } finally {
+      flushNotifications();
+    }
+  }
+
+  private static void completeFrontierTerminal(
+      SettableFuture<Void> future, Throwable cause, boolean abort) {
+    if (cause != null) {
+      future.setException(cause);
+    } else if (abort) {
+      future.cancel(true);
+    } else {
+      future.set(null);
+    }
+  }
+
+  /**
+   * Seal first, then obtain the sink's abort cause outside exchange monitors. Even a throwing cause
+   * supplier cannot prevent the detached credit and all terminal futures from being settled.
+   */
+  public void abortWithCauseSupplier(Supplier<Optional<Throwable>> causeSupplier) {
+    if (!isFrontierMode()) {
+      throw new IllegalStateException();
+    }
+    Objects.requireNonNull(causeSupplier);
+    try {
+      synchronized (this) {
+        if (closed) {
+          return;
+        }
+        frontierAborted = true;
+        closed = true;
+        queue.clear();
+        releaseFrontierCredit();
+        SettableFuture<Void> ready = blocked;
+        frontierNotifications.add(
+            () -> {
+              Throwable cause = null;
+              Throwable failure = null;
+              try {
+                cause = Objects.requireNonNull(causeSupplier.get()).orElse(null);
+              } catch (Throwable t) {
+                cause = t;
+                failure = t;
+              }
+              Throwable finalCause = cause;
+              synchronized (this) {
+                abortedCause = cause;
+                frontierNotifications.add(() -> completeFrontierTerminal(ready, finalCause, true));
+                frontierNotifications.add(() -> canAddTsBlock.set(null));
+              }
+              if (failure != null) {
+                rethrowNotificationFailure(failure);
+              }
+            });
+      }
+    } finally {
+      flushNotifications();
     }
   }
 

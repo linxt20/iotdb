@@ -54,9 +54,12 @@ public class LocalSourceHandle implements ISourceHandle {
   private String localPlanNodeId;
   private final SourceHandleListener sourceHandleListener;
   protected final SharedTsBlockQueue queue;
-  private boolean aborted = false;
+  private volatile boolean aborted = false;
 
-  private boolean closed = false;
+  private volatile boolean closed = false;
+
+  // Guarded by queue then this; frontier terminal callbacks are claimed before publication.
+  private boolean frontierFinished;
 
   private int currSequenceId;
 
@@ -75,12 +78,12 @@ public class LocalSourceHandle implements ISourceHandle {
       SharedTsBlockQueue queue, SourceHandleListener sourceHandleListener, String threadName) {
     this.queue =
         Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
-    this.queue.setSourceHandle(this);
     this.sourceHandleListener =
         Validate.notNull(
             sourceHandleListener,
             DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.threadName = threadName;
+    this.queue.setSourceHandle(this);
   }
 
   // For fragment
@@ -99,12 +102,12 @@ public class LocalSourceHandle implements ISourceHandle {
             DataNodeQueryMessages.EXCEPTION_LOCALPLANNODEID_CAN_NOT_BE_NULL_DOT_44A34A33);
     this.queue =
         Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
-    this.queue.setSourceHandle(this);
     this.sourceHandleListener =
         Validate.notNull(
             sourceHandleListener,
             DataNodeQueryMessages.EXCEPTION_SOURCEHANDLELISTENER_CAN_NOT_BE_NULL_DOT_01817F52);
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
+    this.queue.setSourceHandle(this);
   }
 
   @Override
@@ -147,8 +150,14 @@ public class LocalSourceHandle implements ISourceHandle {
       checkAndInvokeOnFinished();
       return tsBlock;
     } finally {
-      DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
-          SOURCE_HANDLE_GET_TSBLOCK_LOCAL, System.nanoTime() - startTime);
+      try {
+        if (queue.isFrontierMode()) {
+          queue.flushNotifications();
+        }
+      } finally {
+        DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
+            SOURCE_HANDLE_GET_TSBLOCK_LOCAL, System.nanoTime() - startTime);
+      }
     }
   }
 
@@ -183,6 +192,26 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   public void checkAndInvokeOnFinished() {
+    if (queue.isFrontierMode()) {
+      try {
+        synchronized (queue) {
+          synchronized (this) {
+            if (!aborted
+                && !closed
+                && !frontierFinished
+                && !queue.isClosed()
+                && queue.hasNoMoreTsBlocks()
+                && queue.isEmpty()) {
+              frontierFinished = true;
+              queue.deferNotification(() -> sourceHandleListener.onFinished(this));
+            }
+          }
+        }
+      } finally {
+        queue.flushNotifications();
+      }
+      return;
+    }
     synchronized (queue) {
       if (isFinished()) {
         // Putting synchronized here rather than marking in method is to avoid deadlock.
@@ -227,6 +256,10 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void abort() {
+    if (queue.isFrontierMode()) {
+      abortFrontier(null);
+      return;
+    }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(DataNodeQueryMessages.START_ABORT_LOCAL_SOURCE_HANDLE);
@@ -249,6 +282,10 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void abort(Throwable t) {
+    if (queue.isFrontierMode()) {
+      abortFrontier(t);
+      return;
+    }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(DataNodeQueryMessages.START_ABORT_LOCAL_SOURCE_HANDLE);
@@ -271,6 +308,10 @@ public class LocalSourceHandle implements ISourceHandle {
 
   @Override
   public void close() {
+    if (queue.isFrontierMode()) {
+      closeFrontier();
+      return;
+    }
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(DataNodeQueryMessages.START_CLOSE_LOCAL_SOURCE_HANDLE);
@@ -288,6 +329,64 @@ public class LocalSourceHandle implements ISourceHandle {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(DataNodeQueryMessages.END_CLOSE_LOCAL_SOURCE_HANDLE);
       }
+    }
+  }
+
+  private void abortFrontier(Throwable cause) {
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted || closed) {
+            return;
+          }
+          if (queue.isClosed() && !queue.wasFrontierAborted()) {
+            closed = true;
+            if (!frontierFinished) {
+              frontierFinished = true;
+              queue.deferNotification(() -> sourceHandleListener.onFinished(this));
+            }
+          } else {
+            if (cause == null) {
+              queue.abort();
+            } else {
+              queue.abort(cause);
+            }
+            aborted = true;
+            if (!frontierFinished) {
+              queue.deferNotification(() -> sourceHandleListener.onAborted(this));
+            }
+          }
+        }
+      }
+    } finally {
+      queue.flushNotifications();
+    }
+  }
+
+  private void closeFrontier() {
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      synchronized (queue) {
+        synchronized (this) {
+          if (aborted || closed) {
+            return;
+          }
+          if (queue.wasFrontierAborted()) {
+            aborted = true;
+            if (!frontierFinished) {
+              queue.deferNotification(() -> sourceHandleListener.onAborted(this));
+            }
+          } else {
+            queue.close();
+            closed = true;
+            if (!frontierFinished) {
+              frontierFinished = true;
+              queue.deferNotification(() -> sourceHandleListener.onFinished(this));
+            }
+          }
+        }
+      }
+    } finally {
+      queue.flushNotifications();
     }
   }
 

@@ -1,0 +1,125 @@
+{
+  "status": "READ_ONLY_FOLLOWUP_NOT_PRODUCTION_WIRED",
+  "commit": "a2b9ed4b09fac54027220dffc6913c915b0e0e3c",
+  "sources": {
+    "LocalExecutionResourceRegistry": {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionResourceRegistry.java",
+      "sha256": "2cd3dc74964a7c1d2ed40859b738ee8e78c7e1401bb321304b8709fc6bcd0796"
+    },
+    "ResourceAuditManager": {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/ResourceAuditManager.java",
+      "sha256": "0949d52ddcbaae36f2c17458984a24253ce8ebe5483b27876467033d2ecc5e0d"
+    },
+    "SharedTsBlockQueue": {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueue.java",
+      "sha256": "d38d40d305babdebe0f5bdc24c23d2f7fe9399068852d96ce0ce7251f8d7a1e2"
+    }
+  },
+  "exact_followup_methods": [
+    {
+      "class": "LocalExecutionResourceRegistry",
+      "methods": [
+        "registerQueue:135",
+        "registerSinkHandle:145",
+        "registerSourceHandle(ISourceHandle,MemoryReservationKey):214",
+        "registerSink:243",
+        "register(Object,String,MemoryReservationKey):312"
+      ],
+      "change": "新增runtime记录，分别捕获queue.getQueueIdentityKey()和getActualAccountKey()；所有本地wrapper经quotaIdentity归一到同一queue，保留wrapper各自终态。不要继续把getMemoryReservationKey误作frontier实际账户。"
+    },
+    {
+      "class": "LocalExecutionResourceRegistry",
+      "methods": [
+        "quotaAccounts:479",
+        "freeze:508"
+      ],
+      "change": "runtime quota-publication另列actualAccounts，按(pool identity, actualAccountKey, OUTPUT)去重；组级reservation ownership按reservation对象identity去重，只注册/释放一次。frontier固定预付额度不经legacy setMaxBytesCanReserve重写或重新reserve。"
+    },
+    {
+      "class": "ResourceAuditManager",
+      "methods": [
+        "registerObject:186",
+        "Entity constructor:515",
+        "snapshot:330"
+      ],
+      "change": "扩展双key/group/lane/模式元数据；同一identity重复注册须校验两key一致，避免Entity首次注册永久冻结错误映射。保留每queue/endpoint终态计数；另注册frontier reservation owner并按真实account输出物理bytes一次，不按lane重复求和。"
+    },
+    {
+      "class": "MPPDataExchangeManager",
+      "methods": [
+        "createLocalSourceHandleForFragment:1052"
+      ],
+      "change": "1107处直接audit注册也需双key，防止它先注册后registry补录被Entity.put-if-absent语义丢失实际账户。"
+    },
+    {
+      "class": "LocalScanPipelineBuilder",
+      "methods": [
+        "pipeline资源注册路径:165"
+      ],
+      "change": "175处旧getMemoryReservationKey参数保持静态身份语义；runtime记录由queue显式读取双key，避免该参数兼任真实account。"
+    }
+  ],
+  "v2_static_snapshot_preserve": {
+    "methods": [
+      "LocalExecutionResourceRegistry.snapshot:370",
+      "LocalExecutionResourceRegistry.freeze:508",
+      "FragmentInstanceContext.setResourceQuotaSnapshot:1760",
+      "FragmentInstanceExecution statistics publication:214"
+    ],
+    "meaning": "V2保持现有静态口径：objectCount按物理queue/remote endpoint identity去重，wrapper别名合并；uniqueMemoryKeyCount保持旧静态queue/account身份键去重；nominalShareBytes仍为fragmentBudgetBytes/objectCount，空集合保持缺失；legacyCapBytes/effectiveRequestBytes/LEGACY_COMPATIBILITY不改为运行时实际预留或worker份额。",
+    "rule": "保留现有Snapshot/ResourceEntry与既有序列化字段。frontier双key、实际account数量和物理预留另放版本化runtime视图，不以新值覆盖V2字段。"
+  },
+  "new_runtime_snapshot_fields": {
+    "header": [
+      "schemaVersion",
+      "queryId",
+      "fragmentInstanceId",
+      "snapshotStage",
+      "complete",
+      "accountingMode"
+    ],
+    "queues": [
+      "objectToken",
+      "kind",
+      "queueIdentityKey",
+      "actualAccountKey",
+      "groupId",
+      "laneIndex",
+      "terminal",
+      "bufferRetainedBytes"
+    ],
+    "groups": [
+      "groupId",
+      "poolIdentityToken",
+      "actualAccountKey",
+      "memorySide=OUTPUT",
+      "logicalLaneCount",
+      "bytesPerLane",
+      "physicalReservedBytes",
+      "internalUsedBytes",
+      "leasedCreditCount",
+      "closeRequested",
+      "closedFutureState",
+      "freeFailure"
+    ],
+    "totals": [
+      "uniqueActualAccountCount",
+      "physicalReservedBytesDeduplicated",
+      "bufferRetainedBytes",
+      "activeCreditCount",
+      "runtimeWorkerCount"
+    ],
+    "optional_admission": [
+      "user",
+      "reservedCpuLivePlusPending",
+      "reservedIncrementalMemoryLivePlusPending"
+    ]
+  },
+  "invariants_and_limits": [
+    "getQueueIdentityKey(:250)用于queue provenance与路由身份；getActualAccountKey(:255)用于MemoryPool查账。legacy模式两者相等，frontier可多queue共享一个实际account。",
+    "V2 object计数与audit wrapper生命周期不能按共享account合并；物理reservation金额不能按queue重复累计。",
+    "实际pool视图与reservation内部credit视图分别报告。free失败时保留异常/保守reservation值，不把内部used=0当成物理释放成功。",
+    "保留MPPDataExchangeManager.forceDeregisterFragmentInstance:1204按queue producer身份寻找跨FI source的逻辑，不将该身份用途一律替换成actualAccountKey。",
+    "本轮仅只读审查并写此JSON；未改源码、未运行Maven。生产FI/registry/audit接线及V2兼容回归仍待后续验证。"
+  ]
+}

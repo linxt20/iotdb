@@ -101,6 +101,16 @@ public interface IDriver {
         DataNodeQueryMessages.EXCEPTION_DRIVER_DOES_NOT_SUPPORT_COOPERATIVE_QUIESCENCE_959AC4F1);
   }
 
+  /** Whether close completion can be acknowledged after all operator writes and releases. */
+  default boolean supportsCoordinatedClose() {
+    return false;
+  }
+
+  /** Request closure and acknowledge its actual completion, including concurrent close calls. */
+  default ListenableFuture<Void> requestClose() {
+    throw new UnsupportedOperationException();
+  }
+
   void setDriverTaskId(DriverTaskId driverTaskId);
 
   /** Clear resource used by this fragment instance. */

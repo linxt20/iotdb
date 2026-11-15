@@ -206,6 +206,16 @@ public final class RuntimeScanWorker implements IDriver {
   }
 
   @Override
+  public boolean supportsCoordinatedClose() {
+    return true;
+  }
+
+  @Override
+  public ListenableFuture<Void> requestClose() {
+    return requestRetirement();
+  }
+
+  @Override
   public void close() {
     requestRetirement();
   }

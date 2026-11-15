@@ -56,6 +56,9 @@ public class LocalSinkChannel implements ISinkChannel {
 
   private boolean invokedOnFinished = false;
 
+  // Frontier callbacks are claimed under queue -> channel locks and dispatched by the queue outbox.
+  private boolean invokedOnEndOfBlocks = false;
+
   private static final DataExchangeCostMetricSet DATA_EXCHANGE_COST_METRIC_SET =
       DataExchangeCostMetricSet.getInstance();
 
@@ -71,8 +74,8 @@ public class LocalSinkChannel implements ISinkChannel {
             DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.queue =
         Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
-    this.queue.setSinkChannel(this);
     blocked = queue.getCanAddTsBlock();
+    this.queue.setSinkChannel(this);
   }
 
   public LocalSinkChannel(
@@ -89,9 +92,9 @@ public class LocalSinkChannel implements ISinkChannel {
             DataNodeQueryMessages.EXCEPTION_SINKLISTENER_CAN_NOT_BE_NULL_DOT_32C9E7C0);
     this.queue =
         Validate.notNull(queue, DataNodeQueryMessages.EXCEPTION_QUEUE_CAN_NOT_BE_NULL_DOT_9BB286B1);
-    this.queue.setSinkChannel(this);
     // SinkChannel can send data after SourceHandle asks it to
     blocked = queue.getCanAddTsBlock();
+    this.queue.setSinkChannel(this);
   }
 
   @Override
@@ -107,7 +110,24 @@ public class LocalSinkChannel implements ISinkChannel {
   }
 
   @Override
-  public synchronized ListenableFuture<?> isFull() {
+  public ListenableFuture<?> isFull() {
+    if (queue.isFrontierMode()) {
+      try {
+        synchronized (queue) {
+          synchronized (this) {
+            return isFullInternal();
+          }
+        }
+      } finally {
+        queue.flushNotifications();
+      }
+    }
+    synchronized (this) {
+      return isFullInternal();
+    }
+  }
+
+  private ListenableFuture<?> isFullInternal() {
     checkState();
     if (closed) {
       return immediateVoidFuture();
@@ -141,6 +161,20 @@ public class LocalSinkChannel implements ISinkChannel {
   }
 
   public void checkAndInvokeOnFinished() {
+    if (queue.isFrontierMode()) {
+      try {
+        synchronized (queue) {
+          synchronized (this) {
+            if (!aborted && !queue.isClosed() && isFinished()) {
+              deferFrontierFinish();
+            }
+          }
+        }
+      } finally {
+        queue.flushNotifications();
+      }
+      return;
+    }
     synchronized (queue) {
       if (isFinished()) {
         synchronized (this) {
@@ -158,6 +192,21 @@ public class LocalSinkChannel implements ISinkChannel {
     long startTime = System.nanoTime();
     try {
       Validate.notNull(tsBlock, DataNodeQueryMessages.EXCEPTION_TSBLOCKS_IS_NULL_02287FD8);
+      if (queue.isFrontierMode()) {
+        synchronized (queue) {
+          synchronized (this) {
+            checkState();
+            if (closed || queue.hasNoMoreTsBlocks()) {
+              return;
+            }
+            if (!blocked.isDone()) {
+              throw new IllegalStateException(DataNodeQueryMessages.SINK_HANDLE_IS_BLOCKED);
+            }
+            blocked = queue.add(tsBlock);
+          }
+        }
+        return;
+      }
       synchronized (this) {
         checkState();
         if (closed) {
@@ -180,13 +229,40 @@ public class LocalSinkChannel implements ISinkChannel {
         }
       }
     } finally {
-      DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
-          SINK_HANDLE_SEND_TSBLOCK_LOCAL, System.nanoTime() - startTime);
+      try {
+        if (queue.isFrontierMode()) {
+          queue.flushNotifications();
+        }
+      } finally {
+        DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
+            SINK_HANDLE_SEND_TSBLOCK_LOCAL, System.nanoTime() - startTime);
+      }
     }
   }
 
   @Override
   public void setNoMoreTsBlocks() {
+    if (queue.isFrontierMode()) {
+      try {
+        synchronized (queue) {
+          synchronized (this) {
+            if (aborted || closed || queue.isClosed() || invokedOnEndOfBlocks) {
+              return;
+            }
+            invokedOnEndOfBlocks = true;
+            // A source's deferred finish may be added by setNoMoreTsBlocks. Enqueue end first.
+            queue.deferNotification(() -> sinkListener.onEndOfBlocks(this));
+            queue.setNoMoreTsBlocks(true);
+            if (isFinished()) {
+              deferFrontierFinish();
+            }
+          }
+        }
+      } finally {
+        queue.flushNotifications();
+      }
+      return;
+    }
     synchronized (queue) {
       synchronized (this) {
         if (LOGGER.isDebugEnabled()) {
@@ -207,6 +283,39 @@ public class LocalSinkChannel implements ISinkChannel {
 
   @Override
   public boolean abort() {
+    if (queue.isFrontierMode()) {
+      try {
+        synchronized (queue) {
+          synchronized (this) {
+            if (aborted || closed) {
+              return false;
+            }
+            if (queue.isClosed()) {
+              if (queue.wasFrontierAborted()) {
+                aborted = true;
+                deferFrontierAbortAfterQueueTermination();
+              } else {
+                // The queue's normal terminal transition won before this endpoint's abort request.
+                closed = true;
+                deferFrontierFinish();
+              }
+            } else {
+              aborted = true;
+              if (invokedOnFinished) {
+                // EOF already claimed the terminal listener, but abort still releases any credit.
+                queue.abort();
+              } else {
+                // Seal and detach now; the unknown listener runs only when the outbox drains.
+                queue.abortWithCauseSupplier(() -> sinkListener.onAborted(this));
+              }
+            }
+          }
+        }
+        return true;
+      } finally {
+        queue.flushNotifications();
+      }
+    }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.START_ABORT_LOCAL_SINK_CHANNEL);
     }
@@ -232,6 +341,28 @@ public class LocalSinkChannel implements ISinkChannel {
 
   @Override
   public boolean close() {
+    if (queue.isFrontierMode()) {
+      try {
+        synchronized (queue) {
+          synchronized (this) {
+            if (aborted || closed) {
+              return false;
+            }
+            if (queue.wasFrontierAborted()) {
+              aborted = true;
+              deferFrontierAbortAfterQueueTermination();
+            } else {
+              closed = true;
+              queue.close();
+              deferFrontierFinish();
+            }
+          }
+        }
+        return true;
+      } finally {
+        queue.flushNotifications();
+      }
+    }
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(DataNodeQueryMessages.START_CLOSE_LOCAL_SINK_CHANNEL);
     }
@@ -254,6 +385,23 @@ public class LocalSinkChannel implements ISinkChannel {
     return true;
   }
 
+  // Caller holds queue -> channel locks. Claim before dispatch so reentrant callbacks stay
+  // idempotent.
+  private void deferFrontierFinish() {
+    if (!invokedOnFinished) {
+      invokedOnFinished = true;
+      queue.deferNotification(() -> sinkListener.onFinish(this));
+    }
+  }
+
+  // The queue already fixed its terminal cause. Notify this endpoint once without replacing it.
+  // Caller has claimed aborted under queue -> channel locks.
+  private void deferFrontierAbortAfterQueueTermination() {
+    if (!invokedOnFinished) {
+      queue.deferNotification(() -> sinkListener.onAborted(this));
+    }
+  }
+
   public SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
   }
@@ -261,6 +409,15 @@ public class LocalSinkChannel implements ISinkChannel {
   @Override
   public void checkState() {
     if (aborted) {
+      if (queue.isFrontierMode()) {
+        Optional<Throwable> cause = queue.getAbortedCause();
+        // The deferred abort listener may still be publishing its cause. Never wait under a handle
+        // lock or open a producer future merely to report an already claimed abort.
+        if (cause.isPresent()) {
+          throw new IllegalStateException(cause.get());
+        }
+        throw new IllegalStateException(DataNodeQueryMessages.LOCALSINKCHANNEL_IS_ABORTED);
+      }
       Optional<Throwable> abortedCause = queue.getAbortedCause();
       if (abortedCause.isPresent()) {
         throw new IllegalStateException(abortedCause.get());

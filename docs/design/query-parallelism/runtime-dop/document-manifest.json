@@ -5,34 +5,34 @@
   "documents": [
     {
       "source_name": "README.md",
-      "source_bytes": 4725,
-      "source_sha256": "7a2cb5f0e0172e9b2e092369669c696da280cc8fc439f3356f256133cf411993",
-      "source_md5": "1ee59a6be50185ef04f6c777aa1ec0a5",
-      "published_sha256": "7e8faed9682f7a36d2480819216bfe02a156353df5405d9f4bf218c96a97345c",
+      "source_bytes": 5066,
+      "source_sha256": "3de533a3cd39eb6d149ccf6c1068e93d922dd277f233bec134e0b2d3aff4c238",
+      "source_md5": "1024788769ff17fd30716b2b396172ad",
+      "published_sha256": "46ec506006593801c6f7500a59a3c3fe80f022c078103d5b55ae4cf1279d2ddd",
       "license_prefix_bytes": 825
     },
     {
       "source_name": "开发待办与排期.md",
-      "source_bytes": 11712,
-      "source_sha256": "7c4ea671aecaef99ee8e019af90620100ca383aa3e4e89a089692a8b8db250a4",
-      "source_md5": "506cc091d1df92ee4cdb487bf2d40f2a",
-      "published_sha256": "4b415332becbf0bb81b058a507dee646832094e710dd459d14f0e6cf33e3d52e",
+      "source_bytes": 11984,
+      "source_sha256": "eec8eb11dcac4ad9e534e09d09eacd34e0e256944456af12128f99f751ca4b90",
+      "source_md5": "9e1a37eb189c4bca1c0890817f0cc64f",
+      "published_sha256": "f7fc7e31431b29e9feaff5be4fab92fabbffc1474824ad11e87c1b7329ffc489",
       "license_prefix_bytes": 825
     },
     {
       "source_name": "运行期动态DOP设计草案.md",
-      "source_bytes": 18192,
-      "source_sha256": "72f362afea9e75fb53998efba3e916d9389f58042edd304c307d5087ccefa056",
-      "source_md5": "6956d911f8289bd3c2bfe9ac1753b05f",
-      "published_sha256": "532629860146688857608adb95f77991c56649adcd4f8f1e7a5ee0d412c7e2f6",
+      "source_bytes": 19438,
+      "source_sha256": "3d2048cc597fdd9d94ce97fa05b6cb981544f87791b7fef851ba3d6f1ce5dd21",
+      "source_md5": "75e52f4e3c1d93204a6ed8cd67b2500e",
+      "published_sha256": "6dc602e4722af62f3d70f70b6e876d0fb978727cfcf33c3b08443a47258f5186",
       "license_prefix_bytes": 825
     },
     {
       "source_name": "运行期动态DOP实现规划草案.md",
-      "source_bytes": 17058,
-      "source_sha256": "372bdb258b86785e9f54230f905a12f95a82112cd1e37589ddc0b57d7009ef79",
-      "source_md5": "76a091b8b0b2bfde5da9f7042528fcbd",
-      "published_sha256": "00baedc9b76023f168516bbdc9e32028b68303126a10e9ee03bfd4e220f6762d",
+      "source_bytes": 17963,
+      "source_sha256": "88a1be55940de4ad3a497806ecb47500943b7fee509d5330c20ad6c29af5b863",
+      "source_md5": "638682b0db725b58eaf3512c574eee51",
+      "published_sha256": "dae4f401f04213d694f97ba36de3badee4aab4e35bdc477c0a4a381567a7c2b8",
       "license_prefix_bytes": 825
     },
     {
@@ -45,10 +45,10 @@
     },
     {
       "source_name": "实现进度与验证记录_20261115.md",
-      "source_bytes": 7770,
-      "source_sha256": "464d7059cf2a854b8a66e3828eed63b7a32edb4c21b07d1a9b4015eaf0e1850a",
-      "source_md5": "83b49f9be2f78697dc4373ccff9e135e",
-      "published_sha256": "5562da6d0d4c95c3fa1b7311f48bff81ebea504fd1ee6563dd4cef1e3b670008",
+      "source_bytes": 10859,
+      "source_sha256": "b92648ed1b0f38654127c38e4d5255f8bf0a2b9eddc8d148d03e3ddc8e6ba074",
+      "source_md5": "bdfda7003b8df92675c1c4a3f4265462",
+      "published_sha256": "5b73bc0b6dff5326c327b35b03cdd32e9db4360ba6da900659d03db7779ba7fa",
       "license_prefix_bytes": 825
     }
   ]

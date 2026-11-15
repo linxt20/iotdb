@@ -164,14 +164,20 @@ public final class RuntimeScanGroup {
       }
       notifyQuiescence = stopped && leasedByWorker.isEmpty();
     }
-    complete(wake);
-    if (notifyQuiescence) {
-      quiescence.set(null);
-    }
-    if (listen) {
-      blocked.addListener(
-          () -> blockedCompleted(lease.getLaneIndex(), lease.getGeneration(), blocked),
-          MoreExecutors.directExecutor());
+    try {
+      complete(wake);
+    } finally {
+      try {
+        if (notifyQuiescence) {
+          quiescence.set(null);
+        }
+      } finally {
+        if (listen) {
+          blocked.addListener(
+              () -> blockedCompleted(lease.getLaneIndex(), lease.getGeneration(), blocked),
+              MoreExecutors.directExecutor());
+        }
+      }
     }
   }
 
@@ -197,9 +203,12 @@ public final class RuntimeScanGroup {
       wake = rotateNotification();
       notifyQuiescence = leasedByWorker.isEmpty();
     }
-    complete(wake);
-    if (notifyQuiescence) {
-      quiescence.set(null);
+    try {
+      complete(wake);
+    } finally {
+      if (notifyQuiescence) {
+        quiescence.set(null);
+      }
     }
   }
 
@@ -280,8 +289,11 @@ public final class RuntimeScanGroup {
       failure = cause;
       wake = rotateNotification();
     }
-    failureNotification.setException(cause);
-    complete(wake);
+    try {
+      failureNotification.setException(cause);
+    } finally {
+      complete(wake);
+    }
   }
 
   private void blockedCompleted(int index, long generation, ListenableFuture<?> blocked) {
@@ -316,10 +328,13 @@ public final class RuntimeScanGroup {
         wake = rotateNotification();
       }
     }
-    if (firstFailure != null) {
-      failureNotification.setException(firstFailure);
+    try {
+      if (firstFailure != null) {
+        failureNotification.setException(firstFailure);
+      }
+    } finally {
+      complete(wake);
     }
-    complete(wake);
   }
 
   // All callers hold lock. Neither helper invokes a driver or completes an external future.

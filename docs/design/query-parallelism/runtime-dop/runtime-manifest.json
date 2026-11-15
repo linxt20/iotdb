@@ -1,21 +1,33 @@
 {
   "base_frozen_commit": "da2f455c3a2216f1f676844f91b32e724d7d5709",
   "branch": "feat/runtime-dop",
-  "scope": "Validated runtime scan ownership, worker, cooperative Driver quiescence and pure policy primitives. SQL activation and frontier queue integration are not implemented in this checkpoint.",
-  "code_git_tree_sha256": "85170213cfa7d18fd62ac22e19d4034e05313c1dd662c2de2331c57bb11f12a0",
+  "scope": "Validated runtime ownership, worker, policy, Driver quiescence/close, prepaid frontier queue, atomic quota-ticket and terminal cleanup components; production planner/native scheduler/FI wiring remains incomplete.",
+  "code_git_tree_sha256": "a4b48af031b22c00eadf6eaa9681628ebcad0013100422d41d753bf66fd18bfa",
   "source_sha256": {
     "iotdb-core/datanode/src/main/i18n/en/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java": "24cf0b98144fe7321a72bd4218f19e6a8482ae372551eb2578fa4adf507c1115",
     "iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java": "74d10c4d995c25383a6f8e4f9814e25c8576ece3815b207b757ba7589436fca9",
-    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/Driver.java": "37b071505e3705fc5f8dcec0e011e65c0a54673de411283c93ffbf11de8451fe",
-    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/IDriver.java": "7bde84e4a49046ab1ac526f0b3eb2110e2f693816e7a83942b2b3556ca25ebd9",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/Driver.java": "86e3ea423a0ee45f29c0f7594edbaf85ef21a010e43330c79bf2cc810e33c1e7",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/IDriver.java": "8ceed901faa20e3eef9bb67bab4a02f000877726752744d7f0d3b1873f07da7c",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueue.java": "d38d40d305babdebe0f5bdc24c23d2f7fe9399068852d96ce0ce7251f8d7a1e2",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/sink/LocalSinkChannel.java": "9bf33b42c1a60f66f8ba9c246d95c720ff558add2013a3037e06d6a0090e1700",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/source/LocalSourceHandle.java": "7ded388f64404f9ffab2e5cb973ac84ba2f00c8177fdb621fb908c1c0dc4d823",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeCleanupCoordinator.java": "39edd9e25838b668dfec005c28a68fa46210f5b97c96e9544e646e42bed9bd4a",
     "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopPolicy.java": "98ed8540a75fccdecb835154be413a2571b35987477803926a534076271b59fa",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeFrontierReservation.java": "14321b8bc314b4ea1aac7649b3fc79ea1e6ef2df4b7a5d2aa6f8b79974dc1c2e",
     "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeLaneLease.java": "246933b14f8dab8c6f4782435cefada0d66b0985aabc87a7ed3734a344641e0c",
-    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanGroup.java": "b3bd753f1078ab97cd2398925a14127c367cbda28e8c363dc4ddef440c20497c",
-    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanWorker.java": "20ef1883d77e4366e1e9352012fa7403f311cefbec6bcf1ec0a37f8555fee94f",
-    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/driver/DriverQuiescenceTest.java": "131909ef27638c480ef96562591d2c07a75b75ac7b0b0a48bed20f2a0c8df499",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanGroup.java": "d7374f59c517227051acac1c4266a7f8d70cc4fb10eeea0a6c502939f61b1146",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanWorker.java": "ede85ccd79129dcf2a79b66a0b893e0e913d55fa63ba0f862c6d55145bafb5bc",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/ThrottleQuotaLimit.java": "6c005860b20f5aeaea4bf7eab3d750f1318f9fe4fabaa1d07ea943b998c29077",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/driver/DriverQuiescenceTest.java": "d458b3e296ebccdcc8b0d7be42653287d5c22ddcb2756442479db76a964a4083",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/exchange/LocalSinkChannelTest.java": "dc51261114e62e8067296529ad9a8860034de40453b44d337418f1303f98745b",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/exchange/LocalSourceHandleTest.java": "ffba1768f2a5ba9d57015871c70e48e2f1f6a2788fdb72b3c75ea363c9cdb0d9",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueueTest.java": "58df941cc330df68972d6230a751a5ef76eb52f6da7ba7aec98fd0cdeb7f413e",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeCleanupCoordinatorTest.java": "e0767357c693b51aa40a0ccfedba016fea3ce76aed0c73399f4a748ffd1d3120",
     "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopPolicyTest.java": "8bd367dc0dacfd9aaf7880c1943851e3270280a343c1c1d33e1a094374fe2604",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeFrontierReservationTest.java": "232bc5f4652c612fb735b2d4fc8f07641a0414950a6cd66a425e485ac5257eb6",
     "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanGroupTest.java": "1ba44df557a4e6ccb4610ee655dc8b09ea4ee2f2e507d6ff4bf3aa49c7fb5abe",
-    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanWorkerTest.java": "a8965a26abfdf9b8d4865d3a2042b818937e5ea60520ed8c26fbb37e9470cc2e"
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanWorkerTest.java": "a8965a26abfdf9b8d4865d3a2042b818937e5ea60520ed8c26fbb37e9470cc2e",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/storageengine/rescon/quotas/ThrottleQuotaLimitTest.java": "20a9a89585d96d1717959139104632689e8f22192be4636b2ce6bc9a02ba09b9"
   },
   "existing_entry_sha256": {
     "iotdb-client/client-py/tests/unit/test_runtime_snapshot_thrift.py": "e1de814dab9e6192d9dd1f82e1a36a6015ace888c4891367af19d7799c22ca6f",
@@ -33,17 +45,17 @@
     "research/query-intra-parallelism-e2e-acceptance/scripts/verify_property_enforcement_matrix.py": "2df8ab7c06fe6b8c84174dc3ed7272612a69c8ae3cc36fafd43deddc442c8d66",
     "research/query-intra-parallelism-e2e-acceptance/sql/multisource_hash_groupby_fixture.sql": "c7faee55e5b02f19d0a17ee962fbe789fcd5acfcf33645586ee2ce553628e77f"
   },
-  "validation_summary": "audit/implementation-final-validation.json",
-  "validation_summary_sha256": "46c29a9ec79fbc19ff5b76012ceea8cde7e0abd882918747bd8de8e4091cc91e",
+  "validation_summary": "audit/resource-final-validation.json",
+  "validation_summary_sha256": "be7ada6720a1128bb9b56636582581d3db45ad89a4cc8959ec9ade44f42e47eb",
   "baseline_validation": "audit/baseline-finalization.json",
   "targeted_tests": {
-    "tests": 59,
+    "tests": 184,
     "failures": 0,
     "errors": 0,
     "skipped": 0
   },
   "full_tests": {
-    "tests": 7580,
+    "tests": 7698,
     "failures": 0,
     "errors": 0,
     "skipped": 56
@@ -51,9 +63,29 @@
   "english_compile_exit": 0,
   "chinese_compile_exit": 0,
   "limitations": [
-    "No production planner/scheduler/cleanup wiring",
-    "No live SQL runtime DOP or two-DataNode acceptance",
-    "No new performance claim",
-    "Frontier class and tests exist only outside this repository in next-stage-staging"
-  ]
+    "No production planner, native scheduler or FI cleanup coordinator wiring",
+    "User tickets do not yet include legacy/native execution paths",
+    "ResourceRegistry/Audit queue identity versus shared actual account integration incomplete",
+    "No actual two-layer MergeSort DOP=1 liveness acceptance",
+    "No live SQL same-query DOP or two-DataNode acceptance",
+    "No new performance claim"
+  ],
+  "previous_checkpoint": {
+    "code_git_tree_sha256": "85170213cfa7d18fd62ac22e19d4034e05313c1dd662c2de2331c57bb11f12a0",
+    "validation_summary": "audit/implementation-final-validation.json",
+    "validation_summary_sha256": "46c29a9ec79fbc19ff5b76012ceea8cde7e0abd882918747bd8de8e4091cc91e",
+    "targeted_tests": {
+      "tests": 59,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "full_tests": {
+      "tests": 7580,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 56
+    },
+    "commit": "a2b9ed4b09fac54027220dffc6913c915b0e0e3c"
+  }
 }

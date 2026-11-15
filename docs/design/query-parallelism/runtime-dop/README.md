@@ -23,7 +23,7 @@
 
 **目的**：提供本轮扩展的能力边界、设计入口和标准验证命令。
 
-**摘要**：当前交付为固定逻辑扫描流上的执行权、工作者、驱动静止和纯策略组件，新增 59 项专项通过，完整单测 7580 项通过，中英文编译通过。真实 SQL 的运行期调整仍在接线，排序前沿账户还在独立暂存区。
+**摘要**：当前包含执行权、工作者、驱动静止及关闭确认、纯策略、前沿队列、配额票据和统一清理组件。184 项相关专项、7698 项完整单测和中英文完整编译通过。真实 SQL 的运行期调整仍在接线。
 
 **结论**：开发与评审从下列状态记录和两份设计稿开始。复现本轮组件可使用标准 Maven 命令；组件结果不能代替双节点真实运行验收。
 
@@ -45,7 +45,7 @@
 
 历史 `reproduction-manifest.json` 的代码树校验值专门绑定原冻结实现，不适用于新增运行组件后的代码树。当前扩展的源码摘要及验证索引由本目录的运行清单提供，不能把历史值直接覆盖成新值而丢失冻结身份。
 
-新实例冻结基线原始材料位于 `/root/rivermind-data/iotdb-runtime-dop-20261115/baseline-run-20261115T061040Z`。首批实现的成功验证位于 `/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T064126Z`，首次 Mockito API 编译失败保留在 `implementation-run-20261115T063533Z`。
+新实例冻结基线原始材料位于 `/root/rivermind-data/iotdb-runtime-dop-20261115/baseline-run-20261115T061040Z`。首批实现的成功验证位于 `/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T064126Z`，首次 Mockito API 编译失败保留在 `implementation-run-20261115T063533Z`。第二批组件验证位于 `resource-run-20261115T074126Z`；先前主动停止的编译保留在 `resource-run-20261115T073027Z`。
 
 ## 标准验证
 
@@ -53,7 +53,7 @@
 
 ```bash
 set -euo pipefail
-export IOTDB_RUNTIME_RUN=/data/iotdb-runtime-validation/run-unique
+export IOTDB_RUNTIME_RUN=/root/rivermind-data/iotdb-runtime-validation/run-unique
 mkdir -p "$(dirname "$IOTDB_RUNTIME_RUN")"
 mkdir "$IOTDB_RUNTIME_RUN"
 mkdir "$IOTDB_RUNTIME_RUN/tmp"
@@ -65,7 +65,7 @@ FLAGS="-s $IOTDB_RUNTIME_RUN/maven-settings.xml -nsu -Dspotless.check.skip=true 
 mvn -B test-compile -DskipTests $FLAGS \
   > "$IOTDB_RUNTIME_RUN/reactor-en.log" 2>&1
 mvn -B -pl iotdb-core/datanode -am test \
-  -Dtest=DriverQuiescenceTest,RuntimeScanGroupTest,RuntimeScanWorkerTest,RuntimeDopPolicyTest \
+  -Dtest=DriverQuiescenceTest,RuntimeScanGroupTest,RuntimeScanWorkerTest,RuntimeDopPolicyTest,RuntimeCleanupCoordinatorTest,RuntimeFrontierReservationTest,ThrottleQuotaLimitTest,SharedTsBlockQueueTest,LocalSourceHandleTest,LocalSinkChannelTest \
   $FLAGS > "$IOTDB_RUNTIME_RUN/targeted-tests.log" 2>&1
 find . -path '*/target/surefire-reports/TEST-*.xml' -print0 \
   | tar --null -T - -czf "$IOTDB_RUNTIME_RUN/targeted-tests-reports.tar.gz"
@@ -80,6 +80,6 @@ mvn -B test-compile -DskipTests -P with-zh-locale $FLAGS \
   > "$IOTDB_RUNTIME_RUN/reactor-zh.log" 2>&1
 ```
 
-每个 Maven 退出码与每个阶段新生成的 XML 分别判定；原始报告先归档，再开始下一阶段。复用已有 target 时，不能把上次遗留 XML 算进本次专项，必须按本次选择和时间边界筛选。专项 59 项已被完整 7580 项包含，不重复求和。日志带 ANSI 时先移除控制码，最终仍以退出码和 XML 为准。
+每个 Maven 退出码与每个阶段新生成的 XML 分别判定；原始报告先归档，再开始下一阶段。复用已有 target 时，不能把上次遗留 XML 算进本次专项，必须按本次选择和时间边界筛选。专项与完整回归分别统计，同一测试不重复求和。最新计数及验证源码身份见实现进度记录。日志带 ANSI 时先移除控制码，最终仍以退出码和 XML 为准。
 
 这套命令只验收组件与回归。当前还没有可交付的 SQL 配置能够触发同查询 `1→2→4→2→1`；后续需要原生提交、用户额度、队列和终态全部接通后，另行保存实际服务、执行事件、完整结果与资源回执。

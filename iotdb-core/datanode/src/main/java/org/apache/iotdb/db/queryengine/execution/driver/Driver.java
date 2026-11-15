@@ -80,6 +80,9 @@ public abstract class Driver implements IDriver {
   private volatile boolean quiescenceRequested;
   private final SettableFuture<Void> quiescenceFuture = SettableFuture.create();
 
+  private final SettableFuture<Void> closeFuture = SettableFuture.create();
+  private volatile boolean destructionComplete;
+  private volatile Throwable destructionFailure;
   private final AtomicBoolean quiescenceCompletionClaimed = new AtomicBoolean();
   private volatile long firstProcessNanos = -1;
   private volatile long lastProcessNanos = -1;
@@ -294,6 +297,36 @@ public abstract class Driver implements IDriver {
   }
 
   @Override
+  public boolean supportsCoordinatedClose() {
+    return true;
+  }
+
+  @Override
+  public ListenableFuture<Void> requestClose() {
+    try {
+      close();
+    } catch (Throwable failure) {
+      // The normal close entry still throws. This entry communicates failures through its future.
+      // A failed precondition must not be mistaken for completion of an in-flight destruction.
+      if (!destructionComplete) {
+        throwIfUnchecked(failure);
+        throw new AssertionError(failure);
+      }
+    }
+    return com.google.common.util.concurrent.Futures.nonCancellationPropagating(closeFuture);
+  }
+
+  private void completeCloseIfPossible() {
+    if (destructionComplete && !exclusiveLock.isHeldByCurrentThread()) {
+      if (destructionFailure == null) {
+        closeFuture.set(null);
+      } else {
+        closeFuture.setException(destructionFailure);
+      }
+    }
+  }
+
+  @Override
   public void close() {
     // mark the service for destruction
     if (!state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION)) {
@@ -493,7 +526,12 @@ public abstract class Driver implements IDriver {
       }
     }
 
-    completeQuiescenceIfPossible();
+    try {
+      completeCloseIfPossible();
+    } finally {
+      // Independent acknowledgement channels must not suppress one another's completion.
+      completeQuiescenceIfPossible();
+    }
 
     if (failure != null) {
       throwIfUnchecked(failure);
@@ -515,6 +553,19 @@ public abstract class Driver implements IDriver {
       return;
     }
 
+    try {
+      destroyResources();
+    } catch (Throwable failure) {
+      destructionFailure = failure;
+      throw failure;
+    } finally {
+      // Publish only after the last release; state DESTROYED itself is set before these writes.
+      destructionComplete = true;
+    }
+  }
+
+  @GuardedBy("exclusiveLock")
+  private void destroyResources() {
     // if we get an error while closing a driver, record it and we will throw it at the end
     Throwable inFlightException = null;
     try {

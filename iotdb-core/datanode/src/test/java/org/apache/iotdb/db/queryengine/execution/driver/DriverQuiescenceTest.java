@@ -37,6 +37,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.*;
@@ -255,6 +256,191 @@ public class DriverQuiescenceTest {
     }
   }
 
+  @Test
+  public void closeAcknowledgesOnlyAfterOperatorAndResourceWrites() throws Exception {
+    Fixture f = new Fixture();
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    AtomicBoolean closed = new AtomicBoolean();
+    doAnswer(
+            call -> {
+              entered.countDown();
+              await(release);
+              closed.set(true);
+              return null;
+            })
+        .when(f.root)
+        .close();
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<ListenableFuture<Void>> first = executor.submit(f.driver::requestClose);
+    try {
+      assertTrue(entered.await(5, TimeUnit.SECONDS));
+      ListenableFuture<Void> second = f.driver.requestClose();
+      assertFalse(second.isDone());
+      assertFalse(closed.get());
+      release.countDown();
+      first.get(5, TimeUnit.SECONDS).get(5, TimeUnit.SECONDS);
+      second.get(5, TimeUnit.SECONDS);
+      assertTrue(closed.get());
+      verify(f.context).finished();
+      verify(f.root).close();
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void closeFailureIsAcknowledgedWithoutRepeatingDestruction() throws Exception {
+    Fixture f = new Fixture();
+    AssertionError failure = new AssertionError("close failed");
+    doThrow(failure).when(f.root).close();
+    for (int i = 0; i < 2; i++) {
+      try {
+        f.driver.requestClose().get(5, TimeUnit.SECONDS);
+        fail("closure failure must be retained");
+      } catch (java.util.concurrent.ExecutionException actual) {
+        assertSame(failure, actual.getCause());
+      }
+    }
+    verify(f.root).close();
+  }
+
+  @Test
+  public void closeWaitersCannotCancelSharedCompletion() throws Exception {
+    Fixture f = new Fixture();
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    f.init =
+        () -> {
+          entered.countDown();
+          await(release);
+        };
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<?> processing = executor.submit(() -> f.driver.processFor(SLICE));
+    try {
+      assertTrue(entered.await(5, TimeUnit.SECONDS));
+      ListenableFuture<Void> first = f.driver.requestClose();
+      assertFalse(first.isDone());
+      assertTrue(first.cancel(false));
+      ListenableFuture<Void> second = f.driver.requestClose();
+      assertFalse(second.isCancelled());
+      release.countDown();
+      processing.get(5, TimeUnit.SECONDS);
+      second.get(5, TimeUnit.SECONDS);
+      verify(f.root).close();
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void closeAcknowledgementWaitsForResourceRelease() throws Exception {
+    Fixture f = new Fixture();
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    AtomicBoolean resourcesReleased = new AtomicBoolean();
+    f.resourceRelease =
+        () -> {
+          entered.countDown();
+          await(release);
+          resourcesReleased.set(true);
+        };
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<ListenableFuture<Void>> first = executor.submit(f.driver::requestClose);
+    try {
+      assertTrue(entered.await(5, TimeUnit.SECONDS));
+      verify(f.root).close();
+      verify(f.context).finished();
+      ListenableFuture<Void> second = f.driver.requestClose();
+      assertFalse(second.isDone());
+      assertFalse(resourcesReleased.get());
+      release.countDown();
+      first.get(5, TimeUnit.SECONDS).get(5, TimeUnit.SECONDS);
+      second.get(5, TimeUnit.SECONDS);
+      assertTrue(resourcesReleased.get());
+      verify(f.root).close();
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+      f.driver.close();
+    }
+  }
+
+  @Test
+  public void resourceReleaseFailureIsRetainedWithoutRepeatingRelease() throws Exception {
+    Fixture f = new Fixture();
+    RuntimeException expected = new RuntimeException("resource release failed");
+    AtomicInteger releaseCalls = new AtomicInteger();
+    f.resourceRelease =
+        () -> {
+          releaseCalls.incrementAndGet();
+          throw expected;
+        };
+    for (int i = 0; i < 2; i++) {
+      try {
+        f.driver.requestClose().get(5, TimeUnit.SECONDS);
+        fail("resource release failure must remain observable");
+      } catch (java.util.concurrent.ExecutionException actual) {
+        assertSame(expected, actual.getCause());
+      }
+    }
+    assertEquals(1, releaseCalls.get());
+    verify(f.root).close();
+    verify(f.context).finished();
+  }
+
+  @Test
+  public void closeObserverFailureCannotSkipPendingQuiescence() throws Exception {
+    Fixture f = new Fixture();
+    CountDownLatch entered = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    AtomicBoolean resourcesReleased = new AtomicBoolean();
+    AtomicBoolean observerRan = new AtomicBoolean();
+    AssertionError expected = new AssertionError("close observer failed");
+    f.init =
+        () -> {
+          entered.countDown();
+          await(release);
+        };
+    f.resourceRelease = () -> resourcesReleased.set(true);
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    Future<?> processing = executor.submit(() -> f.driver.processFor(SLICE));
+    try {
+      assertTrue(entered.await(5, TimeUnit.SECONDS));
+      ListenableFuture<Void> quiesced = f.driver.requestQuiescence();
+      assertFalse(quiesced.isDone());
+      ListenableFuture<Void> closed = f.driver.requestClose();
+      assertFalse(closed.isDone());
+      closed.addListener(
+          () -> {
+            assertTrue(resourcesReleased.get());
+            assertFalse(quiesced.isDone());
+            observerRan.set(true);
+            throw expected;
+          },
+          MoreExecutors.directExecutor());
+      release.countDown();
+      try {
+        processing.get(5, TimeUnit.SECONDS);
+        fail("the close observer error must remain observable");
+      } catch (java.util.concurrent.ExecutionException actual) {
+        assertSame(expected, actual.getCause());
+      }
+      quiesced.get(5, TimeUnit.SECONDS);
+      closed.get(5, TimeUnit.SECONDS);
+      assertTrue(observerRan.get());
+      assertTrue(resourcesReleased.get());
+      verify(f.root).close();
+      verify(f.context).finished();
+    } finally {
+      release.countDown();
+      executor.shutdownNow();
+      f.driver.close();
+    }
+  }
+
   private static void await(CountDownLatch latch) {
     try {
       assertTrue(latch.await(5, TimeUnit.SECONDS));
@@ -270,6 +456,7 @@ public class DriverQuiescenceTest {
     final Operator root = mock(Operator.class);
     final Driver driver;
     Runnable init = () -> {};
+    Runnable resourceRelease = () -> {};
     int initializations;
 
     Fixture() {
@@ -291,7 +478,9 @@ public class DriverQuiescenceTest {
             }
 
             @Override
-            protected void releaseResource() {}
+            protected void releaseResource() {
+              resourceRelease.run();
+            }
 
             @Override
             boolean isInit() {
