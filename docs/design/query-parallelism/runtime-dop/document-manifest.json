@@ -1,0 +1,55 @@
+{
+  "source_host": "sc01",
+  "source_directory": "/root/w5-docs/运行期动态DOP_20261115",
+  "policy": "Original document bodies retained exactly; Apache header prepended in Git publication. Audit records are JSON and unchanged. Runtime service activation remains unimplemented.",
+  "documents": [
+    {
+      "source_name": "README.md",
+      "source_bytes": 4725,
+      "source_sha256": "7a2cb5f0e0172e9b2e092369669c696da280cc8fc439f3356f256133cf411993",
+      "source_md5": "1ee59a6be50185ef04f6c777aa1ec0a5",
+      "published_sha256": "7e8faed9682f7a36d2480819216bfe02a156353df5405d9f4bf218c96a97345c",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "开发待办与排期.md",
+      "source_bytes": 11712,
+      "source_sha256": "7c4ea671aecaef99ee8e019af90620100ca383aa3e4e89a089692a8b8db250a4",
+      "source_md5": "506cc091d1df92ee4cdb487bf2d40f2a",
+      "published_sha256": "4b415332becbf0bb81b058a507dee646832094e710dd459d14f0e6cf33e3d52e",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "运行期动态DOP设计草案.md",
+      "source_bytes": 18192,
+      "source_sha256": "72f362afea9e75fb53998efba3e916d9389f58042edd304c307d5087ccefa056",
+      "source_md5": "6956d911f8289bd3c2bfe9ac1753b05f",
+      "published_sha256": "532629860146688857608adb95f77991c56649adcd4f8f1e7a5ee0d412c7e2f6",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "运行期动态DOP实现规划草案.md",
+      "source_bytes": 17058,
+      "source_sha256": "372bdb258b86785e9f54230f905a12f95a82112cd1e37589ddc0b57d7009ef79",
+      "source_md5": "76a091b8b0b2bfde5da9f7042528fcbd",
+      "published_sha256": "00baedc9b76023f168516bbdc9e32028b68303126a10e9ee03bfd4e220f6762d",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "迁移与基线核查_20261115.md",
+      "source_bytes": 6531,
+      "source_sha256": "8ffa14343eb0a38b07852eecfa2e565c800d507e97fe9bd9f0ee9e6cf6c9552f",
+      "source_md5": "ea0479024b38884eb4209bdcc1b539e2",
+      "published_sha256": "a3cdde245d27613c42af029047ba5885182d32cf039dd8b09f1f869bc7297029",
+      "license_prefix_bytes": 825
+    },
+    {
+      "source_name": "实现进度与验证记录_20261115.md",
+      "source_bytes": 7770,
+      "source_sha256": "464d7059cf2a854b8a66e3828eed63b7a32edb4c21b07d1a9b4015eaf0e1850a",
+      "source_md5": "83b49f9be2f78697dc4373ccff9e135e",
+      "published_sha256": "5562da6d0d4c95c3fa1b7311f48bff81ebea504fd1ee6563dd4cef1e3b670008",
+      "license_prefix_bytes": 825
+    }
+  ]
+}

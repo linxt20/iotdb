@@ -1,0 +1,419 @@
+{
+  "purpose": "下一步同查询运行期扫描 DOP 接线的只读源码核查",
+  "inspected_date": "2026-11-15",
+  "server": "sc01",
+  "repository": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo",
+  "branch": "feat/runtime-dop",
+  "head": "da2f455c3a2216f1f676844f91b32e724d7d5709",
+  "scope": "只读源码、既有测试定位；未修改 Java、未运行 Maven、未创建测试或提交。",
+  "existing_runtime_primitives": "RuntimeScanGroup、RuntimeLaneLease、RuntimeScanWorker、RuntimeDopPolicy 已有文件；本报告不据此宣称生产接线完成。",
+  "inspected_source_sha256": {
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java": "646e220f74addfe1d23921df1ab981264af07e60cc3ac13150c511b74c263f70",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanContext.java": "638f8863f80fadfbe9c11dba3a74f6f3b82a922daed69787aeec89c5fc9670e8",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalScanPipelineBuilder.java": "f925a4937f7e5b9132c2e5f7032166903465269d7d591f5fa785cbfb10ee432c",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/PipelineDriverFactory.java": "4a36d47463e6956012d0a2164757b15b6ec00ad78335cfbcd2b52b5a05b43ac8",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java": "7697a1c71d2272b24d5f25ffa5b5be9f1ed3a9fb6b7e2be3ae2c6e0a9cd56787",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecution.java": "96c548cd92963a13ac6132d174849a0b6b90a640ea7229fd55bc97851900dc27",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceContext.java": "c208bd50e4c7475f090870645bc2b0b22f3966207d0c08adf8abfd778efa31d2"
+  },
+  "critical_findings": [
+    {
+      "id": "early-base-memory",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java",
+      "line": 312,
+      "method": "checkMemory(PipelineMemoryEstimator, FragmentInstanceContext)",
+      "finding": "FI DONE listener 在 317 直接释放 OPERATORS_MEMORY_BLOCK，并在 318 修改 admissionAccount。该 listener 独立于 FragmentInstanceExecution，单改 execution listener 无效。",
+      "required": "runtime FI 将 exact reservedBytes 的一次性 release callback 交同一 RuntimeCleanupCoordinator；在所有运行调用退出前不释放 base。"
+    },
+    {
+      "id": "early-query-context",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceContext.java",
+      "line": 579,
+      "method": "updateStatsIfDone(FragmentInstanceState)",
+      "finding": "600 调 releaseDataNodeQueryContext，601 置 sourcePaths=null；1538 的 release 会 decreaseDataNodeFINum，归零时将本 FI 的 dataNodeQueryContext=null 并移除 query map。监听器在 initialize:575 注册，比 planner/execution 早。",
+      "required": "时间戳可即时写；会影响活跃 scan 的上下文释放与 sourcePaths 清除必须在 quiescence 后执行，且一次性。失败在 execution 对象创建前发生时也必须能走 coordinator。"
+    },
+    {
+      "id": "scheduler-bypass",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "line": 404,
+      "method": "clearDriverTask(DriverTask)",
+      "finding": "ABORTED task 在 406 直接 forceDeregisterFragmentInstance。abortQuery:300、abortFragmentInstance:318、Scheduler.toAborted:605 均可到达，绕开 Manager/Execution 的异步清理。",
+      "required": "runtime FI 把最终注销交同一 coordinator；立即 stop/wakeup 与最终释放分开。不得在 task lock 内阻塞等待 quiescence。普通 native FI 保留原行为。"
+    },
+    {
+      "id": "batch-index-is-not-pipeline-id",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "line": 206,
+      "method": "submitDrivers(QueryId,List<IDriver>,long,SessionInfo)",
+      "finding": "dependencyDriverIndex 是本次 submission tasks 列表下标。过滤 logical lanes 后列表变化，原下标不可沿用。",
+      "required": "拆列表前按完整原 factory/driver 顺序解析为原 Exchange consumer-close future；runtime lane 使用该 future，保留 direct native dependency 时重映射或引入显式 future gate。"
+    },
+    {
+      "id": "capture-before-close",
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/operator/source/ExchangeOperator.java",
+      "line": 143,
+      "method": "close() / getBlockedDependencyDriver()",
+      "finding": "getBlockedDependencyDriver:150 延迟创建 future，close:145 只完成当时已有 future。close 后首次调用 getter 会产生永不完成的新 future。",
+      "required": "在任何 native 执行/关闭前捕获一次；增长 worker 复用所存 future，不延迟到运行后首次读取。"
+    }
+  ],
+  "chain": {
+    "planning": [
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java",
+        "line": 102,
+        "method": "plan(PlanNode,TypeProvider,FragmentInstanceContext,DataNodeQueryContext)",
+        "facts": [
+          "117 prepare 历史，118 生成树，119 冻结 assignment。",
+          "124 选择 exchange 额度，125 冻结资源quota，127 构造完整memoryEstimator。",
+          "134 准入后 137 才把 root factory 追加至原有 child factories；149/150 从全部 factories 收集sourcePaths/deviceContexts。",
+          "156 返回完整 logical factory 列表，schema overload:159 是独立路径。"
+        ],
+        "connection": "runtime descriptor 在子扫描构造时登记，freeze 时只固化描述；不得减少 logical factory 数量、修改全部 source 收集范围，或把运行期 worker 计入原 plan identity。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanContext.java",
+        "line": 158,
+        "method": "constructors / createSubContext() / addPipelineDriverFactory(Operator,DriverContext,long)",
+        "facts": [
+          "根 DataDriverContext pipelineId=0；所有 subContext 共享 nextPipelineId、factory list、resourceRegistry、dynamicAssignments。",
+          "182 子构造在 194/195 创建新的原 DataDriverContext。",
+          "238/242 统一登记 factory；316 私有 getNextPipelineId 逐增。"
+        ],
+        "connection": "增加独立共享 runtime descriptor registry 或 factory 元数据，按原 pipelineId 标记受管 lanes。worker ID 由 max(existing DriverTaskId.pipelineId)+1 开始单调分配，AtomicInteger 检查溢出；不用 group 内 workerId 当 scheduler pipelineId。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalScanPipelineBuilder.java",
+        "line": 94,
+        "method": "build(LocalExecutionPlanContext,ScanParallelPlan,PipelineFactory)",
+        "facts": [
+          "107 注册原 pipelineId→plan/bucket。",
+          "115 int overload 才实际造子context、source root、local sink、factory、queue和parent Exchange。",
+          "161 追加 logical factory，176–187 创建并登记对应 parent Exchange。",
+          "三个生产调用点均使用 plan overload：DataNodeTableOperatorGenerator:1901 ordered、2195 time-partition、2688 device。"
+        ],
+        "connection": "在 plan overload 保存 source/plan/bucket 的固定 group identity，在161的factory创建完成并187的Exchange形成后绑定精确factory与consumer句柄。仅这些明确支持的 scan pipelines 可受管；不能把所有 DataDriver 或所有输入驱动都变为 lane。generic int overload 是既有测试/公共构造入口，缺少明确资格则保持 native。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicScanAssignmentRegistry.java",
+        "line": 161,
+        "method": "registerBucket(int,ScanParallelPlan,int)",
+        "facts": [
+          "assignment 限制、workReference 限制和 metadataLimit 可以触发 dropFeedback。",
+          "planner:142 会在 drop 后将 FI dynamicScanAssignments 清空。"
+        ],
+        "connection": "运行期执行所需 descriptor 不得依赖可被观测预算淘汰的 C/E 历史元数据；可以复用身份内容，但拥有独立不可丢弃生命周期。"
+      }
+    ],
+    "creation_and_submission": [
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+        "line": 200,
+        "method": "execDataQueryFragmentInstance(...) / createDrivers(List<PipelineDriverFactory>,List<IDriver>,int[],FragmentInstanceContext)",
+        "facts": [
+          "200 initializeNumOfDrivers(factories.size()) 固定slot。",
+          "201/319–329 对全部 factories createDriver，并在前后检查取消。",
+          "208 sink 取原 drivers 最后一项，必须仍然是原root。",
+          "211 传全部原drivers到Execution；222 清planningContext。"
+        ],
+        "connection": "保留 allLogicalDrivers 原列表和原创建顺序。创建所有原 DataDriver 后，再据descriptor组装RuntimeScanGroup；派生 directNativeDrivers 与 initial runtimeWorkers 只影响提交列表。group/worker创建失败也进入统一创建失败清理。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/PipelineDriverFactory.java",
+        "line": 85,
+        "method": "createDriver()",
+        "facts": [
+          "95/96 对 DataDriverContext 创建真实DataDriver。",
+          "109 从 resourceRegistry 移交root。",
+          "123 closeUncreated 处理尚未创建slot，created后不能再借此关闭逻辑driver。"
+        ],
+        "connection": "不把原factory换成worker factory，不跳过logical DataDriver创建，保持原root移交和故障slot计数契约。runtime worker以独立普通 DriverContext(FIContext,newPipelineId)构造，不复用logical DriverContext。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceContext.java",
+        "line": 1290,
+        "method": "initializeNumOfDrivers(int) / decrementNumOfUnClosedDriver()",
+        "facts": [
+          "1297 固定 CountDownLatch 覆盖所有原factory slots。",
+          "DataDriver.releaseResource:150–152 对其原slot countDown；未造成功slot由Manager:345–351结清。",
+          "DriverContext(FIContext,int):59 只绑定上下文与ID，构造本身不改latch。",
+          "DriverContext.finished:136 仅设置自身finished。"
+        ],
+        "connection": "runtime worker 不增加、不重置、不递减 allDriversClosed。worker数量变化由独立member集合及retired/removal futures管理。全部logical drivers最终关闭以后，原latch仍恰好归零。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecution.java",
+        "line": 90,
+        "method": "createFragmentInstanceExecution(IDriverScheduler,FragmentInstanceId,FragmentInstanceContext,List<IDriver>,ISink,FragmentInstanceStateMachine,long,boolean,MPPDataExchangeManager)",
+        "facts": [
+          "104 先initialize终态listener，105在context锁内检查取消，110再submitDrivers。",
+          "64 drivers 字段同时用于统计、终态关闭和shouldIgnoreForStatistics。"
+        ],
+        "connection": "保留 drivers=完整原logical/native drivers 供统计/关闭，增加独立schedulerDrivers=direct native+workers供110提交。不要用worker列表替换统计drivers，否则丢scan operator contexts、固定assignment覆盖和原latch负责者。任何新增worker都先登记到FI生命周期，再在同一取消/terminal gate下提交。"
+      }
+    ]
+  },
+  "dependency_binding": {
+    "producer_factory": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/OperatorTreeGenerator.java:3551",
+    "consumer_attachment": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/OperatorTreeGenerator.java:3574",
+    "factory_api": "PipelineDriverFactory.setDependencyPipeline(int):137 -> DriverContext.setDependencyDriverIndex(int):77；setDownstreamOperator(ExchangeOperator):145 -> DriverContext.downstreamOperator",
+    "actual_future": "DriverTask.getBlockedDependencyDriver():175 -> dependencyTarget.driver.context.downstreamOperator.getBlockedDependencyDriver()",
+    "exact_resolution": "originalDrivers[i].context.dependencyDriverIndex=d；d==-1 为 NOT_BLOCKED，否则边界检查后取 originalDrivers[d].context.downstreamOperator 的既有 close future。注意取依赖目标d，不取当前lane i的own Exchange。",
+    "grouped_lanes": "依原i顺序将所解析futures传 RuntimeScanGroup(List<? extends IDriver>,List<? extends ListenableFuture<?>>)。同group中的lane可以拥有不同gate。",
+    "direct_native_drivers": "若继续依赖原scheduler index机制，必须把d映射至新的native batch index且证明目标仍在batch；若目标被移入group，则需要显式consumer future gate，不能引用一个worker来代替目标stream。不能把每组统一设为依赖最后一个lane。",
+    "temporal_constraints": [
+      "初始所有原消费者future必须先捕获后执行。",
+      "依赖失败/取消要通过group failure future传播，不能把done等同success。",
+      "加入worker只改变执行容量，不新建原消费者、不重建依赖future。"
+    ]
+  },
+  "cleanup_coordinator": {
+    "installation": "Coordinator 必须在 FragmentInstanceContext 的可取消规划/准入阶段已可达，不能等 Execution 创建后安装；需要构造/注册封口状态，处理终态到达后仍有factory创建/内存callback注册的竞态。",
+    "asynchronous_order": [
+      "原终态回调只发布terminal/stop，停止tick与新worker准入，封口注册；不在worker调用栈、context monitor、statisticsLock、task lock内等待。",
+      "对runtime groups requestStop；对全部原drivers requestQuiescence；对全部members请求retirement。等待group lease返回与driver processFor调用退出。",
+      "等待每个已登记worker的retiredFuture和schedulerRemovalFuture；未提交或提交失败member由manager完成对应removal确认，不永久等一个不存在的native task。",
+      "异步continuation记录/freeze最终统计，仍持有全部logical driver上下文；按失败语义先sink.abort/正常sink.close，再close全部logical drivers。",
+      "等待原allDriversClosed结清，释放文件/TVList/context；最后执行memory pool注销、memoryReservationManager释放、base operators reservation callback与queryContext引用结算。",
+      "每个清理步骤独立try/finally聚合异常，所有释放once-only；正常和失败补偿使用同一future/状态，不复制一套绕过屏障的清理。"
+    ],
+    "entrypoints": [
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java",
+        "line": 312,
+        "entry": "DONE -> release base reservedBytes",
+        "route": "注册exact-bytes disposer给coordinator，保持AdmissionMemoryAccount reserved/released口径。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceContext.java",
+        "line": 600,
+        "entry": "DONE -> releaseDataNodeQueryContext / sourcePaths=null",
+        "route": "保留时间戳即时更新，引用与会影响processFor的数据移至quiescent cleanup。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecution.java",
+        "line": 526,
+        "entry": "initialize终态listener正常路径",
+        "route": "538–607统计冻结与发布、609sink清理、622drivers.close、629context release、640pool注销、650reservation释放均放受屏障保护的异步continuation。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecution.java",
+        "line": 658,
+        "entry": "终态listener catch补偿路径",
+        "route": "不能保留现有664/671/679/684/696的独立同步释放；转为同一coordinator失败处理，保证snapshot抛错不跳屏障。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+        "line": 332,
+        "entry": "cleanupDriverCreationFailure",
+        "route": "已创建logical drivers、未创建slots继续按原契约结清；如果部分runtime members已登记/提交，先停止并异步等其退出，再做abortUntransferred及clearFIRelatedResources。纯未派发构造失败可用已完成barrier。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+        "line": 371,
+        "entry": "clearFIRelatedResources",
+        "route": "373 forceDeregister、375 memoryPool deRegister(false)同样需统一coordinator，不能在外层catch:267直接抢先释放。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+        "line": 522,
+        "entry": "wasCancelledBeforeDispatch -> cancelUnstartedFragmentInstance",
+        "route": "此分支明确未派发，无运行lease，保留tombstone/creation-lock语义；不可误改为等待不存在的worker。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+        "line": 541,
+        "entry": "cancelQuery finally:574 removes dataNodeQueryContextMap entry",
+        "route": "这是query map可见性移除，现存FI仍持引用，并非直接销毁该对象；保留query终止语义。实际decreaseFINum及本FI字段置null仍需延后。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+        "line": 404,
+        "entry": "ABORTED -> blockManager.forceDeregister",
+        "route": "runtime FI转换为coordinator的最终注销请求，原生非runtime保持原清理。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceContext.java",
+        "line": 1305,
+        "entry": "releaseResourceWhenAllDriversAreClosed() blocks await",
+        "route": "仅在原logical close和其slot结清后由异步continuation运行；终态listener不得阻塞等待触发该终态的当前driver。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceContext.java",
+        "line": 1404,
+        "entry": "releaseResource() closes readers,leases,TVList and nulls dataRegion",
+        "route": "不能在任何worker/driver仍在scan方法栈上时调用。"
+      },
+      {
+        "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceContext.java",
+        "line": 838,
+        "entry": "releaseMemoryReservationManager()",
+        "route": "必须在实际资源使用和TVList所有权转移结束后，且只能同一终态清理执行一次。"
+      }
+    ]
+  },
+  "memory_and_scheduler_caveats": [
+    {
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java",
+      "line": 285,
+      "note": "CHECK_DISABLED 返回0，HIGHEST_PRIORITY_ZERO_RESERVATION:308也可能接受但未预留；两者不能当真实ordered-frontier base reservation证明。必须显式真实reserve或禁止runtime ordered激活并记录原因。"
+    },
+    {
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java",
+      "line": 417,
+      "api": "reserveFromFreeMemoryForOperators(long memoryInBytes,long reservedBytes,String queryId,String contextHolder,boolean isHighestPriority)",
+      "note": "返回值是真实allocated，highestPriority可返回0；credit grant必须以positive allocated绑定，不能按请求值记账。releaseToFreeMemoryForOperators(long):447仅可释放确实持有的正字节。"
+    },
+    {
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "line": 245,
+      "note": "native quota CPU检查使用instanceof DataDriver，RuntimeScanWorker不是DataDriver。运行期wrapper必须纳入执行角色计数或统一quota接入，不能绕过用户配额。"
+    },
+    {
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/task/DriverTask.java",
+      "line": 91,
+      "note": "computeDeadlineTimeInMs 用当前wall clock+timeout。增长batch不能再次获得原始完整timeout；要绑定FI outer deadline，并在已经到期时拒绝增长，不能传0触发scheduler默认timeout。"
+    },
+    {
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "line": 269,
+      "note": "submitDrivers假设submittedTasks非空；只有依赖尚未满足的driver或过滤空batch会触发get(size-1)。运行期调用必须检查batch，并处理已完成依赖的回调与queryMap注册顺序。"
+    },
+    {
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "line": 579,
+      "note": "正常退休走runningToFinished→clearDriverTask，不走toAborted。后者622/625级联取消整query。schedulerRemoval acknowledge应在queryMap/ready reserved size/timeout实际移除后，并避开task lock直接回调重入。"
+    },
+    {
+      "source": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalScanPipelineBuilder.java",
+      "line": 146,
+      "note": "固定logical queues在worker数量不同时仍存在。有序merge的每lane头部、local merge与root head必须计入base；一块非借用frontier credit需要绑定实际pool reservation，不能仅降低队列名义上限。"
+    }
+  ],
+  "reusable_test_fixtures": [
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/DeviceTableScanParallelPipelineTest.java",
+      "methods": [
+        "testParallelScanWithDop4And8Devices:108",
+        "testTimePartitionParallelScanUsesCommonBuilder:293",
+        "testOrderedParallelScanBuildsTwoLevelMergeTree:337"
+      ],
+      "reuse": "既有真实local context与扫描计划构造，检查固定logical pipeline IDs、设备/time unit覆盖与新workerID区分。"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/OrderedScanPipelineContractTest.java",
+      "methods": [
+        "assertCompleteMerge(...):230",
+        "storageLeaf(AbstractTableScanOperatorParameter):399",
+        "independentExpectedRows:493",
+        "independentComparator:511"
+      ],
+      "reuse": "只替换存储叶，真实两级TableMergeSort/local queue/sink/source；独立24行oracle，覆盖ASC/DESC、null与重复时间戳。",
+      "gap": "既有299先把所有lane完全drain再310消费root，不能证明DOP1有界队列进展。新增测试需让root与runtime worker交错/并发推进，迫使某lane背压再轮转其他lane。"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentDriverCreationLifecycleTest.java",
+      "methods": [
+        "create(...):137",
+        "cleanup(...):150",
+        "cancellationBeforeSchedulerHandoffPreventsSubmission:171",
+        "assertManagerMiddleFactoryFailureSettlesThreeRealSlots(boolean):212"
+      ],
+      "reuse": "反射调用真实manager create/cleanup；中间factory无sink真实构造失败；反射取实际allDriversClosed并验证3个slot。扩展runtime构造/部分submit失败，worker不动latch。"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/fragment/LocalScanPipelineFailureIntegrationTest.java",
+      "methods": [
+        "assertProductionBuilderFailure(FailurePoint):101",
+        "queueBeforeFailureCleansEarlierPipelines:86",
+        "sinkConstructionFailureAbortsPublishedQueue:91",
+        "sourceConstructionFailureClosesSinkAndFactory:96",
+        "compositeRootIsClosedWhenQueueConstructionFails:236"
+      ],
+      "reuse": "生产manager/planner/common builder加真实queue资源审计；注入runtime group安装/worker注册失败边界。"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicAdmissionMemoryAccountTest.java",
+      "methods": [
+        "acceptedReservationAndReleaseUseOnlyTheAdmissionAccount:75",
+        "rejectionAndPriorityBypassDoNotInventReservationsOrReleases:111",
+        "disabledCheckIsCountedWithoutAllocating:133"
+      ],
+      "reuse": "验证base reservation等待runtime quiescence后才released；CHECK_DISABLED/priority0不能产生假credit。"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecutionTest.java",
+      "methods": [
+        "testFragmentInstanceExecution:95",
+        "testTVListOwnerTransfer:137",
+        "testAlignedTVListPartialColumnCloneEndToEnd:319"
+      ],
+      "reuse": "保留TVList转移与原生释放回归，增加terminal从worker.processFor内触发时异步屏障不自等待。"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverSchedulerTest.java",
+      "methods": [
+        "testManagingDriver:58"
+      ],
+      "reuse": "沿既有native queryMap/ready/timeout验证路径，检查正常retire不级联abort、late-growth ID与deadline，并使用真实driver执行计数而非只mock注册次数。"
+    }
+  ],
+  "minimal_integration_order": [
+    {
+      "step": 1,
+      "change": "先实现并接通RuntimeCleanupCoordinator",
+      "touchpoints": [
+        "FragmentInstanceContext initialize/updateStatsIfDone/releaseDataNodeQueryContext",
+        "LocalExecutionPlanner.checkMemory",
+        "FragmentInstanceExecution.initialize正常与catch",
+        "FragmentInstanceManager cleanup/clearFIRelatedResources",
+        "DriverScheduler.clearDriverTask"
+      ],
+      "gate": "活跃fake scan processFor持有锁时，terminal callback快速返回；base/query context/reader/queue仍有效；释放processFor后所有资源和slot结清，snapshot失败也同样成立。"
+    },
+    {
+      "step": 2,
+      "change": "固定descriptor与logical/native列表分离，先用固定worker数量",
+      "touchpoints": [
+        "LocalScanPipelineBuilder plan overload和161/187factory+consumer绑定",
+        "LocalExecutionPlanContext共享descriptor",
+        "Manager createDrivers后安装",
+        "Execution保存allLogicalDrivers和schedulerDrivers"
+      ],
+      "gate": "旧flag关闭走原分支；group内lane原IDs、contexts、queue、root数量不变；root sink与fixed latch不变，实际扫描仍产生完整结果。"
+    },
+    {
+      "step": 3,
+      "change": "完整原序列提前解析dependency为consumer-close futures",
+      "touchpoints": [
+        "PipelineDriverFactory dependency/downstream元数据",
+        "DriverScheduler显式gate或映射策略",
+        "RuntimeScanGroup(lanes,dependencies)"
+      ],
+      "gate": "producer EOF但consumer未close时下批lane仍不可运行；consumer close后才解锁；取消/异常future传播，不受删减batch索引影响。"
+    },
+    {
+      "step": 4,
+      "change": "native worker admit/retire接线",
+      "touchpoints": [
+        "runtime member registry/unique scheduler IDs",
+        "native scheduler正常FINISHED acknowledgement",
+        "实际incremental credit/account释放"
+      ],
+      "gate": "同一固定源执行1→2→4→2→1，active-leases并发真实变化，源cursor不重置，ordered DOP1不死锁，无重复漏行，所有native队列与credits归还。"
+    },
+    {
+      "step": 5,
+      "change": "有效live sample与RuntimeDopPolicy接线",
+      "touchpoints": [
+        "样本identity/sequence/time窗口",
+        "真实total/unknown覆盖",
+        "资源增长permit与pending resize状态",
+        "tick的terminal fencing"
+      ],
+      "gate": "自动策略动作绑定真实可用输入；unknown total不造零、不自动增长；nearEOF、counter reset、重复样本、冷却、取消与growth race均覆盖。forced-actuation只证明执行机制，不冒充自动调度收益。"
+    }
+  ],
+  "tests_executed": "无，本报告是只读源码核查；父线程负责冻结12文件的统一验证。"
+}

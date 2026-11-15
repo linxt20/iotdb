@@ -1,0 +1,227 @@
+{
+  "state": "passed",
+  "run_dir": "/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T064126Z",
+  "scope": "English/Chinese full-root test compilation, four new component tests, and DataNode plus reactor dependencies full unit suite; no service or performance acceptance.",
+  "initial_commit": "da2f455c3a2216f1f676844f91b32e724d7d5709",
+  "branch": "feat/runtime-dop",
+  "dirty_source_count": 12,
+  "tracked_diff_sha256": "b001dcbe81363633816e5796b04ff0ad17c2ff04eeccbe82e0854567b919aeca",
+  "source_fingerprint_unchanged": true,
+  "repo_settings_restored": true,
+  "phase_outcomes": [
+    {
+      "phase": "reactor-en",
+      "exit_code": 0,
+      "elapsed_seconds": 130.97
+    },
+    {
+      "phase": "targeted-tests",
+      "exit_code": 0,
+      "elapsed_seconds": 65.14
+    },
+    {
+      "phase": "full-tests",
+      "exit_code": 0,
+      "elapsed_seconds": 928.59
+    },
+    {
+      "phase": "reactor-zh",
+      "exit_code": 0,
+      "elapsed_seconds": 112.59
+    }
+  ],
+  "targeted_totals": {
+    "tests": 59,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "targeted_classes": [
+    {
+      "name": "org.apache.iotdb.db.queryengine.execution.driver.DriverQuiescenceTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "org.apache.iotdb.db.queryengine.execution.runtime.RuntimeDopPolicyTest",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "org.apache.iotdb.db.queryengine.execution.runtime.RuntimeScanGroupTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "org.apache.iotdb.db.queryengine.execution.runtime.RuntimeScanWorkerTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "full_totals": {
+    "tests": 7580,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 56
+  },
+  "full_module_totals": {
+    "iotdb-api/pipe-api": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-client/service-rpc": {
+      "tests": 111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-client/session": {
+      "tests": 288,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/calc-commons": {
+      "tests": 102,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/consensus": {
+      "tests": 91,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/datanode": {
+      "tests": 6418,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 53
+    },
+    "iotdb-core/metrics/core": {
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/metrics/interface": {
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/node-commons": {
+      "tests": 526,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    }
+  },
+  "all_108_baseline_selected_classes_covered": true,
+  "archive_xml_counts": {
+    "targeted-tests-reports.tar.gz": 4,
+    "full-tests-reports.tar.gz": 1131
+  },
+  "loaded_target_test_runtime": [
+    {
+      "class": "org.apache.iotdb.db.queryengine.execution.driver.DriverQuiescenceTest",
+      "java_home": "/usr/lib/jvm/java-17-openjdk-amd64",
+      "java_version": "17.0.20.1",
+      "java_io_tmpdir": "/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T064126Z/tmp",
+      "working_directory": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo/iotdb-core/datanode/target/fork_1"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.execution.runtime.RuntimeDopPolicyTest",
+      "java_home": "/usr/lib/jvm/java-17-openjdk-amd64",
+      "java_version": "17.0.20.1",
+      "java_io_tmpdir": "/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T064126Z/tmp",
+      "working_directory": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo/iotdb-core/datanode/target/fork_1"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.execution.runtime.RuntimeScanGroupTest",
+      "java_home": "/usr/lib/jvm/java-17-openjdk-amd64",
+      "java_version": "17.0.20.1",
+      "java_io_tmpdir": "/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T064126Z/tmp",
+      "working_directory": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo/iotdb-core/datanode/target/fork_1"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.execution.runtime.RuntimeScanWorkerTest",
+      "java_home": "/usr/lib/jvm/java-17-openjdk-amd64",
+      "java_version": "17.0.20.1",
+      "java_io_tmpdir": "/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T064126Z/tmp",
+      "working_directory": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo/iotdb-core/datanode/target/fork_1"
+    }
+  ],
+  "elapsed_seconds": 1240.64,
+  "artifacts": {
+    "execution-identity.json": {
+      "bytes": 18365,
+      "sha256": "a7f652c9d7bde1ffba2d297c2ebaff63eaa1aaacd149d95fef7512536cbd1449"
+    },
+    "execution-env.json": {
+      "bytes": 361,
+      "sha256": "18642cf91597994df6b3dba0cca89fb9a1e2e2ef322d36c8ce100453d2aabdb2"
+    },
+    "tracked-diff.patch": {
+      "bytes": 10219,
+      "sha256": "b001dcbe81363633816e5796b04ff0ad17c2ff04eeccbe82e0854567b919aeca"
+    },
+    "dirty-source-snapshot.tar.gz": {
+      "bytes": 197884,
+      "sha256": "12f9b643fef327f39c5c29ce851f507542aa92a5783e5cbad89dfebc7a3c4bbe"
+    },
+    "maven-settings.xml": {
+      "bytes": 1252,
+      "sha256": "02f6d01e93ba159b541ca8b9013196bfb862c45812abe466dad1630f7873e6ec"
+    },
+    "reactor-en.log": {
+      "bytes": 201944,
+      "sha256": "04c2484d66b32dc1cbfe394f613330fefeab18eb2e22002afc4d30255725412f"
+    },
+    "targeted-tests.log": {
+      "bytes": 104744,
+      "sha256": "47f5011a18cfedd78d24242bf6a7ee0df4858cdc09caf511acd0b3dae3de1830"
+    },
+    "targeted-tests-summary.json": {
+      "bytes": 46111,
+      "sha256": "102706d54e25eaa7f4c98c1b0e17fbb8b73c82f0e7a0e2c180f1b5c559ffb5f8"
+    },
+    "targeted-tests-reports.tar.gz": {
+      "bytes": 6619,
+      "sha256": "7ac3571e103ad0487f855a50bd58307ee2e5e2a7202324fb9d51dfe12bd3d6e1"
+    },
+    "full-tests.log": {
+      "bytes": 4341821,
+      "sha256": "65b2177f9184ccc23dd6726ecbee63537d819fe565f656982f438150556c0030"
+    },
+    "full-tests-summary.json": {
+      "bytes": 552759,
+      "sha256": "2ddfb789e8e5f0ce4e5eb93d4207166ad32654d8874dae7de980293f4182f951"
+    },
+    "full-tests-reports.tar.gz": {
+      "bytes": 1051257,
+      "sha256": "352f893fe22d0c2e331bd8f77397113402d68c7f53616c4f941337bbcbd97f32"
+    },
+    "reactor-zh.log": {
+      "bytes": 200706,
+      "sha256": "f7d17bea37da4ca128b6ee3b08183ebd4caf8f874f1aba70523dc8c7da1bf340"
+    },
+    "summary.json": {
+      "bytes": 4507,
+      "sha256": "9e70d5e52a7f0d314462e7e954e48a4cfd1aa7f70046f94f8872b96f2d4ae44c"
+    }
+  },
+  "prior_failed_implementation_run": "/root/rivermind-data/iotdb-runtime-dop-20261115/implementation-run-20261115T063533Z",
+  "prior_failure": "Mockito verifyNoInteractions API incompatible with repository version; test-only equal-strength correction to verifyZeroInteractions; prior raw evidence preserved."
+}

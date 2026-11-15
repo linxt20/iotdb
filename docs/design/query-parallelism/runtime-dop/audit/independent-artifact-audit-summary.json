@@ -1,0 +1,35 @@
+{
+  "audit_utc": "2026-11-15T06:08:40.649936+00:00",
+  "anchor_sha256": "60fd790255d622c6b95c05150075cdde9ef319dddb6988e368dfdf4027c82a49",
+  "scope": "Exactly 326 frozen anchors from the supplied manifests and their authenticated runtime identity receipt; no claim of full-disk completeness",
+  "verdict": "ALL_EXPECTED_CONTENT_HASHES_MATCH",
+  "expected": 326,
+  "matched_at_original_path": 110,
+  "matched_at_explicit_relocated_path": 216,
+  "unresolved_missing": 0,
+  "hash_mismatch": 0,
+  "counts": {
+    "original_documents": 81,
+    "evidence_summaries": 23,
+    "runtime_snapshots": 169,
+    "process_receipts": 47,
+    "frozen_dependencies": 6
+  },
+  "relocation": {
+    "old": "/tmp/Dev_1/iotdb-e-acceptance-20261104-r4/",
+    "new": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/runtime-r1/"
+  },
+  "original_tmp_paths_missing": 216,
+  "old_tmp_worktrees_restored": false,
+  "code_workspace_identity": "Not audited here; original /root/iotdb is known dirty historical feat/next-p0 and must not be used as final source",
+  "reports": [
+    {
+      "path": "independent-original-artifact-audit.json",
+      "sha256": "2982a469d19f94a32680e1aeaa51a4db3ad970ab82209684f352b1c4d602324a"
+    },
+    {
+      "path": "independent-relocated-artifact-audit.json",
+      "sha256": "8cf9194b46b15fc8988aee7469aefcd2f113b1093e4909238064fa54d08b90df"
+    }
+  ]
+}

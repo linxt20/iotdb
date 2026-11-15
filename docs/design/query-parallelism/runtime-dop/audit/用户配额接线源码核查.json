@@ -1,0 +1,55 @@
+{
+  "audit_utc": "2026-11-15T06:54:11.634141+00:00",
+  "scope": "Read-only quota/scheduler binding for next integration. No admission implementation or quota guarantee is claimed.",
+  "repo": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo",
+  "findings": [
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "lines": [
+        232,
+        242,
+        248,
+        260,
+        275
+      ],
+      "contract": "Existing admission scans only the current queryMap entry and only RUNNING DataDriver tasks. It excludes newly submitted whole batch, other pending growth transactions, other user queries and RuntimeScanWorker wrappers. queryMap.get(queryId) may also be absent on first non-root submission. Changing instanceof alone does not establish atomic quota."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/ThrottleQuotaLimit.java",
+      "symbols": [
+        "checkCpu",
+        "checkMemory"
+      ],
+      "contract": "Existing checks use limit > currently-used, rather than comparing the post-batch total against limit; preserve old entry semantics until a deliberate new ticket API and tests replace the complete path."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/storageengine/rescon/quotas/ThrottleQuotaLimit.java",
+      "symbols": [
+        "setQuotas",
+        "memLimit",
+        "cpuLimit"
+      ],
+      "contract": "Limit maps are HashMap and do not yet host a synchronized shared consumption ledger. New atomic acquisition must share synchronization with quota updates, include live and pending grants, and split/rollback batch ownership exactly once."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "symbols": [
+        "submitDrivers",
+        "registerTaskToQueryMap"
+      ],
+      "contract": "All initial native members and later runtime members must resolve to the same user ledger. A second independent runtime-only ledger cannot prove a user-wide bound while legacy tasks run."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "symbol": "clearDriverTask",
+      "contract": "Scheduler member removal and worker quiescence/resource settlement are different events. Releasing a base FI memory ticket merely because the native root task left queryMap is too early while its logical graph/queues remain live."
+    }
+  ],
+  "required_decisions": [
+    "Define resource role contributions for directly scheduled root/merge tasks, ordinary native DataDrivers, logical unscheduled lanes and RuntimeScanWorkers.",
+    "Choose and document conservative registered-capacity tickets versus actual per-quantum CPU permits; avoid claiming a guarantee from a running-only best-effort check.",
+    "Bind complete batch CPU plus real incremental worker memory atomically before native activation. Existing base operator/reader/queue costs remain FI responsibility.",
+    "Keep base user-memory responsibility until cleanup coordinator has settled actual base resources; normal task removal is insufficient.",
+    "Explicitly validate non-root first submission, exact-limit acceptance, concurrent two-group growth, partially registered batch rollback, quota update races and all grants returned."
+  ]
+}

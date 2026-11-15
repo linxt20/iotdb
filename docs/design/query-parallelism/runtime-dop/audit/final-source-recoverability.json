@@ -1,0 +1,85 @@
+{
+  "inspected_at": "2026-11-15 Asia/Shanghai",
+  "scope": "Read-only sc01 Git/source recovery audit. No repair, prune, checkout, build, or server start.",
+  "final_commit": "da2f455c3a2216f1f676844f91b32e724d7d5709",
+  "final_tree": "04a4ede7e5141c98d53a20532010ba2dc5f5dac8",
+  "original_common_git": "/root/rivermind-data/sc01-system-migrated-20261106/iotdb/.git",
+  "preserved_final_refs": [
+    "refs/heads/feat/query-parallelism-six-parts",
+    "refs/remotes/origin/feat/query-parallelism-six-parts"
+  ],
+  "durable_clean_clone": {
+    "path": "/root/rivermind-data/iotdb-docs-publication-20261106/clean-checkout",
+    "head": "da2f455c3a2216f1f676844f91b32e724d7d5709",
+    "tracked_status": "clean",
+    "independent_git": true
+  },
+  "archive_equivalence": {
+    "remote": {
+      "sha256": "163d59d5ff4c87afa72d0f83dd39c014bd2c3b3f506cf68a8d3c83fc3449b4bb",
+      "bytes": 105820160,
+      "returncode": 0,
+      "stderr": ""
+    },
+    "local": {
+      "repo": "/Users/sxing/project/tools/scratch/iotdb-writing-20261114/sources/iotdb",
+      "archive_sha256": "163d59d5ff4c87afa72d0f83dd39c014bd2c3b3f506cf68a8d3c83fc3449b4bb",
+      "archive_bytes": 105820160,
+      "returncode": 0,
+      "stderr": ""
+    },
+    "identical_sha256": true
+  },
+  "object_check": {
+    "tree_entries": 9714,
+    "distinct_referenced_objects": 9656,
+    "missing_gitlink": "iotdb-client/client-go @ 2ea2655e090dcefd12bf1a789a51c8df9a28fa24",
+    "missing_main_repository_blobs": 0,
+    "note": "The missing commit is an external Go client submodule gitlink, not a main-repository blob. Successful complete archive equals preexisting local frozen clone."
+  },
+  "surviving_key_files": [
+    {
+      "path": "/root/rivermind-data/sc01-system-migrated-20261106/.m2/settings.xml",
+      "bytes": 731,
+      "sha256": "36e61567118ff8437acc08941e98917c59cc908a4f55d637cbace0004aff2427"
+    },
+    {
+      "path": "/root/rivermind-data/sc01-system-migrated-20261106/.m2/repository/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.jar",
+      "bytes": 1956648,
+      "sha256": "78904b9375fc4617f2ff3d807084a439afb2da820181eac10578d532f9366413"
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-e-acceptance-20261104-r4/package-r1/source-code.tar.gz",
+      "bytes": 16604707,
+      "sha256": "1b73f9d9d20f827a64f33d3151ace7c1922f8e8b6031e61a0d087b80fc6e0ee4"
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-pr-validation-20261106/distribution-identity.json",
+      "bytes": 22783,
+      "sha256": "ed674f3c7c436022bdce4a3750b1f92d737e1148524cfa92be8686c2a870e556"
+    }
+  ],
+  "legacy_build_limitation": {
+    "expected_final_validation_archive_sha256": "6bd4f56c7fd89207a6d27c152f2cdbcda373eefd94272faab91f3292203e943e",
+    "recorded_path": "/tmp/Dev_1/iotdb-pr-package/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin.zip",
+    "recorded_path_available": false,
+    "surviving_dirty_root_archive": {
+      "path": "/root/rivermind-data/sc01-system-migrated-20261106/iotdb/distribution/target/apache-iotdb-2.0.11-SNAPSHOT-all-bin.zip",
+      "bytes": 122805396,
+      "sha256": "c618078ee9492abcb2016bd750a6942a0195e2177325f4fc1f6305e05f36ba60"
+    },
+    "note": "Surviving dirty-root archive contains TsFile 2.4.1 and is not the final validated package; do not reuse it as final."
+  },
+  "recovery_plan": [
+    "Keep original dirty repository, evidence directories, and prunable worktree metadata untouched during recovery.",
+    "Use the independent durable clean clone as source or clone from it into a new data-disk directory and detach/branch at the exact final commit.",
+    "Verify the recovered tree and archive hash against the recorded values, then bind a fresh build identity.",
+    "Reuse the persisted Maven repository and settings only after dependency identity verification; build final distribution from final source instead of silently falling back to legacy package."
+  ],
+  "minimum_paths": [
+    "/root/rivermind-data/iotdb-docs-publication-20261106/clean-checkout",
+    "/root/rivermind-data/sc01-system-migrated-20261106/.m2",
+    "/root/rivermind-data/iotdb-pr-validation-20261106",
+    "/root/rivermind-data/iotdb-six-parts-20261106"
+  ]
+}

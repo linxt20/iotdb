@@ -1,0 +1,59 @@
+{
+  "base_frozen_commit": "da2f455c3a2216f1f676844f91b32e724d7d5709",
+  "branch": "feat/runtime-dop",
+  "scope": "Validated runtime scan ownership, worker, cooperative Driver quiescence and pure policy primitives. SQL activation and frontier queue integration are not implemented in this checkpoint.",
+  "code_git_tree_sha256": "85170213cfa7d18fd62ac22e19d4034e05313c1dd662c2de2331c57bb11f12a0",
+  "source_sha256": {
+    "iotdb-core/datanode/src/main/i18n/en/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java": "24cf0b98144fe7321a72bd4218f19e6a8482ae372551eb2578fa4adf507c1115",
+    "iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java": "74d10c4d995c25383a6f8e4f9814e25c8576ece3815b207b757ba7589436fca9",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/Driver.java": "37b071505e3705fc5f8dcec0e011e65c0a54673de411283c93ffbf11de8451fe",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/driver/IDriver.java": "7bde84e4a49046ab1ac526f0b3eb2110e2f693816e7a83942b2b3556ca25ebd9",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopPolicy.java": "98ed8540a75fccdecb835154be413a2571b35987477803926a534076271b59fa",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeLaneLease.java": "246933b14f8dab8c6f4782435cefada0d66b0985aabc87a7ed3734a344641e0c",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanGroup.java": "b3bd753f1078ab97cd2398925a14127c367cbda28e8c363dc4ddef440c20497c",
+    "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanWorker.java": "20ef1883d77e4366e1e9352012fa7403f311cefbec6bcf1ec0a37f8555fee94f",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/driver/DriverQuiescenceTest.java": "131909ef27638c480ef96562591d2c07a75b75ac7b0b0a48bed20f2a0c8df499",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopPolicyTest.java": "8bd367dc0dacfd9aaf7880c1943851e3270280a343c1c1d33e1a094374fe2604",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanGroupTest.java": "1ba44df557a4e6ccb4610ee655dc8b09ea4ee2f2e507d6ff4bf3aa49c7fb5abe",
+    "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeScanWorkerTest.java": "a8965a26abfdf9b8d4865d3a2042b818937e5ea60520ed8c26fbb37e9470cc2e"
+  },
+  "existing_entry_sha256": {
+    "iotdb-client/client-py/tests/unit/test_runtime_snapshot_thrift.py": "e1de814dab9e6192d9dd1f82e1a36a6015ace888c4891367af19d7799c22ca6f",
+    "iotdb-protocol/thrift-datanode/src/main/thrift/datanode.thrift": "4d3770601e86057b187954ec501c64ae9c150ab910cfd45e458089bf609fa573",
+    "pom.xml": "99bc9073d7f8e872960732866a763c573088739ea6cf934c5abd64b8588bbd0d",
+    "research/query-intra-parallelism-benchmark/scripts/collect_datanode_proc.py": "eceb32ba76cfe13ceb6c9cf5264fa886696e30158c3368f9a560f2cbf84a9f88",
+    "research/query-intra-parallelism-benchmark/scripts/extract_remote_shuffle_payload_bytes.py": "6de8472275e621f9c6b494135ef41d3a5a902241a3620552d2f40c4db3ab1c3a",
+    "research/query-intra-parallelism-benchmark/scripts/iotdb_cli_adapter.py": "993d1d86f22d18ca09c4cb7e0465294154c6a4061e791357f0e511664e003fa4",
+    "research/query-intra-parallelism-benchmark/scripts/server_current_query_metrics.py": "e323189f17c211f8152295a002c6518072c6ab2b2f502bb94a22bf9191cc240a",
+    "research/query-intra-parallelism-benchmark/scripts/server_query_metrics_with_proc.py": "4193911156b9abb4023fddd48e92613c65be5dcbaa0038ac440178459516206d",
+    "research/query-intra-parallelism-benchmark/scripts/verify_p0_matrix.py": "0d8264fd17684035424ab10d8f0cf7b0b6e49c7db6e96a641ae2e70cfbe18048",
+    "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh": "49fe037cdf06fdbddf2efaedf8445d6a98ef9f3d26cf4a50d977fb5d9d87c9cb",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/run_multi_query_case_acceptance.py": "eb81bc632df13cc84de5d573652b82d6d3c87a558c378190a86893a92b8b44ea",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py": "aa656c2e5c992d7f15ce1993e606be4bc5407040918e30e8f194c618159b6fc6",
+    "research/query-intra-parallelism-e2e-acceptance/scripts/verify_property_enforcement_matrix.py": "2df8ab7c06fe6b8c84174dc3ed7272612a69c8ae3cc36fafd43deddc442c8d66",
+    "research/query-intra-parallelism-e2e-acceptance/sql/multisource_hash_groupby_fixture.sql": "c7faee55e5b02f19d0a17ee962fbe789fcd5acfcf33645586ee2ce553628e77f"
+  },
+  "validation_summary": "audit/implementation-final-validation.json",
+  "validation_summary_sha256": "46c29a9ec79fbc19ff5b76012ceea8cde7e0abd882918747bd8de8e4091cc91e",
+  "baseline_validation": "audit/baseline-finalization.json",
+  "targeted_tests": {
+    "tests": 59,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "full_tests": {
+    "tests": 7580,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 56
+  },
+  "english_compile_exit": 0,
+  "chinese_compile_exit": 0,
+  "limitations": [
+    "No production planner/scheduler/cleanup wiring",
+    "No live SQL runtime DOP or two-DataNode acceptance",
+    "No new performance claim",
+    "Frontier class and tests exist only outside this repository in next-stage-staging"
+  ]
+}

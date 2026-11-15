@@ -1,0 +1,37 @@
+{
+  "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/baseline/iotdb-api/pipe-api/target/surefire-reports/TEST-org.apache.iotdb.pipe.api.customizer.parameter.PipeParametersTest.xml",
+  "java_home": "/usr/lib/jvm/java-17-openjdk-amd64",
+  "java_version": "17.0.20.1",
+  "java_vm_version": "17.0.20.1+1-1-22.04-Ubuntu",
+  "java_io_tmpdir": "/tmp",
+  "basedir": "/root/rivermind-data/iotdb-runtime-dop-20261115/baseline/iotdb-api/pipe-api",
+  "working_directory": "/root/rivermind-data/iotdb-runtime-dop-20261115/baseline/iotdb-api/pipe-api/target/fork_2",
+  "classpath_entries": [
+    "/root/rivermind-data/iotdb-runtime-dop-20261115/baseline/iotdb-api/pipe-api/target/test-classes",
+    "/root/rivermind-data/iotdb-runtime-dop-20261115/baseline/iotdb-api/pipe-api/target/classes",
+    "/root/.m2/repository/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.jar",
+    "/root/.m2/repository/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-SNAPSHOT.jar",
+    "/root/.m2/repository/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.jar",
+    "/root/.m2/repository/org/xerial/snappy/snappy-java/1.1.10.9/snappy-java-1.1.10.9.jar",
+    "/root/.m2/repository/at/yawk/lz4/lz4-java/1.11.4/lz4-java-1.11.4.jar",
+    "/root/.m2/repository/org/tukaani/xz/1.9/xz-1.9.jar",
+    "/root/.m2/repository/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar",
+    "/root/.m2/repository/org/antlr/antlr4-runtime/4.13.2/antlr4-runtime-4.13.2.jar",
+    "/root/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar",
+    "/root/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar",
+    "/root/rivermind-data/iotdb-runtime-dop-20261115/baseline/iotdb-api/pipe-api/target/gradle-enterprise/test-listeners.jar",
+    ""
+  ],
+  "tsfile_classpath_jars": [
+    {
+      "path": "/root/.m2/repository/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.jar",
+      "realpath": "/root/rivermind-data/sc01-system-migrated-20261106/.m2/repository/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.jar",
+      "sha256": "78904b9375fc4617f2ff3d807084a439afb2da820181eac10578d532f9366413"
+    },
+    {
+      "path": "/root/.m2/repository/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-SNAPSHOT.jar",
+      "realpath": "/root/rivermind-data/sc01-system-migrated-20261106/.m2/repository/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-SNAPSHOT.jar",
+      "sha256": "1acd30f73bb5b09dc8a46b6dc03f0accc60614c20fd665900fdb723e6b85971d"
+    }
+  ]
+}

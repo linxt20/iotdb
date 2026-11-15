@@ -1,0 +1,94 @@
+{
+  "state": "completed",
+  "test_result": "passed",
+  "runtime_seconds": 1119.18,
+  "totals": {
+    "tests": 7521,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 56
+  },
+  "module_totals": {
+    "iotdb-api/pipe-api": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-client/service-rpc": {
+      "tests": 111,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-client/session": {
+      "tests": 288,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/calc-commons": {
+      "tests": 102,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/consensus": {
+      "tests": 91,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/datanode": {
+      "tests": 6359,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 53
+    },
+    "iotdb-core/metrics/core": {
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/metrics/interface": {
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "iotdb-core/node-commons": {
+      "tests": 526,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    }
+  },
+  "selected_classes_missing_from_full": [],
+  "source_status_after_restoring_formatter_only_change": "",
+  "settings_restored_sha256": "02f6d01e93ba159b541ca8b9013196bfb862c45812abe466dad1630f7873e6ec",
+  "settings_formatted_sha256": "add1493460399a5db8e27aa56857fecd444d1b4f9e3c98f569396cd60ecf2445",
+  "runner_bookkeeping": "Original runner caught normal SystemExit(0); preserved original status/error and verified phase exits plus XML before finalization; tests were not rerun.",
+  "artifacts": {
+    "full-test-reports.tar.gz": {
+      "bytes": 1008416,
+      "sha256": "4924a3b9f83141482ab7a57801033bb4e34b817d275e1ce9190ffa35b6173d65"
+    },
+    "reactor-en.log": {
+      "bytes": 202841,
+      "sha256": "41ec6449cc7ce60643b1d61d3667a009ac336ebcb4603c6660ace06e8b7827e8"
+    },
+    "full-tests.log": {
+      "bytes": 4019770,
+      "sha256": "6ed21e5f1914652e5012881a2fa4e382092843ee475ddc6b996b6c014055907a"
+    },
+    "execution-identity.json": {
+      "bytes": 11556,
+      "sha256": "2fa9f3116237f25986ad977bed919880dfb7faf26a4e55b94a90cc1b35c7ef86"
+    },
+    "loaded-test-runtime-identity.json": {
+      "bytes": 2554,
+      "sha256": "b4bbd2826cb546e5e13d96d2613404fe778391d880bbb060e02ea4302ccebf1e"
+    }
+  }
+}

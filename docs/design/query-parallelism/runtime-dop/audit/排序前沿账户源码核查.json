@@ -1,0 +1,68 @@
+{
+  "audit_utc": "2026-11-15T06:38:52.113950+00:00",
+  "commit_parent": "da2f455c3a2216f1f676844f91b32e724d7d5709",
+  "repo": "/root/rivermind-data/iotdb-runtime-dop-20261115/repo",
+  "scope": "Read-only frontier accounting binding. Design observations, no implementation or service acceptance.",
+  "findings": [
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueue.java",
+      "symbol": "MemoryReservationKey",
+      "line": 57,
+      "contract": "Physical queue identity captures queryId/FI/planNodeId once; future group frontier account must have its own stable key rather than charge each lane for the whole group."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueue.java",
+      "symbol": "add(TsBlock)",
+      "line": 273,
+      "contract": "Current path registers MemorySide.OUTPUT then reserveWithPriority on tsBlock.getSizeInBytes; async listener enqueues a pending block under queue monitor; prepaid mode must bypass both registration charge and per-block pool reserve."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueue.java",
+      "symbol": "remove()",
+      "line": 229,
+      "contract": "Current path frees per-block reservedBytes from pool. Prepaid mode must return internal credit, preserving original group pool reservation while consumer retains a head."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueue.java",
+      "symbol": "close/abort/abort(Throwable)",
+      "lines": [
+        352,
+        396,
+        424
+      ],
+      "contract": "All termination paths free pool bytes. New queue mode must route each to idempotent internal credit settlement before final group free."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/SharedTsBlockQueue.java",
+      "symbol": "setMaxBytesCanReserve(long)",
+      "line": 159,
+      "contract": "Monotone min cap cannot serve as runtime DOP control or as physical prepayment."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/memory/MemoryPool.java",
+      "symbol": "registerPlanNodeIdToQueryMemoryMap(String,String,String,MemorySide)",
+      "line": 244,
+      "contract": "Register group account on OUTPUT. Existing account side cannot be rebound."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/memory/MemoryPool.java",
+      "symbol": "registerFragmentInstanceSharedBudget(String,String)",
+      "line": 275,
+      "contract": "Needed for FI-side shared cap. tryReserve without sharedBudget enforces plan-local rather than whole-FI cap."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/memory/MemoryPool.java",
+      "symbol": "tryReserve(String,String,String,long,long)",
+      "line": 696,
+      "contract": "Nonblocking real pool allocation. Check complete batch then rollback already allocated groups on any failure; never count high-priority zero-reservation as successful frontier admission."
+    }
+  ],
+  "next_design_constraints": [
+    "Use actual retained block bound for new frontier credits, or prove size-in-bytes plus retained overhead is covered elsewhere; current getSizeInBytes accounting alone is not a proof of total physical memory.",
+    "Credit path must limit each lane to one queued bounded block and return a pending producer-space future while occupied; remove restores that lane credit without global pool free.",
+    "Consumer retained heads, pending producer block and fixed reader state remain in base estimate; releasing queue credit does not free a block still referenced by merge.",
+    "Complete external futures on existing notification executor or outside handle/group locks, preserving original queue/source/sink lock discipline.",
+    "Controller shrinking workers never shrinks fixed logical queues, hash buckets or aggregate ownership. Memory elasticity only covers admitted incremental worker resources.",
+    "Acceptance must use real SharedTsBlockQueue, MemoryPool and two-level TableMergeSortOperator at DOP1 with full/delayed/smaller/empty lanes."
+  ]
+}

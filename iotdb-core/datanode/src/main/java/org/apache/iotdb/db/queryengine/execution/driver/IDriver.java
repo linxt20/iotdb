@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTaskId;
@@ -83,6 +84,21 @@ public interface IDriver {
 
   default long getRuntimeTsBlockCount() {
     return -1;
+  }
+
+  /** Whether a terminal coordinator may stop processing without closing the operator tree. */
+  default boolean supportsQuiescence() {
+    return false;
+  }
+
+  /**
+   * Cooperatively stop further processing. Completion acknowledges that the current processing
+   * quantum has left the driver lock; it does not close operators or release their resources.
+   * Callers must await asynchronously, since the request may originate within the current quantum.
+   */
+  default ListenableFuture<Void> requestQuiescence() {
+    throw new UnsupportedOperationException(
+        DataNodeQueryMessages.EXCEPTION_DRIVER_DOES_NOT_SUPPORT_COOPERATIVE_QUIESCENCE_959AC4F1);
   }
 
   void setDriverTaskId(DriverTaskId driverTaskId);

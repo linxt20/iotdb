@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -76,6 +77,10 @@ public abstract class Driver implements IDriver {
   protected final DriverLock exclusiveLock = new DriverLock();
 
   private boolean isHighestPriority;
+  private volatile boolean quiescenceRequested;
+  private final SettableFuture<Void> quiescenceFuture = SettableFuture.create();
+
+  private final AtomicBoolean quiescenceCompletionClaimed = new AtomicBoolean();
   private volatile long firstProcessNanos = -1;
   private volatile long lastProcessNanos = -1;
   private volatile long wallNanos = -1;
@@ -105,6 +110,9 @@ public abstract class Driver implements IDriver {
 
   @Override
   public boolean isFinished() {
+    if (quiescenceRequested) {
+      return true;
+    }
     checkLockNotHeld(
         DataNodeQueryMessages
             .EXCEPTION_CANNOT_CHECK_FINISHED_STATUS_WHILE_HOLDING_THE_DRIVER_LOCK_E3421709);
@@ -130,6 +138,9 @@ public abstract class Driver implements IDriver {
 
   @Override
   public ListenableFuture<?> processFor(Duration duration) {
+    if (quiescenceRequested) {
+      return NOT_BLOCKED;
+    }
 
     SettableFuture<?> blockedFuture = driverBlockedFuture.get();
 
@@ -147,7 +158,7 @@ public abstract class Driver implements IDriver {
             false,
             () -> {
               // only keep doing query processing if driver state is still alive
-              if (state.get() == State.ALIVE) {
+              if (state.get() == State.ALIVE && !quiescenceRequested) {
                 if (firstProcessNanos < 0) {
                   firstProcessNanos = System.nanoTime();
                 }
@@ -161,7 +172,7 @@ public abstract class Driver implements IDriver {
                   // We should do initialization after holding the lock to avoid parallelism
                   // problems
                   // with close
-                  if (!init(blockedFuture)) {
+                  if (!init(blockedFuture) || quiescenceRequested) {
                     return blockedFuture;
                   }
 
@@ -170,7 +181,9 @@ public abstract class Driver implements IDriver {
                     if (!future.isDone()) {
                       return updateDriverBlockedFuture(future);
                     }
-                  } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+                  } while (!quiescenceRequested
+                      && System.nanoTime() - start < maxRuntime
+                      && !isFinishedInternal());
                 } finally {
                   recordProcessTiming(false);
                 }
@@ -235,6 +248,52 @@ public abstract class Driver implements IDriver {
   }
 
   @Override
+  public boolean supportsQuiescence() {
+    return true;
+  }
+
+  @Override
+  public ListenableFuture<Void> requestQuiescence() {
+    quiescenceRequested = true;
+    // Wake a blocked native task without cancelling its operator or memory future.
+    driverBlockedFuture.get().set(null);
+    completeQuiescenceIfPossible();
+    // Cancellation by one observer must not cancel the shared acknowledgement.
+    return com.google.common.util.concurrent.Futures.nonCancellationPropagating(quiescenceFuture);
+  }
+
+  private void completeQuiescenceIfPossible() {
+    if (!quiescenceRequested
+        || quiescenceFuture.isDone()
+        || quiescenceCompletionClaimed.get()
+        || exclusiveLock.isHeldByCurrentThread()) {
+      return;
+    }
+    AtomicBoolean notificationOwner = new AtomicBoolean();
+    Throwable cleanupFailure = null;
+    try {
+      // Reuse the normal lock protocol, including its after-unlock close handoff. A separate
+      // raw tryLock/unlock would reintroduce the NEED_DESTRUCTION race documented below.
+      tryWithLockUnInterruptibly(
+          () -> {
+            notificationOwner.set(quiescenceCompletionClaimed.compareAndSet(false, true));
+            return TRUE;
+          });
+    } catch (Throwable t) {
+      cleanupFailure = t;
+    }
+    // The claim also prevents the normal lock protocol's notification hook from recursing.
+    // Listeners may close this driver, so never notify while holding the non-reentrant lock.
+    if (notificationOwner.get()) {
+      if (cleanupFailure == null) {
+        quiescenceFuture.set(null);
+      } else {
+        quiescenceFuture.setException(cleanupFailure);
+      }
+    }
+  }
+
+  @Override
   public void close() {
     // mark the service for destruction
     if (!state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION)) {
@@ -264,6 +323,10 @@ public abstract class Driver implements IDriver {
   private boolean isFinishedInternal() {
     checkLockHeld(
         DataNodeQueryMessages.EXCEPTION_LOCK_MUST_BE_HELD_TO_CALL_ISFINISHEDINTERNAL_9D600B8D);
+
+    if (quiescenceRequested) {
+      return true;
+    }
 
     boolean finished;
     try {
@@ -429,6 +492,8 @@ public abstract class Driver implements IDriver {
         exclusiveLock.unlock();
       }
     }
+
+    completeQuiescenceIfPossible();
 
     if (failure != null) {
       throwIfUnchecked(failure);
