@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_ALL_SELECTED_V6_SQL_AND_EXACT_RESULT_CONTRACTS_WITH_DECLARED_LIMITS",
+  "asOfUtc": "2026-11-15T16:22:21.495645+00:00",
+  "scope": "11 candidate SQL cases,8 controls,8 complete three-way typed comparisons. Does not claim performance, fullsuite or Git publication.",
+  "releaseManifestSha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+  "serverJarSha256": "96cec414cb51bc8e61423d238fb4dbeab14a2ffd346dd0fca67be5fd50df1db5",
+  "actualJavaServiceProcesses": 6,
+  "candidateRuns": 11,
+  "controlRuns": 8,
+  "acceptedRunCount": 19,
+  "actualFIResourceReceiptCount": 65,
+  "allFinalRunsBeforeAndAfterEqualFirstPureR1PoolBaselines": true,
+  "firstPureR1PoolBaselines": {
+    "candidate": {
+      "1": {
+        "exchangeRemainingBytes": 514881194,
+        "operatorsFreeBytes": 514881194
+      },
+      "2": {
+        "exchangeRemainingBytes": 514881194,
+        "operatorsFreeBytes": 514881194
+      }
+    },
+    "control": {
+      "1": {
+        "exchangeRemainingBytes": 514881194,
+        "operatorsFreeBytes": 514881194
+      },
+      "2": {
+        "exchangeRemainingBytes": 514881194,
+        "operatorsFreeBytes": 514881194
+      }
+    }
+  },
+  "commonCliCompileReceiptSha256": "766ad33cee01d4ff190625d999ab485e85568fa4fb9a86c912e8231bbfa86c1b",
+  "comparisonResults": [
+    {
+      "case": "R1-fullscan-window",
+      "rowsPerRole": 4096,
+      "distinctTypedRows": 4096,
+      "columnTypes": [
+        "TIMESTAMP",
+        "STRING",
+        "INT64",
+        "INT64",
+        "INT64"
+      ],
+      "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": true,
+      "orderingRequired": false,
+      "orderedKeyComparison": null,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-fullscan-window/r001/typed-result-comparison.json"
+    },
+    {
+      "case": "R2-primary",
+      "rowsPerRole": 4096,
+      "distinctTypedRows": 4096,
+      "columnTypes": [
+        "TIMESTAMP",
+        "STRING",
+        "INT64",
+        "INT64",
+        "INT64"
+      ],
+      "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": true,
+      "orderingRequired": true,
+      "orderedKeyComparison": null,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-primary/r001/typed-result-comparison.json"
+    },
+    {
+      "case": "R2-time-only",
+      "rowsPerRole": 4096,
+      "distinctTypedRows": 4096,
+      "columnTypes": [
+        "TIMESTAMP",
+        "STRING",
+        "INT64",
+        "INT64",
+        "INT64"
+      ],
+      "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": true,
+      "orderingRequired": true,
+      "orderedKeyComparison": true,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/typed-result-comparison.json"
+    },
+    {
+      "case": "R3-primary",
+      "rowsPerRole": 257,
+      "distinctTypedRows": 257,
+      "columnTypes": [
+        "TIMESTAMP",
+        "STRING",
+        "INT64",
+        "INT64",
+        "INT64"
+      ],
+      "typedMultisetSha256": "a9cbb0e6cddc8face0cc0d83b9a34a8cbbef90b837312c2b76827ea539bb9eb3",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": true,
+      "orderingRequired": true,
+      "orderedKeyComparison": null,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-primary/r001/typed-result-comparison.json"
+    },
+    {
+      "case": "R3-runtime-early",
+      "rowsPerRole": 257,
+      "distinctTypedRows": 1,
+      "columnTypes": [
+        "INT64"
+      ],
+      "typedMultisetSha256": "6e7f642f3a1a7f7fceecfbc266ccd378c95afa50a3c6dae059d4f7f2810a08ed",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": true,
+      "orderingRequired": false,
+      "orderedKeyComparison": null,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-runtime-early/r001/typed-result-comparison.json"
+    },
+    {
+      "case": "R7-grouped",
+      "rowsPerRole": 257,
+      "distinctTypedRows": 257,
+      "columnTypes": [
+        "INT64",
+        "INT64",
+        "INT64",
+        "DOUBLE",
+        "DOUBLE",
+        "INT64",
+        "INT64"
+      ],
+      "typedMultisetSha256": "c196e71fb70d8d15fc1136e3ef62ec9034f71ec9acb9ee5c5543a86461562fcf",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": true,
+      "orderingRequired": false,
+      "orderedKeyComparison": null,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-grouped/r001/typed-result-comparison.json"
+    },
+    {
+      "case": "R7-filter-project",
+      "rowsPerRole": 257,
+      "distinctTypedRows": 257,
+      "columnTypes": [
+        "INT64",
+        "INT64",
+        "DOUBLE"
+      ],
+      "typedMultisetSha256": "8d6a792e41397ad6b64528b253c20c9cc3b356cfa640972c65904f90dd4b2dc6",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": true,
+      "orderingRequired": false,
+      "orderedKeyComparison": null,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-filter-project/r001/typed-result-comparison.json"
+    },
+    {
+      "case": "R1-high-output",
+      "rowsPerRole": 4750916,
+      "distinctTypedRows": 4750916,
+      "columnTypes": [
+        "TIMESTAMP",
+        "STRING",
+        "INT64",
+        "INT64",
+        "INT64"
+      ],
+      "typedMultisetSha256": "cec87a2c16527f679be0b2023b09d3b6184aa0eb67c1bbb9c88b54e164e73cae",
+      "fullExactCanonicalRowMergeIndependentlyVerified": true,
+      "originalInputTypesRowsAndSHAIndependentlyVerified": true,
+      "smallResultOriginalRowsAndOracleIndependentlyCompared": false,
+      "orderingRequired": false,
+      "orderedKeyComparison": null,
+      "report": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-high-output/r001/typed-result-comparison.json"
+    }
+  ],
+  "keyFacts": {
+    "R1_realGrowShrinkEvents": [
+      [
+        {
+          "sequence": 1,
+          "requestedWorkers": 1,
+          "observedWorkers": 1,
+          "outcome": "INITIAL_ACTIVATED"
+        },
+        {
+          "sequence": 2,
+          "requestedWorkers": 2,
+          "observedWorkers": 2,
+          "outcome": "APPLIED"
+        },
+        {
+          "sequence": 3,
+          "requestedWorkers": 3,
+          "observedWorkers": 3,
+          "outcome": "APPLIED"
+        },
+        {
+          "sequence": 4,
+          "requestedWorkers": 2,
+          "observedWorkers": 2,
+          "outcome": "APPLIED"
+        },
+        {
+          "sequence": 5,
+          "requestedWorkers": 1,
+          "observedWorkers": 1,
+          "outcome": "APPLIED"
+        }
+      ],
+      [
+        {
+          "sequence": 1,
+          "requestedWorkers": 1,
+          "observedWorkers": 1,
+          "outcome": "INITIAL_ACTIVATED"
+        },
+        {
+          "sequence": 2,
+          "requestedWorkers": 2,
+          "observedWorkers": 2,
+          "outcome": "APPLIED"
+        },
+        {
+          "sequence": 3,
+          "requestedWorkers": 3,
+          "observedWorkers": 3,
+          "outcome": "APPLIED"
+        }
+      ]
+    ],
+    "R3_runtimeEarlyUniqueSourceRows": {
+      "20261115_160414_01480_1.2.0": 70000,
+      "20261115_160414_01480_1.3.0": 90000
+    },
+    "R3_runtimeEarlySourceTotal": 160000,
+    "R3_runtimeEarlyTwoGroupsInitialWorkers": [
+      1,
+      1
+    ],
+    "R4": {
+      "effectiveCode": 715,
+      "rawCode": 0,
+      "provenance": "IOTDB_LEGACY_RESULTSET_NEXT_MESSAGE_PREFIX",
+      "prefixRows": 503,
+      "prefixMembershipVerified": false,
+      "elapsedNanos": 2328212451
+    },
+    "R5": {
+      "effectiveCode": 720,
+      "rawCode": 720,
+      "provenance": "JDBC_VENDOR_CODE",
+      "prefixRows": 0,
+      "prefixMembershipVerified": false,
+      "elapsedNanos": 1237358277
+    },
+    "R5_states": [
+      "FAILED",
+      "FAILED",
+      "FINISHED"
+    ],
+    "R5_deadlines": [
+      {
+        "fi": "20261115_160421_01485_1.1.0",
+        "originalDeadlineMillis": 1794758662198,
+        "endTimeMs": 1794758662208,
+        "endMinusDeadlineMs": 10,
+        "state": "FAILED"
+      },
+      {
+        "fi": "20261115_160421_01485_1.2.0",
+        "originalDeadlineMillis": 1794758662202,
+        "endTimeMs": 1794758662207,
+        "endMinusDeadlineMs": 5,
+        "state": "FAILED"
+      },
+      {
+        "fi": "20261115_160421_01485_1.3.0",
+        "originalDeadlineMillis": 1794758662204,
+        "endTimeMs": 1794758662209,
+        "endMinusDeadlineMs": 5,
+        "state": "FINISHED"
+      }
+    ],
+    "R6": {
+      "effectiveCode": 701,
+      "rawCode": 701,
+      "provenance": "JDBC_VENDOR_CODE",
+      "prefixRows": 0,
+      "prefixMembershipVerified": false,
+      "elapsedNanos": 2744839689
+    },
+    "R6_states": [
+      "FAILED",
+      "FAILED",
+      "FINISHED"
+    ],
+    "R7topologies": {
+      "R7-grouped": {
+        "actualSourceCount": 2,
+        "partitionCount": 2,
+        "actualUniqueReciprocalConnections": 4,
+        "sourceFIKeys": [
+          [
+            "20261115_161107_01491_1.3.0",
+            "78"
+          ],
+          [
+            "20261115_161107_01491_1.4.0",
+            "82"
+          ]
+        ],
+        "bucketOwnerFIs": {
+          "0": "20261115_161107_01491_1.2.0",
+          "1": "20261115_161107_01491_1.5.0"
+        },
+        "bucketOwnerDataNodeIds": {
+          "0": 1,
+          "1": 1
+        },
+        "independentlyCheckedActualRosterEdges": true
+      },
+      "R7-filter-project": {
+        "actualSourceCount": 2,
+        "partitionCount": 2,
+        "actualUniqueReciprocalConnections": 4,
+        "sourceFIKeys": [
+          [
+            "20261115_161110_01493_1.3.0",
+            "125"
+          ],
+          [
+            "20261115_161110_01493_1.4.0",
+            "129"
+          ]
+        ],
+        "bucketOwnerFIs": {
+          "0": "20261115_161110_01493_1.2.0",
+          "1": "20261115_161110_01493_1.5.0"
+        },
+        "bucketOwnerDataNodeIds": {
+          "0": 1,
+          "1": 1
+        },
+        "independentlyCheckedActualRosterEdges": true
+      }
+    }
+  },
+  "limitations": [
+    "R3primary is legal SERIAL compatibility; runtime early-stop is separately proved by runtime-early.",
+    "Controls explicitly lack frozen statistics; actual FINISHED info RPC and real resource lifecycle verified, missing frozen checks remain declared.",
+    "Negative prefixes are not complete results and have no dedicated membership verifier.",
+    "R4 legacy715 proves restricted actual JDBC next provenance, not captured raw RPC TSStatus.",
+    "R5 FI states are FAILED/FAILED/FINISHED; each FI retains its own original deadline, not one identical millisecond value.",
+    "First R3 control full-fetch and immediateR6 no-roster failures remain preserved and excluded by exact final parameter map.",
+    "Matching pure pool baselines establishes no pool-memory residue in subsequent accepted runs; it does not create missing roster evidence for rejected immediateR6.",
+    "No performance speedup/full-processRSS/global-network budget claim."
+  ],
+  "pendingOutsideScope": [
+    "Final CLI compatibility-v6 if separately required.",
+    "Independent full-v6/background assertion accounting.",
+    "Final manifests, documentation, commit/push receipts."
+  ]
+}

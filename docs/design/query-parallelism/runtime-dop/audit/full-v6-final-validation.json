@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "status": "passed-with-explicit-upstream-background-assertions-and-fresh-module-replay",
+  "createdAtUtc": "2026-11-15T16:18:15.051915+00:00",
+  "run": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-run-20261115T155714Z",
+  "repo": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo",
+  "originalFullMavenExitCode": 0,
+  "originalRunnerState": "runner_error preserved: caught two cache-restored upstream XML",
+  "freshEvidenceComposition": {
+    "initialFullV6Xml": 1145,
+    "cacheDisabledPipeApiReplayXml": 2
+  },
+  "reactor": {
+    "freshXmlCount": 1147,
+    "totals": {
+      "tests": 8037,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 56
+    }
+  },
+  "datanode": {
+    "freshXmlCount": 964,
+    "totals": {
+      "tests": 6875,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 53
+    }
+  },
+  "selectedCoverage": {
+    "selectedClassCount": 51,
+    "missingDataNodeClasses": []
+  },
+  "source": {
+    "frozenSourceCount": 155,
+    "frozenWorktreeMismatch": [],
+    "currentMainMismatch": [],
+    "sourceEquivalenceSha256": "dcf0ef14ed3f9b6d3bd8f793b473539c72cfc8d327cc8ea325b634f174a5668a"
+  },
+  "frozenSnapshotArtifactsStillMatch": true,
+  "productionClasses": {
+    "count": 4505,
+    "allActualByteArraysEqualFrozenV6Jar": true,
+    "manifest": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-run-20261115T155714Z/english-production-class-sha256.json",
+    "manifestSha256": "53dc8c0f96f4f9b2a0ad8b8659256919e7e053c361844c299b9d939010124112",
+    "archive": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-run-20261115T155714Z/english-production-classes.tar.gz",
+    "archiveSha256": "37eb2e7c7dcdd3eff39ccc3cb38cc2950965abb90fe299c281e1709b63b057c9"
+  },
+  "release": {
+    "manifest": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6.json",
+    "manifestSha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+    "serverJar": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar",
+    "serverJarSha256": "96cec414cb51bc8e61423d238fb4dbeab14a2ffd346dd0fca67be5fd50df1db5",
+    "boundAtUtc": "2026-11-15T16:01:36.951128+00:00",
+    "classComparison": "PENDING_FULL_FINAL"
+  },
+  "freshReportsArchive": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-run-20261115T155714Z/combined-fresh-full-reports.tar.gz",
+    "sha256": "9e80f60114454d68ee3e45976908d998cfdfd3e30dd69fc677fe44744864b717"
+  },
+  "testRuntime": {
+    "count": 1147,
+    "allActualTmpdirsAndClasspathsVerified": true,
+    "manifest": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-run-20261115T155714Z/combined-fresh-test-runtime.json",
+    "sha256": "61f9560f2d26308fea096f57384f87145cff622edfb083a7219eb3fc637ae869"
+  },
+  "replayReceipt": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-pipe-api-fresh-20261115T1616Z/fresh-replay-receipt.json",
+    "sha256": "64d04027c6dd1a11382c9b50f3c81b923dd5574c34befe6a788ace4a612ed263"
+  },
+  "baselineReproductionReceipt": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/upstream-assertion-repro-run-20261115-rerun/upstream-baseline-reproduction-receipt.json",
+    "sha256": "8c5e8468917c4ac42dc4a6435f7fcff0e10a1b181babc7996941e24c8c3d50b0"
+  },
+  "backgroundAssertionCount": 2,
+  "backgroundAssertions": [
+    "Exception in thread \"Thread-10\" java.lang.AssertionError\n\tat org.junit.Assert.fail(Assert.java:87)\n\tat org.junit.Assert.assertTrue(Assert.java:42)\n\tat org.junit.Assert.assertFalse(Assert.java:65)\n\tat org.junit.Assert.assertFalse(Assert.java:75)\n\tat org.apache.iotdb.db.storageengine.dataregion.compaction.cross.CrossSpaceCompactionSelectorTest.lambda$testSeqFileWithDeviceIndexBeenDeletedDuringSelectionAndAfterCopyingList$3(CrossSpaceCompactionSelectorTest.java:354)\n\tat java.base/java.lang.Thread.run(Thread.java:840)",
+    "Exception in thread \"Thread-16\" java.lang.AssertionError\n\tat org.junit.Assert.fail(Assert.java:87)\n\tat org.junit.Assert.assertTrue(Assert.java:42)\n\tat org.junit.Assert.assertFalse(Assert.java:65)\n\tat org.junit.Assert.assertFalse(Assert.java:75)\n\tat org.apache.iotdb.db.storageengine.dataregion.compaction.cross.CrossSpaceCompactionSelectorTest.lambda$testUnSeqFileWithDeviceIndexBeenDeletedDuringSelectionAndAfterCopyingList$19(CrossSpaceCompactionSelectorTest.java:1137)\n\tat java.base/java.lang.Thread.run(Thread.java:840)"
+  ],
+  "skippedTests": [
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionBasicTest",
+      "name": "testFetchSchemaPerformance[MemoryMode]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionBasicTest",
+      "name": "testFetchSchemaPerformance[PBTree-FullMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionBasicTest",
+      "name": "testFetchSchemaPerformance[PBTree-PartialMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionBasicTest",
+      "name": "testFetchSchemaPerformance[PBTree-NonMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionManagementTest",
+      "name": "testSnapshotPerformance[MemoryMode]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionManagementTest",
+      "name": "testSnapshotPerformance[PBTree-FullMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionManagementTest",
+      "name": "testSnapshotPerformance[PBTree-PartialMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionManagementTest",
+      "name": "testSnapshotPerformance[PBTree-NonMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTableDevicePerformanceTest",
+      "name": "benchmarkNonLeadingTagInTraversal[MemoryMode]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTableDevicePerformanceTest",
+      "name": "benchmarkNonLeadingTagInTraversal[PBTree-FullMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTableDevicePerformanceTest",
+      "name": "benchmarkNonLeadingTagInTraversal[PBTree-PartialMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.metadata.schemaRegion.SchemaRegionTableDevicePerformanceTest",
+      "name": "benchmarkNonLeadingTagInTraversal[PBTree-NonMemory]"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.event.TsFileInsertionEventParserTest",
+      "name": "manualTestQueryParserPerformance"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.event.TsFileInsertionEventParserTest",
+      "name": "manualTestTableParserSplitPerformance"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.event.TsFileInsertionEventParserTest",
+      "name": "manualTestScanParserSplitPerformance"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimatorPerformanceTest",
+      "name": "compositeInsertRowsReusableSetBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimatorPerformanceTest",
+      "name": "wideTabletSizeOfBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatchPerformanceTest",
+      "name": "wideTableMayAppendTabletBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBatchReqV2PerformanceTest",
+      "name": "singleWideRawTabletDeserializationBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpochManagerPerformanceTest",
+      "name": "sameDeviceSameSchemaAggregationBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTreeTest",
+      "name": "testPerformanceOnComplexTree"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTreeTest",
+      "name": "testPerformanceOnSimpleTree"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest",
+      "name": "singleTableWithFilterTest00"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.analyzer.JoinTest",
+      "name": "otherInnerJoinTests"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.analyzer.TSBSTest",
+      "name": ""
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCachePerformanceTest",
+      "name": "sparseInitializedMeasurementsBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "explainShowsThePropertyEnforcementTraceOnlyWhenEnabled[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "partitionedRequirementConservativelyCollectsUntilHashExchangeExists[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "unorderedBranchesRecordArbitraryToSingleCollectEnforcement[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "orderedRequirementOnUnorderedChildInsertsSortEnforcer[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "propertyDrivenRulesProduceTheSamePlanAsTheHeuristic[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.transformation.datastructure.LRUCacheTest",
+      "name": "testScanPerformance"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.transformation.datastructure.LRUCacheTest",
+      "name": "testRandomPerformance"
+    },
+    {
+      "class": "org.apache.iotdb.db.schemaengine.schemaregion.tag.TagManagerPerformanceTest",
+      "name": "compareExactLookupAndPathFiltering"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCacheTest",
+      "name": "testCachePlaceHolder"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.DataRegionTest",
+      "name": "testDeleteStorageGroupWhenCompacting"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedBitmapMemoryAccountingPerformanceTest",
+      "name": "alignedTabletBitmapAccountingBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.memtable.AlignedFlushDuplicateTimeCheckPerformanceTest",
+      "name": "duplicateTimeCheckBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.memtable.TabletDeviceRangeReusePerformanceTest",
+      "name": "tabletDeviceRangeReuseBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileTableSchemaRegistrationPerformanceTest",
+      "name": "tableSchemaRegistrationBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.snapshot.IoTDBSnapshotTest",
+      "name": "testLoadSnapshotNoHardLink"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFileListCachePerformanceTest",
+      "name": "measureRetainedWalFileListCacheMemory"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.dataregion.wal.node.WALFileListCachePerformanceTest",
+      "name": "benchmarkRepeatedSortedWalFileReads"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.rescon.disk.FolderManagerTest",
+      "name": "testImmutableBaseDir[0]"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.rescon.disk.FolderManagerTest",
+      "name": "testImmutableBaseDir[1]"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.rescon.disk.FolderManagerTest",
+      "name": "testImmutableBaseDir[2]"
+    },
+    {
+      "class": "org.apache.iotdb.db.storageengine.rescon.disk.FolderManagerTest",
+      "name": "testImmutableBaseDir[3]"
+    },
+    {
+      "class": "org.apache.iotdb.db.utils.DateTimeUtilsTest",
+      "name": "getConvertDurationIncludingMonthUnit"
+    },
+    {
+      "class": "org.apache.iotdb.db.utils.TabletRpcDeserializationPerformanceTest",
+      "name": "plainTabletDecodeBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.utils.TabletRpcDeserializationPerformanceTest",
+      "name": "measurementCanonicalizationBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.utils.TabletRpcDeserializationPerformanceTest",
+      "name": "batchStatementParsingBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.utils.datastructure.AlignedBitmapRangeCheckPerformanceTest",
+      "name": "bitmapRangeCheckBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.db.utils.datastructure.AlignedSparseWritePerformanceTest",
+      "name": "sparseAlignedWriteBenchmark"
+    },
+    {
+      "class": "org.apache.iotdb.commons.path.PatternDFATest",
+      "name": "printFASketch2"
+    },
+    {
+      "class": "org.apache.iotdb.commons.path.PatternDFATest",
+      "name": "printFASketch3"
+    },
+    {
+      "class": "org.apache.iotdb.commons.path.PatternDFATest",
+      "name": "printFASketch"
+    }
+  ],
+  "limitations": [
+    "Original Maven run restored two pipe-api reports from v4 cache; it is retained as runner_error and repaired with a separate cache-disabled fresh execution, not relabeled as an entirely fresh single invocation.",
+    "Unchanged upstream CrossSpaceCompactionSelectorTest emits background AssertionErrors which its existing catch(Exception) fails to propagate; the same two methods were independently reproduced on pure upstream."
+  ]
+}

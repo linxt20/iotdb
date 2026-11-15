@@ -1,0 +1,70 @@
+{
+  "documents/README.md": {
+    "bytes": 4725,
+    "sha256": "7a2cb5f0e0172e9b2e092369669c696da280cc8fc439f3356f256133cf411993"
+  },
+  "documents/开发待办与排期.md": {
+    "bytes": 11712,
+    "sha256": "7c4ea671aecaef99ee8e019af90620100ca383aa3e4e89a089692a8b8db250a4"
+  },
+  "documents/运行期动态DOP设计草案.md": {
+    "bytes": 18192,
+    "sha256": "72f362afea9e75fb53998efba3e916d9389f58042edd304c307d5087ccefa056"
+  },
+  "documents/运行期动态DOP实现规划草案.md": {
+    "bytes": 17058,
+    "sha256": "372bdb258b86785e9f54230f905a12f95a82112cd1e37589ddc0b57d7009ef79"
+  },
+  "documents/迁移与基线核查_20261115.md": {
+    "bytes": 6531,
+    "sha256": "8ffa14343eb0a38b07852eecfa2e565c800d507e97fe9bd9f0ee9e6cf6c9552f"
+  },
+  "documents/实现进度与验证记录_20261115.md": {
+    "bytes": 7770,
+    "sha256": "464d7059cf2a854b8a66e3828eed63b7a32edb4c21b07d1a9b4015eaf0e1850a"
+  },
+  "audit/independent-original-artifact-audit.json": {
+    "bytes": 117455,
+    "sha256": "2982a469d19f94a32680e1aeaa51a4db3ad970ab82209684f352b1c4d602324a"
+  },
+  "audit/independent-relocated-artifact-audit.json": {
+    "bytes": 118880,
+    "sha256": "8cf9194b46b15fc8988aee7469aefcd2f113b1093e4909238064fa54d08b90df"
+  },
+  "audit/independent-artifact-audit-summary.json": {
+    "bytes": 1367,
+    "sha256": "5a88174a44ec26b246664ee19ec19ed42557b8ec38f3e1c3d8fff3d90ec77974"
+  },
+  "audit/final-source-recoverability.json": {
+    "bytes": 4199,
+    "sha256": "88c0388926585e37fa6a142f9e7654cee0daa67364a7e815c68fca92319fa593"
+  },
+  "audit/baseline-finalization.json": {
+    "bytes": 2486,
+    "sha256": "016f27151c09e93429d851a679cc9a690d6f12f2827ce69de627549e310f0489"
+  },
+  "audit/baseline-loaded-test-runtime-identity.json": {
+    "bytes": 2554,
+    "sha256": "b4bbd2826cb546e5e13d96d2613404fe778391d880bbb060e02ea4302ccebf1e"
+  },
+  "audit/implementation-final-validation.json": {
+    "bytes": 7287,
+    "sha256": "46c29a9ec79fbc19ff5b76012ceea8cde7e0abd882918747bd8de8e4091cc91e"
+  },
+  "audit/运行期接线源码核查.json": {
+    "bytes": 29769,
+    "sha256": "35f41bed4f6e0d99618f5ef30f4f78d14fa4ae5d31d60a9961ef34db3143f6eb"
+  },
+  "audit/排序前沿账户源码核查.json": {
+    "bytes": 4418,
+    "sha256": "101fd7a0173a9e55e0c1c0a508e31e467c6c9b0dd8762bea20e95f0896b3b613"
+  },
+  "audit/用户配额接线源码核查.json": {
+    "bytes": 3490,
+    "sha256": "4c65fc384faef18d5a5ecd775158419c4964b140d819662421dd21f788d00411"
+  },
+  "document-manifest.json": {
+    "bytes": 2532,
+    "sha256": "ca4d4bbaae9cd065ded7cbc693e84a82e912870ae78209ee8cc518e99c5c0575"
+  }
+}

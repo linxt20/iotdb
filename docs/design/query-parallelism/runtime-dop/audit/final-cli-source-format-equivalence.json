@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "compilerExitCode": 0,
+  "sameClassFileSet": true,
+  "classCount": 13,
+  "allActualClassByteArraysEqualAcceptedV6Cli": true,
+  "identity": {
+    "purpose": "Only remove trailing blank line at EOF after the driver class; recompile exact final sources and compare every generated client class to the accepted v6 CLI bytes.",
+    "branch": "feat/runtime-dop",
+    "head": "1c23f83e2c7495e5340e13172b7c462cd3f7a889",
+    "changedSource": "research/query-intra-parallelism-e2e-acceptance/static-scan/OrdinarySqlAcceptanceDriver.java",
+    "beforeSha256": "2dcb4c56ad9810d417d4d4b02cd6c8025a65713288be20fa7efeaa3102112471",
+    "afterSha256": "77e15572ef3d7b16ab3683951f68de35f984572ef3d9b20a2230714e94662823",
+    "sourceContentExceptTrailingWhitespaceUnchanged": true,
+    "releaseManifestSha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+    "compiler": {
+      "path": "/usr/lib/jvm/java-17-openjdk-amd64/bin/javac",
+      "sha256": "bafd67b6b902abb284b24c168ac90eb1490dac6448054a71ccb26c4918577b22"
+    },
+    "argv": [
+      "/usr/lib/jvm/java-17-openjdk-amd64/bin/javac",
+      "-verbose",
+      "-encoding",
+      "UTF-8",
+      "--release",
+      "17",
+      "-proc:none",
+      "-implicit:none",
+      "-sourcepath",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/final-cli-source-format-equivalence/empty-sourcepath",
+      "-classpath",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/HdrHistogram-2.1.12.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/Java-WebSocket-1.5.4.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/LatencyUtils-2.0.3.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/airline-0.9.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/antlr4-runtime-4.13.2.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/asm-9.3.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/caffeine-2.9.3.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/calc-commons-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/cglib-3.3.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/checker-qual-3.33.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/common-2.5.1-261023-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/commons-cli-1.5.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/commons-csv-1.10.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/commons-pool2-2.11.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/error_prone_annotations-2.18.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/external-api-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/external-service-api-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/failureaccess-1.0.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/gson-2.13.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/guava-32.1.2-jre.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-antlr-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-confignode-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-consensus-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-relational-grammar-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-session-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-subscription-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-ainode-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-commons-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-confignode-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-consensus-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/isession-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/j2objc-annotations-2.8.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jakarta.validation-api-3.0.2.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jline-3.26.2.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jna-5.14.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jna-platform-5.14.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jsr305-3.0.2.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/libthrift-0.25.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/logback-classic-1.5.34.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/logback-core-1.5.34.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/lz4-java-1.11.4.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/metrics-core-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/metrics-core-4.2.19.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/metrics-interface-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/micrometer-commons-1.11.4.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/micrometer-core-1.11.4.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/micrometer-observation-1.11.4.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/mqtt-2.0.11-SNAPSHOT-jar-with-dependencies.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-buffer-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-dns-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-http-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-http2-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-socks-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-common-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-handler-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-handler-proxy-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-dns-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-dns-classes-macos-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-dns-native-macos-4.1.137.Final-osx-x86_64.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-classes-epoll-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-native-epoll-4.1.137.Final-linux-x86_64.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-native-unix-common-4.1.137.Final.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/node-commons-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/pipe-api-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-client-3.3.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-common-3.3.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-grpc-3.3.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-metrics-api-3.3.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-proto-3.3.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-server-3.3.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-server-api-3.3.1.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-thirdparty-misc-1.1.0.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactive-streams-1.0.4.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactor-core-3.7.19.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactor-netty-core-1.2.18.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactor-netty-http-1.2.18.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/rest-2.0.11-SNAPSHOT-jar-with-dependencies.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/service-rpc-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/slf4j-api-2.0.9.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/snappy-java-1.1.10.9.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/trigger-api-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/tsfile-2.5.1-261023-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/udf-api-2.0.11-SNAPSHOT.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/units-1.7.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/xz-1.9.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/zstd-jni-1.5.6-3.jar",
+      "-d",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/final-cli-source-format-equivalence/classes",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/final-cli-source-format-equivalence/sources/OrdinarySqlAcceptanceDriver.java",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/final-cli-source-format-equivalence/sources/StaticScanAcceptanceDriver.java"
+    ],
+    "sources": [
+      {
+        "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/final-cli-source-format-equivalence/sources/OrdinarySqlAcceptanceDriver.java",
+        "sha256": "77e15572ef3d7b16ab3683951f68de35f984572ef3d9b20a2230714e94662823"
+      },
+      {
+        "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/final-cli-source-format-equivalence/sources/StaticScanAcceptanceDriver.java",
+        "sha256": "6672f5fba42da1b8bd010d1ea584a2bb23ebdd98e1fac4ff0422b9075f858792"
+      }
+    ]
+  },
+  "identitySha256": "781d994280479c1dba42e8944d8823718b13a77ccc5d057cfa524082fa0e9235",
+  "classes": [
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$1.class",
+      "sha256": "3ed341697420b0b3f74c2fe13e38f7c0c0548902a7f728364582cb4a220e83d0"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$2.class",
+      "sha256": "b8949b87a36fafcc022ce635301b5af8777e392b4f615758ef35e551bd62f36a"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$3.class",
+      "sha256": "b1e1e05b1aa40a29e1bc41bc80acbbda6e70cda23b2aa89274ba5d2a18d31c79"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$Audit.class",
+      "sha256": "ca05b52e3fd23f04c83aede6ea723a1e42e825e792f6518e8265cf64d906da42"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$CancelAction.class",
+      "sha256": "b6d0f97a906ca8f555d81e8bb830b97c800e795af3e5a0f1072a475a1883ec1b"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$ExpectedOutcome.class",
+      "sha256": "f906bd0a839253bd058aaa5dd2ea338a70d066aff5da958fae01d7eeca9580a2"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$Node.class",
+      "sha256": "54daecc8bafbc11f7aa0701d539884720a29dbecf183250c2fcc8403f500e471"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$Probe.class",
+      "sha256": "5b05594270ebc1f5aeba8e49878cc6afc1c77106dafe09d71c2839b5f03f27cf"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver$StatisticsPolicy.class",
+      "sha256": "8fa8bfa337e522e382357dfbef4c44f6850ab1119f5212a05864e2c584892cf6"
+    },
+    {
+      "entry": "OrdinarySqlAcceptanceDriver.class",
+      "sha256": "6045c21e936db2439556d508799aded092116b491fbdc9646f4af0f1316b84da"
+    },
+    {
+      "entry": "StaticScanAcceptanceDriver$Audit.class",
+      "sha256": "1e20c621d3debb0caace68f6f135c8c04896ede1863d1ddc098a789e25199a75"
+    },
+    {
+      "entry": "StaticScanAcceptanceDriver$FrozenCase.class",
+      "sha256": "2173e4610e365a483f4fd8b5304faf211387d958225c343e6b8298ca0a728f72"
+    },
+    {
+      "entry": "StaticScanAcceptanceDriver.class",
+      "sha256": "6aedf9efad44a66c7cf84798708c9486b6d91b5dfae5656b5657f56d14cfa91f"
+    }
+  ],
+  "scope": "No production or test logic changed; accepted v6 service and CLI behavior remain bound to identical executable classes."
+}

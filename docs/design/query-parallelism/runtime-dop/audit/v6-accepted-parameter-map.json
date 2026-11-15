@@ -1,0 +1,43 @@
+{
+  "R1-fullscan-window": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-fullscan-window-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-fullscan-window-control.json"
+  },
+  "R2-primary": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-primary-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-primary-control.json"
+  },
+  "R2-time-only": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-time-only-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-time-only-control.json"
+  },
+  "R3-primary": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-primary-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-primary-control-fetch-one.json"
+  },
+  "R3-runtime-early": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-runtime-early-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-runtime-early-control-fetch-one.json"
+  },
+  "R7-grouped": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-grouped-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-grouped-control.json"
+  },
+  "R7-filter-project": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-filter-project-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-filter-project-control.json"
+  },
+  "R1-high-output": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-high-output-candidate.json",
+    "control": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-high-output-control.json"
+  },
+  "R4-primary": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R4-primary-candidate.json"
+  },
+  "R5-primary": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R5-primary-candidate.json"
+  },
+  "R6-late-native-cast": {
+    "candidate": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R6-late-native-cast-candidate.json"
+  }
+}

@@ -1,0 +1,2129 @@
+{
+  "actualServiceNodes": [
+    {
+      "side": "candidate",
+      "node": "confignode",
+      "role": "ConfigNode",
+      "pid": 996341,
+      "loadedMainClassSources": [
+        "[2026-11-15T16:00:54.030+0000][0.338s][info][class,load] org.apache.iotdb.confignode.service.ConfigNode source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-confignode-2.0.11-SNAPSHOT.jar"
+      ]
+    },
+    {
+      "side": "candidate",
+      "node": "datanode-1",
+      "role": "DataNode",
+      "pid": 996714,
+      "loadedMainClassSources": [
+        "[2026-11-15T16:00:59.537+0000][0.307s][info][class,load] org.apache.iotdb.db.service.DataNode source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar"
+      ]
+    },
+    {
+      "side": "candidate",
+      "node": "datanode-2",
+      "role": "DataNode",
+      "pid": 997067,
+      "loadedMainClassSources": [
+        "[2026-11-15T16:01:02.859+0000][0.346s][info][class,load] org.apache.iotdb.db.service.DataNode source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar"
+      ]
+    },
+    {
+      "side": "control",
+      "node": "confignode",
+      "role": "ConfigNode",
+      "pid": 996523,
+      "loadedMainClassSources": [
+        "[2026-11-15T16:00:56.804+0000][0.333s][info][class,load] org.apache.iotdb.confignode.service.ConfigNode source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-confignode-2.0.11-SNAPSHOT.jar"
+      ]
+    },
+    {
+      "side": "control",
+      "node": "datanode-1",
+      "role": "DataNode",
+      "pid": 997742,
+      "loadedMainClassSources": [
+        "[2026-11-15T16:01:06.180+0000][0.351s][info][class,load] org.apache.iotdb.db.service.DataNode source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar"
+      ]
+    },
+    {
+      "side": "control",
+      "node": "datanode-2",
+      "role": "DataNode",
+      "pid": 998529,
+      "loadedMainClassSources": [
+        "[2026-11-15T16:01:10.038+0000][0.377s][info][class,load] org.apache.iotdb.db.service.DataNode source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "case": "R1-fullscan-window",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-fullscan-window-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001",
+          "queryId": "20261115_160402_01472_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "TIME_PARTITION",
+            "TIME_PARTITION"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_160402_01472_1.3.0/scan/54",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 3,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                },
+                {
+                  "sequence": 2,
+                  "requestedWorkers": 2,
+                  "observedWorkers": 2,
+                  "outcome": "APPLIED"
+                },
+                {
+                  "sequence": 3,
+                  "requestedWorkers": 3,
+                  "observedWorkers": 3,
+                  "outcome": "APPLIED"
+                },
+                {
+                  "sequence": 4,
+                  "requestedWorkers": 2,
+                  "observedWorkers": 2,
+                  "outcome": "APPLIED"
+                },
+                {
+                  "sequence": 5,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "APPLIED"
+                }
+              ],
+              "appliedGrowObserved": true,
+              "laterAppliedShrinkObserved": true
+            },
+            {
+              "groupId": "20261115_160402_01472_1.2.0/scan/55",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 3,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                },
+                {
+                  "sequence": 2,
+                  "requestedWorkers": 2,
+                  "observedWorkers": 2,
+                  "outcome": "APPLIED"
+                },
+                {
+                  "sequence": 3,
+                  "requestedWorkers": 3,
+                  "observedWorkers": 3,
+                  "outcome": "APPLIED"
+                }
+              ],
+              "appliedGrowObserved": true,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_160402_01472_1.2.0": 5210112,
+            "20261115_160402_01472_1.3.0": 4194304
+          },
+          "uniqueSourceRowsTotal": 9404416,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160402_01472_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160402_01472_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_160402_01472_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:00.595+0000][0.055s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:01.021+0000][0.481s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_160402_01472_1.3.0": 1794758822481,
+            "20261115_160402_01472_1.1.0": 1794758822434,
+            "20261115_160402_01472_1.2.0": 1794758822460
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 4096,
+            "sha256": "c9e7bc809eab46c2e9bab3a3a30377238a94e59449b5ddff4d4b09f67c31a5cb",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-fullscan-window-control.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001",
+          "queryId": "20261115_160402_01272_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160402_01272_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160402_01272_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160402_01272_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:00.603+0000][0.055s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:01.051+0000][0.502s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 4096,
+            "sha256": "5c0d833a6d437ed738acb32c9066fd73f34f8f28fb993815c51fa8a28559b7f0",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R2-primary",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-primary-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001",
+          "queryId": "20261115_160406_01474_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "ORDERED",
+            "ORDERED"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_160406_01474_1.3.0/scan/76",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_160406_01474_1.2.0/scan/77",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_160406_01474_1.2.0": 2048,
+            "20261115_160406_01474_1.3.0": 2048
+          },
+          "uniqueSourceRowsTotal": 4096,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160406_01474_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160406_01474_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_160406_01474_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:05.122+0000][0.057s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:05.569+0000][0.504s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_160406_01474_1.3.0": 1794758676778,
+            "20261115_160406_01474_1.1.0": 1794758676762,
+            "20261115_160406_01474_1.2.0": 1794758676775
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 4096,
+            "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-primary-control.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4",
+          "queryId": "20261115_160408_01274_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160408_01274_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160408_01274_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160408_01274_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:07.122+0000][0.055s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:07.564+0000][0.498s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 4096,
+            "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R2-time-only",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-time-only-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001",
+          "queryId": "20261115_160409_01476_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "ORDERED",
+            "ORDERED"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_160409_01476_1.3.0/scan/75",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_160409_01476_1.2.0/scan/76",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_160409_01476_1.2.0": 2048,
+            "20261115_160409_01476_1.3.0": 2048
+          },
+          "uniqueSourceRowsTotal": 4096,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160409_01476_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160409_01476_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_160409_01476_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:07.637+0000][0.066s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:08.079+0000][0.508s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_160409_01476_1.3.0": 1794758679325,
+            "20261115_160409_01476_1.1.0": 1794758679318,
+            "20261115_160409_01476_1.2.0": 1794758679323
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 4096,
+            "sha256": "b13bfb58ae7961ad218d4a79434616ef32c5a008c048e25ca953caa821b0d255",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-time-only-control.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001",
+          "queryId": "20261115_160411_01276_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160411_01276_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160411_01276_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160411_01276_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:09.639+0000][0.061s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:10.146+0000][0.568s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 4096,
+            "sha256": "3f90c1e4ed90a1c23112de87fa10896dff9e98fa2aa98e51133e3a7014c6f8ca",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R3-primary",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-primary-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001",
+          "queryId": "20261115_160411_01478_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "SERIAL",
+            "SERIAL"
+          ],
+          "pipelineCounts": [
+            1,
+            1,
+            1
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160411_01478_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160411_01478_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160411_01478_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:10.157+0000][0.064s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:10.597+0000][0.504s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_160411_01478_1.1.0": 1794758681635,
+            "20261115_160411_01478_1.2.0": 1794758681638,
+            "20261115_160411_01478_1.3.0": 1794758681640
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 257,
+            "sha256": "dd275049ea023f78576d9909fd1a981df798a1c5b5f65303b29731c164a38483",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-primary-control-fetch-one.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one",
+          "queryId": "20261115_161103_01280_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161103_01280_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161103_01280_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161103_01280_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:01.562+0000][0.075s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:01.973+0000][0.486s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 257,
+            "sha256": "dd275049ea023f78576d9909fd1a981df798a1c5b5f65303b29731c164a38483",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R3-runtime-early",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-runtime-early-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001",
+          "queryId": "20261115_160414_01480_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "DEVICE",
+            "DEVICE"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_160414_01480_1.2.0/scan/133",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_160414_01480_1.3.0/scan/132",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_160414_01480_1.2.0": 70000,
+            "20261115_160414_01480_1.3.0": 90000
+          },
+          "uniqueSourceRowsTotal": 160000,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160414_01480_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160414_01480_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_160414_01480_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:12.641+0000][0.059s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:13.101+0000][0.519s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_160414_01480_1.1.0": 1794758834225,
+            "20261115_160414_01480_1.2.0": 1794758834228,
+            "20261115_160414_01480_1.3.0": 1794758834232
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 257,
+            "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+            "columnTypes": [
+              "INT64"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-runtime-early-control-fetch-one.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one",
+          "queryId": "20261115_161105_01282_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161105_01282_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161105_01282_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161105_01282_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:04.085+0000][0.089s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:04.527+0000][0.532s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 257,
+            "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+            "columnTypes": [
+              "INT64"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R7-grouped",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-grouped-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001",
+          "queryId": "20261115_161107_01491_1",
+          "fragments": 5,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "NO_MANAGED_SCAN",
+            "DEVICE",
+            "DEVICE",
+            "NO_MANAGED_SCAN"
+          ],
+          "pipelineCounts": [
+            1,
+            1,
+            9,
+            9,
+            1
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_161107_01491_1.4.0/scan/74",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 2,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                },
+                {
+                  "sequence": 2,
+                  "requestedWorkers": 2,
+                  "observedWorkers": 2,
+                  "outcome": "APPLIED"
+                }
+              ],
+              "appliedGrowObserved": true,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_161107_01491_1.3.0/scan/75",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_161107_01491_1.3.0": 5210112,
+            "20261115_161107_01491_1.4.0": 4194304
+          },
+          "uniqueSourceRowsTotal": 9404416,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161107_01491_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161107_01491_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161107_01491_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_161107_01491_1.4.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_161107_01491_1.5.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": {
+            "actualSourceCount": 2,
+            "partitionCount": 2,
+            "actualUniqueReciprocalConnections": 4,
+            "sourceFIKeys": [
+              [
+                "20261115_161107_01491_1.3.0",
+                "78"
+              ],
+              [
+                "20261115_161107_01491_1.4.0",
+                "82"
+              ]
+            ],
+            "bucketOwnerFIs": {
+              "0": "20261115_161107_01491_1.2.0",
+              "1": "20261115_161107_01491_1.5.0"
+            },
+            "bucketOwnerDataNodeIds": {
+              "0": 1,
+              "1": 1
+            },
+            "independentlyCheckedActualRosterEdges": true
+          },
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:06.050+0000][0.055s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:06.489+0000][0.495s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_161107_01491_1.4.0": 1794759247458,
+            "20261115_161107_01491_1.1.0": 1794759247423,
+            "20261115_161107_01491_1.2.0": 1794759247430,
+            "20261115_161107_01491_1.3.0": 1794759247445,
+            "20261115_161107_01491_1.5.0": 1794759247430
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 257,
+            "sha256": "d166391cf2505ea5ec04425e15c23a4c32e7ef3b1c544b76e817dc608db8ffc5",
+            "columnTypes": [
+              "INT64",
+              "INT64",
+              "INT64",
+              "DOUBLE",
+              "DOUBLE",
+              "INT64",
+              "INT64"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-grouped-control.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4",
+          "queryId": "20261115_161107_01284_1",
+          "fragments": 5,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161107_01284_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161107_01284_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161107_01284_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161107_01284_1.4.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161107_01284_1.5.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": {
+            "actualSourceCount": 2,
+            "partitionCount": 2,
+            "actualUniqueReciprocalConnections": 4,
+            "sourceFIKeys": [
+              [
+                "20261115_161107_01284_1.3.0",
+                "78"
+              ],
+              [
+                "20261115_161107_01284_1.4.0",
+                "82"
+              ]
+            ],
+            "bucketOwnerFIs": {
+              "0": "20261115_161107_01284_1.2.0",
+              "1": "20261115_161107_01284_1.5.0"
+            },
+            "bucketOwnerDataNodeIds": {
+              "0": 1,
+              "1": 1
+            },
+            "independentlyCheckedActualRosterEdges": true
+          },
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:06.067+0000][0.057s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:06.540+0000][0.530s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 257,
+            "sha256": "d166391cf2505ea5ec04425e15c23a4c32e7ef3b1c544b76e817dc608db8ffc5",
+            "columnTypes": [
+              "INT64",
+              "INT64",
+              "INT64",
+              "DOUBLE",
+              "DOUBLE",
+              "INT64",
+              "INT64"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R7-filter-project",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-filter-project-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001",
+          "queryId": "20261115_161110_01493_1",
+          "fragments": 5,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "NO_MANAGED_SCAN",
+            "DEVICE",
+            "DEVICE",
+            "NO_MANAGED_SCAN"
+          ],
+          "pipelineCounts": [
+            1,
+            1,
+            9,
+            9,
+            1
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_161110_01493_1.4.0/scan/119",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_161110_01493_1.3.0/scan/120",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 2,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                },
+                {
+                  "sequence": 2,
+                  "requestedWorkers": 2,
+                  "observedWorkers": 2,
+                  "outcome": "APPLIED"
+                },
+                {
+                  "sequence": 3,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "APPLIED"
+                }
+              ],
+              "appliedGrowObserved": true,
+              "laterAppliedShrinkObserved": true
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_161110_01493_1.3.0": 2644131,
+            "20261115_161110_01493_1.4.0": 2059772
+          },
+          "uniqueSourceRowsTotal": 4703903,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161110_01493_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161110_01493_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161110_01493_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_161110_01493_1.4.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_161110_01493_1.5.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": {
+            "actualSourceCount": 2,
+            "partitionCount": 2,
+            "actualUniqueReciprocalConnections": 4,
+            "sourceFIKeys": [
+              [
+                "20261115_161110_01493_1.3.0",
+                "125"
+              ],
+              [
+                "20261115_161110_01493_1.4.0",
+                "129"
+              ]
+            ],
+            "bucketOwnerFIs": {
+              "0": "20261115_161110_01493_1.2.0",
+              "1": "20261115_161110_01493_1.5.0"
+            },
+            "bucketOwnerDataNodeIds": {
+              "0": 1,
+              "1": 1
+            },
+            "independentlyCheckedActualRosterEdges": true
+          },
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:09.569+0000][0.061s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:09.966+0000][0.458s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_161110_01493_1.4.0": 1794759250901,
+            "20261115_161110_01493_1.5.0": 1794759250898,
+            "20261115_161110_01493_1.1.0": 1794759250896,
+            "20261115_161110_01493_1.2.0": 1794759250897,
+            "20261115_161110_01493_1.3.0": 1794759250900
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 257,
+            "sha256": "44d42f2fc2ee354167b849adf5139de57f896efc390417dbac877f9ff42d90f8",
+            "columnTypes": [
+              "INT64",
+              "INT64",
+              "DOUBLE"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-filter-project-control.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4",
+          "queryId": "20261115_161110_01286_1",
+          "fragments": 5,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161110_01286_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161110_01286_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161110_01286_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161110_01286_1.4.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161110_01286_1.5.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": {
+            "actualSourceCount": 2,
+            "partitionCount": 2,
+            "actualUniqueReciprocalConnections": 4,
+            "sourceFIKeys": [
+              [
+                "20261115_161110_01286_1.3.0",
+                "125"
+              ],
+              [
+                "20261115_161110_01286_1.4.0",
+                "129"
+              ]
+            ],
+            "bucketOwnerFIs": {
+              "0": "20261115_161110_01286_1.2.0",
+              "1": "20261115_161110_01286_1.5.0"
+            },
+            "bucketOwnerDataNodeIds": {
+              "0": 1,
+              "1": 1
+            },
+            "independentlyCheckedActualRosterEdges": true
+          },
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:09.579+0000][0.072s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:10.020+0000][0.513s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 257,
+            "sha256": "44d42f2fc2ee354167b849adf5139de57f896efc390417dbac877f9ff42d90f8",
+            "columnTypes": [
+              "INT64",
+              "INT64",
+              "DOUBLE"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R1-high-output",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-high-output-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001",
+          "queryId": "20261115_161113_01495_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "TIME_PARTITION",
+            "TIME_PARTITION"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_161113_01495_1.3.0/scan/54",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_161113_01495_1.2.0/scan/55",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_161113_01495_1.2.0": 5210112,
+            "20261115_161113_01495_1.3.0": 4194304
+          },
+          "uniqueSourceRowsTotal": 9404416,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161113_01495_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161113_01495_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_161113_01495_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:12.106+0000][0.080s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:12.579+0000][0.553s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_161113_01495_1.3.0": 1794759253655,
+            "20261115_161113_01495_1.1.0": 1794759253652,
+            "20261115_161113_01495_1.2.0": 1794759253654
+          },
+          "layoutIdentitiesStable": true,
+          "completeResult": {
+            "rows": 4750916,
+            "sha256": "5790a76c24b66dd2435e4586c8c93162de09498b11dd309e1e4c58540bcb1209",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        },
+        "control": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-high-output-control.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001",
+          "queryId": "20261115_161114_01288_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FINISHED",
+            "FINISHED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            null,
+            null,
+            null
+          ],
+          "pipelineCounts": [
+            null,
+            null,
+            null
+          ],
+          "runtimeGroups": [],
+          "uniqueSourceRowsByFI": null,
+          "uniqueSourceRowsTotal": null,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161114_01288_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161114_01288_1.2.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161114_01288_1.3.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL",
+          "unretainedStatisticsCaveat": [
+            "unretained FI frozen V2 snapshot/checksum/plan identity/structured validity",
+            "unretained FI frozen driver/resource statistics",
+            "unretained FI runtime group activation/actions/layout"
+          ],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:12.577+0000][0.064s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:13.043+0000][0.530s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "completeResult": {
+            "rows": 4750916,
+            "sha256": "e358f883ea2406e3bf935fa168e63ad9a3a9be1f3e7b7dc4cabdf6b1230ac230",
+            "columnTypes": [
+              "TIMESTAMP",
+              "STRING",
+              "INT64",
+              "INT64",
+              "INT64"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "case": "R4-primary",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R4-primary-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001",
+          "queryId": "20261115_160416_01482_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "CANCELLED",
+            "CANCELLED",
+            "CANCELLED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "TIME_PARTITION",
+            "TIME_PARTITION"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_160416_01482_1.2.0/scan/55",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_160416_01482_1.3.0/scan/54",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_160416_01482_1.2.0": 312259,
+            "20261115_160416_01482_1.3.0": 328404
+          },
+          "uniqueSourceRowsTotal": 640663,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160416_01482_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160416_01482_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_160416_01482_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:15.176+0000][0.077s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:15.672+0000][0.573s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_160416_01482_1.1.0": 1794758836931,
+            "20261115_160416_01482_1.2.0": 1794758836935,
+            "20261115_160416_01482_1.3.0": 1794758836937
+          },
+          "layoutIdentitiesStable": true,
+          "negativeOutcome": {
+            "effectiveCode": 715,
+            "rawCode": 0,
+            "provenance": "IOTDB_LEGACY_RESULTSET_NEXT_MESSAGE_PREFIX",
+            "prefixRows": 503,
+            "prefixMembershipVerified": false,
+            "elapsedNanos": 2328212451
+          }
+        }
+      }
+    },
+    {
+      "case": "R5-primary",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R5-primary-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001",
+          "queryId": "20261115_160421_01485_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FAILED",
+            "FAILED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "TIME_PARTITION",
+            "TIME_PARTITION"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_160421_01485_1.2.0/scan/55",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 3,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                },
+                {
+                  "sequence": 2,
+                  "requestedWorkers": 2,
+                  "observedWorkers": 2,
+                  "outcome": "APPLIED"
+                },
+                {
+                  "sequence": 3,
+                  "requestedWorkers": 3,
+                  "observedWorkers": 3,
+                  "outcome": "APPLIED"
+                }
+              ],
+              "appliedGrowObserved": true,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_160421_01485_1.3.0/scan/54",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 3,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                },
+                {
+                  "sequence": 2,
+                  "requestedWorkers": 2,
+                  "observedWorkers": 2,
+                  "outcome": "APPLIED"
+                },
+                {
+                  "sequence": 3,
+                  "requestedWorkers": 3,
+                  "observedWorkers": 3,
+                  "outcome": "APPLIED"
+                }
+              ],
+              "appliedGrowObserved": true,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_160421_01485_1.2.0": 2979034,
+            "20261115_160421_01485_1.3.0": 2200760
+          },
+          "uniqueSourceRowsTotal": 5179794,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_160421_01485_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_160421_01485_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_160421_01485_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:04:19.662+0000][0.064s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:04:20.085+0000][0.487s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_160421_01485_1.1.0": 1794758662198,
+            "20261115_160421_01485_1.2.0": 1794758662202,
+            "20261115_160421_01485_1.3.0": 1794758662204
+          },
+          "layoutIdentitiesStable": true,
+          "negativeOutcome": {
+            "effectiveCode": 720,
+            "rawCode": 720,
+            "provenance": "JDBC_VENDOR_CODE",
+            "prefixRows": 0,
+            "prefixMembershipVerified": false,
+            "elapsedNanos": 1237358277
+          },
+          "deadlineReachedByEveryFI": [
+            {
+              "fi": "20261115_160421_01485_1.1.0",
+              "originalDeadlineMillis": 1794758662198,
+              "endTimeMs": 1794758662208,
+              "endMinusDeadlineMs": 10,
+              "state": "FAILED"
+            },
+            {
+              "fi": "20261115_160421_01485_1.2.0",
+              "originalDeadlineMillis": 1794758662202,
+              "endTimeMs": 1794758662207,
+              "endMinusDeadlineMs": 5,
+              "state": "FAILED"
+            },
+            {
+              "fi": "20261115_160421_01485_1.3.0",
+              "originalDeadlineMillis": 1794758662204,
+              "endTimeMs": 1794758662209,
+              "endMinusDeadlineMs": 5,
+              "state": "FINISHED"
+            }
+          ],
+          "deadlineClaim": "Each FI keeps its recorded original external deadline, stable across samples; FI values may differ by milliseconds."
+        }
+      }
+    },
+    {
+      "case": "R6-late-native-cast",
+      "roles": {
+        "candidate": {
+          "parameters": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R6-late-native-cast-candidate.json",
+          "output": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001",
+          "queryId": "20261115_161102_01489_1",
+          "fragments": 3,
+          "actualSourceDataNodeIds": [
+            1,
+            2
+          ],
+          "terminalStates": [
+            "FAILED",
+            "FAILED",
+            "FINISHED"
+          ],
+          "splitModes": [
+            "NO_MANAGED_SCAN",
+            "TIME_PARTITION",
+            "TIME_PARTITION"
+          ],
+          "pipelineCounts": [
+            1,
+            9,
+            9
+          ],
+          "runtimeGroups": [
+            {
+              "groupId": "20261115_161102_01489_1.3.0/scan/86",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            },
+            {
+              "groupId": "20261115_161102_01489_1.2.0/scan/87",
+              "logicalLaneCount": 8,
+              "initialActivatedWorkers": 1,
+              "maxAppliedWorkers": 1,
+              "events": [
+                {
+                  "sequence": 1,
+                  "requestedWorkers": 1,
+                  "observedWorkers": 1,
+                  "outcome": "INITIAL_ACTIVATED"
+                }
+              ],
+              "appliedGrowObserved": false,
+              "laterAppliedShrinkObserved": false
+            }
+          ],
+          "uniqueSourceRowsByFI": {
+            "20261115_161102_01489_1.2.0": 4982663,
+            "20261115_161102_01489_1.3.0": 4194304
+          },
+          "uniqueSourceRowsTotal": 9176967,
+          "resources": {
+            "fragments": [
+              {
+                "fi": "20261115_161102_01489_1.1.0",
+                "createdDrivers": 1,
+                "closedDrivers": 1
+              },
+              {
+                "fi": "20261115_161102_01489_1.2.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              },
+              {
+                "fi": "20261115_161102_01489_1.3.0",
+                "createdDrivers": 9,
+                "closedDrivers": 9
+              }
+            ],
+            "allFinalResourceCountersZero": true,
+            "accountDeregisterAndOwnershipReleased": true,
+            "beforeAndAfterEqualFirstPureR1Pools": true,
+            "auditWindowsClosed": true
+          },
+          "hashTopology": null,
+          "statisticsPolicy": "REQUIRE_FROZEN",
+          "unretainedStatisticsCaveat": [],
+          "actualCliClassSources": [
+            "[2026-11-15T16:11:01.561+0000][0.068s][info][class,load] StaticScanAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/",
+            "[2026-11-15T16:11:01.934+0000][0.441s][info][class,load] OrdinarySqlAcceptanceDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes/"
+          ],
+          "originalDeadlineByFI": {
+            "20261115_161102_01489_1.3.0": 1794759242890,
+            "20261115_161102_01489_1.1.0": 1794759242883,
+            "20261115_161102_01489_1.2.0": 1794759242886
+          },
+          "layoutIdentitiesStable": true,
+          "negativeOutcome": {
+            "effectiveCode": 701,
+            "rawCode": 701,
+            "provenance": "JDBC_VENDOR_CODE",
+            "prefixRows": 0,
+            "prefixMembershipVerified": false,
+            "elapsedNanos": 2744839689
+          }
+        }
+      }
+    }
+  ]
+}

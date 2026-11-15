@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "createdAtUtc": "2026-11-15T16:24:10.444684+00:00",
+  "run": "/root/rivermind-data/iotdb-runtime-dop-20261115/zh-compile-v6-run-20261115T161943Z",
+  "repo": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo",
+  "head": "1c23f83e2c7495e5340e13172b7c462cd3f7a889",
+  "mavenExitCode": 0,
+  "profile": "with-zh-locale",
+  "argv": [
+    "mvn",
+    "-B",
+    "test-compile",
+    "-DskipTests",
+    "-P",
+    "with-zh-locale",
+    "-s",
+    "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-run-20261115T155714Z/maven-settings.xml",
+    "-nsu",
+    "-Dspotless.check.skip=true",
+    "-Drat.skip=true",
+    "-Dlicense.skip=true",
+    "-Dmaven.javadoc.skip=true",
+    "-Dcheckstyle.skip=true",
+    "-Denforcer.skip=true",
+    "-DfailIfNoTests=false",
+    "-Dsurefire.failIfNoSpecifiedTests=false"
+  ],
+  "compileOnlyNoTestsExecuted": true,
+  "mavenLog": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/zh-compile-v6-run-20261115T161943Z/maven.log",
+    "sha256": "fb620a3bd61fe4a200b9b3ca8a17a2cc80344a5a4bd4de341b51512dec76c73b"
+  },
+  "productionClassCount": 4505,
+  "productionClassesManifest": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/zh-compile-v6-run-20261115T161943Z/zh-production-class-sha256.json",
+    "sha256": "af4c72a4a6e738c7b1825e97cdfd47456b1a4622c6c2dff1db0a4a9a8a52f8c6"
+  },
+  "productionClassesArchive": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/zh-compile-v6-run-20261115T161943Z/zh-production-classes.tar.gz",
+    "sha256": "3da842eb2a531383b4689227bec22528dcd38440e4b3aeb636908283b5ccb254"
+  },
+  "actualCompilerInputs": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/target/maven-status/maven-compiler-plugin/compile/default-compile/inputFiles.lst",
+    "sha256": "b74f75965687615081ffe979e3be8d86f0b3aab287838b91393a157a9b4cb1b3",
+    "i18nInputs": [
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodeMiscMessages.java",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodePipeMessages.java",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodeSchemaMessages.java",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/ImportWALMessages.java",
+      "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/StorageEngineMessages.java"
+    ],
+    "containsEnI18nInputs": false
+  },
+  "messageSource": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java",
+    "sha256": "5a6e195fb1d3b8b3f4ecb872be30b1dff726248d34c6797a665a27991a5c167f"
+  },
+  "compiledMessageClass": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-core/datanode/target/classes/org/apache/iotdb/db/i18n/DataNodeQueryMessages.class",
+    "sha256": "1095b631a56232b10104357c2c038c11714a0be6d14d60a8b8bfc936795c18d8",
+    "representativeChineseLiteralVerified": [
+      {
+        "field": "EXCEPTION_NATIVE_SCHEDULER_BATCH_QUOTA_REJECTED_55A3C12F",
+        "sourceValue": "原生调度器整批准入被 CPU 或内存配额拒绝。"
+      }
+    ]
+  },
+  "sourceBindingCount": 155,
+  "allFrozenSourcesUnchanged": true,
+  "englishProductionArchiveUnchanged": true,
+  "englishFreshReportsAndReceiptUnchanged": true,
+  "frozenRuntimeReleaseAndJarUnchanged": true,
+  "limitations": [
+    "Compilation validation only; Chinese profile did not repeat the JUnit suite or replace the frozen English runtime release."
+  ]
+}

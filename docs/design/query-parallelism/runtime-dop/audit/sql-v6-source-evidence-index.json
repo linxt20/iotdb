@@ -1,0 +1,2976 @@
+{
+  "schemaVersion": 1,
+  "count": 594,
+  "files": [
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-v6-final-parameter-map.json",
+      "sha256": "ae604392e295d8a4a2b3ea3855e50b2ab6b3739b77d48c78e5d1961f54b47049",
+      "bytes": 2612
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6.json",
+      "sha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+      "bytes": 38639
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar",
+      "sha256": "96cec414cb51bc8e61423d238fb4dbeab14a2ffd346dd0fca67be5fd50df1db5",
+      "bytes": 12260344
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/service-start-v6/post-start-identity.json",
+      "sha256": "2f5218c8eeb1dc152d737bc004cc1f39a85a42ee23641da39c5905632b3e4499",
+      "bytes": 94338
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/candidate/deployment-manifest.json",
+      "sha256": "4c0bea70514c32b63d1212a943f36d119010b28b9d374e2d3180ff4fe1b7c036",
+      "bytes": 29210
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/candidate/confignode/process.env",
+      "sha256": "ea97afeab13aa74b0dc41b46a4f8b74532571313b640aba41ca3be8542670fc2",
+      "bytes": 714
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/candidate/confignode/identity/classes-loaded-996341.log",
+      "sha256": "6f0a0d62f0ad79840304004234cb230f6edfb60b5e28e1f91ad3474874bc360b",
+      "bytes": 2031374
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/candidate/datanode-1/process.env",
+      "sha256": "e6a8141a222729d9bb08e6b6a49e47ea9337aa50a7c88987e1ccc889ae36f80f",
+      "bytes": 700
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/candidate/datanode-1/identity/classes-loaded-996714.log",
+      "sha256": "4904db3293eaed22af24519eb2d77997c144e9525515bc844d1f14e914ad023a",
+      "bytes": 3889991
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/candidate/datanode-2/process.env",
+      "sha256": "01e8b2a0d7173e2c4cc18b28ed5b7f4b55fe5f53c5cc85c51f96e70f9b2d2b23",
+      "bytes": 700
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/candidate/datanode-2/identity/classes-loaded-997067.log",
+      "sha256": "7ba6de89905654c93df6309d314eecfea4367cd5babc3454f567527e76933a00",
+      "bytes": 3422049
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/control/deployment-manifest.json",
+      "sha256": "91f3d6a31bd3734d130d5348a06ae353822cf73bd32e7b8dee0514fc4f0acfcf",
+      "bytes": 29198
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/control/confignode/process.env",
+      "sha256": "41a04157fb91b2bdda432dc6010c46e6314db61236a390c1258449083825c670",
+      "bytes": 710
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/control/confignode/identity/classes-loaded-996523.log",
+      "sha256": "3f3baf088c3fd5e16c21904d4196137f54bb7b740c2390154bf23658429062eb",
+      "bytes": 1957111
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/control/datanode-1/process.env",
+      "sha256": "2e2df895bebcf22290a3450b9a460d7c42ca63fc87317b7c7c3ccd5e7af3ac1c",
+      "bytes": 696
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/control/datanode-1/identity/classes-loaded-997742.log",
+      "sha256": "6a666f31c7a39c9881c0031213f14448bda13a01bc41101046c60b50b60b902f",
+      "bytes": 3739160
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/control/datanode-2/process.env",
+      "sha256": "72c001970897ad480aa0ab6357acb9f34bb7fedb97efc218ddbd757706b23d3b",
+      "bytes": 696
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cluster-v6/control/datanode-2/identity/classes-loaded-998529.log",
+      "sha256": "625b11fc4eba3dc6cff5eb9dfa4553c1df968cc607afc459f2b879744b211273",
+      "bytes": 3584769
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-fullscan-window-candidate/execution-identity.json",
+      "sha256": "d7a437e8e53d0fcdad7d782ebba4d5d72fe6789a75a6a6dcebb8c6c763bb36f6",
+      "bytes": 959
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-fullscan-window-control/execution-identity.json",
+      "sha256": "224bf1b04155044cd0280a9eda0247cc530c4c7746a744dcb1dfd71a05f066b2",
+      "bytes": 957
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-high-output-candidate/execution-identity.json",
+      "sha256": "2e15cc7115b33174a40842f4178d6db05d6fbf8033b87ba246387bc4afd0b4ee",
+      "bytes": 955
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-high-output-control/execution-identity.json",
+      "sha256": "d8964b447662c53d65c386d6b1e33ed2be8c299d3836a6ea4aa90b89793f7626",
+      "bytes": 953
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-primary-candidate/execution-identity.json",
+      "sha256": "56af77d6710b4ee9d4d869fb9a764d5a8c46df62888d83c26675f6e2dceb3db9",
+      "bytes": 951
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-primary-control/execution-identity.json",
+      "sha256": "a90e7ab48f673318f320afbd73669f86d1610884100993f26ee8b97810114a5e",
+      "bytes": 949
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-time-only-candidate/execution-identity.json",
+      "sha256": "e4c9323eab4e3610e418b1c37d7780a3fac1528a72882dbbed4d66e4e4546044",
+      "bytes": 953
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-time-only-control/execution-identity.json",
+      "sha256": "6a117b6b52d3f385a317c848ebe9c685e4edc197ba5a152b1441a521f54500c1",
+      "bytes": 951
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-primary-candidate/execution-identity.json",
+      "sha256": "e6e8030b27cffa9f84ad0de47a8fe820b2a81f7a56785717ca3d45e5b3c5f204",
+      "bytes": 951
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-primary-control/execution-identity.json",
+      "sha256": "b2862599c6979026a551acb5b90902e37b563435880e1b90b4e44eefc3f37309",
+      "bytes": 949
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-primary-control-fetch-one/execution-identity.json",
+      "sha256": "82a07cd32af6c14444fc3978a23c7309f85db61fdeb6e7050054883a1fa512a2",
+      "bytes": 959
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-runtime-early-candidate/execution-identity.json",
+      "sha256": "fe75fedec6a71a736bfd1ab1c7daf34a1152db978c34923f93e4ab73939ad9e4",
+      "bytes": 957
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-runtime-early-control-fetch-one/execution-identity.json",
+      "sha256": "2f1b4c4ad3b62841c3eeb8fef07a657adebd618cfdad1988f2b00419b7f298d0",
+      "bytes": 965
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R4-primary-candidate/execution-identity.json",
+      "sha256": "5ab3679464a5f89fcdbff1b1cf0804f942a1952efe45a65ec260c2274e913733",
+      "bytes": 951
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R5-primary-candidate/execution-identity.json",
+      "sha256": "6426c227d8d1998324f0de6e4ff826c9e18a8dd9a052c3c3d190d8a82b591c5e",
+      "bytes": 951
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R6-late-native-cast-candidate/execution-identity.json",
+      "sha256": "37d04030d191725bf8c5d877957ac4fbacc1975075f67b1580496e8482c4e921",
+      "bytes": 960
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R6-native-cast-candidate/execution-identity.json",
+      "sha256": "674874accb40030e2fccab1960436f6fce16b2c510ee98e485a73451f57492ed",
+      "bytes": 955
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-filter-project-candidate/execution-identity.json",
+      "sha256": "ef49d8559f05b314b2a2daa2a9dd7ddd717d1f680dbe6c89cea45bd39b0b7408",
+      "bytes": 958
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-filter-project-control/execution-identity.json",
+      "sha256": "099c2870cfe4bf8b76ceb29f06b8437d234da54b35f8f726161d4a67ff1f8416",
+      "bytes": 956
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-grouped-candidate/execution-identity.json",
+      "sha256": "87ab9232baef031924256c130cebbe0188474cee1bb8900747b0fc049eafdd68",
+      "bytes": 951
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-grouped-control/execution-identity.json",
+      "sha256": "73d08e84fe35c344c6ddcceb41cc1c235b591e9c2b9b794b5b5ae1a7e83a334b",
+      "bytes": 949
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-fullscan-window-candidate.json",
+      "sha256": "15f396810bf37d079b98e47d5765312d2e76b62e6501cd87536beeb04219e40b",
+      "bytes": 870
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/resource-pools-before.json",
+      "sha256": "d73ae807dd630f0e89d4bcb4e7905babf7831e61dfe25e2ac8e366a5111fa3fb",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-fullscan-window-control.json",
+      "sha256": "e8d22557754c98e897d58af3c05816d50e106af1e20cf9432ba011d24cc43289",
+      "bytes": 877
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/resource-pools-before.json",
+      "sha256": "71e833a14cb4db3b9c955f80ca3f2e3b925c043726b17b08710f5d38ef9b6595",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "debfd9e056fd7d00f9fab05f4caa33d15dd08635ba1eaacaeecf0545d95ff6a6",
+      "bytes": 956
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/roster.json",
+      "sha256": "dccb939923a2ab2d020c330e82de9f9c699c3ad8a17d289a33a085e3ab1fdf57",
+      "bytes": 5861
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/execution-identity.json",
+      "sha256": "71491b61faa0b61ede2b502097639e48a2d8d686489bc482d5709840dd890c61",
+      "bytes": 14782
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/executed.sql",
+      "sha256": "f0279655e0c2d51d3eb7e46ffb259722aed4c1f077d52bbc691294c04ca1bf7c",
+      "bytes": 451
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/input.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+      "bytes": 381
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-fullscan-window-contract-staging/sql/fullScanWindowFiltered.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+      "bytes": 381
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-fullscan-window-candidate/exit-receipt.json",
+      "sha256": "bb82bf21fb80b5578433b4b5355a40a007514df414624883d30fdbd9ffd40195",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-fullscan-window-candidate/cli.classload.log",
+      "sha256": "6c1114d5c989fb2e38180e45df4d36415681f2da6563871a05d0119dbbe7f415",
+      "bytes": 862677
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "d0cf7d83068734d5d866c5ba13cb3cb94e1b699911b0a959095c468d9582521a",
+      "bytes": 2161
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/runtime-actions-observed.json",
+      "sha256": "ced284d5d0c71c1fdfd9ed98361710553e9a293d0e33b59b7a25131696ef1c48",
+      "bytes": 7496
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/statistics/20261115_160402_01472_1.1.0.thrift.json",
+      "sha256": "a4ce942911aa2c3238f2c52cc5a0e9687a6f56f0b91cd05663b59d1257ea3c6b",
+      "bytes": 7926
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/statistics/20261115_160402_01472_1.1.0.thrift.bin",
+      "sha256": "4da45ace3e3b45fbcc83d30272fcf0e0dd6a4f134230d1823323ac829369391d",
+      "bytes": 2513
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/statistics/20261115_160402_01472_1.2.0.thrift.json",
+      "sha256": "b964ee71ae11021ed8f688a3f3f9c29096702bcade4e0b4edd7f2384c789e288",
+      "bytes": 35179
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/statistics/20261115_160402_01472_1.2.0.thrift.bin",
+      "sha256": "821cb600ab76fe4b66e003545e05ec257625da7aa08dd1d8dbd6812aa64e4ffd",
+      "bytes": 16826
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/statistics/20261115_160402_01472_1.3.0.thrift.json",
+      "sha256": "b954247000020feebd90ae4eb3c4849c757bb22257c2894e11552892b41da7e3",
+      "bytes": 35095
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/statistics/20261115_160402_01472_1.3.0.thrift.bin",
+      "sha256": "06ec28727f5cfc302a8059283c3c75ca36ffd38fc7bb34a1b79526952e4a33ea",
+      "bytes": 16762
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/runtime-control.jsonl",
+      "sha256": "227cad88e3702ff593da661ee1a5f17c8267bd9a2b355c2a275ee3ef4f62fefa",
+      "bytes": 20255
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/resource-audit-final.json",
+      "sha256": "5c7f448bf939b415573fe90462e238720445b6975925a62dbc0081fe84950f4c",
+      "bytes": 28358
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/resource-pools-final.json",
+      "sha256": "d73ae807dd630f0e89d4bcb4e7905babf7831e61dfe25e2ac8e366a5111fa3fb",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/audit-window-close.json",
+      "sha256": "b4625dc3bdb76accef5d29f7f23d94a9607ab7619e9d01d9957bec332e418a9c",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/ordinary-sql-receipt.json",
+      "sha256": "6d56a9336a664c217b591d2e0ff9396c3e5cd9b0b3a3cb6e445b26f7e82a0bf8",
+      "bytes": 1193
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/roster.json",
+      "sha256": "bcd275495b0acbd36e850c47a742d1fc6ce1c4042c729227b732bf631766e6c6",
+      "bytes": 5864
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/execution-identity.json",
+      "sha256": "32a3fbb4d6347d735ccff0c3bf22aaec17a6895ec7c1e050a276034b94e00479",
+      "bytes": 14785
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/executed.sql",
+      "sha256": "46efed1c46bd0033e548c6f27c6d8e585a4d6ec3860e43d79a3a3095457731dc",
+      "bytes": 451
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/input.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+      "bytes": 381
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-fullscan-window-control/exit-receipt.json",
+      "sha256": "f7672abcfe168478614daf485e0f54320f07fd28a18fe0230830959374dc7b95",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-fullscan-window-control/cli.classload.log",
+      "sha256": "0d8b6d679400c9745ba0e7a7a0d726320c61ca101c6e22f9b55c7f0eb4d4d0a4",
+      "bytes": 860552
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/terminal-statistics-receipt.json",
+      "sha256": "da97281ac4bfe60ebffd4cf1180c021200798fe8887b166de31406cdb4149bb8",
+      "bytes": 3000
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "49f1936f3f454097aa142e57ea8f11753aeb437e8d8b6e612d376953e374bad3",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.1.0.legacy-info.thrift.json",
+      "sha256": "895a2a0be2248e53d4c2895562c1f910b8c74d0d9146b3fc059391cb62e3df0b",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "a602004bf87ef1badd5d79a0a4a24d9db1535f5010e09e450c724785c3e0b63b",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "e7554aa5936d99d335b3e45cbffd69d272fa5cc15602a2307569825446b07578",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.2.0.legacy-info.thrift.json",
+      "sha256": "895a2a0be2248e53d4c2895562c1f910b8c74d0d9146b3fc059391cb62e3df0b",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "71f3f9f85370419846e1220b0e6a2f60de8a8f3ac76511c5c85ffed22746028e",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "bd665e8abddd2b707aea1a2863c4f9ca4fdba1c5bf19f8dcbc312c2ea6efdae5",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.3.0.legacy-info.thrift.json",
+      "sha256": "49fc68e779179cc89cd4b3c3af67f9bcafce3469075186b0400fc86557e41016",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/statistics/20261115_160402_01272_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "a5c57d30d6b46a6cca494dda099d8e2ddf7ca7f6679a9d89efdbaf0eb18a2757",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/resource-audit-final.json",
+      "sha256": "1340397fb0fda0e9404fb95c4a98e8dc5c31ddb4037f87b548d243dd15e204db",
+      "bytes": 8558
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/resource-pools-final.json",
+      "sha256": "71e833a14cb4db3b9c955f80ca3f2e3b925c043726b17b08710f5d38ef9b6595",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/audit-window-close.json",
+      "sha256": "c097860424d1bcda788a3b78ca9b998e1f922814f67c06ea95f731abcc2035f0",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-primary-candidate.json",
+      "sha256": "d48e6c8eab8d598030fe605c3cf75a52921b7ee30da9ae606585daa57eeb1d1d",
+      "bytes": 828
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "b7869561b77ab9cde9129e7b781deccb5d4a372906533570df030ceeb187c9b9",
+      "bytes": 956
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/roster.json",
+      "sha256": "fcd9706b1e40d02c2f9d2ad265756c9502313deb7a785aed3c6d9f770de16fc1",
+      "bytes": 5969
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/execution-identity.json",
+      "sha256": "ffa83646a3d7004df847c1a24e8bedd4e7f88635d1746f9f8c7c22d97bf97515",
+      "bytes": 14732
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/executed.sql",
+      "sha256": "372d368c264cf7236675cc20b42f46dd37cbb142f81b4b995f8c7a1532a2a7f2",
+      "bytes": 197
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/input.sql",
+      "sha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119",
+      "bytes": 127
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-matrix-staging/sql/ordered.sql",
+      "sha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119",
+      "bytes": 127
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-primary-candidate/exit-receipt.json",
+      "sha256": "51ceca8ec7c4928df74cdfb1d747d688bacb8f6d2d1fd00dfb0121b80443fccd",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-primary-candidate/cli.classload.log",
+      "sha256": "6cef252248624acbe6ca530a3e51975e172537a895dacbd88c50f3207bc31fa9",
+      "bytes": 862681
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "e8c1b731b0c0b82840909d0b7c181504d2f0f426092ad34cf6155f5944f8060a",
+      "bytes": 2147
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/runtime-actions-observed.json",
+      "sha256": "7518e481858de16b15d8551c7e16c22524408d9dc54e16aeabf5de0734f3c4b7",
+      "bytes": 5811
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/statistics/20261115_160406_01474_1.1.0.thrift.json",
+      "sha256": "363c3b686cd16b0867ddb2a9fd79a0fa2532ed32907eee30d675a1d2316bbb9d",
+      "bytes": 7955
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/statistics/20261115_160406_01474_1.1.0.thrift.bin",
+      "sha256": "b58e523873d7999fe525e3edf1c02125d7ab84c33776271a7a01534a2b2fa14a",
+      "bytes": 2530
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/statistics/20261115_160406_01474_1.2.0.thrift.json",
+      "sha256": "01ffd87e60c8cc9da642e7603d3cc3f692219306577416293afda0589382876b",
+      "bytes": 52922
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/statistics/20261115_160406_01474_1.2.0.thrift.bin",
+      "sha256": "8e951019df2d362101234b4615ca8bdb454e25629bffa71a95fc2291b51c0d2e",
+      "bytes": 18395
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/statistics/20261115_160406_01474_1.3.0.thrift.json",
+      "sha256": "9d52395f3b9eac7ed4a46d9b4e97a6bc31c0f788ffb8682c552b66a446f29865",
+      "bytes": 52913
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/statistics/20261115_160406_01474_1.3.0.thrift.bin",
+      "sha256": "123cea705c2fbcc90ce36024da3aaeb942c799cdfaa209048496e26ad9479367",
+      "bytes": 18389
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/runtime-control.jsonl",
+      "sha256": "033ab4f7fbcc5e07490de2c9457c0f8563a39254deae1d33212b15f08de56ca8",
+      "bytes": 14254
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/resource-audit-final.json",
+      "sha256": "ecc52934fad3272e96b3bd0bf51a793fb28c25cb3b08929125ccfd18e8bb0bed",
+      "bytes": 29062
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/resource-pools-before.json",
+      "sha256": "427f796d6fa5fbc38afc9c50366efa86d3aedd57b87a354f976794b29c5ededd",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/resource-pools-final.json",
+      "sha256": "427f796d6fa5fbc38afc9c50366efa86d3aedd57b87a354f976794b29c5ededd",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/audit-window-close.json",
+      "sha256": "2365a306fa1c8d3e0e154c859218aeb73b813de264a1105c16dd7e7461c9f262",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-primary-control.json",
+      "sha256": "eb26b90639c4e9e77885d955bed11dd5df1e11df29cae8aff95a225d67c13f85",
+      "bytes": 838
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/ordinary-sql-receipt.json",
+      "sha256": "9dfcfa359dcfc768dc89770f6528710a945e0f0111425817699ebca8c0ef22cf",
+      "bytes": 1193
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/roster.json",
+      "sha256": "8ecab47b8efdce598f9133662c948b573fb9d75904eb12ec3137897dcaa06694",
+      "bytes": 5972
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/execution-identity.json",
+      "sha256": "79201f9b9d712d31fbd1397cc240b9b8167fb5290ba2075019ba0fd0f5ecd88c",
+      "bytes": 14738
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/executed.sql",
+      "sha256": "ba1dadd377b02d59cb482e89a41754a782ba6662915ed67944219360575d1f67",
+      "bytes": 197
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/input.sql",
+      "sha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119",
+      "bytes": 127
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-primary-control/exit-receipt.json",
+      "sha256": "fc70257eca4a70c36d1b7b64a103a5dba99eac21282b28f3ce573f47eb236f94",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-primary-control/cli.classload.log",
+      "sha256": "15e256880fe41e6e2022e7e596d6b5be5baf39f230c516fb81020899c1109dc3",
+      "bytes": 855713
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/terminal-statistics-receipt.json",
+      "sha256": "8ca434f24932f439246a2af6d0f679380dbfb207ccf6d4ea0bd8e79dedbd7dbe",
+      "bytes": 3000
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "e9d79d254dc2f6e8b486579b772a9ad06f3c1734dc49fb79a7cef2a13d8b94fe",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.1.0.legacy-info.thrift.json",
+      "sha256": "a4c7c9736fcd6e68f02b012efb78b828c13ccd7dc93c3a7732f6db78b638788b",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "34014c0950ca1b2c5349874abd5632a197060157af6eec1f19d33493e5dcb891",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "6bf10dbcaf8e614b76bb00ed31809d7e559fe3a7ebc1de7681d880bd0c8cdc7a",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.2.0.legacy-info.thrift.json",
+      "sha256": "f98bca0e62634ebbd96d3d44780b455c868cd576599b214906c75448478eb75f",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "f15ee9eb8d876d06b38e4ac1f4220b400eeb4ddfba1713f869bedd18b2ff4ff3",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "b74af8eabfe86f966a3063ffa31ccffba3fb2ebfe39eb3aac241c5c8e17108d5",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.3.0.legacy-info.thrift.json",
+      "sha256": "0204fafcd2d6bb46ceb7713309220858b260edadb8051dfb08f2cac57e7cc3ff",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/statistics/20261115_160408_01274_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "eb774ce8aa0ddb19243c13be7eff28b71feefbaf65c9ff7c06d934630081be43",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/resource-audit-final.json",
+      "sha256": "ed3e315e967be6b441361daac8b94e570ee6b91bed3e60b0dfbb0a146a2e8dd8",
+      "bytes": 8558
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/resource-pools-before.json",
+      "sha256": "7d80267566745351e2244350afaacfa6ba4722afb218582c5e18953cb0405534",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/resource-pools-final.json",
+      "sha256": "7d80267566745351e2244350afaacfa6ba4722afb218582c5e18953cb0405534",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/audit-window-close.json",
+      "sha256": "5540ed58d33f70e88f461cda88d056abde049925087cb4f3f7798f6d0a514f1d",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-time-only-candidate.json",
+      "sha256": "afef6d30e0a7fe1fffacf7607fcb61848d89e8c30b1439e2d3c27395a4b10bf3",
+      "bytes": 861
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "01f8f82ed3cfd94ac2b518a40af7723c653d291a573fd2b9ee5fd1d3bfad25e7",
+      "bytes": 956
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/roster.json",
+      "sha256": "519b02bd1c6117231032a267c3b3b88bc98a0829e76903502830d747ff1c4e9c",
+      "bytes": 5969
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/execution-identity.json",
+      "sha256": "7828b416389d011040fd4f1e4ab7a724d9ac1aaed3bc0bd105f8b9209b1e910c",
+      "bytes": 14767
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/executed.sql",
+      "sha256": "26852d7a85fc375363b73ec0025516fce21647bcba1eb7a7e591a8f6010f9423",
+      "bytes": 183
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/input.sql",
+      "sha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6",
+      "bytes": 113
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/ordered-readonly-investigation-20261115T142800Z/ordered-time-only.sql",
+      "sha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6",
+      "bytes": 113
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-time-only-candidate/exit-receipt.json",
+      "sha256": "a3eb85988394be0bffdbc928a895ffe9a1cd1a21d1b29d2b27d63115077344c4",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-time-only-candidate/cli.classload.log",
+      "sha256": "da90aa1fd5ff1851c87d125d8030112ddb0fcc02d8f6ff40720f33593c574ae3",
+      "bytes": 862829
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "0140b79a8f593a9d67af5b30c5ab052be87737ee55df26b7e881129cef401753",
+      "bytes": 2147
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/runtime-actions-observed.json",
+      "sha256": "3c0a847ecbae1d064509b737c22650b9b58a774fb9a42d698ec20f62f9cf9b01",
+      "bytes": 5811
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/statistics/20261115_160409_01476_1.1.0.thrift.json",
+      "sha256": "c8a003140afed7d09089f84cbce35f322c70eb9aaf5950d143c108817aa0e8cc",
+      "bytes": 7955
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/statistics/20261115_160409_01476_1.1.0.thrift.bin",
+      "sha256": "8232bfd01f03fb0424580745f72a2937ac1b90a336756241265629786595820f",
+      "bytes": 2530
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/statistics/20261115_160409_01476_1.2.0.thrift.json",
+      "sha256": "f69f71a9e72dd5abed90e210fa2582c2b5123d76751001903d5b11a47b87328f",
+      "bytes": 52913
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/statistics/20261115_160409_01476_1.2.0.thrift.bin",
+      "sha256": "d39933c59d8bedb4a7878796ee283f40a97af078ecc59a74a4f74cafa982cf57",
+      "bytes": 18394
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/statistics/20261115_160409_01476_1.3.0.thrift.json",
+      "sha256": "efd29df3f03d3d96345e765b44884a48687bf81907b737e35d002d38981ea459",
+      "bytes": 52598
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/statistics/20261115_160409_01476_1.3.0.thrift.bin",
+      "sha256": "311189017f3c83798f92000dd3578380d479d4c1a355a7692e576456e33cee5d",
+      "bytes": 18127
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/runtime-control.jsonl",
+      "sha256": "57f76b5a7d4824bbe6538baa66028a274a8b6f6042242f491166eb3d252621a7",
+      "bytes": 7979
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/resource-audit-final.json",
+      "sha256": "f5661ff4475455c8f6653e768964d3609f7cdec681b4dda2aba90ad4137a0402",
+      "bytes": 29062
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/resource-pools-before.json",
+      "sha256": "2e337b5239e5d39dd4f331cadfe2ddbd7e687b7506b3641032a2d8eb9b4799cf",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/resource-pools-final.json",
+      "sha256": "2e337b5239e5d39dd4f331cadfe2ddbd7e687b7506b3641032a2d8eb9b4799cf",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/audit-window-close.json",
+      "sha256": "9013483cd4bad5b7bd69b26b790afac94123c9b98b931beb6540df2311ab7ac6",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R2-time-only-control.json",
+      "sha256": "9ef22e45bf5cdc79d6955a8c448ebc27013136c792b327602035f8f3b53793f0",
+      "bytes": 868
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/ordinary-sql-receipt.json",
+      "sha256": "1336b52eefb9e13fd713d95789daf8f603ce0b0b30ed8f224c0f23dc8e8e6cc4",
+      "bytes": 1193
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/roster.json",
+      "sha256": "9d76ec15114a8e07657b786558f6b7bbd033947d45a72e657d13849621c02e4b",
+      "bytes": 5972
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/execution-identity.json",
+      "sha256": "f208443e0760c87876297c100fd481539fabde68d17aa676b6e8555ce22745a2",
+      "bytes": 14770
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/executed.sql",
+      "sha256": "5b970025aaa74707b7b6024ce701fdadb6c4b1be6dd4e810cc9bbabe3d7e8faf",
+      "bytes": 183
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/input.sql",
+      "sha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6",
+      "bytes": 113
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-time-only-control/exit-receipt.json",
+      "sha256": "1f0cb25de5f20aece9c16a1f5d7d6b3a44f59adbcf264a99816ffd08410c8104",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R2-time-only-control/cli.classload.log",
+      "sha256": "433b73117543ede371deb4303b523ebb5990828a303b30ba975866ce6f01f800",
+      "bytes": 855565
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/terminal-statistics-receipt.json",
+      "sha256": "3d6310f7496d5d7c11a3c092704be1f38cf7d4991f2ef47aba3b2cfde3a14f75",
+      "bytes": 3000
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "641c90c5013626f6b0122784fa934379e08557beb69b74545c14f059eac8a4a2",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.1.0.legacy-info.thrift.json",
+      "sha256": "b2dd30ca7187141c908c0278dbc51bb2cfcd03c2088a6df1afaa00165d9b87c9",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "a3f1ecf6df239dcd279622775a9d681af37ca931831de634821cb3792626d787",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "df3964f11033ca490ebd447f1e04f0b3127f444c1759899e325b81b6a20c5878",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.2.0.legacy-info.thrift.json",
+      "sha256": "880e0f663e970e7ce5dc51b734e054c3808bb6148a5a17bac4430f7c873516f2",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "b5253719b452af9da10c512757cc8fc5ece8e41b8cb33885617c4c5968677ab3",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "204ade4254366cbc5553f9f062c5cb6c003fadb769fee54db6d184309be08ce9",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.3.0.legacy-info.thrift.json",
+      "sha256": "9a3cad692d52479ccd79ef33843d2deb14d83a2c46b83049802be716a3e9cc31",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/statistics/20261115_160411_01276_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "33735c2a901963847106ece3f04850204cd8843a38681dd91aedcf617a9715fe",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/resource-audit-final.json",
+      "sha256": "c0e6a2e240e4978f2229d66fc4feb123248127af4a5e4a6a1d04711979b39d35",
+      "bytes": 8558
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/resource-pools-before.json",
+      "sha256": "39725c53a5aee71d1537ea94fe376b37c0e5157bbea2bb81a4a35c8be4c3656c",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/resource-pools-final.json",
+      "sha256": "39725c53a5aee71d1537ea94fe376b37c0e5157bbea2bb81a4a35c8be4c3656c",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/audit-window-close.json",
+      "sha256": "681d3143a2dfc9459e4edf51d6e7037ef6268fbc68d4d77b3d8babd066ae65df",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-primary-candidate.json",
+      "sha256": "ee63a23bd7236f406dc4e7fece62f29ef3d1c37bf54edd0c06ac22079c38f4a5",
+      "bytes": 837
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "7e2f7dadf1a003610da9340d713d71019263d1781421adf49fb77c371b6123f5",
+      "bytes": 955
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/roster.json",
+      "sha256": "52b56afa7e78d37f07b0ff42c34d99233f2692d4f8faf9ffd79622ceb0783bbb",
+      "bytes": 5706
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/execution-identity.json",
+      "sha256": "bd606231866cacfb08fefaee76a779ac8fe21020ce4dc26b65c1a05cf9192d94",
+      "bytes": 14741
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/executed.sql",
+      "sha256": "6ef714c8a969bd6598f9e084631205f49a136748ce0defbfe732d31be07183d8",
+      "bytes": 207
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/input.sql",
+      "sha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13",
+      "bytes": 137
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-matrix-staging/sql/orderedLimit257.sql",
+      "sha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13",
+      "bytes": 137
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-primary-candidate/exit-receipt.json",
+      "sha256": "9540bca6f6f907a65d349bc96c4756275745fec537bd042451a66b80b5942d13",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-primary-candidate/cli.classload.log",
+      "sha256": "7b659695888cc7c07856e93e150d1dd09b91f53936e9d2dfcd3c17ec3d72148f",
+      "bytes": 857784
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "ccd70ee369b94f82afde48401797423c99047c745f27fe8ebb2cb418017e51dc",
+      "bytes": 2145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/statistics/20261115_160411_01478_1.1.0.thrift.json",
+      "sha256": "ae14a836730ef24b5fb87b263d88d1e7a90395035f37f7331b5dc924339a8543",
+      "bytes": 7883
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/statistics/20261115_160411_01478_1.1.0.thrift.bin",
+      "sha256": "68105d0ebeefb83b6e031070219a7ffe6e0b526025b19bd23845b99a59e11b4e",
+      "bytes": 2497
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/statistics/20261115_160411_01478_1.2.0.thrift.json",
+      "sha256": "2a7a6fdae411f5f3c1242444c15e98ed0fbecc539fb0f192e0f02bbc203ae9f3",
+      "bytes": 6985
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/statistics/20261115_160411_01478_1.2.0.thrift.bin",
+      "sha256": "6c82a00552bbacf47f3e7fcf1b7d4c78f9421adfd6b455293f80bdee9e771e13",
+      "bytes": 2257
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/statistics/20261115_160411_01478_1.3.0.thrift.json",
+      "sha256": "1dfc1f94f22fc078a8894f6ec7a4f63f830aa1150453cc1109d1b5f4d1b487f0",
+      "bytes": 6984
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/statistics/20261115_160411_01478_1.3.0.thrift.bin",
+      "sha256": "ff70cea163c634993d787fd96a464f63ae13851752897443b740edc4cd9c8285",
+      "bytes": 2257
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/runtime-control.jsonl",
+      "sha256": "d023bd4e921361e603e9eedc029899b8e8f0a971836bb7be8dda72d2b08b1c3b",
+      "bytes": 1241
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/resource-audit-final.json",
+      "sha256": "601f2a89d5c6a71ec742c7f3bc15c264148ae13a0da945aae3529d396ae63759",
+      "bytes": 8136
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/resource-pools-before.json",
+      "sha256": "eaf2cd1b2c1bd6d6b3558aa139e66f7f9b1fb1a19fc13cffd9f6ca8ae516d44b",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/resource-pools-final.json",
+      "sha256": "eaf2cd1b2c1bd6d6b3558aa139e66f7f9b1fb1a19fc13cffd9f6ca8ae516d44b",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/audit-window-close.json",
+      "sha256": "33cfab40c61bb83d10677015011adf1f6223e0efa852933264e6c30d6d953aa3",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-primary-control-fetch-one.json",
+      "sha256": "52212dc39bc799fc0abbb935ed5b009504c5c897147513f72b38cdd1ae3ef704",
+      "bytes": 850
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/ordinary-sql-receipt.json",
+      "sha256": "78de4f560406d245a26d5aebd0068494b2702a750f356bea8abe78bf555934ac",
+      "bytes": 1192
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/roster.json",
+      "sha256": "84c288fab82ef34444d33752a836ab3dadf6b0a5583af70fb8ebd807536ce0b4",
+      "bytes": 5709
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/execution-identity.json",
+      "sha256": "f797168e1d6c1e0dc1d383ca6b6e38b0bf0bd129f156a918ddbfc8ffc785c08d",
+      "bytes": 14760
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/executed.sql",
+      "sha256": "73f974b7450b3dd6b91490fd650e6addc74bfc3a3f2db3c9421b7bf0010f10b1",
+      "bytes": 207
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/input.sql",
+      "sha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13",
+      "bytes": 137
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-primary-control-fetch-one/exit-receipt.json",
+      "sha256": "5678e41e5b32342284727f2a0beb13578b9890da31dd69797f971e96417561b7",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-primary-control-fetch-one/cli.classload.log",
+      "sha256": "bfe3171be176b76d5988dea4439723e75272479dce479d7a75606f9f5c2796d0",
+      "bytes": 850701
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/terminal-statistics-receipt.json",
+      "sha256": "a4dc10ae62c8193997e75beb48b6c5e2fc58250b173153704e8cef679888762d",
+      "bytes": 3000
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "ad85e255f55a344b936cfcf3bbdc2b24278c4736cda754adf3879b5736633b53",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.1.0.legacy-info.thrift.json",
+      "sha256": "78c719cc2c81f06bd69128ea7105bff869ba60d42d0e6c30753018567758fc4c",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "feb5c423e6e4e75af8ee6c19d6cebb1bfde41673d8587dbb4e9e61a0e6749ff2",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "1682b63b5a930ff34313aeeb57e1e7e83ba6ce29acbb97ae9eec0b42fe490669",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.2.0.legacy-info.thrift.json",
+      "sha256": "1987c15e12e7cdd040e0593a4c72501aff061fb324975d7a69e7484c3359123b",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "af0441e2358762fc9f11d368d1fe324800d26a181c4b06547fd9538be0027c2b",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "90c0803fc9d1508c3a5ec6689540d978d77af30ec4c58dce10acfdf58dc3c978",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.3.0.legacy-info.thrift.json",
+      "sha256": "8eadd273c9e6c128d6801b553c10e54768e853686722bad6b4c62fce59af2aec",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/statistics/20261115_161103_01280_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "681895e915d30276157f5e14e58d3f1422706db58a5d951cac2cf8cb4ae3c6f5",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/resource-audit-final.json",
+      "sha256": "f0f624e952ad65d07fe2f5d3e19cab0ef46077b7c20baba9aa8838fa1b873fc7",
+      "bytes": 8574
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/resource-pools-before.json",
+      "sha256": "37aa901f6a77e56ba5cdc3bbb19f788dc4d1b3100a708a1f79ca9e193f6cff51",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/resource-pools-final.json",
+      "sha256": "37aa901f6a77e56ba5cdc3bbb19f788dc4d1b3100a708a1f79ca9e193f6cff51",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/audit-window-close.json",
+      "sha256": "433c4610ae11ec9e89b69c57571e3b900dcd00cd5b9e677217e19d626653d930",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-runtime-early-candidate.json",
+      "sha256": "4440c36855b4f3d2c73cbe38769dd014fbd578a6f25e06558e0b251e1e5f3535",
+      "bytes": 868
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "571727ae9899105cd9d8aecd651d60f35830f60b09ed170f27ce73ca2fc70af9",
+      "bytes": 955
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/roster.json",
+      "sha256": "63b4b42083b9313baef2c650db21d7707e78cfee24791aca0901ccbc650a2651",
+      "bytes": 6435
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/execution-identity.json",
+      "sha256": "fe492f01efa0ee5d4ae8b5e9ca011e59465878c6b124804d41591522cedad8b9",
+      "bytes": 14778
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/executed.sql",
+      "sha256": "9067cf1ca07a05cfabd732ccf2f4176654315115d83829e113d9246611cfbe13",
+      "bytes": 263
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/input.sql",
+      "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe",
+      "bytes": 193
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-early-limit-contract-staging/sql/runtimeEarlyLimitConstant.sql",
+      "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe",
+      "bytes": 193
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-runtime-early-candidate/exit-receipt.json",
+      "sha256": "364b3e4a0be38e057f3e474f1da4b649c8a1fad0233475373cd89ab0b1f044a2",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-runtime-early-candidate/cli.classload.log",
+      "sha256": "160350f9536bbc2d524b4df31b3d754507be8bd64f23afc68a38f45a5d728c86",
+      "bytes": 832673
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "a00dafb16536f0078c8ebbbb3b6eb424fff3a57dc8c4db6cb7fd1422a198a275",
+      "bytes": 2145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/runtime-actions-observed.json",
+      "sha256": "1bed26b56f09619338882093068b24b326caeceabcd2cca7c4ed16d0bc60cf43",
+      "bytes": 5817
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/statistics/20261115_160414_01480_1.1.0.thrift.json",
+      "sha256": "7206ba91ea41c242cd2d6dbc28704a1dc3d900057219e246f770303cb06d0c1d",
+      "bytes": 9215
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/statistics/20261115_160414_01480_1.1.0.thrift.bin",
+      "sha256": "b1f1d68a6e94dea07b0df334fa27b099e21e622dd89ff71205e1c59426083eae",
+      "bytes": 2808
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/statistics/20261115_160414_01480_1.2.0.thrift.json",
+      "sha256": "8cb33fc8eafa27a2ab126a48180b4e9d3a4b045d148b5b5e17eb7066f308ff8d",
+      "bytes": 27175
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/statistics/20261115_160414_01480_1.2.0.thrift.bin",
+      "sha256": "176ef5fe3f7a250a54ff53f277170ae46aac55ba7cbb61b2def03c3569bdbe00",
+      "bytes": 10433
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/statistics/20261115_160414_01480_1.3.0.thrift.json",
+      "sha256": "d1ed9057b1dd67b537ea82b3e02533fee7ccb4f1a03ca9f0c8f9e9618fec0419",
+      "bytes": 27193
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/statistics/20261115_160414_01480_1.3.0.thrift.bin",
+      "sha256": "70e152b067daad32399691dc2e94c864e7bbff0a30b6d8b4456446358de0ed00",
+      "bytes": 10340
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/runtime-control.jsonl",
+      "sha256": "a6052f7e8eac5af17596ce0c30b449e3cdc930a4d84e6fb4ad9124ba26fb5215",
+      "bytes": 4955
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/resource-audit-final.json",
+      "sha256": "0d3928c1dac86a78f87760e0f603b8e1ca21048d29843155c882b5f890ff5493",
+      "bytes": 28435
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/resource-pools-before.json",
+      "sha256": "c6025d39f88e60dc74478ed1a89153989a40a6b4e25bd1ba2656ccfddd6a5a9e",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/resource-pools-final.json",
+      "sha256": "c6025d39f88e60dc74478ed1a89153989a40a6b4e25bd1ba2656ccfddd6a5a9e",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/audit-window-close.json",
+      "sha256": "12120731c75bbffb7e418b250161252388876529642982dce6ed42e7cf878403",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R3-runtime-early-control-fetch-one.json",
+      "sha256": "ce2e1dca135526edba45f3810d6808920166f33f5f0dd587f6e2f6c66e44b56a",
+      "bytes": 881
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/ordinary-sql-receipt.json",
+      "sha256": "53da1cf3b344c96d73185453197d5ac287b0509bcde6912d93d7e187278c8bb8",
+      "bytes": 1192
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/roster.json",
+      "sha256": "f4c40565b7c19d36e2645b9b8fb32f7a372278fa262e22b00596910df01e1ba4",
+      "bytes": 6434
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/execution-identity.json",
+      "sha256": "e2e4a4d9823c8b1f529b312f8d2eaeadf4e07562761d5262d2fe52a4c73691cd",
+      "bytes": 14797
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/executed.sql",
+      "sha256": "ebd98dd17cb1d89c77374fde2bee4582eb666f5dc103c5b492e9353d398c9c0b",
+      "bytes": 263
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/input.sql",
+      "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe",
+      "bytes": 193
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-runtime-early-control-fetch-one/exit-receipt.json",
+      "sha256": "6bc921c72fb667a8ec8b95471fdcd28a24ee732829806ff9bb8cfd3b1f29909a",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R3-runtime-early-control-fetch-one/cli.classload.log",
+      "sha256": "f6b635d0153a2f73b2a43aa8979fc5732502a9da530dfe1610836b3753c4eb9c",
+      "bytes": 834008
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/terminal-statistics-receipt.json",
+      "sha256": "79bdcc8b0afa07300e4e04e7b2c0440b1e6a07643cbb899bba2f4ccbb63699b5",
+      "bytes": 3000
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "0b16db1a4be42c3ebcbad9ae3a2350bbbad82a2dba03756a28c1c753f25a7a83",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.1.0.legacy-info.thrift.json",
+      "sha256": "d5a26690ace9daf2801450e3c44381b9406b77878364607c26c3600754833b21",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "30c99b849a884c24abea0564e1554b58a3c2b4aab8eb1b9c24f97737e87c1255",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "06663108027a041efc8f680be1c752fde9dc810ecda5cfaf0afc0ece7e3112c6",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.2.0.legacy-info.thrift.json",
+      "sha256": "d5a26690ace9daf2801450e3c44381b9406b77878364607c26c3600754833b21",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "08b16749352939a1636521a809c6088ac908f4bd1a6b0e876f0706edb559dc26",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "868cb292d78de7fa049a91398a15f90821ec3f0995b453414033b06637712088",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.3.0.legacy-info.thrift.json",
+      "sha256": "a4501407212a5b8d652e9eb1cb779e509dd6bb4fe9afa9c13751b146ba968a3e",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/statistics/20261115_161105_01282_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "e29b878bb93c43e156e61c549298a9af4ca0144e401652137865bf368ae4171b",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/resource-audit-final.json",
+      "sha256": "78187bef11923ec69394ddadde8ff92a031e4bafafc70f046abc073a9e9fb0f2",
+      "bytes": 8574
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/resource-pools-before.json",
+      "sha256": "969318aa4ee6d0b4f3eb474b1b271b89722f41b0a098e16b31d826540c3a3b83",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/resource-pools-final.json",
+      "sha256": "969318aa4ee6d0b4f3eb474b1b271b89722f41b0a098e16b31d826540c3a3b83",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/audit-window-close.json",
+      "sha256": "9776638fbda27a1b6c74955c9086d7f5cf0d2fa2ee7b6352eb9225106419bd1d",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-grouped-candidate.json",
+      "sha256": "636cf62931ee99e918b32735f94793c27bb58fa3169fe5e55172db0b43785139",
+      "bytes": 829
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "7f73552aef397e735c24f36c02672d11ce62d9933bfa0a5cee1bafaf97bb0bae",
+      "bytes": 953
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/roster.json",
+      "sha256": "de9b4f2b87713093d5045162880a66d9b31b0c081d6fc0ddd99b0f0e739b175f",
+      "bytes": 11807
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/actual-source-placement.json",
+      "sha256": "a7562af559f020ff9fd4473cd89d0b8806adecfbbd3bbb1e6748e75cecb64b62",
+      "bytes": 368
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/execution-identity.json",
+      "sha256": "c46820cf07067ed5f4242bc6d83797833a929d3945f37365828f107fd72a8dae",
+      "bytes": 14733
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/executed.sql",
+      "sha256": "4571ef1b2602a763c72b2e8aeac3e561a9f0fb3108bf7a681bdf9445821e995e",
+      "bytes": 216
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/input.sql",
+      "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78",
+      "bytes": 146
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-matrix-staging/sql/grouped.sql",
+      "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78",
+      "bytes": 146
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-grouped-candidate/exit-receipt.json",
+      "sha256": "cd1157bf459b4d51ac14d6217b96bcf8dc053fff09940836ab97141a1a0f348e",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-grouped-candidate/cli.classload.log",
+      "sha256": "536b605fb1688ad8369f12c91da5535d3d4c97ffcf81d66c0535f69a41d79d2b",
+      "bytes": 836276
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "96a1efc5824441a1a7dea7f8c82f56735dbfd130f76b295d093e7e2fb5e09db4",
+      "bytes": 3585
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/runtime-actions-observed.json",
+      "sha256": "a63544d05163e080cbfa1b55ca48ba873dd1c9fe330b4637981dacf6356ee7e8",
+      "bytes": 6054
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.1.0.thrift.json",
+      "sha256": "ecefc5eda8f6140ef8b42465fd0ed159f2fbdb6e2fa1b18395acb8debd153856",
+      "bytes": 7901
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.1.0.thrift.bin",
+      "sha256": "367d8fec5094df5a01edb24af048e1979f5acf7c1f96de0bdcc5f840dc5afc8e",
+      "bytes": 2513
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.2.0.thrift.json",
+      "sha256": "315561dae2e06b863d9402320ea92cbced3d8adc9d67ce6edac14987858f4906",
+      "bytes": 8708
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.2.0.thrift.bin",
+      "sha256": "d784a821ef7da7ecbb0878a1b4e358822f6af8ad0569f7a8c56620de5746e3f9",
+      "bytes": 2745
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.3.0.thrift.json",
+      "sha256": "722e223b9fbbc25c5d44bb54f38d215d66ab5a193ad52ead8a11ac6343caf64f",
+      "bytes": 31087
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.3.0.thrift.bin",
+      "sha256": "30a004818610401879452afabb233bc2e55976cee3444afd3fc9503b35c3cd23",
+      "bytes": 13604
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.4.0.thrift.json",
+      "sha256": "2830466d1adf697a404933a9c0157d605ad03d2285df26550f01617e199bed8b",
+      "bytes": 29940
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.4.0.thrift.bin",
+      "sha256": "931ae523ba5a9d2f92b55ae9a97fc2039b7c1eb629087fa8a799df3750a44d7c",
+      "bytes": 12609
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.5.0.thrift.json",
+      "sha256": "72d0040a6aa6e20bb79e416ab18c92c27d8e3fad55797ec0e305adaa9d152953",
+      "bytes": 8709
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/statistics/20261115_161107_01491_1.5.0.thrift.bin",
+      "sha256": "0b8ece72abbac767b4e9a2362f5bec78dabc5f8e29e61f55683c9d3647ef4237",
+      "bytes": 2747
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/runtime-control.jsonl",
+      "sha256": "f29e180fd3e2f143a1a9db0f642b2aee85936bfd3248e785d1d030436b3cda24",
+      "bytes": 76046
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/hash-repartition-roster.json",
+      "sha256": "c07c5ac1cd080b764f52a4ef88ee2505d93794f83c55b554425577cd6d4e705a",
+      "bytes": 11073
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/resource-audit-final.json",
+      "sha256": "5423587731c6db80331b26acf9f6ebf2ee0d0774ee5f0bf2c2dd5c9763ccdfff",
+      "bytes": 36313
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/resource-pools-before.json",
+      "sha256": "607843e666134f18f324dc85590de55dc8740e6a51af2663c60be0caeb643ae8",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/resource-pools-final.json",
+      "sha256": "607843e666134f18f324dc85590de55dc8740e6a51af2663c60be0caeb643ae8",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/audit-window-close.json",
+      "sha256": "2a0294aad36a0f2039d0e332c82774ca488d43eb845296e5a8b65d95196842f7",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-grouped-control.json",
+      "sha256": "095df9b2c82cb05cb1efd6d451ae30cb646163bf79b2c4c315ee8d41c243495c",
+      "bytes": 839
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/ordinary-sql-receipt.json",
+      "sha256": "88b065c2d81cecb89b8a63efd8dee4525dffffeb5261c82ca217bec719f86b62",
+      "bytes": 1192
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/roster.json",
+      "sha256": "e071aab85565936c1c9562492d77d8f6f8250d71b9095a6df8d5f3bc25fbbbf6",
+      "bytes": 11812
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/actual-source-placement.json",
+      "sha256": "a7562af559f020ff9fd4473cd89d0b8806adecfbbd3bbb1e6748e75cecb64b62",
+      "bytes": 368
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/execution-identity.json",
+      "sha256": "4f8812833b7f005ccde0f8f3ab8433ed4107e8548f85cb917a20eb29ceb8b688",
+      "bytes": 14739
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/executed.sql",
+      "sha256": "a506ed494b276893c1b9df09ed8f599f7c9ebcdcea3caf60186a9aba46b2d7d5",
+      "bytes": 216
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/input.sql",
+      "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78",
+      "bytes": 146
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-grouped-control/exit-receipt.json",
+      "sha256": "52ee6e9a995afa190e6a14a3746821b0153e67ee9c1cab3f212df932d9583566",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-grouped-control/cli.classload.log",
+      "sha256": "c4970d02a1d2964e4701a75d3a8123cc6dbae428ecf22993e024fbc4fb2642f6",
+      "bytes": 834428
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/terminal-statistics-receipt.json",
+      "sha256": "4d1af63fb9b2f10ec1ebc6b232c424a594c226bdb98386c08d5a2689663896bd",
+      "bytes": 4998
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "3fd1f91e2d38055c32db4ea0a0332922e343d3cf8e1c6e985f226c6f60426455",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.1.0.legacy-info.thrift.json",
+      "sha256": "893fe1f0da8e49b9310f05205b7e61ffd51e4fa03c950c12b0e6b3fba18181f7",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "a1c0c253c3ea1016e24d013373859bffaa336f5139b0ac69322fdb055868e4a6",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "d8119747666adfd5d6ba76651abdd7fa0c799fd79fda4bf9dbc8ecb5b7bc5400",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.2.0.legacy-info.thrift.json",
+      "sha256": "1f2428b90039db5afff8bdb70b0ffe3b1b13973ad84f1c22fa437979a12bf679",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "509bfe93ee4242cdb38edbbda11176f6224b2c16bfca882eec2bb9af18204614",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "c5ff728b21f4c4143a369e9d9d48ab4237c1df9af806d301c5a4a93c81e12999",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.3.0.legacy-info.thrift.json",
+      "sha256": "ebffb6c3d025e875eb1e19edd9b2eafd4502b3295bfb8e7d0b53cf6185d6174f",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "06fd7a2ab7cfd0e3b22005764d4d89864aa1957ef92fb74cddea8bb378bdcf50",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.4.0.statistics-not-retained.thrift.json",
+      "sha256": "e01a69123f479e2821cbaf35dc40cfd1615eefcf39e163a9824162a7d60922db",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.4.0.legacy-info.thrift.json",
+      "sha256": "eb60c64920881c1476c6a0f3bfddbade1ebcbe5a72f32296a1dd498c1a6c59ee",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.4.0.statistics-not-retained.thrift.bin",
+      "sha256": "b4b437f6a8bb16df4aeb8fb54e8aa203eae3864733ae1574388b1ae85fb3c016",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.5.0.statistics-not-retained.thrift.json",
+      "sha256": "45527f9b2c189148021d0f816b00b7eeed7e94870988bdca3fed859f51dc9a59",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.5.0.legacy-info.thrift.json",
+      "sha256": "893fe1f0da8e49b9310f05205b7e61ffd51e4fa03c950c12b0e6b3fba18181f7",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/statistics/20261115_161107_01284_1.5.0.statistics-not-retained.thrift.bin",
+      "sha256": "da13a6c201cf2aa77d61508e2b64ddf4376bc5fe89d52842dcd57118dd6327e9",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/resource-audit-final.json",
+      "sha256": "c1612ce62112c39ac58ce7a4939316fb46f03640aa4f7dd41ecdbd5e30613fb1",
+      "bytes": 16905
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/resource-pools-before.json",
+      "sha256": "09b37c1bfb209c9a9d81037c5998517159bbc4fd2ed817f85ecb7e6ffb992c9a",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/resource-pools-final.json",
+      "sha256": "09b37c1bfb209c9a9d81037c5998517159bbc4fd2ed817f85ecb7e6ffb992c9a",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/audit-window-close.json",
+      "sha256": "e0263569d01904feafcd185fdeb0962c96d8907557ee4a3707df4dcd8be4516f",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-filter-project-candidate.json",
+      "sha256": "65a7ed613be3ca3d68b637f2f32f648558e1709452dc56824fafc9761207433c",
+      "bytes": 849
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "f396615cae9306554b1508a221f3effcfef875bdea4ade9cb3705f47ca2d6d68",
+      "bytes": 953
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/roster.json",
+      "sha256": "4b5bc15ee400ee81f59178996a5ca1d18a62555176beda53ee314c10c12dd3e7",
+      "bytes": 12143
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/actual-source-placement.json",
+      "sha256": "a7562af559f020ff9fd4473cd89d0b8806adecfbbd3bbb1e6748e75cecb64b62",
+      "bytes": 368
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/execution-identity.json",
+      "sha256": "40bbd63b90a5c421f4f90e6dd57d4fe6a6de5eba7c885671ff2035da11304700",
+      "bytes": 14760
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/executed.sql",
+      "sha256": "55977971c4297782a995b315dd3752bc05f971082692b170914a7931c3cfab62",
+      "bytes": 206
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/input.sql",
+      "sha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f",
+      "bytes": 136
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-matrix-staging/sql/filterProjectGrouped.sql",
+      "sha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f",
+      "bytes": 136
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-filter-project-candidate/exit-receipt.json",
+      "sha256": "b5f251304bc05334e4e6b29bd320fc6a5c39da668b0881c72d5b3f9cb87e11b9",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-filter-project-candidate/cli.classload.log",
+      "sha256": "435eb54688e951dc51813d17319a07ad04e8ba2b7cbf7949db19cb59d5ae7426",
+      "bytes": 836276
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "e8a20cca31db47e7b620b79783b391f37da49bac19674835358ec13eaa83f7fb",
+      "bytes": 3585
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/runtime-actions-observed.json",
+      "sha256": "b3139b1b2f1960c5a1a60ac50351474c46c100e73e3fa381a18c8ac1e0333104",
+      "bytes": 6335
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.1.0.thrift.json",
+      "sha256": "ab3e36408bebaccfdd4ce3a284cc1d1aa9eae993382bde253330401a92e8b5e6",
+      "bytes": 7899
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.1.0.thrift.bin",
+      "sha256": "faeefcc6763ddfe23b20a3a310859fef17a91b12c1b718ed306a4fa6a77624ec",
+      "bytes": 2515
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.2.0.thrift.json",
+      "sha256": "81b0c3b8194067f6c722cf17684b29b0b4e5f41eb4a58a66d29820bf363c4c0a",
+      "bytes": 8712
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.2.0.thrift.bin",
+      "sha256": "58bb7d807de02921b83f12bf67725e26b4b3ac1c5e38ed5766080517001f7659",
+      "bytes": 2752
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.3.0.thrift.json",
+      "sha256": "ff4a55d16b40a43ddb411395d9a3c5dbc5ee1ec4f3c20636a69e5e1ce993c605",
+      "bytes": 30164
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.3.0.thrift.bin",
+      "sha256": "6aff93709ee457e69087f7011c429fd9faa1f673f1dd3488b53854144da91e80",
+      "bytes": 12385
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.4.0.thrift.json",
+      "sha256": "e647061574ae8189d08802f01c312b826338a20016c78000988e8adbf5b4573d",
+      "bytes": 29664
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.4.0.thrift.bin",
+      "sha256": "d769d93db283bde440e7d8544f4b552ac88568f849ff965113dc52ae595a4cae",
+      "bytes": 11956
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.5.0.thrift.json",
+      "sha256": "48ba79910483dbc54c68f551d4b31d0d80efa73d0f476cd2a932af25e1177ee7",
+      "bytes": 8715
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/statistics/20261115_161110_01493_1.5.0.thrift.bin",
+      "sha256": "f68e27e4da46abe1ec1e06faf83d3d77661a5f675c12553680717cf08e4f8589",
+      "bytes": 2756
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/runtime-control.jsonl",
+      "sha256": "a52332dd9f357ba03ee3b8f8b8e506e1178ec7501c7065da2c0095952db49818",
+      "bytes": 27770
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/hash-repartition-roster.json",
+      "sha256": "29280a3fd49ce54af5f0f8036a250edfc264a835f067504deb8102b98e70ce63",
+      "bytes": 11148
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/resource-audit-final.json",
+      "sha256": "fa36a37ede23b02c4e48747507adc3474719828abe8d45f55df2481867e629c5",
+      "bytes": 36397
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/resource-pools-before.json",
+      "sha256": "7c76e5f48fa44bc63334aecf3254d8fc6daf26adb598402b28c47f744ff09fa6",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/resource-pools-final.json",
+      "sha256": "7c76e5f48fa44bc63334aecf3254d8fc6daf26adb598402b28c47f744ff09fa6",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/audit-window-close.json",
+      "sha256": "21375426e7e6a5066c8fa8fb917a3f0e12945e42343e3205588b0618969fa5fc",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R7-filter-project-control.json",
+      "sha256": "c6de761ef4de6ed35021b6592fd8d0251d79238c49f16faf851b715c7e57bb03",
+      "bytes": 859
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/ordinary-sql-receipt.json",
+      "sha256": "191ea79b007ca4c51d2c0d09216bae6a3bf8cd6393ae258fab6b21b23d3e0d1f",
+      "bytes": 1192
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/roster.json",
+      "sha256": "5452b460c856e54c07bb4691a588fd873b7c0f39f93172ec2ae9faa87b71e578",
+      "bytes": 12148
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/actual-source-placement.json",
+      "sha256": "a7562af559f020ff9fd4473cd89d0b8806adecfbbd3bbb1e6748e75cecb64b62",
+      "bytes": 368
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/execution-identity.json",
+      "sha256": "db1ca5b5135fe12d879261064f62d024fb179b3475f612784f64e9c872f4667f",
+      "bytes": 14766
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/executed.sql",
+      "sha256": "4384cc86245b196c5f6e89330c6a5cb987ea0ce53ec1ff2a413160cbfe050658",
+      "bytes": 206
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/input.sql",
+      "sha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f",
+      "bytes": 136
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-filter-project-control/exit-receipt.json",
+      "sha256": "f0fa2be808e8565ebf01ab40ddeecd704358da024b6aa82d8af53b9408b04b29",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R7-filter-project-control/cli.classload.log",
+      "sha256": "bad734ecccce4c51c7ba74d239a7b5de26aeb13fce34870bd98ffe387ba137c8",
+      "bytes": 834280
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/terminal-statistics-receipt.json",
+      "sha256": "0473bc67cf1dc9c0fd66bef1abfbd0cf1530e4204c8e5b1d5d35368ccdca23c2",
+      "bytes": 4998
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "8d812bcab06f550ff750746849972e2a32f24a61f4a3ac54d47423d94009328a",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.1.0.legacy-info.thrift.json",
+      "sha256": "801b9dd8de932b8920a8e5f548a0ffd3a194e7603d9f2a2e112421bf45331264",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "a1e8ece27ca9ea9e134926feda27cd5e47ffe0349acc27e6c419d352fc7f2f29",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "ff79b2441cb05df46c9ea4ed4817c55edd09ec09440ed8474dfc81f08e1f4b69",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.2.0.legacy-info.thrift.json",
+      "sha256": "77c7e222e7a5d9e490ad9e1f3ec9cc8da3353e13119775234631ff5563ca3130",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "60f16b343cb9ea928aca3cc80b0db403a50a98d000f01f8ec9209d96f5dec45b",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "2d86172f8331c930e7dddb028833270ca1608ee95bef32bb5ab9ab49bad94f7b",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.3.0.legacy-info.thrift.json",
+      "sha256": "b6d90787ceb3fd662d4ac79ab84ba2c4e8528c6834a753c27e72f86e6e8acf93",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "6929520ccfa18022158e2dee150695d5bc93d1bab3dcf0fa86017acec6b3a216",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.4.0.statistics-not-retained.thrift.json",
+      "sha256": "9603b8581e8c20409107da716d02512a83619db58ecff5d046226e9a84d9df0f",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.4.0.legacy-info.thrift.json",
+      "sha256": "51c0a4b16083a40164c09222d88202c08783ec1ec04f69e84f319b92625f0f72",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.4.0.statistics-not-retained.thrift.bin",
+      "sha256": "8e4e1f0feb103e7ce3b2f4866ab587e1ac6ccbc5d76be1bbcb47fd0f7b2a4f1a",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.5.0.statistics-not-retained.thrift.json",
+      "sha256": "93904f3b747264c123dfafe09e0a35c9b5e5e95a49700e1fea494aa7380c5cb4",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.5.0.legacy-info.thrift.json",
+      "sha256": "77c7e222e7a5d9e490ad9e1f3ec9cc8da3353e13119775234631ff5563ca3130",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/statistics/20261115_161110_01286_1.5.0.statistics-not-retained.thrift.bin",
+      "sha256": "7537ed344b08c68a8fce9cf32f31922643dd95dec5191da445802f30f30cd5da",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/resource-audit-final.json",
+      "sha256": "e694df4c4dd99add961e450a9de58a631c840a976ec7996cc2e5eadcf1ebe7d1",
+      "bytes": 16925
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/resource-pools-before.json",
+      "sha256": "b0a517e48b1ca18dedc6c23163ef0daec4b8d8ecfadddbf1913eb2ce12212962",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/resource-pools-final.json",
+      "sha256": "b0a517e48b1ca18dedc6c23163ef0daec4b8d8ecfadddbf1913eb2ce12212962",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/audit-window-close.json",
+      "sha256": "a7e4221e843a94df4d5644f707f60ad839c3a6fedc274ed0d868ac056805343e",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-high-output-candidate.json",
+      "sha256": "3145554e0151e06d7043e4fd3e4fba854704598d9cb9cae86a76a479fe48fa9c",
+      "bytes": 838
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "39d1a89d4ed88676a0ded292555dbc539323881c04fe31fd792a1c2f97847996",
+      "bytes": 959
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/roster.json",
+      "sha256": "d4497f96bae8a652225d4252e7e8e413059931c7b113d41a97092d7c3cb9c309",
+      "bytes": 5861
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/execution-identity.json",
+      "sha256": "7c6a683e1e16ce7fc565ac906cab4d5854060a789f98fd19b822b0aafc13a4f2",
+      "bytes": 14746
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/executed.sql",
+      "sha256": "7bfb7d219e0645b61b0878629e95339627d37045c5b9658f9d921fadbb2fa7b0",
+      "bytes": 162
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/input.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+      "bytes": 92
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-matrix-staging/sql/rawFiltered.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+      "bytes": 92
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-high-output-candidate/exit-receipt.json",
+      "sha256": "d33bb942d46b2e600c97f7cab0f3c1333a96d688f4c99dda4b77ad4e09f14a0e",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-high-output-candidate/cli.classload.log",
+      "sha256": "c682945a738c28a13a61e169f6d5db72b88c3278603eb4d18c91581cc9c10d73",
+      "bytes": 862857
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "4094db3a901baa67616cc2f344b4f11cccfb104d2de614d98ca27c06c5241531",
+      "bytes": 2161
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/runtime-actions-observed.json",
+      "sha256": "b5ca526a95db3201825c3dc562e4209dcd6363b4d70a558158b49010710df881",
+      "bytes": 5939
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/statistics/20261115_161113_01495_1.1.0.thrift.json",
+      "sha256": "3ad4f8f4bb3134427511ff6717966fadcfc63217c81d8662a52fcf1fd4d55408",
+      "bytes": 7994
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/statistics/20261115_161113_01495_1.1.0.thrift.bin",
+      "sha256": "571a70b06834dddd34ed48f2abe24f20b9a0f5bf4d15dc51b0fc2e4c9cf3c3fa",
+      "bytes": 2527
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/statistics/20261115_161113_01495_1.2.0.thrift.json",
+      "sha256": "3f28a88b96bdd00e749c84bb65b728bb2fdb713d53bec32b7ada6d98284a56df",
+      "bytes": 64108
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/statistics/20261115_161113_01495_1.2.0.thrift.bin",
+      "sha256": "9ae5866baec2075136440598cde78551dbefb60b10987ab76f2849ccbdd173e1",
+      "bytes": 42333
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/statistics/20261115_161113_01495_1.3.0.thrift.json",
+      "sha256": "d2173e7270421cd3cbece0c4655bc8117f1d8fef686d7ae13c977828fbeb9ffc",
+      "bytes": 61963
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/statistics/20261115_161113_01495_1.3.0.thrift.bin",
+      "sha256": "18d82a11d2b3f1569d1273b4acc7320c4e94f527866f964bf1848d58bc5c5a8f",
+      "bytes": 40431
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/runtime-control.jsonl",
+      "sha256": "94ea1889a5cf358a8d15ed6f9b3cb3daff64d0e1fdabb6e3de5ef94ad4690c88",
+      "bytes": 728724
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/resource-audit-final.json",
+      "sha256": "4a1200dab91a6454475c258542213912e36a03399f8a8d10152fd33f9449f9b0",
+      "bytes": 28358
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/resource-pools-before.json",
+      "sha256": "fc1767d92671198d2425779d3d352fc0c5a4e394a6712e6246087db65f79c1a7",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/resource-pools-final.json",
+      "sha256": "fc1767d92671198d2425779d3d352fc0c5a4e394a6712e6246087db65f79c1a7",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/audit-window-close.json",
+      "sha256": "5343db37d1db3a4cce37e4ab4fbda76c504099b914b13dccaf25380b9289c7c1",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R1-high-output-control.json",
+      "sha256": "5a55fd80f4bef5eb996ac136500b32a77e7c94cf92a3904455f110021dcc9cd4",
+      "bytes": 844
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/ordinary-sql-receipt.json",
+      "sha256": "007d37637a62d68e01895ed57a92a0abc63a53cc3794f2a41f352e98fd90d544",
+      "bytes": 1196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/roster.json",
+      "sha256": "0d44ed3654ca198c1051a985451c3099c2351c7d24f783f20c49ed2466639952",
+      "bytes": 5860
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/execution-identity.json",
+      "sha256": "69ea82c245c17d7c9c545fbf8d4effe750e5a322dec4195920c0f674a13311bf",
+      "bytes": 14748
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/executed.sql",
+      "sha256": "78b5a330e3232723e47bbd13b0af47a67c3c741fd5834615f689a8318e1274b0",
+      "bytes": 162
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/input.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+      "bytes": 92
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-high-output-control/exit-receipt.json",
+      "sha256": "d21ed4af31f98619582eb9e7850273399873657a2d2c6ee48a4f23ea29d37771",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R1-high-output-control/cli.classload.log",
+      "sha256": "75739cae0ad1ea53db6a8fcae83144150fe8343da8618ab8dce1f3fb760f43c1",
+      "bytes": 860735
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/terminal-statistics-receipt.json",
+      "sha256": "234bb7efa8f6ab4b63a0a29dc2e3ad12d8b44afbdb27a1919ec00e375d2151d3",
+      "bytes": 3000
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/runtime-actions-observed.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes": 3
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.1.0.statistics-not-retained.thrift.json",
+      "sha256": "2fb6aac602f14ef249b400b3ea735dd4ca7eb743efdeb9dcb9fcdc0734c99900",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.1.0.legacy-info.thrift.json",
+      "sha256": "a650c69f295800fe82856ab60021764410013916d78eccb47e61be29cb2e983b",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.1.0.statistics-not-retained.thrift.bin",
+      "sha256": "fc3382d6c0e8cf540fdd5e1e5ab7529c8eab0498a493799ae075fc374c8a5cb0",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.2.0.statistics-not-retained.thrift.json",
+      "sha256": "2179dd817ca14c096b69c0e1afb35938b021176590c8381da44741891064ecaf",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.2.0.legacy-info.thrift.json",
+      "sha256": "e56d0d79781a0e8b1c1885d21547437e0227a6e162e6b0dda0eed834641a0804",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.2.0.statistics-not-retained.thrift.bin",
+      "sha256": "88ea21c91ac6f400b206c1bae62382330bdf8af6e232ab393d1a9c1e38b4191c",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.3.0.statistics-not-retained.thrift.json",
+      "sha256": "dcbf5c015beef846529368c3ade56279725d695b20c7ad75c339c18094c75210",
+      "bytes": 421
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.3.0.legacy-info.thrift.json",
+      "sha256": "0be1a505dd636ae0a4f4197227a45206b83375686855cdb84ae8744f3403318e",
+      "bytes": 196
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/statistics/20261115_161114_01288_1.3.0.statistics-not-retained.thrift.bin",
+      "sha256": "4bdac5a1a8c887bb1405c4ce8146d038e2a08092a24e63bfe1cb996b05057157",
+      "bytes": 145
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/resource-audit-final.json",
+      "sha256": "a0c9902f996826411c851ef0e5817a2881b298e98bc9de33c8e6804c13e49873",
+      "bytes": 8558
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/resource-pools-before.json",
+      "sha256": "7c3fd63f6f44f7f784f970eabaad83739771be01ebda9d345817870e98c33899",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/resource-pools-final.json",
+      "sha256": "7c3fd63f6f44f7f784f970eabaad83739771be01ebda9d345817870e98c33899",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/audit-window-close.json",
+      "sha256": "c8d74d19923de46d66804f6ab52481eb7c404ee4269ab109e5a971ca94314415",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R4-primary-candidate.json",
+      "sha256": "9cad5be8873889e65523fa9083966c15e62c1311ac86086844c3dc102b94730e",
+      "bytes": 901
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "fb17f6e93f768ac620564f665bb0bb2d664691257224a377773af220d8d22bdf",
+      "bytes": 2155
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/roster.json",
+      "sha256": "c61ecbf262379dde111dad77d37b79174fa9bf6af23564410e3ce5bb7ad82aed",
+      "bytes": 5861
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/execution-identity.json",
+      "sha256": "407a10a58adaca2a82d98e5c187f8c5eab3ac04966bf7382bd77276194418770",
+      "bytes": 14809
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/executed.sql",
+      "sha256": "0e245e1d8076a5fb9b27d622ead780bbd95697b416f1210a5061eecc6dd50cdb",
+      "bytes": 162
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/input.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+      "bytes": 92
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R4-primary-candidate/exit-receipt.json",
+      "sha256": "8540fa2c550bbe88bd83529a0491b8e81c5b78a2f31ef3a6de88f69603c0faf8",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R4-primary-candidate/cli.classload.log",
+      "sha256": "9742b7a2ebab4d05d5af36bc89efe3da626cc82ef2ca16cb39dc30bac094c735",
+      "bytes": 867175
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "f363f0a2280217738396342a7206b322fcc37c1cc7cb1e0b0c5cf2bad49b1a0a",
+      "bytes": 2164
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/runtime-actions-observed.json",
+      "sha256": "a25dc455709848dac1420b226824d81b39730ab870b44332b80a0ba5b20413ad",
+      "bytes": 5939
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/statistics/20261115_160416_01482_1.1.0.thrift.json",
+      "sha256": "4dd699251085163c6e5d1ed39745f8cd16f835fab9ba9ba6253e3953cb56b637",
+      "bytes": 7964
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/statistics/20261115_160416_01482_1.1.0.thrift.bin",
+      "sha256": "97566e14f0f91857fe9f44859bfb1b40aa5312ebaefa8aff20bcdcc361037577",
+      "bytes": 2523
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/statistics/20261115_160416_01482_1.2.0.thrift.json",
+      "sha256": "3763f06be397cf1ec713ad69bbd6769d954232cdf8c64e1c6cea7281b88186c0",
+      "bytes": 36225
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/statistics/20261115_160416_01482_1.2.0.thrift.bin",
+      "sha256": "a0aa604ebbf87e68b9d28befcd412e1969af8a8c1e63055676b634d19685013e",
+      "bytes": 17794
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/statistics/20261115_160416_01482_1.3.0.thrift.json",
+      "sha256": "c77929946df601b0be82ce050b76ba4007f53b6a887a07f0defb4dc20defa182",
+      "bytes": 36227
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/statistics/20261115_160416_01482_1.3.0.thrift.bin",
+      "sha256": "b9359c08a4db6c8cad225a90a7373f793d501acdabe662c99684b70ee0d05cad",
+      "bytes": 17794
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/runtime-control.jsonl",
+      "sha256": "2aaa2d78db37ff86eaaff90da7cab0e8b6d1bc77058f794019cdfdbc4ea92d81",
+      "bytes": 62517
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/resource-audit-final.json",
+      "sha256": "342e6d8f39cec53db52ce2ad405f503b96c5e31a6607be8c354e7b2ada7d2fdb",
+      "bytes": 28358
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/resource-pools-before.json",
+      "sha256": "9a5aed34bbec286d06bb4260941bc29743dbdd6357d8b2f14fd80bdcd438f265",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/resource-pools-final.json",
+      "sha256": "9a5aed34bbec286d06bb4260941bc29743dbdd6357d8b2f14fd80bdcd438f265",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/audit-window-close.json",
+      "sha256": "919ed334b3969636e303c2008ae456422bde3fe3666d1449d0a03b8107257d67",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/result-partial-receipt.json",
+      "sha256": "af63b1bd6656cfa243f214a7aa0eb12576ccd9d272d4ae22e8d712e5343b98fc",
+      "bytes": 1260
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R4/primary/candidate/r001/targeted-kill-receipt.json",
+      "sha256": "8392bf5405995c3df6143f5e29a68994d6c4f0360043c90edbe5151546ac3016",
+      "bytes": 82115
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R5-primary-candidate.json",
+      "sha256": "57637764f4405bdeeebf1175153c20f815b4679de56e5b376ac539bf160819e1",
+      "bytes": 891
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "5ec54bbb82ae97b9acc9eb15131d761151a8f76c53937936be22ec5060c10dfc",
+      "bytes": 1865
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/roster.json",
+      "sha256": "b3c75a1779f64621e24d1f27a7b5369d80f7ae5a2710ed42f7f5b401513ea6fb",
+      "bytes": 5857
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/execution-identity.json",
+      "sha256": "8ecdc72d18d281e23666bce16f71f84fe27056cf39d7e053f33d0a6ae75e5f44",
+      "bytes": 14797
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/executed.sql",
+      "sha256": "823f8cc6690e32e1cc3f8c63ab8dec82b6dc88ba72b2057a36edfc90651d3bdb",
+      "bytes": 451
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/input.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+      "bytes": 381
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R5-primary-candidate/exit-receipt.json",
+      "sha256": "6634941d0454e2b70c4c50a888e5d9897c7c1ab6edd162628ea1e4d70429077e",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R5-primary-candidate/cli.classload.log",
+      "sha256": "068c1b0fb08cb5fbf7095b503bac7d0307ccb2a1a75760fa791fd1e864ee1937",
+      "bytes": 818197
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "34bc29ca86126f63d8560dc9698ca1fcfad10a7437082361a17bd9a7e67f3567",
+      "bytes": 2157
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/runtime-actions-observed.json",
+      "sha256": "bf3fb173cad40949d48a34064c106174127b8ee58dbe2334f6259cf198ace335",
+      "bytes": 6977
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/statistics/20261115_160421_01485_1.1.0.thrift.json",
+      "sha256": "82c16925857adc8511fd889b80345aa38c007078f102f217adbf6a6cdf0f2e87",
+      "bytes": 7889
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/statistics/20261115_160421_01485_1.1.0.thrift.bin",
+      "sha256": "5a296b04325aa0e9987ad2c8cba532a7f6d903a7ebe997902cece3bfa872a9ec",
+      "bytes": 2503
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/statistics/20261115_160421_01485_1.2.0.thrift.json",
+      "sha256": "976d733b4a68ebd386c28a1ea47ad5429829a6f17b7912977c6d9931161c7536",
+      "bytes": 32950
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/statistics/20261115_160421_01485_1.2.0.thrift.bin",
+      "sha256": "c6d9f79185339bd2691b30f1e26bac6855c2191ea98bcc41fa039043d217fb4d",
+      "bytes": 14931
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/statistics/20261115_160421_01485_1.3.0.thrift.json",
+      "sha256": "e931e992c21dd527b49cd52ee5b817bebf38f30c9a527444db30ef24d83892a7",
+      "bytes": 32941
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/statistics/20261115_160421_01485_1.3.0.thrift.bin",
+      "sha256": "983ac34e2d231daf50c56b374119232d1a26a3f392e726b7bdd74a826c580d5c",
+      "bytes": 14931
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/runtime-control.jsonl",
+      "sha256": "d33467be95d742652641638c09eeb65841cad659c8ac4d5e34d8fcbd8d2ec09e",
+      "bytes": 29754
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/resource-audit-final.json",
+      "sha256": "1bb167319ee56889077cfc9edf596b604c3df615c048c5029c8ffa8182bc823a",
+      "bytes": 28358
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/resource-pools-before.json",
+      "sha256": "56f66bf8dd29e0871d31c00c98533d16c10f1251038819168539588eefe458f3",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/resource-pools-final.json",
+      "sha256": "56f66bf8dd29e0871d31c00c98533d16c10f1251038819168539588eefe458f3",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/audit-window-close.json",
+      "sha256": "d91401104505d32c8e7df034a73103f5896f1e6dbed049010cfd8841b80edfbb",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R5/primary/candidate/r001/result-partial-receipt.json",
+      "sha256": "de0b733999a7fda4dd73f0e90702ebb636095fd0a570d18a84c12ae6c4e28d71",
+      "bytes": 975
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-parameters-v6/R6-late-native-cast-candidate.json",
+      "sha256": "7e2bed515262e7cf1a9d68de09283c15e9e9274755020186879a8928ec071a1b",
+      "bytes": 914
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/ordinary-sql-receipt.json",
+      "sha256": "562287d4557120f896a5e049ce61009caf72fd3e2c47287f152caf7842bd8cca",
+      "bytes": 1878
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/roster.json",
+      "sha256": "14f22f20c89297f6928c059f630e20a4831cc09f0ab919d952059cfecce7893f",
+      "bytes": 6151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/actual-source-placement.json",
+      "sha256": "717e91755a5bedce7d73c5d1b6ce787ef8fb3ceb1addd560182cd93c13e797c1",
+      "bytes": 354
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/execution-identity.json",
+      "sha256": "49193f25853cac041e7ce35f98379c2474e1d21881b0fa1b86768befafdeca73",
+      "bytes": 14829
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/executed.sql",
+      "sha256": "a56c0e613edfebd9724c53e0e3888d496c68e0ab6f77348296fcbdc33947c740",
+      "bytes": 529
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/input.sql",
+      "sha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57",
+      "bytes": 459
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-r6-late-cast-staging-20261115T160946Z/sql/runtimeExceptionLateNativeCast.sql",
+      "sha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57",
+      "bytes": 459
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R6-late-native-cast-candidate/exit-receipt.json",
+      "sha256": "c6fabf5915170619aec6172c3f0211f27a132d4186eecee310dad6d278751117",
+      "bytes": 76
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/sql-v6-R6-late-native-cast-candidate/cli.classload.log",
+      "sha256": "3d18b88b62ba2daeeb27ef44f3280672ec25c464bd457a52e1914bcc992821a4",
+      "bytes": 818045
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/terminal-statistics-receipt.json",
+      "sha256": "17d580b9ad78ee7720e84529647bafb7a3dc4076ca39541d74e3a416f4cc07a4",
+      "bytes": 2157
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/runtime-actions-observed.json",
+      "sha256": "61ac1a2dd1048d70e401b534bdb31c3e43757fcd4b15a59a8c2234d745d3c5cf",
+      "bytes": 5939
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/statistics/20261115_161102_01489_1.1.0.thrift.json",
+      "sha256": "b0b8a34b30794beb72c449711f2d569a78e0293b74d96e7f232a1ea52c050a55",
+      "bytes": 7874
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/statistics/20261115_161102_01489_1.1.0.thrift.bin",
+      "sha256": "a2a034658f315e83a704be8ecbe8d363d9d816c5193f20e762fa5978f31463bd",
+      "bytes": 2503
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/statistics/20261115_161102_01489_1.2.0.thrift.json",
+      "sha256": "8ef3a8a70f64608fcc4a19096c941158f48235fae53250cd0e86dc1462790d26",
+      "bytes": 37033
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/statistics/20261115_161102_01489_1.2.0.thrift.bin",
+      "sha256": "6cc4b23a64db6edc29fda6db7c80b614f4bf63f41ce702a6277259fe36f83a4d",
+      "bytes": 18490
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/statistics/20261115_161102_01489_1.3.0.thrift.json",
+      "sha256": "b0b85cc7e3c741dc8ea6356abfc4840947f3bc0f451f98c8b912cd9a1b6895ce",
+      "bytes": 35793
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/statistics/20261115_161102_01489_1.3.0.thrift.bin",
+      "sha256": "850ff04ff0f3b827c4ab61c6e66cb41b79d721b157c0717ce1e7fa6677e22f8f",
+      "bytes": 17396
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/runtime-control.jsonl",
+      "sha256": "db9204d19e3ba06c2dc13652de38370d690da25ac2fc7bea7be74033e8d6f61a",
+      "bytes": 355954
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/resource-audit-final.json",
+      "sha256": "bae2606b90eec98ad0a2bbeabacf9c799d6661c7204c3330a3e05f7b8f4dadfa",
+      "bytes": 28371
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/resource-pools-before.json",
+      "sha256": "7d1342420ff14660b952942d8e091b9ccf9d5c1cdc3ee83c663ebd61c805c402",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/resource-pools-final.json",
+      "sha256": "7d1342420ff14660b952942d8e091b9ccf9d5c1cdc3ee83c663ebd61c805c402",
+      "bytes": 1855
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/audit-window-close.json",
+      "sha256": "facc99bcd094c0e13b657ff6bdb248d2d9c59f634070298a5ce31db2535c1e56",
+      "bytes": 221
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R6/late-native-cast/candidate/r001/result-partial-receipt.json",
+      "sha256": "73d6cff9b3d7919767cb0adff4d7dc92d8032d76fa66d73f50cb26255d5a47b8",
+      "bytes": 987
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-fullscan-window/r001/typed-result-comparison.json",
+      "sha256": "eb6226cbe4e469b39e3868d7fbb5ed60c15849c573dab7107b8ac8f722247576",
+      "bytes": 7214
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/manifest.json",
+      "sha256": "524bb51b176a72bfc0abed4fb11645e195bf0e0c41d8bd64851687d8851e4bea",
+      "bytes": 55126
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/result-receipt.json",
+      "sha256": "1fc97661927677f0e9275826c423d1e3dbc53eb7b9055ee2073385b29fc5f740",
+      "bytes": 413
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/result.schema.json",
+      "sha256": "7db5d7af096be88cb37558aba9e9aae139146098dd27e66af1552bc0612c04f9",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/candidate/r001/result.rows.jsonl",
+      "sha256": "c9e7bc809eab46c2e9bab3a3a30377238a94e59449b5ddff4d4b09f67c31a5cb",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/result-receipt.json",
+      "sha256": "73dea2d92252bea2a15d51d1c84ca92c320da279ce3ee83045dff082a857ef91",
+      "bytes": 413
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/result.schema.json",
+      "sha256": "d5898ee6fcf08343c52fde868078fcedfdf104e9e11b6da046821d158006e037",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/fullscan-window/control/r001/result.rows.jsonl",
+      "sha256": "5c0d833a6d437ed738acb32c9066fd73f34f8f28fb993815c51fa8a28559b7f0",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-fullscan-window/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-fullscan-window/r001/canonical/control.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-fullscan-window/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/fullScanWindowFiltered.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-primary/r001/typed-result-comparison.json",
+      "sha256": "5569f276a5e7104be2791497ddcf62da3d8c15550e606dc080b58821fcaf108b",
+      "bytes": 7079
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/result-receipt.json",
+      "sha256": "31f372b75d783ac961a4bae0e283a46ca75bef5e42e9c8a2b7c3d94809f1d696",
+      "bytes": 412
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/result.schema.json",
+      "sha256": "94319c77bb910c11453afc36245976397f1ff6e7f9ed076d70d9e3625ed18692",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/candidate/r001/result.rows.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/result-receipt.json",
+      "sha256": "a46c295bdb37ba71435d1627307968a8f86c1b4748024f4c7a217a1596a6ebca",
+      "bytes": 412
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/result.schema.json",
+      "sha256": "463b7b68ed5ca18f46cc245f0370207f29d196391504130e8841a7afdf49aeb5",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/primary/control/r001-v4/result.rows.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-primary/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-primary/r001/canonical/control.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-primary/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/ordered.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/typed-result-comparison.json",
+      "sha256": "23afcbdc42fb2c4430722c83f5cca9b98487a82ebafc787ad44b9d17c901cd89",
+      "bytes": 12638
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/result-receipt.json",
+      "sha256": "59177ed366b6eee364f16cb90002c9d4d855049dd30069a1bc7d4ef7a0e6bb2a",
+      "bytes": 412
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/result.schema.json",
+      "sha256": "a385f16fcf357be13818be1df55cd9fcfb7cd2b5f856ea2a518eff42093f108c",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/candidate/r001/result.rows.jsonl",
+      "sha256": "b13bfb58ae7961ad218d4a79434616ef32c5a008c048e25ca953caa821b0d255",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/result-receipt.json",
+      "sha256": "0d90a6a043111ff61680c6663fd8bfc7c103ab98c5d0cc277be504778756f900",
+      "bytes": 412
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/result.schema.json",
+      "sha256": "7f6c277b524165627dfda24b7f46df61ac52e3d3b8452dfcad74bcc32c7ff482",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R2/time-only/control/r001/result.rows.jsonl",
+      "sha256": "3f90c1e4ed90a1c23112de87fa10896dff9e98fa2aa98e51133e3a7014c6f8ca",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/control.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+      "bytes": 97151
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-primary/r001/typed-result-comparison.json",
+      "sha256": "173477f412b79f0c1a792367312b24ec492006f48c4334bba83743e198e521eb",
+      "bytes": 8467
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/result-receipt.json",
+      "sha256": "52edca21af4f60d97d53c0cbe8d1f4965d2184a30a1a75ca18b98f207fa21130",
+      "bytes": 411
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/result.schema.json",
+      "sha256": "b56f2b84aa61cdacf5f8a763678c135450418d971b0134693a145cecfecfc503",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/candidate/r001/result.rows.jsonl",
+      "sha256": "dd275049ea023f78576d9909fd1a981df798a1c5b5f65303b29731c164a38483",
+      "bytes": 5845
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/result-receipt.json",
+      "sha256": "bb71f99fcd03d134749ad7dc3fb95db78f99414aa58a05096153a048fdba3a89",
+      "bytes": 411
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/result.schema.json",
+      "sha256": "ac0d2ef0a089c11916530437eb7aeba61b32a8a8c5c3b25a88333748fb0bed0a",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/primary/control/r002-fetch-one/result.rows.jsonl",
+      "sha256": "dd275049ea023f78576d9909fd1a981df798a1c5b5f65303b29731c164a38483",
+      "bytes": 5845
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-primary/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "5de7fe1632664b9ec342e788f64cd1dc641c2942ad6d1b9f2ff63eefa38a5ad6",
+      "bytes": 5845
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-primary/r001/canonical/control.sorted.jsonl",
+      "sha256": "5de7fe1632664b9ec342e788f64cd1dc641c2942ad6d1b9f2ff63eefa38a5ad6",
+      "bytes": 5845
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-primary/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "5de7fe1632664b9ec342e788f64cd1dc641c2942ad6d1b9f2ff63eefa38a5ad6",
+      "bytes": 5845
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-runtime-early/r001/typed-result-comparison.json",
+      "sha256": "c70c77a4815cbc220200141878b927e69b6f93f0cf95f35675dac89be34d70f3",
+      "bytes": 7098
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/result-receipt.json",
+      "sha256": "03cd15d2022adfbf349aa357ffe8a28d70af94694c61776ca5753d69edf70296",
+      "bytes": 411
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/result.schema.json",
+      "sha256": "bf916b2b8b22907f00a1231b622fcd2de6766c01b475a4f4f2e6786fab4b58d0",
+      "bytes": 381
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/candidate/r001/result.rows.jsonl",
+      "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+      "bytes": 1028
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/result-receipt.json",
+      "sha256": "c7c7fa1406f76dc9d344dfad5dab93ec637aa7b9a55b19c6d7e3c7197f76e382",
+      "bytes": 411
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/result.schema.json",
+      "sha256": "ef994248c55d618176dd14682013141b6a41ccdfd8571a82882cf8be1bb4fa23",
+      "bytes": 381
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R3/runtime-early/control/r002-fetch-one/result.rows.jsonl",
+      "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+      "bytes": 1028
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-runtime-early/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+      "bytes": 1028
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-runtime-early/r001/canonical/control.sorted.jsonl",
+      "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+      "bytes": 1028
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-runtime-early/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+      "bytes": 1028
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/runtimeEarlyLimitConstant.jsonl",
+      "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+      "bytes": 1028
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-grouped/r001/typed-result-comparison.json",
+      "sha256": "28143314500ce80f64d97897050cb2d04119ec80be28234386056d5625677712",
+      "bytes": 7063
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/result-receipt.json",
+      "sha256": "77674a745323c314e5cd7ef0d322aba7b8efd2cfca8573249eb43e42098c698a",
+      "bytes": 412
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/result.schema.json",
+      "sha256": "dfc358149604054b738f2b73113fb793df52584d0d675cd501b5257eff894d3c",
+      "bytes": 1209
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/candidate/r001/result.rows.jsonl",
+      "sha256": "d166391cf2505ea5ec04425e15c23a4c32e7ef3b1c544b76e817dc608db8ffc5",
+      "bytes": 11058
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/result-receipt.json",
+      "sha256": "b4e4e009e4f8ea44b64382ad39b9d5d3d3fbebe8166b92f11db941e690329f94",
+      "bytes": 412
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/result.schema.json",
+      "sha256": "7f60e975d559bbc90930ac70a92e4546ebb2c277ae4b2ec63f97f2b559a24800",
+      "bytes": 1209
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/grouped/control/r001-v4/result.rows.jsonl",
+      "sha256": "d166391cf2505ea5ec04425e15c23a4c32e7ef3b1c544b76e817dc608db8ffc5",
+      "bytes": 11058
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-grouped/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "dc9690816a5f4c00b35209d9a82198e515eb0db7aae8aebadcad9cf84bc4f7fb",
+      "bytes": 11058
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-grouped/r001/canonical/control.sorted.jsonl",
+      "sha256": "dc9690816a5f4c00b35209d9a82198e515eb0db7aae8aebadcad9cf84bc4f7fb",
+      "bytes": 11058
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-grouped/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "dc9690816a5f4c00b35209d9a82198e515eb0db7aae8aebadcad9cf84bc4f7fb",
+      "bytes": 11058
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/grouped.jsonl",
+      "sha256": "1e4f9af5d570ccd6953b344c542dcd2c7df40bca2141934316455a78192a27ae",
+      "bytes": 11058
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-filter-project/r001/typed-result-comparison.json",
+      "sha256": "99d35348a0a4dddd97dc6d54f62d3255f02c82537b54122964e0da369fe3e100",
+      "bytes": 7135
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/result-receipt.json",
+      "sha256": "ff3b46a87a9430635f901712b29451e8f0edd6a8938ec9e8b2358b0f2ede5a35",
+      "bytes": 411
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/result.schema.json",
+      "sha256": "a4ee9e4f5d149fde0548dd4a9e6ec423743a6ce156b0400bc408049eba6334b4",
+      "bytes": 659
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/candidate/r001/result.rows.jsonl",
+      "sha256": "44d42f2fc2ee354167b849adf5139de57f896efc390417dbac877f9ff42d90f8",
+      "bytes": 5546
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/result-receipt.json",
+      "sha256": "9fd9f4ca8450844d91ef9b3949f079ef93d7e840d4312db33ff28957beb6c9a5",
+      "bytes": 412
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/result.schema.json",
+      "sha256": "4062f1007e11131744d1e4baaeb5caf8899b1c9fabf62ac4ed1dd53f787af9f5",
+      "bytes": 659
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R7/filter-project/control/r001-v4/result.rows.jsonl",
+      "sha256": "44d42f2fc2ee354167b849adf5139de57f896efc390417dbac877f9ff42d90f8",
+      "bytes": 5546
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-filter-project/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "41fa2ea085ba55d89305e0d331936b82f979f6ef239a6732a43f35c73247fdf9",
+      "bytes": 5546
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-filter-project/r001/canonical/control.sorted.jsonl",
+      "sha256": "41fa2ea085ba55d89305e0d331936b82f979f6ef239a6732a43f35c73247fdf9",
+      "bytes": 5546
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-filter-project/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "41fa2ea085ba55d89305e0d331936b82f979f6ef239a6732a43f35c73247fdf9",
+      "bytes": 5546
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/filterProjectGrouped.jsonl",
+      "sha256": "ff6fb21791b9788a4babc7a4c35eb94e492e7db5fc2fcfbf426555e5c4e7df65",
+      "bytes": 5546
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-high-output/r001/typed-result-comparison.json",
+      "sha256": "c770e993cc588e67490362a161d05c9e15e4356d915c4d02ea66e3289887b7c3",
+      "bytes": 7080
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/result-receipt.json",
+      "sha256": "78f24026897430072740773bd6c8491e7697cae7a35704b7951c2ca33033de55",
+      "bytes": 417
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/result.schema.json",
+      "sha256": "8a85bfc6939ca62049024c8087fcda769c054d3e0f65b17e7317d5533de144db",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/candidate/r001/result.rows.jsonl",
+      "sha256": "5790a76c24b66dd2435e4586c8c93162de09498b11dd309e1e4c58540bcb1209",
+      "bytes": 140170706
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/result-receipt.json",
+      "sha256": "51e127bf96a97f8f98b1c8574b5d0efe6b26aad27b00833dfeb21ddffed07b1a",
+      "bytes": 416
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/result.schema.json",
+      "sha256": "023eb5e10a8609572fac6cfd788326783435d2da97571b41ebcfa7b2ccf1d13e",
+      "bytes": 952
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-acceptance-v6/R1/high-output/control/r001/result.rows.jsonl",
+      "sha256": "e358f883ea2406e3bf935fa168e63ad9a3a9be1f3e7b7dc4cabdf6b1230ac230",
+      "bytes": 140170706
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-high-output/r001/canonical/candidate.sorted.jsonl",
+      "sha256": "25399e90989766eca85fd6ffbc22f90fc36b2c54df617203305f90c70410698d",
+      "bytes": 140170706
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-high-output/r001/canonical/control.sorted.jsonl",
+      "sha256": "25399e90989766eca85fd6ffbc22f90fc36b2c54df617203305f90c70410698d",
+      "bytes": 140170706
+    },
+    {
+      "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-high-output/r001/canonical/oracle.sorted.jsonl",
+      "sha256": "25399e90989766eca85fd6ffbc22f90fc36b2c54df617203305f90c70410698d",
+      "bytes": 140170706
+    }
+  ]
+}

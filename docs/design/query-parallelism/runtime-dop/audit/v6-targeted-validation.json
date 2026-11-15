@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-11-15T16:00:15.603426+00:00",
+  "gateRun": "/root/rivermind-data/iotdb-runtime-dop-20261115/release-v6-validation-20261115T155551Z",
+  "mavenExitCode": 0,
+  "archiveXmlHashesMatchFreshSummary": true,
+  "xmlCount": 51,
+  "totals": {
+    "tests": 808,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 5
+  },
+  "newSchemaChunkingTests": {
+    "testPlannedInt64ChunkingUsesExpandedWidthAndPreservesDuplicateRows": {
+      "failure": false,
+      "error": false,
+      "skipped": false
+    },
+    "testPlannedNullChunkingMaterializesAllWireTypesWithoutLosingDuplicateRows": {
+      "failure": false,
+      "error": false,
+      "skipped": false
+    }
+  },
+  "skipped": [
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "explainShowsThePropertyEnforcementTraceOnlyWhenEnabled[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "partitionedRequirementConservativelyCollectsUntilHashExchangeExists[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "unorderedBranchesRecordArbitraryToSingleCollectEnforcement[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "orderedRequirementOnUnorderedChildInsertsSortEnforcer[enable_property_driven_planning=true]"
+    },
+    {
+      "class": "org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.PropertyDrivenDistributionTest",
+      "name": "propertyDrivenRulesProduceTheSamePlanAsTheHeuristic[enable_property_driven_planning=true]"
+    }
+  ],
+  "reportsArchive": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/release-v6-validation-20261115T155551Z/integration-repair-targeted-reports.tar.gz",
+    "sha256": "b74aa4b2802996c0b648cd8e25cc96560b4e2ba0a443b04069a8e2cb24b25509"
+  },
+  "summarySha256": "5cc3f831ff9c3c225fbf9f80ec77b8e9f983fe8cce8bd30dc2b43411b3b39b5e",
+  "note": "Gate archive independently read after targeted phase; no mutable main target report reused."
+}

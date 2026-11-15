@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "release": "v6",
+  "createdAtUtc": "2026-11-15T16:14:57.932215+00:00",
+  "runReceipts": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/run-receipts.json",
+    "sha256": "a2dee55d4c40a2289d8d258b02765e103b4aa5ba7751235829ccbac1bfbb79dd"
+  },
+  "executionIdentity": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/execution-identity.json",
+    "sha256": "da89c9a5b6baa8e134d6cecf78fad31297fae4f91990520a85392e860abdc809"
+  },
+  "classpathJarCount": 94,
+  "actualJavaRuntimeProcessCount": 6,
+  "inputFilesUnchanged": true,
+  "allSixCliExitCodesZero": true,
+  "allSixStderrEmpty": true,
+  "allSixLoadedCliAndJdbcFromV6Release": true,
+  "cases": [
+    {
+      "case": "compat-show-devices",
+      "status": "passed",
+      "comparison": "complete row multiset with multiplicities",
+      "rowCount": 64,
+      "header": [
+        "device_id"
+      ],
+      "fixtureChecks": [
+        "All 64 unique devices d000 through d063 exactly once"
+      ],
+      "sides": {
+        "candidate": {
+          "completeRows": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/candidate/compat-show-devices/complete-rows.json",
+            "sha256": "639d26fcba4bc4dfb13d401d95cffc9b03984d4414e677e251817ebeacbebf3d"
+          },
+          "rowCount": 64,
+          "stdout": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/candidate/compat-show-devices/stdout.log",
+            "sha256": "c9460c5ec9fd215b2e1d77e8ea83e37904426fbff96ea74228db14dad4aa8f75"
+          },
+          "exitCode": 0,
+          "loadedClasses": [
+            "[0.081s][info][class,load] org.apache.iotdb.cli.Cli source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar",
+            "[0.203s][info][class,load] org.apache.iotdb.jdbc.IoTDBDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar",
+            "[0.885s][info][class,load] org.apache.iotdb.jdbc.IoTDBJDBCResultSet source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar"
+          ],
+          "loadedClassSourcesMatchRelease": true
+        },
+        "control": {
+          "completeRows": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/control/compat-show-devices/complete-rows.json",
+            "sha256": "639d26fcba4bc4dfb13d401d95cffc9b03984d4414e677e251817ebeacbebf3d"
+          },
+          "rowCount": 64,
+          "stdout": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/control/compat-show-devices/stdout.log",
+            "sha256": "9ca0d9a2ca90ab81dc2e8b1c7299713344f0a8df4639e0136d0224eeb929537b"
+          },
+          "exitCode": 0,
+          "loadedClasses": [
+            "[0.082s][info][class,load] org.apache.iotdb.cli.Cli source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar",
+            "[0.189s][info][class,load] org.apache.iotdb.jdbc.IoTDBDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar",
+            "[0.892s][info][class,load] org.apache.iotdb.jdbc.IoTDBJDBCResultSet source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar"
+          ],
+          "loadedClassSourcesMatchRelease": true
+        }
+      }
+    },
+    {
+      "case": "compat-show-devices-filtered",
+      "status": "passed",
+      "comparison": "complete row multiset with multiplicities",
+      "rowCount": 1,
+      "header": [
+        "device_id"
+      ],
+      "fixtureChecks": [
+        "Only device d000, exactly one row"
+      ],
+      "sides": {
+        "candidate": {
+          "completeRows": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/candidate/compat-show-devices-filtered/complete-rows.json",
+            "sha256": "a5149322f8d8647461830bc21159b1251fb1f01d300be1ec0f8f5546b503b9a8"
+          },
+          "rowCount": 1,
+          "stdout": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/candidate/compat-show-devices-filtered/stdout.log",
+            "sha256": "d37ab9c219aef106bf6a41d2f4e53703dfda253281519a51caba0430cfc64ec0"
+          },
+          "exitCode": 0,
+          "loadedClasses": [
+            "[0.078s][info][class,load] org.apache.iotdb.cli.Cli source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar",
+            "[0.192s][info][class,load] org.apache.iotdb.jdbc.IoTDBDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar",
+            "[0.867s][info][class,load] org.apache.iotdb.jdbc.IoTDBJDBCResultSet source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar"
+          ],
+          "loadedClassSourcesMatchRelease": true
+        },
+        "control": {
+          "completeRows": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/control/compat-show-devices-filtered/complete-rows.json",
+            "sha256": "a5149322f8d8647461830bc21159b1251fb1f01d300be1ec0f8f5546b503b9a8"
+          },
+          "rowCount": 1,
+          "stdout": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/control/compat-show-devices-filtered/stdout.log",
+            "sha256": "2fddae936b89ef0d404b347c365913e281aef7b0bc478174d80aa4c41d9eb649"
+          },
+          "exitCode": 0,
+          "loadedClasses": [
+            "[0.078s][info][class,load] org.apache.iotdb.cli.Cli source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar",
+            "[0.202s][info][class,load] org.apache.iotdb.jdbc.IoTDBDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar",
+            "[0.862s][info][class,load] org.apache.iotdb.jdbc.IoTDBJDBCResultSet source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar"
+          ],
+          "loadedClassSourcesMatchRelease": true
+        }
+      }
+    },
+    {
+      "case": "compat-diff",
+      "status": "passed",
+      "comparison": "complete ordered row sequence",
+      "rowCount": 64,
+      "header": [
+        "time",
+        "device_id",
+        "s1",
+        "delta"
+      ],
+      "fixtureChecks": [
+        "All 64 ordered timestamps 0 through 63ms",
+        "s1 equals -1000 plus timestamp",
+        "First delta is NULL exactly once",
+        "All remaining 63 deltas equal 1.0"
+      ],
+      "sides": {
+        "candidate": {
+          "completeRows": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/candidate/compat-diff/complete-rows.json",
+            "sha256": "08213bc2f2e47635795c7f136037a4c5b54629cd894d452a8f590fbb4e58ff54"
+          },
+          "rowCount": 64,
+          "stdout": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/candidate/compat-diff/stdout.log",
+            "sha256": "f92aa4d52e5e21005d18f4076d3452b3aed5319a75fca52165d597e07b3f5881"
+          },
+          "exitCode": 0,
+          "loadedClasses": [
+            "[0.065s][info][class,load] org.apache.iotdb.cli.Cli source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar",
+            "[0.195s][info][class,load] org.apache.iotdb.jdbc.IoTDBDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar",
+            "[0.916s][info][class,load] org.apache.iotdb.jdbc.IoTDBJDBCResultSet source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar"
+          ],
+          "loadedClassSourcesMatchRelease": true
+        },
+        "control": {
+          "completeRows": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/control/compat-diff/complete-rows.json",
+            "sha256": "08213bc2f2e47635795c7f136037a4c5b54629cd894d452a8f590fbb4e58ff54"
+          },
+          "rowCount": 64,
+          "stdout": {
+            "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-cli-compat-v6-20261115T161413Z/control/compat-diff/stdout.log",
+            "sha256": "fa93197d75e11aeccc3bd0b4c7cf70b8f75ffd08dd7af43bfd6762333489a4bb"
+          },
+          "exitCode": 0,
+          "loadedClasses": [
+            "[0.066s][info][class,load] org.apache.iotdb.cli.Cli source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar",
+            "[0.193s][info][class,load] org.apache.iotdb.jdbc.IoTDBDriver source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar",
+            "[0.884s][info][class,load] org.apache.iotdb.jdbc.IoTDBJDBCResultSet source: file:/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar"
+          ],
+          "loadedClassSourcesMatchRelease": true
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Final v6 frozen release SQL compatibility only",
+    "CLI table text preserves rendered values; runtime class-load sources verify actual release JARs",
+    "This check does not measure performance or prove dynamic DOP"
+  ]
+}

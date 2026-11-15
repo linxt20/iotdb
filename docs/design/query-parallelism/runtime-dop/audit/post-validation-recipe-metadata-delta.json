@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "scope": "After complete runtime-v6 validation, update SQL/JSON reproduction recipes to the accepted SQL and fetch settings; no Java, compiler input, driver, generator, comparator, config or binary change.",
+  "validatedSourceCount": 155,
+  "changedPreviouslyFrozenRecipes": [
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json",
+      "validatedSha256": "7a746c30780fe3c98eec9bea71bf2e080ebd36f721d7d9279455c70ebf96f715",
+      "currentSha256": "6a7df717207b1faa278d6b41fb371bd9109e7a8e9dddb3fafa83237558c4ec7b"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json",
+      "validatedSha256": "20a97602d70c6b27e9f4682e61de2947021f897738e0e1678a05d0d7f4129035",
+      "currentSha256": "ffa3ce96d6170a808c855b557d7fcab20b8aecffb042b75e6e8c0ddd0a16d1d0"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+      "validatedSha256": "c011ef570026956299bb1b89efd93628922f19b7d2c383b06dcb17c4ff211b53",
+      "currentSha256": "27a53caea108d7ff911f10bbf041c24d2e4c5f2737cea66c1a10cde7568651a9"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-control.json",
+      "validatedSha256": "bb6c56a13b395c5f9c05fa9ff5e273e1e03f884f79f5771611726c1701eed77e",
+      "currentSha256": "75f84b69ca20aec494762e4371f5576a979bfb38d468b2e4fcec5baacb0b9b25"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R5-primary-candidate.json",
+      "validatedSha256": "f1fff13b86b8adc3531da0ba05276da995b0851fc4f00cd86073884d7f42ffab",
+      "currentSha256": "8880fbc90810397a64055372f1ef45e84df2d8baa12df3c5b3ac8e3dca02aac4"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R6-primary-candidate.json",
+      "validatedSha256": "e727471d173d0318fc188ede2556526b82804db4912acdcf7a39c16cd38d315f",
+      "currentSha256": "9888346534eea0fea5d39b8fc2706a30d981ffe9362e2a45bcba3cf1936fa7b8"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeException.sql",
+      "validatedSha256": "9c2e1f680632a57e37012f5f5c96d0a2141efaa9b89444d0a961e36337b0718e",
+      "currentSha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57"
+    }
+  ],
+  "patch": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-portable-final-parameters-staging-20261115T161825Z/portable-final-parameters.patch",
+    "sha256": "60861ae320f3c85023e3f40db9a372e1a2b6bcd84589291e50324a9bc7c814cb"
+  },
+  "newHistoricalRecipe": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionDivisionHistorical.sql",
+  "productionAndTestSourceUnchanged": true,
+  "runtimeArtifactsUnchanged": true,
+  "details": "Original full source-binding receipt is immutable; recipe metadata delta is reported explicitly instead of rebinding the old run."
+}

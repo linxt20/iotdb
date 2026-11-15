@@ -1,0 +1,765 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "createdAtUtc": "2026-11-15T16:19:28.717380+00:00",
+  "jsonFilesParsed": 41,
+  "repositoryLocalNestedBindingsVerified": 114,
+  "nestedBindings": [
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/entryIdentity/driver",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/OrdinarySqlAcceptanceDriver.java",
+      "sha256": "2dcb4c56ad9810d417d4d4b02cd6c8025a65713288be20fa7efeaa3102112471"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/entryIdentity/wrapper",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/StaticScanAcceptanceDriver.java",
+      "sha256": "6672f5fba42da1b8bd010d1ea584a2bb23ebdd98e1fac4ff0422b9075f858792"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/entryIdentity/launcher",
+      "path": "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh",
+      "sha256": "31203924ae30fcb45a2c2930e72d1fd84d96929c92efb511eaa5e4616f414a69"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/entryIdentity/comparator",
+      "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+      "sha256": "a01dee505551aea1c11db2c9cec0327f633606736d1c80f75386043748710298"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/entryIdentity/fixtureGenerator",
+      "path": "research/query-intra-parallelism-e2e-acceptance/scripts/generate_hash_groupby_fixture.py",
+      "sha256": "c4a7183dbf290a360f528fbfcfafc2693adf973938522e4a5af58025fee7ed0f"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-candidate.json",
+      "sha256": "be89f289764eecb396c7488e4b23c59d122f5295d183681724bf0dd6e1a754da"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-control.json",
+      "sha256": "768705da7deab68fb567e5a18c0c32c89f106231aec744c5e7d0e57bfcf459cc"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/compatibilityVariants/0/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/compatibilityVariants/0/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-candidate.json",
+      "sha256": "fa5190d1984e93eff14019141bf249501cfdc279f8335138a072f50900a9344c"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/compatibilityVariants/0/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-control.json",
+      "sha256": "d634f07fc40e87e1c324b81c18dc3601f3128b88bcd45ddcae2b684ab8c43973"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/compatibilityVariants/1/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFilteredTrigBackup.sql",
+      "sha256": "07d5a831b1e8aad4c9bba62c472cfa30041de4c30c5dbe723cedcd2df8ee72d1"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/compatibilityVariants/1/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-candidate.json",
+      "sha256": "341ccc9b9f90192d9b24e8bc040759e0466ff06d03249f4cd57c6fbd576f7613"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/0/compatibilityVariants/1/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-control.json",
+      "sha256": "eb235bef040c8cec4bd11c85eb468fafa0470a120fd633cd9cb0a3d651a2b733"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/1/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/ordered.sql",
+      "sha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/1/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-candidate.json",
+      "sha256": "b8bc1ebbd4766240ebabb65325b1c109926af894969c7779235880cb164a83d6"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/1/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-control.json",
+      "sha256": "fd833d35f401d0253c81f3fa7f4d5aa10888663e6ba7b701a501dd4e2368e5ad"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/1/timeOnlyExtension/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedTimeOnly.sql",
+      "sha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/1/timeOnlyExtension/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-candidate.json",
+      "sha256": "5da84f115daf46ea3e65df69bd5acf8c9c40d0d0190442e493cb6044f459382b"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/1/timeOnlyExtension/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-control.json",
+      "sha256": "70690f956c71ad3d1339b4accb9a68181ea516aa18dba7e2bca4d7bccc6667ee"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/2/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedLimit257.sql",
+      "sha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/2/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json",
+      "sha256": "02f7690a5c4c46217d8853445d040ef9c21f09c783c9dfb97475c9b18e3fee22"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/2/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+      "sha256": "27a53caea108d7ff911f10bbf041c24d2e4c5f2737cea66c1a10cde7568651a9"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/2/runtimeConstantExtension/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+      "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/2/runtimeConstantExtension/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-candidate.json",
+      "sha256": "eeccdd8c57a3db4a1c9b4dcb94a5a14cb8a55110b6ca31916df855c6df738fc7"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/2/runtimeConstantExtension/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-control.json",
+      "sha256": "75f84b69ca20aec494762e4371f5576a979bfb38d468b2e4fcec5baacb0b9b25"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/3/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/3/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R4-primary-candidate.json",
+      "sha256": "e5cdd96bca9f1f64978be8a2c08a01d486ed30c357b1824520ba496b913c78a1"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/4/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/4/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R5-primary-candidate.json",
+      "sha256": "8880fbc90810397a64055372f1ef45e84df2d8baa12df3c5b3ac8e3dca02aac4"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/4/historicalDiagnosticFailures/0/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/5/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeException.sql",
+      "sha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/5/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R6-primary-candidate.json",
+      "sha256": "9888346534eea0fea5d39b8fc2706a30d981ffe9362e2a45bcba3cf1936fa7b8"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/5/supersededTrigger/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionDivisionHistorical.sql",
+      "sha256": "9c2e1f680632a57e37012f5f5c96d0a2141efaa9b89444d0a961e36337b0718e"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/5/historicalFastCastTrigger/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionNativeCast.sql",
+      "sha256": "2468c3ec77b56c32c076423e4b62a6651ce3d4e4c50bbc46947e295f28ee0adb"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/6/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+      "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/6/variants/0/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+      "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/6/variants/0/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-candidate.json",
+      "sha256": "0a828febabe65311b99a13dfe8447b69d8663cc6711bbe78c3758be0eb920241"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/6/variants/0/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json",
+      "sha256": "51480d23032307e9cb50574f0f3425420f62c1152a8092469bdcb76b9ce379c4"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/6/variants/1/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/filterProjectGrouped.sql",
+      "sha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/6/variants/1/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-candidate.json",
+      "sha256": "2dbad0a8d5f55045eb964d274d67d00ccdd702c0508b06dbafa9db6a47e200e8"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/cases/6/variants/1/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-control.json",
+      "sha256": "ffdfa2dd503206a9e19360be1d7aeea764ec006ad3212f8f263d993dc09a73bb"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/0",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/cancelled-parameters.example.json",
+      "sha256": "319bc407bad4f0736705ef355226ca0bd0650bb2faea3ad25c11ebc6093e7c69"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/1",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/deadline-parameters.example.json",
+      "sha256": "424699dab54a1410a83e2467b73203a4b8b9be3cb49b1ee8982fd2d11258a2bd"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/2",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/filter-project-grouped-parameters.example.json",
+      "sha256": "dbbd44489826a6b2b2b3abe98b255f2c9f2d6a4c2348981a2cbbb45baca6eb1d"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/3",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/grouped-parameters.example.json",
+      "sha256": "2fc46eed608f669b7b630709b087017d7bbd140c46a1268ac1e6005255b3cf09"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/4",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/grow-shrink-parameters.example.json",
+      "sha256": "72a0d583d2d450e0f6a4183bc7ebb925e2f044ef6315be7c0d40286b081e7e55"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/5",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/limit-parameters.example.json",
+      "sha256": "3d428408f1b5884c95ffc621d66be305e290dce75a75468be9547715193999dc"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/6",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/load-parameters.example.json",
+      "sha256": "f9c5ca3192eb29550243cb3a64f37c8c107afe8ba10053ad4aaef0a806a03e2f"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/7",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json",
+      "sha256": "6a7df717207b1faa278d6b41fb371bd9109e7a8e9dddb3fafa83237558c4ec7b"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/8",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json",
+      "sha256": "8648f1f95d68068eb33f5025f1cda96946a2a57c0403c333e1a4f06aae254cf4"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/9",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-candidate.json",
+      "sha256": "097ea8241947bc6d25e134bb05cff3742f7b111044afa4614b0ac2fafa2ce3e1"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/10",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-control.json",
+      "sha256": "8881259b3b1cf87e8f133e5ab8d1e08cc0e669d7bd8ccb0aa9136ed3c6b77d1a"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/11",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-candidate.json",
+      "sha256": "be89f289764eecb396c7488e4b23c59d122f5295d183681724bf0dd6e1a754da"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/12",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-control.json",
+      "sha256": "768705da7deab68fb567e5a18c0c32c89f106231aec744c5e7d0e57bfcf459cc"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/13",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-candidate.json",
+      "sha256": "fa5190d1984e93eff14019141bf249501cfdc279f8335138a072f50900a9344c"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/14",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-control.json",
+      "sha256": "d634f07fc40e87e1c324b81c18dc3601f3128b88bcd45ddcae2b684ab8c43973"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/15",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-candidate.json",
+      "sha256": "341ccc9b9f90192d9b24e8bc040759e0466ff06d03249f4cd57c6fbd576f7613"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/16",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-control.json",
+      "sha256": "eb235bef040c8cec4bd11c85eb468fafa0470a120fd633cd9cb0a3d651a2b733"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/17",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-candidate.json",
+      "sha256": "b8bc1ebbd4766240ebabb65325b1c109926af894969c7779235880cb164a83d6"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/18",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-control.json",
+      "sha256": "fd833d35f401d0253c81f3fa7f4d5aa10888663e6ba7b701a501dd4e2368e5ad"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/19",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-candidate.json",
+      "sha256": "5da84f115daf46ea3e65df69bd5acf8c9c40d0d0190442e493cb6044f459382b"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/20",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-control.json",
+      "sha256": "70690f956c71ad3d1339b4accb9a68181ea516aa18dba7e2bca4d7bccc6667ee"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/21",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json",
+      "sha256": "02f7690a5c4c46217d8853445d040ef9c21f09c783c9dfb97475c9b18e3fee22"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/22",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+      "sha256": "27a53caea108d7ff911f10bbf041c24d2e4c5f2737cea66c1a10cde7568651a9"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/23",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-candidate.json",
+      "sha256": "eeccdd8c57a3db4a1c9b4dcb94a5a14cb8a55110b6ca31916df855c6df738fc7"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/24",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-control.json",
+      "sha256": "75f84b69ca20aec494762e4371f5576a979bfb38d468b2e4fcec5baacb0b9b25"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/25",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R4-primary-candidate.json",
+      "sha256": "e5cdd96bca9f1f64978be8a2c08a01d486ed30c357b1824520ba496b913c78a1"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/26",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R5-primary-candidate.json",
+      "sha256": "8880fbc90810397a64055372f1ef45e84df2d8baa12df3c5b3ac8e3dca02aac4"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/27",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R6-primary-candidate.json",
+      "sha256": "9888346534eea0fea5d39b8fc2706a30d981ffe9362e2a45bcba3cf1936fa7b8"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/28",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-candidate.json",
+      "sha256": "2dbad0a8d5f55045eb964d274d67d00ccdd702c0508b06dbafa9db6a47e200e8"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/29",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-control.json",
+      "sha256": "ffdfa2dd503206a9e19360be1d7aeea764ec006ad3212f8f263d993dc09a73bb"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/30",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-candidate.json",
+      "sha256": "0a828febabe65311b99a13dfe8447b69d8663cc6711bbe78c3758be0eb920241"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/31",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json",
+      "sha256": "51480d23032307e9cb50574f0f3425420f62c1152a8092469bdcb76b9ce379c4"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/32",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/load-candidate.json",
+      "sha256": "ef41f2c040f35437c7d83364904cff6d209ad7bb22424fe13d14abfa29a361f3"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/33",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/load-control.json",
+      "sha256": "4bc54b00b71509918235d2bf64a328670876470ba630d39a0c968221f6fa14ca"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/34",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-diff.sql",
+      "sha256": "73d0f1794d940f1a201e6eed4578adebef7d4b61465e477b0ba8c1025e914746"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/35",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-show-devices-filtered.sql",
+      "sha256": "48d009e41a6207632dca1013da6336f7ab7268f5cd0c58293d76a4afb8a2ecea"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/36",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-show-devices.sql",
+      "sha256": "c2ea768a85dea294d51e4b6c3aae214ea8ae8f61a0f46408cf95dbe0c13b8c84"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/37",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/filterProjectGrouped.sql",
+      "sha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/38",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json",
+      "sha256": "559b0b1f5a9ba0af0f740f2045fa7b589ec4f1bc05211f40467eb630146c3b7e"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/39",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/40",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+      "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/41",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/ordered.sql",
+      "sha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/42",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedLimit257.sql",
+      "sha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/43",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedTimeOnly.sql",
+      "sha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/44",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/45",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFilteredTrigBackup.sql",
+      "sha256": "07d5a831b1e8aad4c9bba62c472cfa30041de4c30c5dbe723cedcd2df8ee72d1"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/46",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.contract.json",
+      "sha256": "96bb13fc2255288aed96ec7739549c471157566c6a71d7d4e00c663819fe5ce8"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/47",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+      "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/48",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeException.sql",
+      "sha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/49",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionDivisionHistorical.sql",
+      "sha256": "9c2e1f680632a57e37012f5f5c96d0a2141efaa9b89444d0a961e36337b0718e"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/50",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionNativeCast.sql",
+      "sha256": "2468c3ec77b56c32c076423e4b62a6651ce3d4e4c50bbc46947e295f28ee0adb"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/51",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json",
+      "sha256": "34f7451621cea7bf7d9bbe0f87e1805ed4009e4becadab19c4367dcdc1a2c856"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/52",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/ordered-parameters.example.json",
+      "sha256": "ddc691a7803d0fb3f50dc41db4cf267868e3443f95043ad4d506a14f3c20f782"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/53",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/ordinary-parameters.example.json",
+      "sha256": "2fc46eed608f669b7b630709b087017d7bbd140c46a1268ac1e6005255b3cf09"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json/files/54",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/parameters-spec.json",
+      "sha256": "766f8ab996e938fc29c39a6488fc23ab76ecd4db917fb2bfdd5cee3100cc2ae3"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json/sourceEvidence/0",
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecution.java",
+      "sha256": "c1dba23309fc116af47fba417ae58fc00ebafb74e0d9ee6fa0c7d9248c5286b5"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json/sourceEvidence/1",
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+      "sha256": "124fe771db7bd9044b894c8840e372e1ed46314be2a910cc6a87a56c52efe2dc"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json/sourceEvidence/2",
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/thrift/impl/DataNodeInternalRPCServiceImpl.java",
+      "sha256": "0e48bd8d24ada9db1c97b26bead82621edb4d9b055456f92fde6080861b2e0eb"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sourceBindings/0",
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/planner/IrExpressionInterpreter.java",
+      "sha256": "038b4d16f89a9c1ce1566e58112550ca736d71b49421b1113de9a2bba71d06b6"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sourceBindings/1",
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/analyzer/predicate/PredicateCombineIntoTableScanChecker.java",
+      "sha256": "d320ee2356db7f1c4fd7ad5d4198b224cd4f7b8c7cf49d6826acc2c2522e07ba"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sourceBindings/2",
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/planner/optimizations/PushPredicateIntoTableScan.java",
+      "sha256": "e6ff3cb894d16ee72bcbe3f1a0b09be496ab70157d4a576427aa721dcd9a78e7"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sourceBindings/3",
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/plan/relational/planner/ir/GlobalTimePredicateExtractVisitor.java",
+      "sha256": "ec9d5c12caa29b9b4f688ee54997ae6ad0ea4a1cd50cb207bd8f789384b47ebd"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sourceBindings/4",
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/transformation/dag/column/AbstractCaseWhenThenColumnTransformer.java",
+      "sha256": "e27bf0db07191cb1f17fe6fb0532ac455dad680e9ad37efc2b047701235b3347"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sourceBindings/5",
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/transformation/dag/column/unary/scalar/SinColumnTransformer.java",
+      "sha256": "5d0e13a8ab692a4fbff64344337c8f3a876bd48af066405df8e5ce8ef4dd32de"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json/sourceBindings/6",
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/transformation/dag/column/unary/scalar/CosColumnTransformer.java",
+      "sha256": "cae6b3c8a4db6124877c0079d2b0da425d0a1076bd7f2c0e4398532f67b1d2e6"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.contract.json/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+      "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json/checks/0/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-show-devices.sql",
+      "sha256": "c2ea768a85dea294d51e4b6c3aae214ea8ae8f61a0f46408cf95dbe0c13b8c84"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json/checks/0/filteredSql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-show-devices-filtered.sql",
+      "sha256": "48d009e41a6207632dca1013da6336f7ab7268f5cd0c58293d76a4afb8a2ecea"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json/checks/1/sql",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-diff.sql",
+      "sha256": "73d0f1794d940f1a201e6eed4578adebef7d4b61465e477b0ba8c1025e914746"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json/checks/1/runs/candidate",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-candidate.json",
+      "sha256": "097ea8241947bc6d25e134bb05cff3742f7b111044afa4614b0ac2fafa2ce3e1"
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json/checks/1/runs/control",
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-control.json",
+      "sha256": "8881259b3b1cf87e8f133e5ab8d1e08cc0e669d7bd8ccb0aa9136ed3c6b77d1a"
+    }
+  ],
+  "unresolvedFrozenFixtureReferences": [],
+  "parameterSqlBindings": [
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFilteredTrigBackup.sql",
+      "sqlSha256": "07d5a831b1e8aad4c9bba62c472cfa30041de4c30c5dbe723cedcd2df8ee72d1"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/ordered.sql",
+      "sqlSha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-diff.sql",
+      "sqlSha256": "73d0f1794d940f1a201e6eed4578adebef7d4b61465e477b0ba8c1025e914746"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/ordered.sql",
+      "sqlSha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFilteredTrigBackup.sql",
+      "sqlSha256": "07d5a831b1e8aad4c9bba62c472cfa30041de4c30c5dbe723cedcd2df8ee72d1"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedLimit257.sql",
+      "sqlSha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedTimeOnly.sql",
+      "sqlSha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R4-primary-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sqlSha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedTimeOnly.sql",
+      "sqlSha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sqlSha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R6-primary-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeException.sql",
+      "sqlSha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-diff.sql",
+      "sqlSha256": "73d0f1794d940f1a201e6eed4578adebef7d4b61465e477b0ba8c1025e914746"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+      "sqlSha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sqlSha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sqlSha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/filterProjectGrouped.sql",
+      "sqlSha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+      "sqlSha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sqlSha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R5-primary-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sqlSha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+      "sqlSha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-control.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/filterProjectGrouped.sql",
+      "sqlSha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+      "sqlSha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json",
+      "sqlPath": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedLimit257.sql",
+      "sqlSha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13"
+    }
+  ],
+  "fileIndexEntries": 55,
+  "fileIndexComplete": true,
+  "payloadSha256": "b4842c1eb239b78835ed867aa8845438abd9df77e9288d6f8060c86cc9c8d260",
+  "unchangedOriginalFiles": 48,
+  "historicalBytesPreserved": true,
+  "gitApplyCheck": {
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "gitApplyIsolated": {
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "patchReconstructionByteExact": true,
+  "mainPortableInputsUnchanged": true,
+  "errors": [],
+  "externalFrozenOracleBindingsVerified": [
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/fixture/oracles/grouped",
+      "portablePath": "oracles/grouped.jsonl",
+      "frozenObservedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/grouped.jsonl",
+      "sha256": "1e4f9af5d570ccd6953b344c542dcd2c7df40bca2141934316455a78192a27ae",
+      "bytes": 11058
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/fixture/oracles/filterProjectGrouped",
+      "portablePath": "oracles/filterProjectGrouped.jsonl",
+      "frozenObservedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/filterProjectGrouped.jsonl",
+      "sha256": "ff6fb21791b9788a4babc7a4c35eb94e492e7db5fc2fcfbf426555e5c4e7df65",
+      "bytes": 5546
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/fixture/oracles/ordered",
+      "portablePath": "oracles/ordered.jsonl",
+      "frozenObservedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/ordered.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+      "bytes": 97151
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/fixture/oracles/fullScanWindowFiltered",
+      "portablePath": "oracles/fullScanWindowFiltered.jsonl",
+      "frozenObservedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/fullScanWindowFiltered.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+      "bytes": 97151
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/fixture/oracles/fullScanWindowFiltered/sourceOracle",
+      "portablePath": "oracles/ordered.jsonl",
+      "frozenObservedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/ordered.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+      "bytes": 97151
+    },
+    {
+      "where": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json/fixture/oracles/runtimeEarlyLimitConstant",
+      "portablePath": "oracles/runtimeEarlyLimitConstant.jsonl",
+      "frozenObservedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/oracles/runtimeEarlyLimitConstant.jsonl",
+      "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+      "bytes": 1028
+    }
+  ],
+  "fixtureObservationBinding": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/fixture-oracle-early-limit-v4/manifest.json",
+    "sha256": "524bb51b176a72bfc0abed4fb11645e195bf0e0c41d8bd64851687d8851e4bea",
+    "note": "The repository keeps the target-generated manifest SHA as an explicit placeholder; these existing frozen oracle bytes validate stable portable oracle references without changing any oracle."
+  },
+  "repositoryAndFrozenNestedBindingsVerified": 120
+}

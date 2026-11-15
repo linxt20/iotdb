@@ -1,70 +1,231 @@
 {
-  "documents/README.md": {
-    "bytes": 4725,
-    "sha256": "7a2cb5f0e0172e9b2e092369669c696da280cc8fc439f3356f256133cf411993"
-  },
-  "documents/开发待办与排期.md": {
-    "bytes": 11712,
-    "sha256": "7c4ea671aecaef99ee8e019af90620100ca383aa3e4e89a089692a8b8db250a4"
-  },
-  "documents/运行期动态DOP设计草案.md": {
-    "bytes": 18192,
-    "sha256": "72f362afea9e75fb53998efba3e916d9389f58042edd304c307d5087ccefa056"
-  },
-  "documents/运行期动态DOP实现规划草案.md": {
-    "bytes": 17058,
-    "sha256": "372bdb258b86785e9f54230f905a12f95a82112cd1e37589ddc0b57d7009ef79"
-  },
-  "documents/迁移与基线核查_20261115.md": {
-    "bytes": 6531,
-    "sha256": "8ffa14343eb0a38b07852eecfa2e565c800d507e97fe9bd9f0ee9e6cf6c9552f"
-  },
-  "documents/实现进度与验证记录_20261115.md": {
-    "bytes": 7770,
-    "sha256": "464d7059cf2a854b8a66e3828eed63b7a32edb4c21b07d1a9b4015eaf0e1850a"
-  },
-  "audit/independent-original-artifact-audit.json": {
-    "bytes": 117455,
-    "sha256": "2982a469d19f94a32680e1aeaa51a4db3ad970ab82209684f352b1c4d602324a"
-  },
-  "audit/independent-relocated-artifact-audit.json": {
-    "bytes": 118880,
-    "sha256": "8cf9194b46b15fc8988aee7469aefcd2f113b1093e4909238064fa54d08b90df"
-  },
-  "audit/independent-artifact-audit-summary.json": {
-    "bytes": 1367,
-    "sha256": "5a88174a44ec26b246664ee19ec19ed42557b8ec38f3e1c3d8fff3d90ec77974"
-  },
-  "audit/final-source-recoverability.json": {
-    "bytes": 4199,
-    "sha256": "88c0388926585e37fa6a142f9e7654cee0daa67364a7e815c68fca92319fa593"
-  },
-  "audit/baseline-finalization.json": {
-    "bytes": 2486,
-    "sha256": "016f27151c09e93429d851a679cc9a690d6f12f2827ce69de627549e310f0489"
-  },
-  "audit/baseline-loaded-test-runtime-identity.json": {
-    "bytes": 2554,
-    "sha256": "b4bbd2826cb546e5e13d96d2613404fe778391d880bbb060e02ea4302ccebf1e"
-  },
-  "audit/implementation-final-validation.json": {
-    "bytes": 7287,
-    "sha256": "46c29a9ec79fbc19ff5b76012ceea8cde7e0abd882918747bd8de8e4091cc91e"
-  },
-  "audit/运行期接线源码核查.json": {
-    "bytes": 29769,
-    "sha256": "35f41bed4f6e0d99618f5ef30f4f78d14fa4ae5d31d60a9961ef34db3143f6eb"
-  },
-  "audit/排序前沿账户源码核查.json": {
-    "bytes": 4418,
-    "sha256": "101fd7a0173a9e55e0c1c0a508e31e467c6c9b0dd8762bea20e95f0896b3b613"
-  },
-  "audit/用户配额接线源码核查.json": {
-    "bytes": 3490,
-    "sha256": "4c65fc384faef18d5a5ecd775158419c4964b140d819662421dd21f788d00411"
-  },
-  "document-manifest.json": {
-    "bytes": 2532,
-    "sha256": "ca4d4bbaae9cd065ded7cbc693e84a82e912870ae78209ee8cc518e99c5c0575"
+  "schemaVersion": 2,
+  "policy": "Entire current runtime-dop tree excluding this self-referential manifest; historical files retain their identities.",
+  "files": {
+    "README.md": {
+      "bytes": 8799,
+      "sha256": "c73c129baec1dff69228d0a5985554a680c2f0613599444bee96b8fbb923a475",
+      "md5": "7c673994cceded65cecb9b75358d6fd2"
+    },
+    "REPRODUCING_RUNTIME_SQL.md": {
+      "bytes": 43161,
+      "sha256": "f749d2c24c7fb36ca9e77ff1d70c0f33ad17dfe95acbc87d4608700c4f08c2aa",
+      "md5": "90a73f09d3d08b4d3d563264d697726f"
+    },
+    "audit/baseline-finalization.json": {
+      "bytes": 2486,
+      "sha256": "016f27151c09e93429d851a679cc9a690d6f12f2827ce69de627549e310f0489",
+      "md5": "44003b5ed13aa2b02da0828ce007cfaa"
+    },
+    "audit/baseline-loaded-test-runtime-identity.json": {
+      "bytes": 2554,
+      "sha256": "b4bbd2826cb546e5e13d96d2613404fe778391d880bbb060e02ea4302ccebf1e",
+      "md5": "4084141f944814f3576e70a3d9de0836"
+    },
+    "audit/checkpoints/pre-final-runtime/document-manifest.json": {
+      "bytes": 2533,
+      "sha256": "930aacdb43151cdd8fd990aff119e00bd461a09f947c69c0c7dde07b72799e82",
+      "md5": "7425fa8d599b0d428a336a25507fb656"
+    },
+    "audit/checkpoints/pre-final-runtime/runtime-manifest.json": {
+      "bytes": 8475,
+      "sha256": "09690d7a869d0cb6ea84718606d6d21b558b267f070f3aab6b29d56bbecc0cd5",
+      "md5": "eadff0a9f5b6fc0ccb8ad3acd0756481"
+    },
+    "audit/checkpoints/pre-final-runtime/transfer-manifest.json": {
+      "bytes": 2609,
+      "sha256": "433941aad911f391aad995e9c76cfdd74662334173edd99cbd2b57a5dc5e9339",
+      "md5": "e28bb9151fa7c734c8ef3c429bef544c"
+    },
+    "audit/cli-v6-compatibility.json": {
+      "bytes": 10685,
+      "sha256": "8428910fa29e2518c8d2a2338e0a51d52e5d467d05788754e0a215a66f47bd01",
+      "md5": "3152bda400c32fb357381787fbdbb9a5"
+    },
+    "audit/final-cli-source-format-equivalence.json": {
+      "bytes": 17612,
+      "sha256": "34df55a6c2d63f8a95bf883cbb4d89d984fd6ee31437bdb62124665573a14be8",
+      "md5": "72e78891bb688cfcfd04f73c5c3a76c3"
+    },
+    "audit/final-runtime-v6-validation.json": {
+      "bytes": 11999,
+      "sha256": "b258eff4344b629a3a9796ef01ed5e0c28c859de7de73f3f11fcd20ce363fa31",
+      "md5": "c376ccb5a7d49fc78d5f96a4db812901"
+    },
+    "audit/final-source-recoverability.json": {
+      "bytes": 4199,
+      "sha256": "88c0388926585e37fa6a142f9e7654cee0daa67364a7e815c68fca92319fa593",
+      "md5": "76817a565fb00750295905389766f69d"
+    },
+    "audit/frozen-v6-release-manifest.json": {
+      "bytes": 38639,
+      "sha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+      "md5": "7343206e960fc2be099d33b1f38adb9c"
+    },
+    "audit/full-v6-final-validation.json": {
+      "bytes": 13988,
+      "sha256": "0b01c107b7baad78ab69d9f1bfd069d0ead8760738640cef76e2e9c12041f79e",
+      "md5": "5094c61026e5c8cbba699001aa59ebae"
+    },
+    "audit/implementation-final-validation.json": {
+      "bytes": 7287,
+      "sha256": "46c29a9ec79fbc19ff5b76012ceea8cde7e0abd882918747bd8de8e4091cc91e",
+      "md5": "03d76adcba24b2d7e39a6edace48b330"
+    },
+    "audit/independent-artifact-audit-summary.json": {
+      "bytes": 1367,
+      "sha256": "5a88174a44ec26b246664ee19ec19ed42557b8ec38f3e1c3d8fff3d90ec77974",
+      "md5": "780efa4c2f7cb142b13990c3cea792b4"
+    },
+    "audit/independent-original-artifact-audit.json": {
+      "bytes": 117455,
+      "sha256": "2982a469d19f94a32680e1aeaa51a4db3ad970ab82209684f352b1c4d602324a",
+      "md5": "407052daf989cef1b2db3dd49a52aac1"
+    },
+    "audit/independent-relocated-artifact-audit.json": {
+      "bytes": 118880,
+      "sha256": "8cf9194b46b15fc8988aee7469aefcd2f113b1093e4909238064fa54d08b90df",
+      "md5": "9dacf9875e0c281bf4eefabb9a34ce89"
+    },
+    "audit/pipe-api-cache-disabled-validation.json": {
+      "bytes": 4202,
+      "sha256": "64d04027c6dd1a11382c9b50f3c81b923dd5574c34befe6a788ace4a612ed263",
+      "md5": "f403e6bdbcb536e2782a502495b67cb2"
+    },
+    "audit/portable-final-parameters-static-validation.json": {
+      "bytes": 55238,
+      "sha256": "1f7384e0d32c856de48f67881e50e77e4ca5cfa78ece47b28176e64c8ddb456c",
+      "md5": "0eff4779f99bdf4a9b636a34f269c722"
+    },
+    "audit/post-validation-recipe-metadata-delta.json": {
+      "bytes": 3271,
+      "sha256": "982436f772fe8c819d4907a691693604ec1f9cec2c0403f46a63eca3aa65c37e",
+      "md5": "ef14c32cdd3aaa5f4170e5e3a4db7f4c"
+    },
+    "audit/resource-final-validation.json": {
+      "bytes": 12218,
+      "sha256": "be7ada6720a1128bb9b56636582581d3db45ad89a4cc8959ec9ade44f42e47eb",
+      "md5": "0975bc3ce992f6f280a33a2e1e1c9c0e"
+    },
+    "audit/runtime-extension-diff-statistics.json": {
+      "bytes": 442,
+      "sha256": "d4fc4c2c647a4fcd6000887e16b5b99f5421533e0557a33b06d4179d0a099c46",
+      "md5": "f88436f67239a6dab9e90c3c1f838619"
+    },
+    "audit/sql-v6-detailed-run-audit.json": {
+      "bytes": 75927,
+      "sha256": "662d28fb3768f951d8f0658a57c2984d7b78f98651eca32cbaedb1d938031122",
+      "md5": "ed8e8c76fc9d8ad32410cf49d3deac60"
+    },
+    "audit/sql-v6-independent-summary.json": {
+      "bytes": 12482,
+      "sha256": "d97280e739dab348497bd9caef480dcdc393bce0a2164af464c8d69e22a69eeb",
+      "md5": "8ddb18a5bf2e6c0ba5ca5a06669318e3"
+    },
+    "audit/sql-v6-source-evidence-index.json": {
+      "bytes": 158180,
+      "sha256": "bc8546052c3b1433466c936ce7b697c8628f4b6fb9c321277bea1a500becdd74",
+      "md5": "5561dc74f776467456c64c99e656efb9"
+    },
+    "audit/upstream-background-assertion-reproduction.json": {
+      "bytes": 14799,
+      "sha256": "8c5e8468917c4ac42dc4a6435f7fcff0e10a1b181babc7996941e24c8c3d50b0",
+      "md5": "592861fb0b498e71a7ed8e3ca8b4cd4d"
+    },
+    "audit/v6-accepted-parameter-map.json": {
+      "bytes": 2612,
+      "sha256": "ae604392e295d8a4a2b3ea3855e50b2ab6b3739b77d48c78e5d1961f54b47049",
+      "md5": "71d16866c06982543eead816b6f7baaa"
+    },
+    "audit/v6-cli-compile-receipt.json": {
+      "bytes": 1026,
+      "sha256": "766ad33cee01d4ff190625d999ab485e85568fa4fb9a86c912e8231bbfa86c1b",
+      "md5": "67be1c7a223e631b195cacb07f958a90"
+    },
+    "audit/v6-complete-result-comparisons.json": {
+      "bytes": 20424,
+      "sha256": "ae5bc374ea0dc29f11f3d3b3ca63a6654b29f0ed4bebaa868b35e65fda37f2b5",
+      "md5": "b16415e45fb5b2ff0fcdf2479ce516be"
+    },
+    "audit/v6-jdbc-selftest-exit.json": {
+      "bytes": 192,
+      "sha256": "a7bb0a9b2a7195b9be9dba71e17595d78b6b0626cf34a2efe301bfa88cb48ec1",
+      "md5": "e72a17ceea4d9a1baa226749416a211d"
+    },
+    "audit/v6-targeted-validation.json": {
+      "bytes": 2369,
+      "sha256": "5390913888131ad4cadc5c4fdb84bad43f705a85d679381e782aa83000831d5b",
+      "md5": "bbe4a1ef1316ad791cc37ff8701b10b4"
+    },
+    "audit/zh-profile-final-validation.json": {
+      "bytes": 4078,
+      "sha256": "22dbdfdbccaec23157232f220d2d536ac94e95ad660b9935d9fafdbb19d59a2e",
+      "md5": "57ad5c4dba2599378b3e8352efaf56b1"
+    },
+    "audit/排序前沿账户源码核查.json": {
+      "bytes": 4418,
+      "sha256": "101fd7a0173a9e55e0c1c0a508e31e467c6c9b0dd8762bea20e95f0896b3b613",
+      "md5": "055acf14d9f9fa5951445d99335f7ae3"
+    },
+    "audit/用户配额接线源码核查.json": {
+      "bytes": 3490,
+      "sha256": "4c65fc384faef18d5a5ecd775158419c4964b140d819662421dd21f788d00411",
+      "md5": "0fae283306a7c1420e69d71c97319608"
+    },
+    "audit/资源与终态组件源码审查.json": {
+      "bytes": 3339,
+      "sha256": "154e05102253f8c02f3ab6875cbfa4aeadbbe02055ce019f2dad9b3cb31eb2f3",
+      "md5": "9eea37134a29cf129d07e537399a5d70"
+    },
+    "audit/运行期接线源码核查.json": {
+      "bytes": 29769,
+      "sha256": "35f41bed4f6e0d99618f5ef30f4f78d14fa4ae5d31d60a9961ef34db3143f6eb",
+      "md5": "25a734989ea1490c8134303694ce8626"
+    },
+    "audit/运行期资源双账户接线审查.json": {
+      "bytes": 5703,
+      "sha256": "71216cbdfcc0c87fded5c9467e9a39231afd562cf80095c36234e7cbf8b404b2",
+      "md5": "37b28d2dc64054799d57cf9ac4937426"
+    },
+    "document-manifest.json": {
+      "bytes": 4729,
+      "sha256": "e935d81355de7ca6089690463d3c51193aadb189d04ebcf358be1d6c981c575c",
+      "md5": "c3f8914738d371846e2a0d72df8f800f"
+    },
+    "runtime-manifest.json": {
+      "bytes": 33524,
+      "sha256": "85645db440f8dbe1b7d34c25cf4c868a486e0abdd2ee8f6969b1e3919f0956db",
+      "md5": "26ef9d9aa31d0bce775a67f2a24cc124"
+    },
+    "实现进度与验证记录_20261115.md": {
+      "bytes": 13871,
+      "sha256": "42f6286c82dac81ee49844e602de1ae8ba051e8d7db77c82bf75eaba51d137d2",
+      "md5": "e1021e48acfcdfc677fdb11e5d7f6b4a"
+    },
+    "开发待办与排期.md": {
+      "bytes": 5645,
+      "sha256": "a0dcce3904fdfca52fc34f64e8ec701f42ebfa951331f9d60e5168784c7791a1",
+      "md5": "7044cf5d3672056d79d8376f3c97f628"
+    },
+    "查询并行化与动静结合DOP_最终设计.md": {
+      "bytes": 20164,
+      "sha256": "bc9fe1404530def424b9ae07dccf2e9406221eb8d1480aa0e40f3763eeb7859b",
+      "md5": "dcc597def36e0c0ccbd1e5030f351bca"
+    },
+    "迁移与基线核查_20261115.md": {
+      "bytes": 9756,
+      "sha256": "f83b2164c9746e04cbc117200779c028ac8564ff467c38e088263b7e81993804",
+      "md5": "c31e6bb58e94133c6f18c4c147fbd8aa"
+    },
+    "运行期动态DOP实现规划草案.md": {
+      "bytes": 42218,
+      "sha256": "e7f01ac837f18336efcf011546b1c48223f19978f17244a458afe756465fe9d3",
+      "md5": "f3731d00074b7029215cbf0ec71a162e"
+    },
+    "运行期动态DOP设计草案.md": {
+      "bytes": 35884,
+      "sha256": "bf76e86ac5ad3bff4cdac8c6b9acf86374e53d43dc6d955ba9d68b7a74454d06",
+      "md5": "50482d167537d330d0ee395d97a1daa0"
+    }
   }
 }

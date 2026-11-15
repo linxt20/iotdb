@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "mavenExitCode": 0,
+  "xmlCount": 2,
+  "totals": {
+    "tests": 7,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "reports": [
+    {
+      "path": "iotdb-api/pipe-api/target/surefire-reports/TEST-org.apache.iotdb.pipe.api.customizer.parameter.PipeParametersTest.xml",
+      "sha256": "05c8592abd37d451d9655b00fd4109bef61700e6b962c26aa5d316082b080bd8",
+      "class": "org.apache.iotdb.pipe.api.customizer.parameter.PipeParametersTest",
+      "totals": {
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "actualTestRuntime": {
+        "javaIoTmpdir": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-pipe-api-fresh-20261115T1616Z/tmp",
+        "workingDirectory": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/fork_2",
+        "javaClassPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/test-classes:/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/classes:/root/.m2/repository/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.jar:/root/.m2/repository/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-SNAPSHOT.jar:/root/.m2/repository/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.jar:/root/.m2/repository/org/xerial/snappy/snappy-java/1.1.10.9/snappy-java-1.1.10.9.jar:/root/.m2/repository/at/yawk/lz4/lz4-java/1.11.4/lz4-java-1.11.4.jar:/root/.m2/repository/org/tukaani/xz/1.9/xz-1.9.jar:/root/.m2/repository/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar:/root/.m2/repository/org/antlr/antlr4-runtime/4.13.2/antlr4-runtime-4.13.2.jar:/root/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/root/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/gradle-enterprise/test-listeners.jar:"
+      }
+    },
+    {
+      "path": "iotdb-api/pipe-api/target/surefire-reports/TEST-org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidatorTest.xml",
+      "sha256": "4e9c13bb914c88b7a778f985692e95fbe47228a6a13f5f598ff36f154d2f4cf8",
+      "class": "org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidatorTest",
+      "totals": {
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "actualTestRuntime": {
+        "javaIoTmpdir": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-pipe-api-fresh-20261115T1616Z/tmp",
+        "workingDirectory": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/fork_1",
+        "javaClassPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/test-classes:/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/classes:/root/.m2/repository/org/apache/tsfile/tsfile/2.5.1-261023-SNAPSHOT/tsfile-2.5.1-261023-SNAPSHOT.jar:/root/.m2/repository/org/apache/tsfile/common/2.5.1-261023-SNAPSHOT/common-2.5.1-261023-SNAPSHOT.jar:/root/.m2/repository/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.jar:/root/.m2/repository/org/xerial/snappy/snappy-java/1.1.10.9/snappy-java-1.1.10.9.jar:/root/.m2/repository/at/yawk/lz4/lz4-java/1.11.4/lz4-java-1.11.4.jar:/root/.m2/repository/org/tukaani/xz/1.9/xz-1.9.jar:/root/.m2/repository/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar:/root/.m2/repository/org/antlr/antlr4-runtime/4.13.2/antlr4-runtime-4.13.2.jar:/root/.m2/repository/junit/junit/4.13.2/junit-4.13.2.jar:/root/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-repo/iotdb-api/pipe-api/target/gradle-enterprise/test-listeners.jar:"
+      }
+    }
+  ],
+  "archive": {
+    "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/full-v6-pipe-api-fresh-20261115T1616Z/fresh-reports.tar.gz",
+    "sha256": "66d59acd2c2e9b3e2f6431bd1833151992380ff231da2fa6d629c61d33845f55"
+  },
+  "cacheConfigurationSha256": "f170965c8727c624d0d3bfb2005a39660234bc9bf281c99ff49d8e85021d1fbd",
+  "cacheDisabledEnvironment": {
+    "GITHUB_ACTIONS": "true"
+  }
+}

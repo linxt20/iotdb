@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "exitCode": 0,
+  "releaseManifestPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-release-v6.json",
+  "releaseManifestSha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+  "executionIdentitySha256": "f6ad273505d1c097b4d442254c59b2d288039474adb72a84c4f4b9ddceffe49c",
+  "classesDirectory": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classes",
+  "classFileCount": 13,
+  "classFilesManifestPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/class-files.json",
+  "classFilesManifestSha256": "a0b7bc29cb9a0dac09263b578933521c864dbe3b47d5f85b8718449d4e7fdd25",
+  "classpathPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-cli-v6-release/classpath.txt",
+  "classpathSha256": "4a52bd0afe86ded383fc72230acf04b153f6c253974bf321155b15081d141fd3",
+  "compilerLogSha256": "952d470f606a1b66d2b21b57332cdedf47cc052eddf475bf84be6161885036c3",
+  "runtimeAccepted": false
+}

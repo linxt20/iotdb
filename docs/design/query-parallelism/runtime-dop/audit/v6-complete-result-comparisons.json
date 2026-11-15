@@ -1,0 +1,488 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "comparisonCount": 8,
+  "comparisons": [
+    {
+      "case": "R1-fullscan-window",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-fullscan-window/r001/typed-result-comparison.json",
+      "sourceSha256": "eb6226cbe4e469b39e3868d7fbb5ed60c15849c573dab7107b8ac8f722247576",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          },
+          "control": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          },
+          "oracle": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": false,
+      "orderedSequenceMatchesOracle": null,
+      "orderedKeyComparison": null
+    },
+    {
+      "case": "R1-high-output",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R1-high-output/r001/typed-result-comparison.json",
+      "sourceSha256": "c770e993cc588e67490362a161d05c9e15e4356d915c4d02ea66e3289887b7c3",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 4750916,
+            "distinctRows": 4750916,
+            "typedMultisetSha256": "cec87a2c16527f679be0b2023b09d3b6184aa0eb67c1bbb9c88b54e164e73cae"
+          },
+          "control": {
+            "rows": 4750916,
+            "distinctRows": 4750916,
+            "typedMultisetSha256": "cec87a2c16527f679be0b2023b09d3b6184aa0eb67c1bbb9c88b54e164e73cae"
+          },
+          "oracle": {
+            "rows": 4750916,
+            "distinctRows": 4750916,
+            "typedMultisetSha256": "cec87a2c16527f679be0b2023b09d3b6184aa0eb67c1bbb9c88b54e164e73cae"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": false,
+      "orderedSequenceMatchesOracle": null,
+      "orderedKeyComparison": null
+    },
+    {
+      "case": "R2-primary",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-primary/r001/typed-result-comparison.json",
+      "sourceSha256": "5569f276a5e7104be2791497ddcf62da3d8c15550e606dc080b58821fcaf108b",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          },
+          "control": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          },
+          "oracle": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": true,
+      "orderedSequenceMatchesOracle": {
+        "candidate": true,
+        "control": true
+      },
+      "orderedKeyComparison": null
+    },
+    {
+      "case": "R2-time-only",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/typed-result-comparison.json",
+      "sourceSha256": "23afcbdc42fb2c4430722c83f5cca9b98487a82ebafc787ad44b9d17c901cd89",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          },
+          "control": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          },
+          "oracle": {
+            "rows": 4096,
+            "distinctRows": 4096,
+            "typedMultisetSha256": "50d1673c55ff44207310abe940323309a73a6c380afa9c1e1b5a96dfb10052ea"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": true,
+      "orderedSequenceMatchesOracle": null,
+      "orderedKeyComparison": {
+        "mode": "ASC_INTEGRAL_KEYS_EXACT_TYPED_TIE_MULTISETS",
+        "keyColumns": [
+          "time"
+        ],
+        "keyColumnIndicesOneBased": [
+          1
+        ],
+        "algorithm": "Fixed-buffer GNU numeric-key sort followed by a complete streaming merge of every key/typed row occurrence count.",
+        "boundedMemory": {
+          "sortBufferMiBPerProcess": 64,
+          "sortParallelism": 1,
+          "retainedCompleteTieGroups": 0,
+          "mergeRowCursorsPerRole": 2,
+          "retainedDifferenceSamples": 20,
+          "canonicalRowLineLimitBytes": 1048576
+        },
+        "keyGroups": 64,
+        "mismatchingKeyGroups": 0,
+        "differingDistinctKeyRows": 0,
+        "differenceSamples": [],
+        "allKeyGroupsMatchOracle": true,
+        "roles": {
+          "candidate": {
+            "rows": 4096,
+            "distinctKeyRows": 4096,
+            "canonicalOrderedTieSha256": "bce4cfbf4f0ca0765cb55054d60a5019264a75cace8dd620f4492ab2c0e139b8"
+          },
+          "control": {
+            "rows": 4096,
+            "distinctKeyRows": 4096,
+            "canonicalOrderedTieSha256": "bce4cfbf4f0ca0765cb55054d60a5019264a75cace8dd620f4492ab2c0e139b8"
+          },
+          "oracle": {
+            "rows": 4096,
+            "distinctKeyRows": 4096,
+            "canonicalOrderedTieSha256": "bce4cfbf4f0ca0765cb55054d60a5019264a75cace8dd620f4492ab2c0e139b8"
+          }
+        },
+        "hashEncoding": "SHA256('iotdb-typed-ordered-ties-v1\\0' + compact JSON [keyColumns,columnTypes] + LF + every canonical row in ascending numeric-key then bytewise-row order, preserving duplicates)",
+        "perKeyComparison": {
+          "path": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/per-key-exact-multisets.jsonl",
+          "sha256": "25295cc62414f2ec9d290c0970b0fa88e90ef25b858d2bac5f4b859367ae28c6",
+          "rows": 64,
+          "encoding": "[keyValues,roleRowCounts,differingDistinctRows] JSONL"
+        },
+        "sortInputs": {
+          "candidate": {
+            "rows": 4096,
+            "rawSha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+            "canonicalSequenceSha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+            "sortedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/candidate.key-sorted.tsv",
+            "sortCommand": [
+              "/usr/bin/sort",
+              "--buffer-size=64M",
+              "--parallel=1",
+              "--temporary-directory=/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/sort-tmp",
+              "--output=/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/candidate.key-sorted.tsv",
+              "--field-separator=\t",
+              "--key=1,1n",
+              "--key=2"
+            ],
+            "sortStderr": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/candidate.key-sorted.tsv.sort-stderr"
+          },
+          "control": {
+            "rows": 4096,
+            "rawSha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+            "canonicalSequenceSha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+            "sortedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/control.key-sorted.tsv",
+            "sortCommand": [
+              "/usr/bin/sort",
+              "--buffer-size=64M",
+              "--parallel=1",
+              "--temporary-directory=/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/sort-tmp",
+              "--output=/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/control.key-sorted.tsv",
+              "--field-separator=\t",
+              "--key=1,1n",
+              "--key=2"
+            ],
+            "sortStderr": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/control.key-sorted.tsv.sort-stderr"
+          },
+          "oracle": {
+            "rows": 4096,
+            "rawSha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+            "canonicalSequenceSha256": "b96f8836402075f9bea5fb954c0d0eeee29751feb299a7a08feeab709a746e9c",
+            "sortedPath": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/oracle.key-sorted.tsv",
+            "sortCommand": [
+              "/usr/bin/sort",
+              "--buffer-size=64M",
+              "--parallel=1",
+              "--temporary-directory=/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/sort-tmp",
+              "--output=/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/oracle.key-sorted.tsv",
+              "--field-separator=\t",
+              "--key=1,1n",
+              "--key=2"
+            ],
+            "sortStderr": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R2-time-only/r001/canonical/ordered-ties/oracle.key-sorted.tsv.sort-stderr"
+          }
+        }
+      }
+    },
+    {
+      "case": "R3-primary",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-primary/r001/typed-result-comparison.json",
+      "sourceSha256": "173477f412b79f0c1a792367312b24ec492006f48c4334bba83743e198e521eb",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "a9cbb0e6cddc8face0cc0d83b9a34a8cbbef90b837312c2b76827ea539bb9eb3"
+          },
+          "control": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "a9cbb0e6cddc8face0cc0d83b9a34a8cbbef90b837312c2b76827ea539bb9eb3"
+          },
+          "oracle": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "a9cbb0e6cddc8face0cc0d83b9a34a8cbbef90b837312c2b76827ea539bb9eb3"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": true,
+      "orderedSequenceMatchesOracle": {
+        "candidate": true,
+        "control": true
+      },
+      "orderedKeyComparison": null
+    },
+    {
+      "case": "R3-runtime-early",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R3-runtime-early/r001/typed-result-comparison.json",
+      "sourceSha256": "c70c77a4815cbc220200141878b927e69b6f93f0cf95f35675dac89be34d70f3",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 257,
+            "distinctRows": 1,
+            "typedMultisetSha256": "6e7f642f3a1a7f7fceecfbc266ccd378c95afa50a3c6dae059d4f7f2810a08ed"
+          },
+          "control": {
+            "rows": 257,
+            "distinctRows": 1,
+            "typedMultisetSha256": "6e7f642f3a1a7f7fceecfbc266ccd378c95afa50a3c6dae059d4f7f2810a08ed"
+          },
+          "oracle": {
+            "rows": 257,
+            "distinctRows": 1,
+            "typedMultisetSha256": "6e7f642f3a1a7f7fceecfbc266ccd378c95afa50a3c6dae059d4f7f2810a08ed"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": false,
+      "orderedSequenceMatchesOracle": null,
+      "orderedKeyComparison": null
+    },
+    {
+      "case": "R7-filter-project",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-filter-project/r001/typed-result-comparison.json",
+      "sourceSha256": "99d35348a0a4dddd97dc6d54f62d3255f02c82537b54122964e0da369fe3e100",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "8d6a792e41397ad6b64528b253c20c9cc3b356cfa640972c65904f90dd4b2dc6"
+          },
+          "control": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "8d6a792e41397ad6b64528b253c20c9cc3b356cfa640972c65904f90dd4b2dc6"
+          },
+          "oracle": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "8d6a792e41397ad6b64528b253c20c9cc3b356cfa640972c65904f90dd4b2dc6"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": false,
+      "orderedSequenceMatchesOracle": null,
+      "orderedKeyComparison": null
+    },
+    {
+      "case": "R7-grouped",
+      "source": "/root/rivermind-data/iotdb-runtime-dop-20261115/runtime-sql-comparisons-v6/R7-grouped/r001/typed-result-comparison.json",
+      "sourceSha256": "28143314500ce80f64d97897050cb2d04119ec80be28234386056d5625677712",
+      "accepted": true,
+      "multiset": {
+        "algorithm": "Full bytewise merge of every typed canonical row and its exact occurrence count; SHA is supplementary.",
+        "hashEncoding": "SHA256('iotdb-typed-multiset-v1\\0' + compact JSON columnTypes + LF + all bytewise-sorted canonical rows with duplicates)",
+        "roles": {
+          "candidate": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "c196e71fb70d8d15fc1136e3ef62ec9034f71ec9acb9ee5c5543a86461562fcf"
+          },
+          "control": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "c196e71fb70d8d15fc1136e3ef62ec9034f71ec9acb9ee5c5543a86461562fcf"
+          },
+          "oracle": {
+            "rows": 257,
+            "distinctRows": 257,
+            "typedMultisetSha256": "c196e71fb70d8d15fc1136e3ef62ec9034f71ec9acb9ee5c5543a86461562fcf"
+          }
+        },
+        "comparisons": {
+          "candidateVsControl": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "candidateVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          },
+          "controlVsOracle": {
+            "sameMultiset": true,
+            "differingDistinctRows": 0
+          }
+        },
+        "differenceSamples": [],
+        "differenceSampleLimit": 20,
+        "allTypedMultisetsEqual": true
+      },
+      "orderingRequired": false,
+      "orderedSequenceMatchesOracle": null,
+      "orderedKeyComparison": null
+    }
+  ]
+}

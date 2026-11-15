@@ -1,0 +1,21 @@
+{
+  "baseCommit": "1c23f83e2c7495e5340e13172b7c462cd3f7a889",
+  "scope": "Runtime extension only; not entire historical A-E versus upstream",
+  "categories": {
+    "production": {
+      "files": 57,
+      "added": 10153,
+      "removed": 688
+    },
+    "tests": {
+      "files": 37,
+      "added": 12217,
+      "removed": 29
+    },
+    "acceptance_tools_and_recipes": {
+      "files": 62,
+      "added": 6868,
+      "removed": 30
+    }
+  }
+}

@@ -1,0 +1,362 @@
+{
+  "schemaVersion": 1,
+  "status": "ENGINEERING_ACCEPTANCE_COMPLETE_WITH_DECLARED_UPSTREAM_TEST_LIMITATIONS",
+  "createdAtUtc": "2026-11-15T16:34:12.164365+00:00",
+  "repository": "https://github.com/linxt20/iotdb.git",
+  "branch": "feat/runtime-dop",
+  "validatedFinalCodeCommit": "38fc937fe3b3cc1d34827fb76a3ce96380b9b58c",
+  "baseCommit": "1c23f83e2c7495e5340e13172b7c462cd3f7a889",
+  "scope": "Same-query native adaptive scan worker scheduling on immutable logical lanes; integrates with previously frozen A-E, not elastic migration of arbitrary stateful operators.",
+  "targeted": {
+    "classCount": 51,
+    "tests": 808,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 5
+  },
+  "full": {
+    "reactor": {
+      "freshXmlCount": 1147,
+      "totals": {
+        "tests": 8037,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 56
+      }
+    },
+    "datanode": {
+      "freshXmlCount": 964,
+      "totals": {
+        "tests": 6875,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 53
+      }
+    },
+    "freshEvidenceComposition": {
+      "initialFullV6Xml": 1145,
+      "cacheDisabledPipeApiReplayXml": 2
+    },
+    "originalFullMavenExitCode": 0,
+    "cacheDisabledReplayExitCode": 0,
+    "productionClassCount": 4505,
+    "allProductionClassBytesMatchFinalRelease": true,
+    "upstreamBackgroundAssertionCount": 2,
+    "upstreamReproductionCommit": "522c080122ef0dffb5c7ba6cfe01568ae24c1fde"
+  },
+  "chineseProfileCompile": {
+    "exitCode": 0,
+    "actualZhMessageSourcesVerified": true
+  },
+  "service": {
+    "candidateDataNodes": 2,
+    "controlDataNodes": 2,
+    "actualJavaServiceProcesses": 6,
+    "acceptedRuns": 19,
+    "fragmentResourceReceipts": 65,
+    "allPoolsRestorePureBaselines": true,
+    "completeThreeWayResultComparisons": 8,
+    "rawCompleteResultRows": 4750916,
+    "keyFacts": {
+      "R1_realGrowShrinkEvents": [
+        [
+          {
+            "sequence": 1,
+            "requestedWorkers": 1,
+            "observedWorkers": 1,
+            "outcome": "INITIAL_ACTIVATED"
+          },
+          {
+            "sequence": 2,
+            "requestedWorkers": 2,
+            "observedWorkers": 2,
+            "outcome": "APPLIED"
+          },
+          {
+            "sequence": 3,
+            "requestedWorkers": 3,
+            "observedWorkers": 3,
+            "outcome": "APPLIED"
+          },
+          {
+            "sequence": 4,
+            "requestedWorkers": 2,
+            "observedWorkers": 2,
+            "outcome": "APPLIED"
+          },
+          {
+            "sequence": 5,
+            "requestedWorkers": 1,
+            "observedWorkers": 1,
+            "outcome": "APPLIED"
+          }
+        ],
+        [
+          {
+            "sequence": 1,
+            "requestedWorkers": 1,
+            "observedWorkers": 1,
+            "outcome": "INITIAL_ACTIVATED"
+          },
+          {
+            "sequence": 2,
+            "requestedWorkers": 2,
+            "observedWorkers": 2,
+            "outcome": "APPLIED"
+          },
+          {
+            "sequence": 3,
+            "requestedWorkers": 3,
+            "observedWorkers": 3,
+            "outcome": "APPLIED"
+          }
+        ]
+      ],
+      "R3_runtimeEarlyUniqueSourceRows": {
+        "20261115_160414_01480_1.2.0": 70000,
+        "20261115_160414_01480_1.3.0": 90000
+      },
+      "R3_runtimeEarlySourceTotal": 160000,
+      "R3_runtimeEarlyTwoGroupsInitialWorkers": [
+        1,
+        1
+      ],
+      "R4": {
+        "effectiveCode": 715,
+        "rawCode": 0,
+        "provenance": "IOTDB_LEGACY_RESULTSET_NEXT_MESSAGE_PREFIX",
+        "prefixRows": 503,
+        "prefixMembershipVerified": false,
+        "elapsedNanos": 2328212451
+      },
+      "R5": {
+        "effectiveCode": 720,
+        "rawCode": 720,
+        "provenance": "JDBC_VENDOR_CODE",
+        "prefixRows": 0,
+        "prefixMembershipVerified": false,
+        "elapsedNanos": 1237358277
+      },
+      "R5_states": [
+        "FAILED",
+        "FAILED",
+        "FINISHED"
+      ],
+      "R5_deadlines": [
+        {
+          "fi": "20261115_160421_01485_1.1.0",
+          "originalDeadlineMillis": 1794758662198,
+          "endTimeMs": 1794758662208,
+          "endMinusDeadlineMs": 10,
+          "state": "FAILED"
+        },
+        {
+          "fi": "20261115_160421_01485_1.2.0",
+          "originalDeadlineMillis": 1794758662202,
+          "endTimeMs": 1794758662207,
+          "endMinusDeadlineMs": 5,
+          "state": "FAILED"
+        },
+        {
+          "fi": "20261115_160421_01485_1.3.0",
+          "originalDeadlineMillis": 1794758662204,
+          "endTimeMs": 1794758662209,
+          "endMinusDeadlineMs": 5,
+          "state": "FINISHED"
+        }
+      ],
+      "R6": {
+        "effectiveCode": 701,
+        "rawCode": 701,
+        "provenance": "JDBC_VENDOR_CODE",
+        "prefixRows": 0,
+        "prefixMembershipVerified": false,
+        "elapsedNanos": 2744839689
+      },
+      "R6_states": [
+        "FAILED",
+        "FAILED",
+        "FINISHED"
+      ],
+      "R7topologies": {
+        "R7-grouped": {
+          "actualSourceCount": 2,
+          "partitionCount": 2,
+          "actualUniqueReciprocalConnections": 4,
+          "sourceFIKeys": [
+            [
+              "20261115_161107_01491_1.3.0",
+              "78"
+            ],
+            [
+              "20261115_161107_01491_1.4.0",
+              "82"
+            ]
+          ],
+          "bucketOwnerFIs": {
+            "0": "20261115_161107_01491_1.2.0",
+            "1": "20261115_161107_01491_1.5.0"
+          },
+          "bucketOwnerDataNodeIds": {
+            "0": 1,
+            "1": 1
+          },
+          "independentlyCheckedActualRosterEdges": true
+        },
+        "R7-filter-project": {
+          "actualSourceCount": 2,
+          "partitionCount": 2,
+          "actualUniqueReciprocalConnections": 4,
+          "sourceFIKeys": [
+            [
+              "20261115_161110_01493_1.3.0",
+              "125"
+            ],
+            [
+              "20261115_161110_01493_1.4.0",
+              "129"
+            ]
+          ],
+          "bucketOwnerFIs": {
+            "0": "20261115_161110_01493_1.2.0",
+            "1": "20261115_161110_01493_1.5.0"
+          },
+          "bucketOwnerDataNodeIds": {
+            "0": 1,
+            "1": 1
+          },
+          "independentlyCheckedActualRosterEdges": true
+        }
+      }
+    }
+  },
+  "cli": {
+    "standardQueries": 6,
+    "allExitCodes": 0,
+    "actualFinalReleaseClassOriginsVerified": true,
+    "showDevicesRows": 64,
+    "filteredShowDevicesRows": 1,
+    "diffRows": 64,
+    "firstDiffNull": true,
+    "remainingDiffValues": 63
+  },
+  "release": {
+    "serverJarSha256": "96cec414cb51bc8e61423d238fb4dbeab14a2ffd346dd0fca67be5fd50df1db5",
+    "manifestSha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+    "jarCount": 94,
+    "cliClassCount": 13,
+    "freezeManifestIsImmutablePreServiceSnapshot": true,
+    "serviceAcceptanceIsEstablishedByThisSummaryAndIndependentRunReceipts": true
+  },
+  "publicationOnlyDeltas": {
+    "reproductionRecipes": "audit/post-validation-recipe-metadata-delta.json",
+    "cliSourceFormatting": "audit/final-cli-source-format-equivalence.json",
+    "productionOrTestLogicChangedAfterAcceptance": false,
+    "allExecutableCliClassBytesStillEqualAcceptedRelease": true
+  },
+  "limitations": [
+    "R3primary is legal SERIAL compatibility; runtime early-stop is separately proved by runtime-early.",
+    "Controls explicitly lack frozen statistics; actual FINISHED info RPC and real resource lifecycle verified, missing frozen checks remain declared.",
+    "Negative prefixes are not complete results and have no dedicated membership verifier.",
+    "R4 legacy715 proves restricted actual JDBC next provenance, not captured raw RPC TSStatus.",
+    "R5 FI states are FAILED/FAILED/FINISHED; each FI retains its own original deadline, not one identical millisecond value.",
+    "First R3 control full-fetch and immediateR6 no-roster failures remain preserved and excluded by exact final parameter map.",
+    "Matching pure pool baselines establishes no pool-memory residue in subsequent accepted runs; it does not create missing roster evidence for rejected immediateR6.",
+    "No performance speedup/full-processRSS/global-network budget claim.",
+    "XML failure/error totals remain zero but two baseline compaction tests throw background assertions that upstream does not propagate to JUnit; exact upstream reproduction retained.",
+    "Full fresh reactor evidence joins original current-v6 reports with a cache-disabled replay for7 unchanged pipe-api tests; original guard failure remains unchanged.",
+    "No new speedup conclusion. Performance, formal paper claims, generic hash-join production scope and CPN正文 choice are outside this engineering acceptance."
+  ],
+  "evidence": [
+    {
+      "path": "audit/full-v6-final-validation.json",
+      "sha256": "0b01c107b7baad78ab69d9f1bfd069d0ead8760738640cef76e2e9c12041f79e",
+      "bytes": 13988
+    },
+    {
+      "path": "audit/v6-targeted-validation.json",
+      "sha256": "5390913888131ad4cadc5c4fdb84bad43f705a85d679381e782aa83000831d5b",
+      "bytes": 2369
+    },
+    {
+      "path": "audit/zh-profile-final-validation.json",
+      "sha256": "22dbdfdbccaec23157232f220d2d536ac94e95ad660b9935d9fafdbb19d59a2e",
+      "bytes": 4078
+    },
+    {
+      "path": "audit/pipe-api-cache-disabled-validation.json",
+      "sha256": "64d04027c6dd1a11382c9b50f3c81b923dd5574c34befe6a788ace4a612ed263",
+      "bytes": 4202
+    },
+    {
+      "path": "audit/upstream-background-assertion-reproduction.json",
+      "sha256": "8c5e8468917c4ac42dc4a6435f7fcff0e10a1b181babc7996941e24c8c3d50b0",
+      "bytes": 14799
+    },
+    {
+      "path": "audit/sql-v6-independent-summary.json",
+      "sha256": "d97280e739dab348497bd9caef480dcdc393bce0a2164af464c8d69e22a69eeb",
+      "bytes": 12482
+    },
+    {
+      "path": "audit/sql-v6-source-evidence-index.json",
+      "sha256": "bc8546052c3b1433466c936ce7b697c8628f4b6fb9c321277bea1a500becdd74",
+      "bytes": 158180
+    },
+    {
+      "path": "audit/sql-v6-detailed-run-audit.json",
+      "sha256": "662d28fb3768f951d8f0658a57c2984d7b78f98651eca32cbaedb1d938031122",
+      "bytes": 75927
+    },
+    {
+      "path": "audit/cli-v6-compatibility.json",
+      "sha256": "8428910fa29e2518c8d2a2338e0a51d52e5d467d05788754e0a215a66f47bd01",
+      "bytes": 10685
+    },
+    {
+      "path": "audit/frozen-v6-release-manifest.json",
+      "sha256": "f903062a9386cb0d3d252251de9d0fbc2d4047385efb7bdc3a4df726423b0fd7",
+      "bytes": 38639
+    },
+    {
+      "path": "audit/v6-cli-compile-receipt.json",
+      "sha256": "766ad33cee01d4ff190625d999ab485e85568fa4fb9a86c912e8231bbfa86c1b",
+      "bytes": 1026
+    },
+    {
+      "path": "audit/v6-jdbc-selftest-exit.json",
+      "sha256": "a7bb0a9b2a7195b9be9dba71e17595d78b6b0626cf34a2efe301bfa88cb48ec1",
+      "bytes": 192
+    },
+    {
+      "path": "audit/v6-accepted-parameter-map.json",
+      "sha256": "ae604392e295d8a4a2b3ea3855e50b2ab6b3739b77d48c78e5d1961f54b47049",
+      "bytes": 2612
+    },
+    {
+      "path": "audit/portable-final-parameters-static-validation.json",
+      "sha256": "1f7384e0d32c856de48f67881e50e77e4ca5cfa78ece47b28176e64c8ddb456c",
+      "bytes": 55238
+    },
+    {
+      "path": "audit/post-validation-recipe-metadata-delta.json",
+      "sha256": "982436f772fe8c819d4907a691693604ec1f9cec2c0403f46a63eca3aa65c37e",
+      "bytes": 3271
+    },
+    {
+      "path": "audit/final-cli-source-format-equivalence.json",
+      "sha256": "34df55a6c2d63f8a95bf883cbb4d89d984fd6ee31437bdb62124665573a14be8",
+      "bytes": 17612
+    },
+    {
+      "path": "audit/runtime-extension-diff-statistics.json",
+      "sha256": "d4fc4c2c647a4fcd6000887e16b5b99f5421533e0557a33b06d4179d0a099c46",
+      "bytes": 442
+    },
+    {
+      "path": "audit/v6-complete-result-comparisons.json",
+      "sha256": "ae5bc374ea0dc29f11f3d3b3ca63a6654b29f0ed4bebaa868b35e65fda37f2b5",
+      "bytes": 20424
+    }
+  ]
+}
