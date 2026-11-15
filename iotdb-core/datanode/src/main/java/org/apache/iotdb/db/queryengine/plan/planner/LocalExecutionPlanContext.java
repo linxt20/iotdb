@@ -32,20 +32,28 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeBlockCodec;
+import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue.MemoryReservationKey;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeEndpointFrontier;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.CheckedTablePipelineMemoryEstimator;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.PipelineMemoryEstimatorFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -61,8 +69,10 @@ import javax.annotation.Nullable;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -97,6 +107,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   private final LocalExecutionResourceRegistry resourceRegistry;
   private final DynamicScanAssignmentRegistry dynamicScanAssignments;
   private final DynamicParallelPlanningService dynamicParallelPlanningService;
+  private final RuntimePlanningState runtimePlanningState;
 
   public DynamicScanAssignmentRegistry getDynamicScanAssignments() {
     return dynamicScanAssignments;
@@ -173,6 +184,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
         new DynamicScanAssignmentRegistry(
             IoTDBDescriptor.getInstance().getConfig().isEnableDynamicScanParallelism());
     this.dynamicParallelPlanningService = new DynamicParallelPlanningService();
+    this.runtimePlanningState = new RuntimePlanningState();
     instanceContext.setDynamicScanAssignments(dynamicScanAssignments);
     instanceContext.setPlanningContext(this);
     resourceRegistry.bindResourceAudit(instanceContext.getId());
@@ -199,6 +211,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
     this.resourceRegistry = parentContext.resourceRegistry;
     this.dynamicScanAssignments = parentContext.dynamicScanAssignments;
     this.dynamicParallelPlanningService = parentContext.dynamicParallelPlanningService;
+    this.runtimePlanningState = parentContext.runtimePlanningState;
   }
 
   // for schema region
@@ -222,6 +235,7 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
         new DynamicScanAssignmentRegistry(
             IoTDBDescriptor.getInstance().getConfig().isEnableDynamicScanParallelism());
     this.dynamicParallelPlanningService = new DynamicParallelPlanningService();
+    this.runtimePlanningState = new RuntimePlanningState();
     instanceContext.setDynamicScanAssignments(dynamicScanAssignments);
     instanceContext.setPlanningContext(this);
     resourceRegistry.bindResourceAudit(instanceContext.getId());
@@ -237,9 +251,16 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
 
   public void addPipelineDriverFactory(
       Operator operation, DriverContext driverContext, long estimatedMemorySize) {
+    addPipelineDriverFactoryAndReturn(operation, driverContext, estimatedMemorySize);
+  }
+
+  public PipelineDriverFactory addPipelineDriverFactoryAndReturn(
+      Operator operation, DriverContext driverContext, long estimatedMemorySize) {
     registerPipelineRoot(operation);
-    pipelineDriverFactories.add(
-        new PipelineDriverFactory(operation, driverContext, estimatedMemorySize, resourceRegistry));
+    PipelineDriverFactory factory =
+        new PipelineDriverFactory(operation, driverContext, estimatedMemorySize, resourceRegistry);
+    pipelineDriverFactories.add(factory);
+    return factory;
   }
 
   /**
@@ -403,6 +424,27 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
 
   /** Called after operator generation, before root memory estimation and factory registration. */
   public void setExchangeMemoryLimits(PlanNode plan, MemoryPool memoryPool) {
+    if (isRuntimeParallelismEnabled()) {
+      RuntimeExchangeBudget budget = getRuntimeExchangeBudget();
+      if (runtimePlanningState.pool != memoryPool) {
+        throw new IllegalStateException(
+            DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+      }
+      legacySinkLimits.forEach(
+          (sink, legacyLimit) -> {
+            sink.setMaxBytesCanReserve(budget.outputCapBytes());
+            resourceRegistry.observePublishedQuota(sink, "SINK", budget.outputCapBytes());
+          });
+      exchangeOperatorList.forEach(
+          exchange -> {
+            ISourceHandle source = exchange.getSourceHandle();
+            long cap =
+                source instanceof SourceHandle ? budget.inputCapBytes() : budget.outputCapBytes();
+            source.setMaxBytesCanReserve(cap);
+            resourceRegistry.observePublishedQuota(source, "SOURCE", cap);
+          });
+      return;
+    }
     // Only remote sources charge this FI's INPUT. Local inputs are owned by the producing FI;
     // internal pipeline queues cannot enable sharing because of the pipeline check below.
     long inputExchangeCount =
@@ -570,5 +612,469 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
 
   public void invalidateParentPlanNodeIdToMemoryEstimator() {
     parentPlanNodeIdToMemoryEstimator = null;
+  }
+
+  /** The runtime mode freezes one FI-side budget before any child context is built. */
+  public record RuntimeExchangeBudget(
+      long inputCapBytes,
+      long outputCapBytes,
+      long nativeOutputHeadroomBytes,
+      long maxCompactRetainedBlockBytes,
+      Map<String, Long> groupPrepaidBudgets,
+      Set<String> approvedRawScanPlanNodeIds,
+      long maxOriginalScanBlockRetainedBytes,
+      Map<String, List<RuntimeExchangeBlockCodec.Bounds>> outputEndpointBounds,
+      Map<String, RuntimeExchangeBlockCodec.Bounds> inputEndpointBounds) {
+    public RuntimeExchangeBudget(
+        long inputCapBytes,
+        long outputCapBytes,
+        long nativeOutputHeadroomBytes,
+        long maxCompactRetainedBlockBytes,
+        Map<String, Long> groupPrepaidBudgets,
+        Set<String> approvedRawScanPlanNodeIds,
+        long maxOriginalScanBlockRetainedBytes) {
+      this(
+          inputCapBytes,
+          outputCapBytes,
+          nativeOutputHeadroomBytes,
+          maxCompactRetainedBlockBytes,
+          groupPrepaidBudgets,
+          approvedRawScanPlanNodeIds,
+          maxOriginalScanBlockRetainedBytes,
+          Map.of(),
+          Map.of());
+    }
+
+    public RuntimeExchangeBudget {
+      groupPrepaidBudgets = Map.copyOf(groupPrepaidBudgets);
+      approvedRawScanPlanNodeIds = Set.copyOf(approvedRawScanPlanNodeIds);
+      Map<String, List<RuntimeExchangeBlockCodec.Bounds>> outputs = new LinkedHashMap<>();
+      outputEndpointBounds.forEach((id, bounds) -> outputs.put(id, List.copyOf(bounds)));
+      outputEndpointBounds = Map.copyOf(outputs);
+      inputEndpointBounds = Map.copyOf(inputEndpointBounds);
+      long nativeOutputPrepaid = 0;
+      for (Map.Entry<String, List<RuntimeExchangeBlockCodec.Bounds>> entry :
+          outputEndpointBounds.entrySet()) {
+        if (entry.getKey().isBlank() || entry.getValue().isEmpty()) {
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+        }
+        for (RuntimeExchangeBlockCodec.Bounds bounds : entry.getValue()) {
+          if (bounds.schema() == null) {
+            throw new IllegalArgumentException(
+                DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+          }
+          nativeOutputPrepaid = Math.addExact(nativeOutputPrepaid, bounds.outputEnvelopeBytes());
+        }
+      }
+      long nativeInputPrepaid = 0;
+      for (Map.Entry<String, RuntimeExchangeBlockCodec.Bounds> entry :
+          inputEndpointBounds.entrySet()) {
+        if (entry.getKey().isBlank() || entry.getValue().schema() == null) {
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+        }
+        nativeInputPrepaid =
+            Math.addExact(nativeInputPrepaid, entry.getValue().inputEnvelopeBytes());
+      }
+      if (nativeOutputPrepaid > nativeOutputHeadroomBytes || nativeInputPrepaid > inputCapBytes) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED);
+      }
+      if (inputCapBytes < 0
+          || outputCapBytes <= 0
+          || nativeOutputHeadroomBytes < 0
+          || nativeOutputHeadroomBytes > outputCapBytes
+          || maxCompactRetainedBlockBytes <= 0
+          || maxOriginalScanBlockRetainedBytes <= 0
+          || !groupPrepaidBudgets.keySet().containsAll(approvedRawScanPlanNodeIds)) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+      }
+      long prepaid = 0;
+      for (Map.Entry<String, Long> entry : groupPrepaidBudgets.entrySet()) {
+        if (entry.getKey().isBlank() || entry.getValue() <= 0) {
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+        }
+        prepaid = Math.addExact(prepaid, entry.getValue());
+      }
+      if (prepaid > outputCapBytes - nativeOutputHeadroomBytes) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED);
+      }
+    }
+  }
+
+  private static final class RuntimePlanningState {
+    private RuntimeExchangeBudget budget;
+    private MemoryPool pool;
+    private final Map<String, RuntimeScanLayout> layouts = new LinkedHashMap<>();
+    private final Map<String, RuntimeScanGroupDescriptor.Builder> groups = new LinkedHashMap<>();
+    private final List<RuntimeFrontierReservation> ownedFrontiers = new ArrayList<>();
+    private RuntimePlanBindings bindings;
+    private final Map<String, List<RuntimeEndpointFrontier>> outputFrontiers =
+        new LinkedHashMap<>();
+    private final Map<String, RuntimeEndpointFrontier> inputFrontiers = new LinkedHashMap<>();
+  }
+
+  public void initializeRuntimeExchangeBudget(MemoryPool pool, RuntimeExchangeBudget budget) {
+    requireNonNull(pool);
+    requireNonNull(budget);
+    if (runtimePlanningState.budget != null
+        || !pipelineDriverFactories.isEmpty()
+        || Math.addExact(budget.inputCapBytes(), budget.outputCapBytes())
+            > fragmentExchangeMaxBytes) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    pool.registerFragmentInstanceSharedBudget(
+        getFragmentInstanceId().getQueryId().getId(),
+        getFragmentInstanceId().getFragmentInstanceId());
+    getInstanceContext()
+        .initializeExchangeMemoryBudget(budget.inputCapBytes(), budget.outputCapBytes());
+    runtimePlanningState.pool = pool;
+    runtimePlanningState.budget = budget;
+    // Static schema, envelope totals and supported plan shapes were validated before this first
+    // physical reservation. Own each successful payment before any following construction throws.
+    for (Map.Entry<String, List<RuntimeExchangeBlockCodec.Bounds>> output :
+        budget.outputEndpointBounds().entrySet()) {
+      List<RuntimeEndpointFrontier> bindings = new ArrayList<>();
+      runtimePlanningState.outputFrontiers.put(output.getKey(), bindings);
+      for (int channel = 0; channel < output.getValue().size(); channel++) {
+        RuntimeExchangeBlockCodec.Bounds bounds = output.getValue().get(channel);
+        bindings.add(
+            prepayRuntimeEndpoint(
+                "__runtime_endpoint__/output/" + output.getKey() + "/" + channel,
+                MemorySide.OUTPUT,
+                bounds.outputEnvelopeBytes(),
+                budget.outputCapBytes(),
+                bounds));
+      }
+    }
+    for (Map.Entry<String, RuntimeExchangeBlockCodec.Bounds> input :
+        budget.inputEndpointBounds().entrySet()) {
+      RuntimeExchangeBlockCodec.Bounds bounds = input.getValue();
+      runtimePlanningState.inputFrontiers.put(
+          input.getKey(),
+          prepayRuntimeEndpoint(
+              "__runtime_endpoint__/input/" + input.getKey(),
+              MemorySide.INPUT,
+              bounds.inputEnvelopeBytes(),
+              budget.inputCapBytes(),
+              bounds));
+    }
+  }
+
+  private RuntimeEndpointFrontier prepayRuntimeEndpoint(
+      String id, MemorySide side, long bytes, long cap, RuntimeExchangeBlockCodec.Bounds bounds) {
+    MemoryReservationKey key =
+        new MemoryReservationKey(
+            getFragmentInstanceId().getQueryId().getId(),
+            getFragmentInstanceId().getFragmentInstanceId(),
+            id);
+    RuntimeFrontierReservation owner =
+        RuntimeFrontierReservation.tryCreate(runtimePlanningState.pool, key, side, 1, bytes, cap)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED));
+    runtimePlanningState.ownedFrontiers.add(owner);
+    resourceRegistry.registerRuntimeFrontier(getFragmentInstanceId().getFullId() + "/" + id, owner);
+    return new RuntimeEndpointFrontier(owner, 0, bounds);
+  }
+
+  public RuntimeEndpointFrontier getRuntimeOutputFrontier(String planNodeId, int channel) {
+    List<RuntimeEndpointFrontier> frontiers = runtimePlanningState.outputFrontiers.get(planNodeId);
+    if (frontiers == null || channel < 0 || channel >= frontiers.size()) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    return frontiers.get(channel);
+  }
+
+  public RuntimeEndpointFrontier getRuntimeInputFrontier(String planNodeId) {
+    RuntimeEndpointFrontier frontier = runtimePlanningState.inputFrontiers.get(planNodeId);
+    if (frontier == null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    return frontier;
+  }
+
+  public boolean isRuntimeParallelismEnabled() {
+    return runtimePlanningState.budget != null;
+  }
+
+  public RuntimeExchangeBudget getRuntimeExchangeBudget() {
+    if (!isRuntimeParallelismEnabled()) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_NOT_INITIALIZED);
+    }
+    return runtimePlanningState.budget;
+  }
+
+  public boolean isApprovedRuntimeScan(String source) {
+    return isRuntimeParallelismEnabled()
+        && getRuntimeExchangeBudget().approvedRawScanPlanNodeIds().contains(source);
+  }
+
+  /**
+   * A paid raw scan uses runtime lanes; explicit approval only overrides native split admission.
+   */
+  public boolean isRuntimeScan(String source) {
+    return isRuntimeParallelismEnabled()
+        && getRuntimeExchangeBudget().groupPrepaidBudgets().containsKey(source);
+  }
+
+  public int getRuntimeMaxLogicalLanes(String source) {
+    RuntimeExchangeBudget budget = getRuntimeExchangeBudget();
+    Long prepaid = budget.groupPrepaidBudgets().get(source);
+    if (prepaid == null) {
+      throw new IllegalStateException(DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+    }
+    long possible = prepaid / budget.maxCompactRetainedBlockBytes();
+    if (possible < 1) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED);
+    }
+    return (int) Math.min((long) degreeOfParallelism, possible);
+  }
+
+  public void registerRuntimeLayout(String source, RuntimeScanLayout layout) {
+    if (!isRuntimeScan(source)
+        || runtimePlanningState.bindings != null
+        || runtimePlanningState.groups.containsKey(source)) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    requireNonNull(layout);
+    if (layout.getLaneCount() > getRuntimeMaxLogicalLanes(source)) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED);
+    }
+    for (ScanParallelPlan.WorkUnit unit : layout.getLanePlan().getWorkUnits()) {
+      if (!source.equals(unit.getSourceKey().getPlanNodeId())) {
+        throw new IllegalStateException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+      }
+    }
+    runtimePlanningState.layouts.put(source, layout);
+  }
+
+  public RuntimeScanLayout getRuntimeLayout(ScanParallelPlan plan) {
+    if (plan.getWorkUnits().isEmpty()) return null;
+    String source = plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId();
+    return runtimePlanningState.layouts.get(source);
+  }
+
+  public RuntimeScanGroupDescriptor.Builder beginRuntimeScanGroup(
+      String source, RuntimeScanLayout layout) {
+    if (!isRuntimeScan(source)
+        || runtimePlanningState.bindings != null
+        || runtimePlanningState.groups.containsKey(source)
+        || runtimePlanningState.layouts.get(source) != layout) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    RuntimeExchangeBudget budget = getRuntimeExchangeBudget();
+    long bytes =
+        Math.multiplyExact((long) layout.getLaneCount(), budget.maxCompactRetainedBlockBytes());
+    if (bytes > budget.groupPrepaidBudgets().get(source)) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED);
+    }
+    String groupId = getFragmentInstanceId().getFullId() + "/scan/" + source;
+    MemoryReservationKey key =
+        new MemoryReservationKey(
+            getFragmentInstanceId().getQueryId().getId(),
+            getFragmentInstanceId().getFragmentInstanceId(),
+            "__runtime_frontier__/" + source);
+    RuntimeFrontierReservation reservation =
+        RuntimeFrontierReservation.tryCreate(
+                runtimePlanningState.pool,
+                key,
+                layout.getLaneCount(),
+                budget.maxCompactRetainedBlockBytes(),
+                budget.outputCapBytes())
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED));
+    // Own the paid reservation before any queue or factory construction can throw.
+    runtimePlanningState.ownedFrontiers.add(reservation);
+    try {
+      resourceRegistry.registerRuntimeFrontier(groupId, reservation);
+    } catch (Throwable failure) {
+      try {
+        reservation.requestClose();
+      } catch (Throwable cleanup) {
+        if (cleanup != failure) failure.addSuppressed(cleanup);
+      }
+      throw failure;
+    }
+    RuntimeScanGroupDescriptor.Builder group =
+        new RuntimeScanGroupDescriptor.Builder(groupId, source, layout, reservation);
+    runtimePlanningState.groups.put(source, group);
+    return group;
+  }
+
+  public void registerRuntimeLane(
+      RuntimeScanGroupDescriptor.Builder group,
+      int lane,
+      PipelineDriverFactory factory,
+      ExchangeOperator ownExchange,
+      LocalSinkChannel sink,
+      ISourceHandle source) {
+    if (!runtimePlanningState.groups.containsValue(group)) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    group.registerLane(lane, factory, ownExchange, sink, source);
+  }
+
+  public List<RuntimeFrontierReservation> getOwnedRuntimeFrontiers() {
+    return List.copyOf(runtimePlanningState.ownedFrontiers);
+  }
+
+  public List<RuntimeScanGroupDescriptor> getRuntimeGroupDescriptors() {
+    return runtimePlanningState.bindings == null
+        ? Collections.emptyList()
+        : runtimePlanningState.bindings.getGroups();
+  }
+
+  public RuntimePlanBindings getRuntimePlanBindings() {
+    if (runtimePlanningState.bindings == null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    return runtimePlanningState.bindings;
+  }
+
+  /** Freeze against the original factory order before any wrapper replaces native submissions. */
+  public RuntimePlanBindings freezeRuntimeGroups(List<PipelineDriverFactory> originalFactoryOrder) {
+    if (runtimePlanningState.bindings != null) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    List<PipelineDriverFactory> originals = List.copyOf(originalFactoryOrder);
+    if (originals.size() != pipelineDriverFactories.size()) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+    }
+    Map<PipelineDriverFactory, Integer> indices = new IdentityHashMap<>();
+    Set<Integer> pipelineIds = new HashSet<>();
+    for (int i = 0; i < originals.size(); i++) {
+      PipelineDriverFactory factory = originals.get(i);
+      if (factory != pipelineDriverFactories.get(i)
+          || indices.put(factory, i) != null
+          || !pipelineIds.add(factory.getDriverContext().getPipelineId())
+          || factory.getDriverContext().getFragmentInstanceContext() != getInstanceContext()) {
+        throw new IllegalStateException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+      }
+    }
+    // Validate the entire native dependency graph before capturing any lazy close future.
+    int[] marks = new int[originals.size()];
+    for (int origin = 0; origin < originals.size(); origin++) {
+      if (marks[origin] != 0) continue;
+      int current = origin;
+      while (current != -1 && marks[current] == 0) {
+        marks[current] = 1;
+        int next = originals.get(current).getDependencyPipelineIndex();
+        if (next < -1 || next >= originals.size()) {
+          throw new IllegalStateException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+        }
+        current = next;
+      }
+      if (current != -1 && marks[current] == 1) {
+        throw new IllegalStateException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+      }
+      current = origin;
+      while (current != -1 && marks[current] == 1) {
+        marks[current] = 2;
+        current = originals.get(current).getDependencyPipelineIndex();
+      }
+    }
+    List<ListenableFuture<?>> dependencies = new ArrayList<>(originals.size());
+    for (int i = 0; i < originals.size(); i++) {
+      int dependency = originals.get(i).getDependencyPipelineIndex();
+      if (dependency == -1) {
+        dependencies.add(Futures.immediateVoidFuture());
+      } else {
+        if (dependency < 0 || dependency >= originals.size() || dependency == i) {
+          throw new IllegalStateException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+        }
+        ExchangeOperator consumer =
+            originals.get(dependency).getDriverContext().getDownstreamOperator();
+        if (consumer == null) {
+          throw new IllegalStateException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+        }
+        dependencies.add(consumer.getBlockedDependencyDriver());
+      }
+    }
+    List<RuntimeScanGroupDescriptor> groups = new ArrayList<>();
+    for (RuntimeScanGroupDescriptor.Builder builder : runtimePlanningState.groups.values()) {
+      groups.add(builder.freeze(indices, dependencies));
+    }
+    RuntimePlanBindings result = new RuntimePlanBindings(originals, dependencies, groups);
+    runtimePlanningState.bindings = result;
+    return result;
+  }
+
+  public static final class RuntimePlanBindings {
+    private final List<PipelineDriverFactory> originals;
+    private final List<ListenableFuture<?>> dependencies;
+    private final List<RuntimeScanGroupDescriptor> groups;
+    private final Map<PipelineDriverFactory, Integer> indices = new IdentityHashMap<>();
+    private final Map<PipelineDriverFactory, RuntimeScanGroupDescriptor> membership =
+        new IdentityHashMap<>();
+
+    private RuntimePlanBindings(
+        List<PipelineDriverFactory> originals,
+        List<ListenableFuture<?>> dependencies,
+        List<RuntimeScanGroupDescriptor> groups) {
+      this.originals = List.copyOf(originals);
+      this.dependencies = List.copyOf(dependencies);
+      this.groups = List.copyOf(groups);
+      for (int i = 0; i < originals.size(); i++) indices.put(originals.get(i), i);
+      for (RuntimeScanGroupDescriptor group : groups)
+        for (RuntimeScanGroupDescriptor.Lane lane : group.getLanes())
+          if (membership.put(lane.getFactory(), group) != null)
+            throw new IllegalStateException(
+                DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+
+    public List<PipelineDriverFactory> getOriginalFactories() {
+      return originals;
+    }
+
+    public List<ListenableFuture<?>> getStartDependencies() {
+      List<ListenableFuture<?>> result = new ArrayList<>(dependencies.size());
+      for (ListenableFuture<?> future : dependencies)
+        result.add(Futures.nonCancellationPropagating(future));
+      return Collections.unmodifiableList(result);
+    }
+
+    public List<RuntimeScanGroupDescriptor> getGroups() {
+      return groups;
+    }
+
+    public ListenableFuture<?> startDependencyFor(PipelineDriverFactory factory) {
+      Integer index = indices.get(factory);
+      if (index == null) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+      }
+      return Futures.nonCancellationPropagating(dependencies.get(index));
+    }
+
+    public RuntimeScanGroupDescriptor groupForFactory(PipelineDriverFactory factory) {
+      return membership.get(factory);
+    }
   }
 }

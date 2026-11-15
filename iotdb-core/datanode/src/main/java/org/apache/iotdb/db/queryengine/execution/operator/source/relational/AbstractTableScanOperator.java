@@ -94,10 +94,27 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   protected QueryDataSource queryDataSource;
 
   protected int currentDeviceIndex;
+  private final org.apache.iotdb.db.queryengine.execution.runtime.RuntimeScanProgress
+      runtimeProgress;
+
+  public Optional<org.apache.iotdb.db.queryengine.execution.runtime.RuntimeScanProgress.Snapshot>
+      getRuntimeWorkProgress() {
+    return runtimeProgress == null ? Optional.empty() : Optional.of(runtimeProgress.snapshot());
+  }
 
   public AbstractTableScanOperator(AbstractTableScanOperatorParameter parameter) {
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
+    this.runtimeProgress =
+        parameter.context.getInstanceContext() == null
+                || parameter.context.getInstanceContext().getRuntimeLifecycle() == null
+                || !(this instanceof TableScanOperator)
+                || !(parameter.deviceEntrySource instanceof InMemoryDeviceEntrySource)
+                || parameter.deviceCount != parameter.deviceEntries.size()
+            ? null
+            : new org.apache.iotdb.db.queryengine.execution.runtime.RuntimeScanProgress(
+                parameter.deviceCount);
+
     this.operatorContext.recordSpecifiedInfo(
         DEVICE_NUMBER, Integer.toString(parameter.deviceCount));
     this.columnSchemas = parameter.columnSchemas;
@@ -235,6 +252,7 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       return false;
     }
     if (seriesScanOptions.limitConsumedUp()) {
+      if (runtimeProgress != null) runtimeProgress.pruneRemaining();
       return true;
     }
     if (batchLeasePending) {
@@ -244,7 +262,9 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       if (currentDeviceIndex >= deviceCount) {
         return true;
       }
-      return shouldStopScanByRuntimeFilter();
+      boolean pruned = shouldStopScanByRuntimeFilter();
+      if (pruned && runtimeProgress != null) runtimeProgress.pruneRemaining();
+      return pruned;
     }
     return currentDeviceIndex >= deviceCount && !deviceEntrySource.hasNextBatch();
   }
@@ -286,10 +306,19 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   protected void moveToNextDevice() {
-    if (shouldStopScanByRuntimeFilter()) {
+    int previousDeviceIndex = currentDeviceIndex;
+    boolean pruned = shouldStopScanByRuntimeFilter();
+    if (pruned) {
       currentDeviceIndex = deviceCount;
     } else {
       currentDeviceIndex++;
+    }
+    if (runtimeProgress != null) {
+      int resolved = currentDeviceIndex - previousDeviceIndex;
+      if (resolved > 0) {
+        runtimeProgress.resolve(1, false);
+        runtimeProgress.resolve(resolved - 1, pruned);
+      }
     }
     if (currentDeviceIndex < deviceCount && queryDataSource != null) {
       // construct AlignedSeriesScanUtil for next device

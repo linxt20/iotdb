@@ -312,4 +312,143 @@ public class ResourceAuditManagerTest {
     assertEquals(false, manager.snapshot(id, "q", "q.0.0", pool(), 2048L).get("complete"));
     manager.closeWindow(id);
   }
+
+  @Test
+  public void runtimeViewKeepsBothKeysAndDoesNotMergeEndpointTerminals() {
+    ResourceAuditManager manager = manager(new AtomicLong(), 4, 8, 8);
+    String window = manager.openWindow(100L, 1024L, 2048L);
+    MemoryPool pool = pool();
+    SharedTsBlockQueue.MemoryReservationKey queueKey =
+        new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.0", "lane");
+    SharedTsBlockQueue.MemoryReservationKey actualKey =
+        new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.0", "group");
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation owner =
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.tryCreate(
+                pool, actualKey, 2, 32, 512)
+            .get();
+    Object source = new Object(), sink = new Object();
+    AtomicBoolean sourceClosed = new AtomicBoolean();
+    try {
+      manager.beginFragment("q", "q.0.0");
+      manager.registerRuntimeFrontier("q", "q.0.0", "group", owner);
+      manager.registerObject(
+          "q", "q.0.0", source, "SOURCE_HANDLE", sourceClosed::get, queueKey, actualKey);
+      manager.registerObject("q", "q.0.0", sink, "SINK_CHANNEL", () -> false, queueKey, actualKey);
+      // A kind alias and freshly allocated terminal supplier are not mapping conflicts.
+      manager.registerObject("q", "q.0.0", sink, "SINK", () -> false, queueKey, actualKey);
+      org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot before =
+          manager.snapshotRuntime(window, "q", "q.0.0", pool);
+      assertEquals(2, before.resources().size());
+      assertEquals(1, before.accounts().size());
+      assertEquals(Long.valueOf(64), before.actualReservedBytes());
+      assertEquals(queueKey, before.resources().get(0).queueIdentityKey());
+      assertEquals(actualKey, before.resources().get(0).actualAccountKey());
+      assertTrue(before.complete());
+      sourceClosed.set(true);
+      org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot after =
+          manager.snapshotRuntime(window, "q", "q.0.0", pool);
+      assertTrue(after.resources().get(0).terminal());
+      assertFalse(after.resources().get(1).terminal());
+      assertEquals(1, manager.snapshot(window, "q", "q.0.0", pool, 2048L).get("liveEndpoints"));
+      assertEquals(0, manager.snapshot(window, "q", "q.0.0", pool, 2048L).get("liveQueues"));
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              manager.registerObject(
+                  "q", "q.0.0", source, "SOURCE_HANDLE", sourceClosed::get, queueKey, queueKey));
+      assertEquals(
+          actualKey,
+          manager
+              .snapshotRuntime(window, "q", "q.0.0", pool)
+              .resources()
+              .get(0)
+              .actualAccountKey());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> manager.snapshotRuntime(window, "q", "q.0.0", pool()));
+    } finally {
+      owner.close();
+      manager.closeWindow(window);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void frontierQueueConstructorRegistersActualAccountOnTheFirstAuditEvent() {
+    ResourceAuditManager manager = ResourceAuditManager.getInstance();
+    String window = manager.openWindow(30_000L, 1024L, 2048L);
+    MemoryPool pool = pool();
+    TFragmentInstanceId fragment = new TFragmentInstanceId("frontier_first", 0, "0");
+    String full = FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(fragment);
+    SharedTsBlockQueue.MemoryReservationKey actual =
+        new SharedTsBlockQueue.MemoryReservationKey("frontier_first", full, "group");
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation owner =
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.tryCreate(
+                pool, actual, 1, 64, 512)
+            .get();
+    LocalMemoryManager memory = Mockito.mock(LocalMemoryManager.class);
+    Mockito.when(memory.getQueryPool()).thenReturn(pool);
+    java.util.concurrent.ExecutorService executor = MoreExecutors.newDirectExecutorService();
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(fragment, "lane", memory, executor, false, owner, 0);
+    try {
+      manager.beginFragment("frontier_first", full);
+      manager.registerRuntimeFrontier("frontier_first", full, "group", owner);
+      org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot runtime =
+          manager.snapshotRuntime(window, "frontier_first", full, pool);
+      assertEquals(1, runtime.resources().size());
+      assertEquals(queue.getQueueIdentityKey(), runtime.resources().get(0).queueIdentityKey());
+      assertEquals(actual, runtime.resources().get(0).actualAccountKey());
+      assertEquals(Long.valueOf(64), runtime.actualReservedBytes());
+      List<Map<String, Object>> oldObjects =
+          (List<Map<String, Object>>)
+              manager.snapshot(window, "frontier_first", full, pool, 2048L).get("objects");
+      assertEquals("lane", oldObjects.get(0).get("memoryPlanNodeId"));
+      manager.registerObject(
+          "frontier_first",
+          full,
+          queue,
+          "LOCAL_QUEUE",
+          queue::isClosed,
+          queue.getQueueIdentityKey(),
+          queue.getActualAccountKey());
+      assertEquals(
+          1, manager.snapshotRuntime(window, "frontier_first", full, pool).resources().size());
+    } finally {
+      queue.close();
+      owner.close();
+      manager.closeWindow(window);
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  public void runtimeGroupOwnershipSurvivesObservationObjectOverflow() {
+    ResourceAuditManager manager = manager(new AtomicLong(), 4, 1, 8);
+    String window = manager.openWindow(100L, 1024L, 2048L);
+    MemoryPool pool = pool();
+    SharedTsBlockQueue.MemoryReservationKey account =
+        new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.0", "group");
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation owner =
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.tryCreate(
+                pool, account, 1, 64, 512)
+            .get();
+    try {
+      manager.beginFragment("q", "q.0.0");
+      manager.registerRuntimeFrontier("q", "q.0.0", "group", owner);
+      manager.registerObject("q", "q.0.0", new Object(), "SOURCE", () -> false, account, account);
+      manager.registerObject("q", "q.0.0", new Object(), "SOURCE", () -> false, account, account);
+      org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot runtime =
+          manager.snapshotRuntime(window, "q", "q.0.0", pool);
+      assertFalse(runtime.complete());
+      assertEquals(1, runtime.groups().size());
+      assertEquals(Long.valueOf(64), runtime.actualReservedBytes());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> manager.registerRuntimeFrontier("q", "q.0.0", "other-id", owner));
+    } finally {
+      owner.close();
+      manager.closeWindow(window);
+    }
+  }
 }

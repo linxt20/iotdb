@@ -1,0 +1,1166 @@
+{
+  "schemaVersion": 1,
+  "status": "PORTABLE_FINAL_REPLAY_PARAMETERS_READY",
+  "createdAtUtc": "2026-11-15T16:18:25.716884+00:00",
+  "scope": "Repository-portable templates. Target-host service results are separate evidence, never inferred from these files.",
+  "roots": {
+    "repository": "<REPOSITORY_ROOT>",
+    "matrix": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix",
+    "cluster": "<CLUSTER_ROOT>",
+    "fixture": "<FIXTURE_ROOT>",
+    "outputs": "<OUTPUT_ROOT>"
+  },
+  "fixture": {
+    "manifest": "<FIXTURE_ROOT>/manifest.json",
+    "sha256": "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+    "totalRows": 9404416,
+    "version": "runtime_sql_fixture_v1",
+    "oracles": {
+      "grouped": {
+        "path": "oracles/grouped.jsonl",
+        "sha256": "1e4f9af5d570ccd6953b344c542dcd2c7df40bca2141934316455a78192a27ae",
+        "rows": 257,
+        "columnTypes": [
+          "INT64",
+          "INT64",
+          "INT64",
+          "DOUBLE",
+          "DOUBLE",
+          "INT64",
+          "INT64"
+        ],
+        "orderBy": [
+          "g"
+        ],
+        "canonicalEncoding": "typed-json-array-lf",
+        "sql": "SELECT g, COUNT(*) AS n, COUNT(s2) AS n2, SUM(s1) AS sum1, SUM(s2) AS sum2, MIN(s1) AS lo, MAX(s1) AS hi FROM runtime_dop_e2e.telemetry GROUP BY g",
+        "materialized": true
+      },
+      "filterProjectGrouped": {
+        "path": "oracles/filterProjectGrouped.jsonl",
+        "sha256": "ff6fb21791b9788a4babc7a4c35eb94e492e7db5fc2fcfbf426555e5c4e7df65",
+        "rows": 257,
+        "columnTypes": [
+          "INT64",
+          "INT64",
+          "DOUBLE"
+        ],
+        "orderBy": [
+          "k"
+        ],
+        "canonicalEncoding": "typed-json-array-lf",
+        "sql": "SELECT k, COUNT(*) AS n, SUM(v) AS total FROM (SELECT g + 1 AS k, s1 + 7 AS v FROM runtime_dop_e2e.telemetry WHERE s1 >= 0) q GROUP BY k",
+        "materialized": true
+      },
+      "ordered": {
+        "path": "oracles/ordered.jsonl",
+        "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+        "rows": 4096,
+        "columnTypes": [
+          "TIMESTAMP",
+          "STRING",
+          "INT64",
+          "INT64",
+          "INT64"
+        ],
+        "orderBy": [
+          "device_id",
+          "time"
+        ],
+        "canonicalEncoding": "typed-json-array-lf",
+        "sql": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE time >= 0 AND time < 64 ORDER BY device_id ASC, time ASC",
+        "materialized": true
+      },
+      "rawFiltered": {
+        "materialized": false,
+        "rows": 4750916,
+        "sha256": "877423ddcc646d7f887e8b874c7e77a2e035ffa3c2fe099e3b3f244d417202e8",
+        "columnTypes": [
+          "TIMESTAMP",
+          "STRING",
+          "INT64",
+          "INT64",
+          "INT64"
+        ],
+        "orderBy": [
+          "device_id",
+          "time"
+        ],
+        "canonicalEncoding": "typed-json-array-lf",
+        "recomputableFrom": "rowDefinition",
+        "sql": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0"
+      },
+      "fullScanWindowFiltered": {
+        "path": "oracles/fullScanWindowFiltered.jsonl",
+        "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+        "rows": 4096,
+        "columnTypes": [
+          "TIMESTAMP",
+          "STRING",
+          "INT64",
+          "INT64",
+          "INT64"
+        ],
+        "orderBy": [],
+        "canonicalEncoding": "typed-json-array-lf",
+        "sql": "SELECT time, device_id, g, s1, s2\nFROM runtime_dop_e2e.telemetry\nWHERE (CASE\n  WHEN (SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))\n        + COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))) > 0.5\n  THEN CASE WHEN time >= 0 AND time < 64 THEN s1 - s1 + 1 ELSE s1 - s1 END\n  ELSE s1 - s1\nEND) = 1\n",
+        "materialized": true,
+        "canonicalStorageOrder": [
+          "device_id",
+          "time"
+        ],
+        "selectionSemantics": "FULL_SCAN_POST_FILTER_TIME_WINDOW_V1",
+        "sourceOracle": {
+          "path": "oracles/ordered.jsonl",
+          "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880"
+        }
+      },
+      "runtimeEarlyLimitConstant": {
+        "path": "oracles/runtimeEarlyLimitConstant.jsonl",
+        "sha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+        "rows": 257,
+        "columnNames": [
+          "c"
+        ],
+        "columnTypes": [
+          "INT64"
+        ],
+        "orderBy": [],
+        "canonicalEncoding": "typed-json-array-lf",
+        "sql": "SELECT CAST(1 AS INT64) AS c\nFROM runtime_dop_e2e.telemetry\nWHERE (SIN(CAST(s1 AS DOUBLE)) * SIN(CAST(s1 AS DOUBLE))\n       + COS(CAST(s1 AS DOUBLE)) * COS(CAST(s1 AS DOUBLE))) > 0.5\nLIMIT 257\n",
+        "materialized": true,
+        "selectionSemantics": "UNORDERED_COMPLETE_LIMIT_CONSTANT_V1",
+        "sqlLimit": 257
+      }
+    },
+    "manifestSha256Binding": "Compute SHA256 after native generation; compare every stable oracle and fixture geometry before load."
+  },
+  "deploymentBindings": {
+    "candidate": "<CLUSTER_ROOT>/candidate/deployment-manifest.json",
+    "control": "<CLUSTER_ROOT>/control/deployment-manifest.json"
+  },
+  "actualIdRule": "Launcher may emit null DataNode IDs; only ConfigNode discovery binds actual IDs/endpoints. Never fill invented IDs.",
+  "entryIdentity": {
+    "driver": {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/OrdinarySqlAcceptanceDriver.java",
+      "sha256": "2dcb4c56ad9810d417d4d4b02cd6c8025a65713288be20fa7efeaa3102112471"
+    },
+    "wrapper": {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/StaticScanAcceptanceDriver.java",
+      "sha256": "6672f5fba42da1b8bd010d1ea584a2bb23ebdd98e1fac4ff0422b9075f858792"
+    },
+    "launcher": {
+      "path": "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh",
+      "sha256": "31203924ae30fcb45a2c2930e72d1fd84d96929c92efb511eaa5e4616f414a69"
+    },
+    "comparator": {
+      "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+      "sha256": "a01dee505551aea1c11db2c9cec0327f633606736d1c80f75386043748710298"
+    },
+    "runtimeBinding": "Build CLI against the exact all-bin/lib JAR set. Archive entry/classpath hashes and actual JVM-loaded classes before SQL acceptance.",
+    "fixtureGenerator": {
+      "path": "research/query-intra-parallelism-e2e-acceptance/scripts/generate_hash_groupby_fixture.py",
+      "sha256": "c4a7183dbf290a360f528fbfcfafc2693adf973938522e4a5af58025fee7ed0f"
+    },
+    "sqlErrorsSelfTest": {
+      "entry": "StaticScanAcceptanceDriver --self-test-sql-errors",
+      "expectedChecks": 25,
+      "scope": "Offline actual JDBC wrapper only; repeat against target frozen release."
+    }
+  },
+  "cases": [
+    {
+      "id": "R1",
+      "name": "Same SQL/FI/group real GROW then SHRINK",
+      "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+      "sql": {
+        "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+        "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+        "text": "SELECT time, device_id, g, s1, s2\nFROM runtime_dop_e2e.telemetry\nWHERE (CASE\n  WHEN (SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))\n        + COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))) > 0.5\n  THEN CASE WHEN time >= 0 AND time < 64 THEN s1 - s1 + 1 ELSE s1 - s1 END\n  ELSE s1 - s1\nEND) = 1\n",
+        "encoding": "Exact UTF-8; runtime acceptance marker is separately hashed."
+      },
+      "requiredActualSourceNodes": 2,
+      "repetition": "r001; each repeat uses new explicit output paths",
+      "candidate": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-candidate.json",
+        "paramsSha256": "be89f289764eecb396c7488e4b23c59d122f5295d183681724bf0dd6e1a754da",
+        "output": "<OUTPUT_ROOT>/R1/primary/candidate/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-candidate.json"
+        ]
+      },
+      "control": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-control.json",
+        "paramsSha256": "768705da7deab68fb567e5a18c0c32c89f106231aec744c5e7d0e57bfcf459cc",
+        "output": "<OUTPUT_ROOT>/R1/primary/control/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-control.json"
+        ]
+      },
+      "comparison": {
+        "oracle": "fullScanWindowFiltered",
+        "oracleFullSha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+        "oracleLimit": null,
+        "expectedRows": 4096,
+        "completeResultOnly": true,
+        "multisetComparator": "existing external-sort offline typed comparison",
+        "orderedSequenceAlsoRequired": false,
+        "argvTemplate": [
+          "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+          "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+          "--offline-typed-compare",
+          "--candidate-result-dir",
+          "<OUTPUT_ROOT>/R1/primary/candidate/r001",
+          "--control-result-dir",
+          "<OUTPUT_ROOT>/R1/primary/control/r001",
+          "--fixture-manifest",
+          "<FIXTURE_ROOT>/manifest.json",
+          "--expected-fixture-sha256",
+          "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+          "--oracle",
+          "fullScanWindowFiltered",
+          "--sort-memory-mib",
+          "64",
+          "--repository-root",
+          "<REPOSITORY_ROOT>",
+          "--output",
+          "<OUTPUT_ROOT>/R1/primary/comparison/r001"
+        ]
+      },
+      "recommendedRepetitions": 3,
+      "postconditions": [
+        "Same actual runtime group has INITIAL_ACTIVATED1 -> positive matching requested/observed APPLIED growth -> later positive matching APPLIED shrink, in event-sequence order.",
+        "Supported immutable lane/layout checksums, full exact result/oracle comparison and all real FI resources settled are required.",
+        "No helper controller mutation, process restart or other SQL's evidence may certify runtime actions."
+      ],
+      "notExercisedIf": "No matching same-query GROW/SHRINK, even with correct complete result.",
+      "compatibilityVariants": [
+        {
+          "id": "R1-RAW-COMPAT",
+          "name": "High-output raw and backpressure compatibility",
+          "status": "TARGET_HOST_SERVICE_PENDING",
+          "sql": {
+            "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+            "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+            "text": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0",
+            "encoding": "exact UTF-8; no added semicolon or comment"
+          },
+          "requiredActualSourceNodes": 2,
+          "repetition": "r001; each repeat uses new explicit output paths",
+          "candidate": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-candidate.json",
+            "paramsSha256": "fa5190d1984e93eff14019141bf249501cfdc279f8335138a072f50900a9344c",
+            "output": "<OUTPUT_ROOT>/R1/raw-high-output/candidate/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-candidate.json"
+            ]
+          },
+          "control": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-control.json",
+            "paramsSha256": "d634f07fc40e87e1c324b81c18dc3601f3128b88bcd45ddcae2b684ab8c43973",
+            "output": "<OUTPUT_ROOT>/R1/raw-high-output/control/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-control.json"
+            ]
+          },
+          "comparison": {
+            "oracle": "rawFiltered",
+            "oracleFullSha256": "877423ddcc646d7f887e8b874c7e77a2e035ffa3c2fe099e3b3f244d417202e8",
+            "oracleLimit": null,
+            "expectedRows": 4750916,
+            "completeResultOnly": true,
+            "multisetComparator": "existing external-sort offline typed comparison",
+            "orderedSequenceAlsoRequired": false,
+            "argvTemplate": [
+              "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+              "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+              "--offline-typed-compare",
+              "--candidate-result-dir",
+              "<OUTPUT_ROOT>/R1/raw-high-output/candidate/r001",
+              "--control-result-dir",
+              "<OUTPUT_ROOT>/R1/raw-high-output/control/r001",
+              "--fixture-manifest",
+              "<FIXTURE_ROOT>/manifest.json",
+              "--expected-fixture-sha256",
+              "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+              "--oracle",
+              "rawFiltered",
+              "--sort-memory-mib",
+              "64",
+              "--repository-root",
+              "<REPOSITORY_ROOT>",
+              "--output",
+              "<OUTPUT_ROOT>/R1/raw-high-output/comparison/r001"
+            ]
+          },
+          "recommendedRepetitions": 3,
+          "postconditions": [
+            "Full strict typed candidate/control/oracle multiplicities and actual resource settlement must pass.",
+            "This high-output compatibility variant cannot replace primary real same-query resize."
+          ],
+          "notExercisedIf": "Resize is outside this compatibility verdict."
+        },
+        {
+          "status": "HIGH_OUTPUT_COMPATIBILITY_SERVICE_PENDING",
+          "sql": {
+            "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFilteredTrigBackup.sql",
+            "sha256": "07d5a831b1e8aad4c9bba62c472cfa30041de4c30c5dbe723cedcd2df8ee72d1",
+            "text": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0 AND (SIN(CAST(s1 AS DOUBLE)) * SIN(CAST(s1 AS DOUBLE)) + COS(CAST(s1 AS DOUBLE)) * COS(CAST(s1 AS DOUBLE))) > 0.5",
+            "encoding": "exact UTF-8; no added semicolon or comment"
+          },
+          "candidate": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-candidate.json",
+            "paramsSha256": "341ccc9b9f90192d9b24e8bc040759e0466ff06d03249f4cd57c6fbd576f7613",
+            "output": "<OUTPUT_ROOT>/R1/trig-backup/candidate/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-candidate.json"
+            ]
+          },
+          "control": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-control.json",
+            "paramsSha256": "eb235bef040c8cec4bd11c85eb468fafa0470a120fd633cd9cb0a3d651a2b733",
+            "output": "<OUTPUT_ROOT>/R1/trig-backup/control/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-control.json"
+            ]
+          },
+          "comparison": {
+            "oracle": "rawFiltered",
+            "oracleFullSha256": "877423ddcc646d7f887e8b874c7e77a2e035ffa3c2fe099e3b3f244d417202e8",
+            "oracleLimit": null,
+            "expectedRows": 4750916,
+            "completeResultOnly": true,
+            "multisetComparator": "existing external-sort offline typed comparison",
+            "orderedSequenceAlsoRequired": false,
+            "argvTemplate": [
+              "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+              "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+              "--offline-typed-compare",
+              "--candidate-result-dir",
+              "<OUTPUT_ROOT>/R1/trig-backup/candidate/r001",
+              "--control-result-dir",
+              "<OUTPUT_ROOT>/R1/trig-backup/control/r001",
+              "--fixture-manifest",
+              "<FIXTURE_ROOT>/manifest.json",
+              "--expected-fixture-sha256",
+              "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+              "--oracle",
+              "rawFiltered",
+              "--sort-memory-mib",
+              "64",
+              "--repository-root",
+              "<REPOSITORY_ROOT>",
+              "--output",
+              "<OUTPUT_ROOT>/R1/trig-backup/comparison/r001"
+            ]
+          },
+          "oracle": "rawFiltered",
+          "oracleSha256": "877423ddcc646d7f887e8b874c7e77a2e035ffa3c2fe099e3b3f244d417202e8",
+          "semanticBasis": "Frozen s1 is nonnull finite integer in[-1000,1000]. sin(x)^2+cos(x)^2 remains safely above0.5, so this additional predicate preserves exactly the original rawFiltered row set.",
+          "identityRule": "Backup has its own exact SQL SHA/run marker/query/FI evidence; both roles use the same backup SQL. Never insert main-SQL identities into this variant.",
+          "triggerCaveat": "High-output compatibility/backpressure only; never substitutes primary full-scan APPLIED grow/shrink."
+        }
+      ],
+      "scanShapeContract": [
+        "Residual CASE/SIN/COS Filter above DeviceTableScan; no extracted short query time predicate.",
+        "Assignments span all4 fixture partitions; available exact unique-source output counters total9404416; final output4096.",
+        "Same query/FI/group initial1 -> positive APPLIED grow -> later positive APPLIED shrink; no policy-intent or terminal0 substitution."
+      ],
+      "sqlMathContract": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json"
+    },
+    {
+      "id": "R2",
+      "name": "Actual ORDERED multi-lane initial-one liveness",
+      "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+      "sql": {
+        "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/ordered.sql",
+        "sha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119",
+        "text": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE time >= 0 AND time < 64 ORDER BY device_id ASC, time ASC",
+        "encoding": "exact UTF-8; no added semicolon or comment"
+      },
+      "requiredActualSourceNodes": 2,
+      "repetition": "r001; each repeat uses new explicit output paths",
+      "candidate": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-candidate.json",
+        "paramsSha256": "b8bc1ebbd4766240ebabb65325b1c109926af894969c7779235880cb164a83d6",
+        "output": "<OUTPUT_ROOT>/R2/primary/candidate/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-candidate.json"
+        ]
+      },
+      "control": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-control.json",
+        "paramsSha256": "fd833d35f401d0253c81f3fa7f4d5aa10888663e6ba7b701a501dd4e2368e5ad",
+        "output": "<OUTPUT_ROOT>/R2/primary/control/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-control.json"
+        ]
+      },
+      "comparison": {
+        "oracle": "ordered",
+        "oracleFullSha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+        "oracleLimit": null,
+        "expectedRows": 4096,
+        "completeResultOnly": true,
+        "multisetComparator": "existing external-sort offline typed comparison",
+        "orderedSequenceAlsoRequired": true,
+        "argvTemplate": [
+          "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+          "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+          "--offline-typed-compare",
+          "--candidate-result-dir",
+          "<OUTPUT_ROOT>/R2/primary/candidate/r001",
+          "--control-result-dir",
+          "<OUTPUT_ROOT>/R2/primary/control/r001",
+          "--fixture-manifest",
+          "<FIXTURE_ROOT>/manifest.json",
+          "--expected-fixture-sha256",
+          "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+          "--oracle",
+          "ordered",
+          "--sort-memory-mib",
+          "64",
+          "--repository-root",
+          "<REPOSITORY_ROOT>",
+          "--output",
+          "<OUTPUT_ROOT>/R2/primary/comparison/r001"
+        ]
+      },
+      "recommendedRepetitions": 3,
+      "postconditions": [
+        "Frozen corresponding runtime-group FI splitMode=ORDERED and actualPipelineCount>1.",
+        "Supported logicalLaneCount>1, initialActivatedWorkers1,maxAppliedWorkers1; complete4096 rows in exact device_id,time order.",
+        "DEVICE scan plus final Sort or serial/single-lane fallback does not qualify."
+      ],
+      "timeOnlyExtension": {
+        "id": "R2-TIME-ONLY",
+        "name": "TIME-only full-result ordered extension",
+        "status": "OPTIONAL_TARGET_HOST_SERVICE_PENDING",
+        "sql": {
+          "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedTimeOnly.sql",
+          "sha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6",
+          "text": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE time >= 0 AND time < 64 ORDER BY time ASC\n",
+          "encoding": "Exact UTF-8; runtime acceptance marker is separately hashed."
+        },
+        "requiredActualSourceNodes": 2,
+        "repetition": "r001; each repeat uses new explicit output paths",
+        "candidate": {
+          "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-candidate.json",
+          "paramsSha256": "5da84f115daf46ea3e65df69bd5acf8c9c40d0d0190442e493cb6044f459382b",
+          "output": "<OUTPUT_ROOT>/R2/time-only/candidate/r001",
+          "argvTemplate": [
+            "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+            "-cp",
+            "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+            "StaticScanAcceptanceDriver",
+            "--mode",
+            "ordinary-sql",
+            "--params",
+            "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-candidate.json"
+          ]
+        },
+        "control": {
+          "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-control.json",
+          "paramsSha256": "70690f956c71ad3d1339b4accb9a68181ea516aa18dba7e2bca4d7bccc6667ee",
+          "output": "<OUTPUT_ROOT>/R2/time-only/control/r001",
+          "argvTemplate": [
+            "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+            "-cp",
+            "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+            "StaticScanAcceptanceDriver",
+            "--mode",
+            "ordinary-sql",
+            "--params",
+            "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-control.json"
+          ]
+        },
+        "comparison": {
+          "oracle": "ordered",
+          "oracleFullSha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+          "oracleLimit": null,
+          "expectedRows": 4096,
+          "completeResultOnly": true,
+          "multisetComparator": "existing external-sort offline typed comparison",
+          "orderedSequenceAlsoRequired": true,
+          "argvTemplate": [
+            "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+            "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+            "--offline-typed-compare",
+            "--candidate-result-dir",
+            "<OUTPUT_ROOT>/R2/time-only/candidate/r001",
+            "--control-result-dir",
+            "<OUTPUT_ROOT>/R2/time-only/control/r001",
+            "--fixture-manifest",
+            "<FIXTURE_ROOT>/manifest.json",
+            "--expected-fixture-sha256",
+            "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+            "--oracle",
+            "ordered",
+            "--sort-memory-mib",
+            "64",
+            "--repository-root",
+            "<REPOSITORY_ROOT>",
+            "--output",
+            "<OUTPUT_ROOT>/R2/time-only/comparison/r001",
+            "--ordered-key-columns",
+            "time"
+          ],
+          "orderedKeyColumns": [
+            "time"
+          ],
+          "orderingContract": "Monotonic time keys; exact typed multiset within each complete tie group; no ordering constraint inside equal time."
+        },
+        "recommendedRepetitions": 3,
+        "postconditions": [
+          "Actual ORDERED multi-lane runtime group initial/max applied workers1.",
+          "Complete4096-row typed multiplicities, monotonic time and all64 tie groups each containing64 device rows.",
+          "Within-time permutations accepted; cross-key disorder, missing/duplicate/type errors rejected.",
+          "LIMIT and --oracle-limit are forbidden with --ordered-key-columns."
+        ]
+      }
+    },
+    {
+      "id": "R3",
+      "name": "Complete deterministic ordered LIMIT257 and cleanup",
+      "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+      "sql": {
+        "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedLimit257.sql",
+        "sha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13",
+        "text": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE time >= 0 AND time < 64 ORDER BY device_id ASC, time ASC LIMIT 257",
+        "encoding": "exact UTF-8; no added semicolon or comment"
+      },
+      "requiredActualSourceNodes": 2,
+      "repetition": "r001; each repeat uses new explicit output paths",
+      "sqlDerivation": {
+        "oracle": "ordered",
+        "operation": "append exact ' LIMIT 257'",
+        "originalSqlSha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119"
+      },
+      "candidate": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json",
+        "paramsSha256": "02f7690a5c4c46217d8853445d040ef9c21f09c783c9dfb97475c9b18e3fee22",
+        "output": "<OUTPUT_ROOT>/R3/primary/candidate/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json"
+        ]
+      },
+      "control": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+        "paramsSha256": "27a53caea108d7ff911f10bbf041c24d2e4c5f2737cea66c1a10cde7568651a9",
+        "output": "<OUTPUT_ROOT>/R3/primary/control/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json"
+        ]
+      },
+      "comparison": {
+        "oracle": "ordered",
+        "oracleFullSha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880",
+        "oracleLimit": 257,
+        "expectedRows": 257,
+        "completeResultOnly": true,
+        "multisetComparator": "existing external-sort offline typed comparison",
+        "orderedSequenceAlsoRequired": true,
+        "argvTemplate": [
+          "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+          "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+          "--offline-typed-compare",
+          "--candidate-result-dir",
+          "<OUTPUT_ROOT>/R3/primary/candidate/r001",
+          "--control-result-dir",
+          "<OUTPUT_ROOT>/R3/primary/control/r001",
+          "--fixture-manifest",
+          "<FIXTURE_ROOT>/manifest.json",
+          "--expected-fixture-sha256",
+          "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+          "--oracle",
+          "ordered",
+          "--sort-memory-mib",
+          "64",
+          "--repository-root",
+          "<REPOSITORY_ROOT>",
+          "--output",
+          "<OUTPUT_ROOT>/R3/primary/comparison/r001",
+          "--oracle-limit",
+          "257"
+        ]
+      },
+      "recommendedRepetitions": 3,
+      "postconditions": [
+        "Both outputs must be FULL_TYPED_RESULT_DRAINED and exactly257 rows; comparator verifies the full ordered oracle SHA/rows before taking its first257 rows.",
+        "Archive actual plan/splitMode and all FI cleanup, including legitimate global-LIMIT SERIAL fallback.",
+        "Runtime early-stop coverage additionally requires actual runtime-group positive activation. Generic complete capture alone is insufficient."
+      ],
+      "serialFallbackVerdict": "LIMIT correctness may pass; runtime early-stop is NOT_EXERCISED. Preserve global-LIMIT guards. runtimeConstantExtension requires separate actual runtime and partial-source proof.",
+      "runtimeConstantExtension": {
+        "id": "R3-RUNTIME-CONSTANT",
+        "name": "Native runtime scan LIMIT257 with complete constant multiset",
+        "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+        "requiredActualSourceNodes": 2,
+        "repetition": "r001; each repeat uses new explicit output paths",
+        "sql": {
+          "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+          "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe",
+          "text": "SELECT CAST(1 AS INT64) AS c\nFROM runtime_dop_e2e.telemetry\nWHERE (SIN(CAST(s1 AS DOUBLE)) * SIN(CAST(s1 AS DOUBLE))\n       + COS(CAST(s1 AS DOUBLE)) * COS(CAST(s1 AS DOUBLE))) > 0.5\nLIMIT 257\n",
+          "encoding": "Exact UTF-8; execution marker is separately hashed."
+        },
+        "candidate": {
+          "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-candidate.json",
+          "paramsSha256": "eeccdd8c57a3db4a1c9b4dcb94a5a14cb8a55110b6ca31916df855c6df738fc7",
+          "output": "<OUTPUT_ROOT>/R3/runtime-constant/candidate/r001",
+          "argvTemplate": [
+            "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+            "-cp",
+            "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+            "StaticScanAcceptanceDriver",
+            "--mode",
+            "ordinary-sql",
+            "--params",
+            "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-candidate.json"
+          ]
+        },
+        "control": {
+          "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-control.json",
+          "paramsSha256": "75f84b69ca20aec494762e4371f5576a979bfb38d468b2e4fcec5baacb0b9b25",
+          "output": "<OUTPUT_ROOT>/R3/runtime-constant/control/r001",
+          "argvTemplate": [
+            "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+            "-cp",
+            "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+            "StaticScanAcceptanceDriver",
+            "--mode",
+            "ordinary-sql",
+            "--params",
+            "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-control.json"
+          ]
+        },
+        "comparison": {
+          "oracle": "runtimeEarlyLimitConstant",
+          "oracleFullSha256": "f3f82d3709ecc5958ecd2d9f7588e35ccc321da5f8908cd7ecad2d753ddeeaa2",
+          "expectedRows": 257,
+          "completeResultOnly": true,
+          "columnNames": [
+            "c"
+          ],
+          "columnTypes": [
+            "INT64"
+          ],
+          "orderedSequenceAlsoRequired": false,
+          "oracleLimitPermitted": false,
+          "orderedKeyColumnsPermitted": false,
+          "argvTemplate": [
+            "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+            "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+            "--offline-typed-compare",
+            "--oracle",
+            "runtimeEarlyLimitConstant",
+            "--candidate-result-dir",
+            "<OUTPUT_ROOT>/R3/runtime-constant/candidate/r001",
+            "--control-result-dir",
+            "<OUTPUT_ROOT>/R3/runtime-constant/control/r001",
+            "--fixture-manifest",
+            "<FIXTURE_ROOT>/manifest.json",
+            "--expected-fixture-sha256",
+            "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+            "--sort-memory-mib",
+            "64",
+            "--repository-root",
+            "<REPOSITORY_ROOT>",
+            "--output",
+            "<OUTPUT_ROOT>/R3/runtime-constant/comparison/r001"
+          ]
+        },
+        "postconditions": [
+          "Real ordinary SQL runtime scan group with positive initial activation on an actual source FI; SERIAL compatibility never qualifies.",
+          "Complete257 typed INT64 ones with exact candidate/control/oracle multiplicities; duplicate occurrences all preserved.",
+          "Frozen exact unique __pipeline_* TableScanOperator source output total satisfies0<rows<9404416; original plan-node aggregate aliases excluded.",
+          "All actual fragment terminal and resource settlement gates remain required.",
+          "CLI SUCCESS and offline comparator alone do not prove runtime early-stop; mandatory read-only runtime evidence gate in reproduction guide."
+        ],
+        "sqlMathContract": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.contract.json",
+        "invalidHistoricalTriggers": [
+          "Ordered LIMIT primary may legitimately execute SERIAL/GLOBAL_LIMIT_OR_OFFSET.",
+          "Filter-before-LIMIT variant also produced legal SERIAL; lack of runtime is preserved as NOT_EXERCISED.",
+          "First constant SQL under pre-canonicalization v4 failed strict external schema with301. Never relabel as PASS."
+        ],
+        "controlObservationNote": "Control fetchSize1 keeps the 257-row result from being exhausted by the initial execute/fetch response before the Coordinator roster probe. Exhausting the full result can remove the query from the Coordinator map before roster capture. This observation setting preserves complete draining, exact result comparison and strict real-roster requirements."
+      },
+      "controlObservationNote": "Control fetchSize1 keeps the 257-row result from being exhausted by the initial execute/fetch response before the Coordinator roster probe. Exhausting the full result can remove the query from the Coordinator map before roster capture. This observation setting preserves complete draining, exact result comparison and strict real-roster requirements."
+    },
+    {
+      "id": "R4",
+      "name": "Real targeted KILL after FI activity",
+      "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+      "sql": {
+        "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+        "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+        "text": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0",
+        "encoding": "exact UTF-8; no added semicolon or comment"
+      },
+      "requiredActualSourceNodes": 2,
+      "repetition": "r001; each repeat uses new explicit output paths",
+      "candidate": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R4-primary-candidate.json",
+        "paramsSha256": "e5cdd96bca9f1f64978be8a2c08a01d486ed30c357b1824520ba496b913c78a1",
+        "output": "<OUTPUT_ROOT>/R4/primary/candidate/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R4-primary-candidate.json"
+        ]
+      },
+      "controlReference": {
+        "kind": "R1 exact-SQL fixed-one full-result baseline",
+        "caseId": "R1",
+        "output": "<OUTPUT_ROOT>/R1/primary/control/r001",
+        "oracle": "rawFiltered",
+        "noAdditionalNegativeControlInvocation": true
+      },
+      "expectedServerCode": 715,
+      "comparison": {
+        "kind": "NO_FULL_EQUIVALENCE_FOR_EXPECTED_TERMINATION",
+        "fullMultisetApplicable": false,
+        "prefixMembershipInterface": "NOT_AVAILABLE_DO_NOT_CLAIM",
+        "typedPrefix": "Actual captured sequence/prefix only, with order-sensitive SHA."
+      },
+      "postconditions": [
+        "Exact executed SQL hash/internal queryId and actual FI identities bind all evidence.",
+        "At least one actually unsuccessful terminal FI, positive supported runtime-group activation, and every planned FI's frozen terminal and resource-settlement proof are required.",
+        "Planning rejection/client disconnect/close-only failure cannot pass."
+      ],
+      "specificProof": "Independent ordinary TABLE JDBC KILL QUERY '<actual internal queryId>' acknowledged after positive real FI activity; never Statement.cancel or KILL ALL.",
+      "recommendedRepetitions": 3
+    },
+    {
+      "id": "R5",
+      "name": "Real server deadline and cleanup",
+      "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+      "sql": {
+        "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+        "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+        "text": "SELECT time, device_id, g, s1, s2\nFROM runtime_dop_e2e.telemetry\nWHERE (CASE\n  WHEN (SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))\n        + COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))) > 0.5\n  THEN CASE WHEN time >= 0 AND time < 64 THEN s1 - s1 + 1 ELSE s1 - s1 END\n  ELSE s1 - s1\nEND) = 1\n",
+        "encoding": "Exact UTF-8; runtime acceptance marker is separately hashed."
+      },
+      "requiredActualSourceNodes": 2,
+      "repetition": "r001; each repeat uses new explicit output paths",
+      "candidate": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R5-primary-candidate.json",
+        "paramsSha256": "8880fbc90810397a64055372f1ef45e84df2d8baa12df3c5b3ac8e3dca02aac4",
+        "output": "<OUTPUT_ROOT>/R5/primary/candidate/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R5-primary-candidate.json"
+        ]
+      },
+      "controlReference": {
+        "kind": "R1 exact-SQL fixed-one full-result baseline",
+        "caseId": "R1",
+        "output": "<OUTPUT_ROOT>/R1/primary/control/r001",
+        "oracle": "fullScanWindowFiltered",
+        "noAdditionalNegativeControlInvocation": true
+      },
+      "expectedServerCode": 720,
+      "comparison": {
+        "kind": "NO_FULL_EQUIVALENCE_FOR_EXPECTED_TERMINATION",
+        "fullMultisetApplicable": false,
+        "prefixMembershipInterface": "NOT_AVAILABLE_DO_NOT_CLAIM",
+        "typedPrefix": "Actual captured sequence/prefix only, with order-sensitive SHA."
+      },
+      "postconditions": [
+        "Exact executed SQL hash/internal queryId and actual FI identities bind all evidence.",
+        "At least one actually unsuccessful terminal FI, positive supported runtime-group activation, and every planned FI's frozen terminal and resource-settlement proof are required.",
+        "Planning rejection/client disconnect/close-only failure cannot pass."
+      ],
+      "specificProof": "Actual authoritative SQLException720 while execute/fetch remains active, positive unchanged originalDeadlineMillis reached, real FI failure, supported runtime activation and complete frozen FI/resource cleanup. queryTimeoutSeconds1, fetchSize1024 and pauseAfterFirstRowMs0 avoid a client-pause-only expiration observation.",
+      "recommendedRepetitions": 3,
+      "historicalDiagnosticFailures": [
+        {
+          "status": "FAILED_STRICT_DEADLINE_CONTRACT",
+          "sql": {
+            "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+            "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+            "text": "SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0",
+            "encoding": "exact UTF-8; no added semicolon or comment"
+          },
+          "fetchSize": 1,
+          "pauseAfterFirstRowMs": 1500,
+          "finding": "The historical high-output run paused after its first row and later observed715 after Coordinator removal. It did not establish required720 and cannot certify this primary deadline case."
+        }
+      ]
+    },
+    {
+      "id": "R6",
+      "name": "Actual runtime execution exception and cleanup",
+      "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+      "sql": {
+        "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeException.sql",
+        "sha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57",
+        "text": "SELECT time, device_id, CAST(device_id AS INT64) AS native_cast_failure\nFROM runtime_dop_e2e.telemetry\nWHERE (CASE\n  WHEN (SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))\n        + COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))) > 0.5\n  THEN CASE WHEN device_id = 'd063' AND time >= 1815448512 AND time < 1815448576 THEN s1 - s1 + 1 ELSE s1 - s1 END\n  ELSE s1 - s1\nEND) = 1\n",
+        "encoding": "Exact UTF-8 late native CAST SQL; execution marker is separately hashed."
+      },
+      "requiredActualSourceNodes": 2,
+      "repetition": "r001; each repeat uses new explicit output paths",
+      "candidate": {
+        "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R6-primary-candidate.json",
+        "paramsSha256": "9888346534eea0fea5d39b8fc2706a30d981ffe9362e2a45bcba3cf1936fa7b8",
+        "output": "<OUTPUT_ROOT>/R6/primary/candidate/r001",
+        "argvTemplate": [
+          "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+          "-cp",
+          "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+          "StaticScanAcceptanceDriver",
+          "--mode",
+          "ordinary-sql",
+          "--params",
+          "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R6-primary-candidate.json"
+        ]
+      },
+      "control": {
+        "run": false,
+        "reason": "Negative acceptance requires actual runtime-group activity. A runtime-disabled control cannot establish that proof."
+      },
+      "comparison": {
+        "kind": "NO_COMPLETE_RESULT_EXISTS",
+        "oracle": null,
+        "prefixMembershipInterface": "NOT_AVAILABLE_DO_NOT_CLAIM"
+      },
+      "expectedServerCode": 701,
+      "expectedServerCodeSymbol": "TSStatusCode.SEMANTIC_ERROR",
+      "runtimeErrorIntent": "A residual arithmetic CASE keeps the device/time window behind the existing nested SIN/COS expression. Only d063 at times1815448512<=time<1815448576 reaches CAST(device_id AS INT64), a real nonnumeric native runtime failure. The64-row window is at the end of the heavy partition3 cell; parallel sources have no promised global traversal order. Actual plan, positive runtime activation, real Coordinator roster, FAILED FI and frozen resource cleanup remain mandatory.",
+      "postconditions": [
+        "Only exact authoritative JDBC701 from actual runtime evaluation after real runtime-group activation and complete FI/resource settlement qualifies.",
+        "Code701 name alone cannot distinguish analysis and execution; actual native runtime activity and FAILED FI remain mandatory.",
+        "Legacy raw0 message fallback remains limited to715/720/751; an unstructured701 is rejected.",
+        "No driver-side synthetic exception, verifier relaxation or oracle comparison of an exception prefix."
+      ],
+      "recommendedRepetitions": 3,
+      "supersededTrigger": {
+        "sql": {
+          "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionDivisionHistorical.sql",
+          "sha256": "9c2e1f680632a57e37012f5f5c96d0a2141efaa9b89444d0a961e36337b0718e",
+          "text": "SELECT time, device_id, g, s1, s2, s1 / (CASE WHEN device_id = 'd063' AND time >= 1814400000 THEN s1 - s1 ELSE CAST(1 AS INT64) END) AS runtime_failure_probe FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0",
+          "encoding": "exact UTF-8; no added semicolon or comment"
+        },
+        "status": "INVALID_RUNTIME_EXCEPTION_TRIGGER",
+        "finding": "Native arithmetic returned NULL instead of throwing; the old full4750916-row SUCCESS is preserved separately and cannot satisfy EXCEPTION.",
+        "expectedFailureCodeMustNotBeInferred": 751
+      },
+      "lateCastWindow": {
+        "deviceId": "d063",
+        "partitionIndex": 3,
+        "minTimeInclusive": 1815448512,
+        "maxTimeExclusive": 1815448576,
+        "expectedSelectedRows": 64,
+        "heavyCellRows": 1048576,
+        "rowIndicesInclusive": [
+          1048512,
+          1048575
+        ],
+        "fixtureGeometryRequirement": "The standard runtime_sql_fixture_v1 geometry in this manifest; verify the frozen final partition actually contains all64 selected rows before executing.",
+        "requiredPlan": "Residual CASE Filter before native CAST Project, with no pushed device/time pruning; no added ORDER BY or synthetic failure."
+      },
+      "historicalFastCastTrigger": {
+        "sql": {
+          "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionNativeCast.sql",
+          "sha256": "2468c3ec77b56c32c076423e4b62a6651ce3d4e4c50bbc46947e295f28ee0adb",
+          "text": "SELECT CAST(device_id AS INT64) AS invalid_value\nFROM runtime_dop_e2e.telemetry\nWHERE (SIN(CAST(s1 AS DOUBLE)) * SIN(CAST(s1 AS DOUBLE))\n       + COS(CAST(s1 AS DOUBLE)) * COS(CAST(s1 AS DOUBLE))) > 0.5\n",
+          "encoding": "Exact UTF-8; execution marker is separately hashed."
+        },
+        "status": "DIAGNOSTIC_FAILED_NO_COORDINATOR_ROSTER",
+        "finding": "The early native CAST is retained byte-for-byte as diagnostic history. Even after native vendor701 preservation, the query could fail before the roster probe captured a real Coordinator FI roster; strict acceptance rejected it. A correct error code alone cannot replace runtime, actual-FI and resource proof.",
+        "mustNotSubstituteForLatePrimary": true
+      }
+    },
+    {
+      "id": "R7",
+      "name": "Actual 2-DN multi-source hash GROUP BY shapes",
+      "status": "TARGET_HOST_REPLAY_REQUIRES_FROZEN_FINAL_ARTIFACT",
+      "sql": {
+        "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+        "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78",
+        "text": "SELECT g, COUNT(*) AS n, COUNT(s2) AS n2, SUM(s1) AS sum1, SUM(s2) AS sum2, MIN(s1) AS lo, MAX(s1) AS hi FROM runtime_dop_e2e.telemetry GROUP BY g",
+        "encoding": "exact UTF-8; no added semicolon or comment"
+      },
+      "requiredActualSourceNodes": 2,
+      "repetition": "r001; each repeat uses new explicit output paths",
+      "variants": [
+        {
+          "name": "grouped",
+          "sql": {
+            "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+            "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78",
+            "text": "SELECT g, COUNT(*) AS n, COUNT(s2) AS n2, SUM(s1) AS sum1, SUM(s2) AS sum2, MIN(s1) AS lo, MAX(s1) AS hi FROM runtime_dop_e2e.telemetry GROUP BY g",
+            "encoding": "exact UTF-8; no added semicolon or comment"
+          },
+          "candidate": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-candidate.json",
+            "paramsSha256": "0a828febabe65311b99a13dfe8447b69d8663cc6711bbe78c3758be0eb920241",
+            "output": "<OUTPUT_ROOT>/R7/grouped/candidate/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-candidate.json"
+            ]
+          },
+          "control": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json",
+            "paramsSha256": "51480d23032307e9cb50574f0f3425420f62c1152a8092469bdcb76b9ce379c4",
+            "output": "<OUTPUT_ROOT>/R7/grouped/control/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json"
+            ]
+          },
+          "comparison": {
+            "oracle": "grouped",
+            "oracleFullSha256": "1e4f9af5d570ccd6953b344c542dcd2c7df40bca2141934316455a78192a27ae",
+            "oracleLimit": null,
+            "expectedRows": 257,
+            "completeResultOnly": true,
+            "multisetComparator": "existing external-sort offline typed comparison",
+            "orderedSequenceAlsoRequired": false,
+            "argvTemplate": [
+              "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+              "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+              "--offline-typed-compare",
+              "--candidate-result-dir",
+              "<OUTPUT_ROOT>/R7/grouped/candidate/r001",
+              "--control-result-dir",
+              "<OUTPUT_ROOT>/R7/grouped/control/r001",
+              "--fixture-manifest",
+              "<FIXTURE_ROOT>/manifest.json",
+              "--expected-fixture-sha256",
+              "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+              "--oracle",
+              "grouped",
+              "--sort-memory-mib",
+              "64",
+              "--repository-root",
+              "<REPOSITORY_ROOT>",
+              "--output",
+              "<OUTPUT_ROOT>/R7/grouped/comparison/r001"
+            ]
+          },
+          "postconditions": [
+            "Actual source FIs execute on two ConfigNode-discovered running DataNodes.",
+            "Actual source FI+hash sink node keys, consistent plan-derived P and P unique bucket-owner FI IDs have complete unique N x P sink/reciprocal Exchange edges and correct endpoints.",
+            "Targets have real Exchange+aggregation metadata; do not guess aggregationStep.",
+            "Complete257-row results match fixed-one and named oracle; every real FI resource settles."
+          ]
+        },
+        {
+          "name": "filter-project",
+          "sql": {
+            "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/filterProjectGrouped.sql",
+            "sha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f",
+            "text": "SELECT k, COUNT(*) AS n, SUM(v) AS total FROM (SELECT g + 1 AS k, s1 + 7 AS v FROM runtime_dop_e2e.telemetry WHERE s1 >= 0) q GROUP BY k",
+            "encoding": "exact UTF-8; no added semicolon or comment"
+          },
+          "candidate": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-candidate.json",
+            "paramsSha256": "2dbad0a8d5f55045eb964d274d67d00ccdd702c0508b06dbafa9db6a47e200e8",
+            "output": "<OUTPUT_ROOT>/R7/filter-project/candidate/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-candidate.json"
+            ]
+          },
+          "control": {
+            "params": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-control.json",
+            "paramsSha256": "ffdfa2dd503206a9e19360be1d7aeea764ec006ad3212f8f263d993dc09a73bb",
+            "output": "<OUTPUT_ROOT>/R7/filter-project/control/r001",
+            "argvTemplate": [
+              "<VERIFIED_JAVA_ABSOLUTE_PATH>",
+              "-cp",
+              "<VERIFIED_ACCEPTANCE_CLASSPATH>",
+              "StaticScanAcceptanceDriver",
+              "--mode",
+              "ordinary-sql",
+              "--params",
+              "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-control.json"
+            ]
+          },
+          "comparison": {
+            "oracle": "filterProjectGrouped",
+            "oracleFullSha256": "ff6fb21791b9788a4babc7a4c35eb94e492e7db5fc2fcfbf426555e5c4e7df65",
+            "oracleLimit": null,
+            "expectedRows": 257,
+            "completeResultOnly": true,
+            "multisetComparator": "existing external-sort offline typed comparison",
+            "orderedSequenceAlsoRequired": false,
+            "argvTemplate": [
+              "<VERIFIED_PYTHON3_ABSOLUTE_PATH>",
+              "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
+              "--offline-typed-compare",
+              "--candidate-result-dir",
+              "<OUTPUT_ROOT>/R7/filter-project/candidate/r001",
+              "--control-result-dir",
+              "<OUTPUT_ROOT>/R7/filter-project/control/r001",
+              "--fixture-manifest",
+              "<FIXTURE_ROOT>/manifest.json",
+              "--expected-fixture-sha256",
+              "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+              "--oracle",
+              "filterProjectGrouped",
+              "--sort-memory-mib",
+              "64",
+              "--repository-root",
+              "<REPOSITORY_ROOT>",
+              "--output",
+              "<OUTPUT_ROOT>/R7/filter-project/comparison/r001"
+            ]
+          },
+          "postconditions": [
+            "Actual source FIs execute on two ConfigNode-discovered running DataNodes.",
+            "Actual source FI+hash sink node keys, consistent plan-derived P and P unique bucket-owner FI IDs have complete unique N x P sink/reciprocal Exchange edges and correct endpoints.",
+            "Targets have real Exchange+aggregation metadata; do not guess aggregationStep.",
+            "Complete257-row results match fixed-one and named oracle; every real FI resource settles."
+          ]
+        }
+      ],
+      "runtimeRequirement": "Every actual source requires positive supported runtime-group activation. R7 need not GROW/SHRINK if R1 proves it independently.",
+      "shapeRequirement": "Filter/Project raw-source shape must be observed in the actual roster, including optimizer pushdown decisions, rather than assumed.",
+      "recommendedRepetitions": {
+        "grouped": 3,
+        "filter-project": 2
+      }
+    }
+  ],
+  "compatibility": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json",
+  "globalPrerequisites": [
+    "Freeze final distribution/client CLI identity and verify actual JVM-loaded classes before runs.",
+    "Fresh runtime/fixed-one deployments, JMX enabled, time precisionms and partition interval604800000ms; load identical frozen fixture on both.",
+    "Prove actual2DN physical placement. Initial-one requires each source DataRegion's positive flushed TsFile total below128MiB, not row-count inference.",
+    "Every repeat uses fresh outputs; preserve failure/NOT_EXERCISED evidence. No implicit script/control fallback or controller injection.",
+    "Keep unrelated concurrent SQL off the isolated acceptance endpoints so resource baselines remain attributable."
+  ],
+  "knownMissingBeforeAcceptance": [
+    "Final reproduction-host package/CLI/actual class origins.",
+    "Fresh fixture and actual2DN physical placement.",
+    "AllR1-R7 runtime topology/events, terminal/resource proof and complete strict comparisons.",
+    "Runtime-active R3 early-stop if optimizer chooses SERIAL.",
+    "Negative-prefix independent membership verification.",
+    "Repeated performance experiments."
+  ],
+  "recommendedRunOrder": [
+    "frozen build/CLI and offline JDBC self-test",
+    "fresh dual deployment, fixture and actual placement",
+    "R7 grouped",
+    "R2 device/time and optional TIME-only full result",
+    "R3 LIMIT and actual fallback classification",
+    "R1 primary fullScanWindowFiltered real resize",
+    "R1 high-output compatibility",
+    "R7 filter-project",
+    "R4 KILL",
+    "R5 deadline",
+    "R6 exception",
+    "SHOW DEVICES/DIFF",
+    "repeat with fresh outputs"
+  ],
+  "verdictRule": "Generic CLI capture success is insufficient for case-specific postconditions. Distinguish PASS/FAIL/NOT_EXERCISED/INCOMPLETE. Preparation gives no speedup claim.",
+  "sourceFreeze": {
+    "rule": "Generate fixture from bound Git source; bind actual target manifest SHA after checking geometry and every stable oracle.",
+    "portablePayloadSha256": "b4842c1eb239b78835ed867aa8845438abd9df77e9288d6f8060c86cc9c8d260",
+    "portablePayloadScope": "All matrix files excluding case-manifest.json and file-index.json; repository-relative path, SHA256 and byte size.",
+    "portablePayloadHashRecipe": "SHA256 UTF-8 JSON list sorted by repository-relative path; each object path/sha256/bytes; json.dumps(ensure_ascii=False,sort_keys=True,separators=(\",\",\":\")); no final newline.",
+    "serviceTarget": "Bind a final frozen distribution/CLI/deployment and parameter/SQL identities on the reproduction host. These portable files encode the final native constant schema, exact deadline cause and late native CAST acceptance parameters; service outcomes and build/test evidence remain separately archived."
+  },
+  "statisticsObservabilityContract": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json"
+}

@@ -21,6 +21,27 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_NATIVE_SCHEDULER_BATCH_QUOTA_REJECTED_55A3C12F =
+      "原生调度器整批准入被 CPU 或内存配额拒绝。";
+
+  public static final String RUNTIME_COMPACT_OUTPUT_UNSUPPORTED_COLUMN =
+      "运行期紧凑输出无法确定列 %s 的保留内存上界。";
+
+  public static final String EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT =
+      "运行期扫描布局无效。";
+  public static final String EXCEPTION_RUNTIME_SCAN_BUDGET_NOT_INITIALIZED =
+      "运行期扫描预算尚未初始化。";
+  public static final String EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED =
+      "运行期扫描前沿预算不足。";
+  public static final String EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY =
+      "运行期扫描的原生依赖无效。";
+  public static final String EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE =
+      "运行期扫描执行描述状态无效。";
+  public static final String RUNTIME_COMPACT_OUTPUT_MEMORY_LIMIT_EXCEEDED =
+      "运行期紧凑输出需要 %d 字节，但内存上限为 %d 字节。";
+  public static final String RUNTIME_COMPACT_OUTPUT_LIMIT_MUST_BE_POSITIVE =
+      "运行期紧凑输出的内存上限必须为正数。";
+
   public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
       "谓词下推后存在不支持的 Join 条件 [%s]";
   public static final String EXCEPTION_QUERY_CHUNK_RESOURCES_ARE_ALREADY_CLOSED_CA6A0559 =

@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -212,7 +213,8 @@ public class RuntimeCleanupCoordinatorTest {
   }
 
   @Test
-  public void exceptionalDriverAcknowledgementsStillProveWriterExit() throws Exception {
+  public void exceptionalDriverCloseProvesExitButRetainsAmbiguousPhysicalOwnership()
+      throws Exception {
     RuntimeCleanupCoordinator c = coordinator();
     Owner owner = new Owner();
     RuntimeException q = new RuntimeException("quiescent cleanup failure");
@@ -232,7 +234,8 @@ public class RuntimeCleanupCoordinatorTest {
     assertFalse(c.getCompletedFuture().isDone());
     owner.closed.setException(closed);
     assertSame(q, failure(c.getCompletedFuture()));
-    assertEquals(1, released.get());
+    assertEquals(0, released.get());
+    assertSame(closed, failure(c.getDriversClosedFuture()));
     assertArrayEquals(new Throwable[] {closed}, q.getSuppressed());
   }
 
@@ -502,6 +505,77 @@ public class RuntimeCleanupCoordinatorTest {
     assertEquals(0, released.get());
   }
 
+  @Test
+  public void liveResizeMayRegisterAfterConstructionButTerminalResizeIsRejected() throws Exception {
+    RuntimeCleanupCoordinator c = coordinator();
+    RuntimeScanGroup group = new RuntimeScanGroup(Collections.singletonList(mock(IDriver.class)));
+    RuntimeScanWorker worker =
+        new RuntimeScanWorker(
+            group,
+            mock(org.apache.iotdb.db.queryengine.execution.driver.DriverContext.class),
+            0,
+            0,
+            () -> {});
+    c.registerGroup(group);
+    c.sealConstruction();
+    c.registerWorker(worker);
+    c.requestStop().get(5, TimeUnit.SECONDS);
+    assertTrue(worker.getRetiredFuture().isDone());
+    try {
+      c.registerWorker(
+          new RuntimeScanWorker(
+              group,
+              mock(org.apache.iotdb.db.queryengine.execution.driver.DriverContext.class),
+              1,
+              0,
+              () -> {}));
+      fail("terminal fragment cannot acquire new members");
+    } catch (IllegalStateException expected) {
+    }
+  }
+
+  @Test
+  public void retiredMemberRemovalRequiresBothAcknowledgmentsAndIsIdempotent() throws Exception {
+    RuntimeCleanupCoordinator c = coordinator();
+    RuntimeScanGroup group = new RuntimeScanGroup(Collections.singletonList(mock(IDriver.class)));
+    RuntimeScanWorker worker =
+        new RuntimeScanWorker(
+            group,
+            mock(org.apache.iotdb.db.queryengine.execution.driver.DriverContext.class),
+            0,
+            0,
+            () -> {});
+    c.registerGroup(group);
+    c.registerWorker(worker);
+    c.sealConstruction();
+    worker.requestRetirement().get(5, TimeUnit.SECONDS);
+    assertFalse(c.unregisterRetiredWorker(worker));
+    worker.acknowledgeSchedulerRemoval();
+    assertTrue(c.unregisterRetiredWorker(worker));
+    assertFalse(c.unregisterRetiredWorker(worker));
+    c.requestStop().get(5, TimeUnit.SECONDS);
+  }
+
+  @Test
+  public void stopRetainsItsCapturedMembersUntilTerminalCleanup() throws Exception {
+    RuntimeCleanupCoordinator c = coordinator();
+    RuntimeScanGroup group = new RuntimeScanGroup(Collections.singletonList(mock(IDriver.class)));
+    RuntimeScanWorker worker =
+        new RuntimeScanWorker(
+            group,
+            mock(org.apache.iotdb.db.queryengine.execution.driver.DriverContext.class),
+            0,
+            0,
+            () -> {});
+    c.registerGroup(group);
+    c.registerWorker(worker);
+    c.sealConstruction();
+    worker.requestRetirement().get(5, TimeUnit.SECONDS);
+    worker.acknowledgeSchedulerRemoval();
+    c.requestStop().get(5, TimeUnit.SECONDS);
+    assertFalse(c.unregisterRetiredWorker(worker));
+  }
+
   private static RuntimeCleanupCoordinator coordinator() {
     return new RuntimeCleanupCoordinator(MoreExecutors.directExecutor());
   }
@@ -509,6 +583,122 @@ public class RuntimeCleanupCoordinatorTest {
   private static ListenableFuture<Void> mark(List<String> events, String event) {
     events.add(event);
     return Futures.immediateVoidFuture();
+  }
+
+  @Test
+  public void requiredPhysicalFailuresWithholdDependentPhasesAfterAttemptingPeers()
+      throws Exception {
+    for (RuntimeCleanupCoordinator.Phase phase :
+        Arrays.asList(BEFORE_DRIVER_CLOSE, CLOSE_ENDPOINTS, RELEASE_FRONTIERS, RELEASE_RESOURCES)) {
+      for (boolean synchronous : Arrays.asList(false, true)) {
+        RuntimeCleanupCoordinator c = coordinator();
+        AtomicInteger peerAttempts = new AtomicInteger();
+        AtomicInteger deregistrations = new AtomicInteger();
+        IllegalStateException expected = new IllegalStateException();
+        c.addRequiredCleanup(
+            phase,
+            () -> {
+              if (synchronous) throw expected;
+              return Futures.immediateFailedFuture(expected);
+            });
+        c.addRequiredCleanup(
+            phase,
+            () -> {
+              peerAttempts.incrementAndGet();
+              return Futures.immediateVoidFuture();
+            });
+        c.addRequiredCleanup(
+            DEREGISTER,
+            () -> {
+              deregistrations.incrementAndGet();
+              return Futures.immediateVoidFuture();
+            });
+        c.sealConstruction();
+        assertSame(expected, failure(c.requestStop()));
+        assertEquals(1, peerAttempts.get());
+        assertEquals(0, deregistrations.get());
+      }
+    }
+  }
+
+  @Test
+  public void requiredPhaseWaitsForSuccessAndCancellationIsNotSettlement() throws Exception {
+    RuntimeCleanupCoordinator c = coordinator();
+    SettableFuture<Void> physical = SettableFuture.create();
+    AtomicInteger deregistrations = new AtomicInteger();
+    c.addRequiredCleanup(RELEASE_FRONTIERS, () -> physical);
+    c.addRequiredCleanup(
+        DEREGISTER,
+        () -> {
+          deregistrations.incrementAndGet();
+          return Futures.immediateVoidFuture();
+        });
+    c.sealConstruction();
+    ListenableFuture<Void> completion = c.requestStop();
+    assertFalse(completion.isDone());
+    assertEquals(0, deregistrations.get());
+    physical.cancel(false);
+    assertTrue(failure(completion) instanceof CancellationException);
+    assertEquals(0, deregistrations.get());
+  }
+
+  @Test
+  public void successOnlyOwnerReleaseDropsDriversGroupsAndCapturedSteps() throws Exception {
+    RuntimeCleanupCoordinator c = coordinator();
+    Owner owner = new Owner();
+    RuntimeScanGroup group = new RuntimeScanGroup(Collections.singletonList(mock(IDriver.class)));
+    c.registerDriver(owner.driver);
+    c.registerGroup(group);
+    Object capturedOwner = new Object();
+    c.addRequiredCleanup(
+        RELEASE_RESOURCES,
+        () -> {
+          assertNotNull(capturedOwner);
+          return Futures.immediateVoidFuture();
+        });
+    assertThrows(IllegalStateException.class, c::releaseSuccessfulOwners);
+    owner.quiesced.set(null);
+    owner.closed.set(null);
+    c.requestStop();
+    c.sealConstruction();
+    c.getCompletedFuture().get(5, TimeUnit.SECONDS);
+    c.releaseSuccessfulOwners();
+    c.releaseSuccessfulOwners();
+    for (String name :
+        Arrays.asList(
+            "drivers", "driverIdentities", "groups", "groupIdentities", "requiredSteps")) {
+      java.lang.reflect.Field field = RuntimeCleanupCoordinator.class.getDeclaredField(name);
+      field.setAccessible(true);
+      assertTrue(((java.util.Collection<?>) field.get(c)).isEmpty());
+    }
+    java.lang.reflect.Field steps = RuntimeCleanupCoordinator.class.getDeclaredField("steps");
+    steps.setAccessible(true);
+    for (Object callbacks : ((java.util.Map<?, ?>) steps.get(c)).values()) {
+      assertTrue(((java.util.List<?>) callbacks).isEmpty());
+    }
+    c.requestStop().get(5, TimeUnit.SECONDS);
+    verify(owner.driver, times(1)).requestClose();
+  }
+
+  @Test
+  public void failedCleanupCannotDiscardPhysicalOwnersOrCleanupClosures() throws Exception {
+    RuntimeCleanupCoordinator c = coordinator();
+    Owner owner = new Owner();
+    c.registerDriver(owner.driver);
+    c.addRequiredCleanup(RELEASE_RESOURCES, Futures::immediateVoidFuture);
+    owner.quiesced.set(null);
+    owner.closed.setException(new IllegalStateException());
+    c.requestStop();
+    c.sealConstruction();
+    assertTrue(failure(c.getCompletedFuture()) instanceof IllegalStateException);
+    assertThrows(IllegalStateException.class, c::releaseSuccessfulOwners);
+    java.lang.reflect.Field drivers = RuntimeCleanupCoordinator.class.getDeclaredField("drivers");
+    drivers.setAccessible(true);
+    assertEquals(Collections.singletonList(owner.driver), drivers.get(c));
+    java.lang.reflect.Field steps =
+        RuntimeCleanupCoordinator.class.getDeclaredField("requiredSteps");
+    steps.setAccessible(true);
+    assertEquals(1, ((java.util.Set<?>) steps.get(c)).size());
   }
 
   private static Throwable failure(ListenableFuture<?> future) throws Exception {

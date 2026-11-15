@@ -1,0 +1,1 @@
+SELECT time, device_id, g, s1, s2, s1 / (CASE WHEN device_id = 'd063' AND time >= 1814400000 THEN s1 - s1 ELSE CAST(1 AS INT64) END) AS runtime_failure_probe FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0

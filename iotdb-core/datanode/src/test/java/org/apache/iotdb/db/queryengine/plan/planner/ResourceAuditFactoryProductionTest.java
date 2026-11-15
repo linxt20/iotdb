@@ -106,6 +106,10 @@ public class ResourceAuditFactoryProductionTest {
           .thenReturn(
               LocalExecutionResourceRegistry.memoryKey(
                   context.getFragmentInstanceId(), "pipeline"));
+      org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue.MemoryReservationKey
+          auditMemoryKey = queue.getMemoryReservationKey();
+      Mockito.when(queue.getQueueIdentityKey()).thenReturn(auditMemoryKey);
+      Mockito.when(queue.getActualAccountKey()).thenReturn(auditMemoryKey);
       org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel sink =
           Mockito.mock(
               org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel.class);

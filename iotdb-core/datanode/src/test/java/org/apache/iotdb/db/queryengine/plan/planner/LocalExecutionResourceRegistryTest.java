@@ -40,6 +40,8 @@ public class LocalExecutionResourceRegistryTest {
         new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.i", "scan");
     SharedTsBlockQueue queue = Mockito.mock(SharedTsBlockQueue.class);
     Mockito.when(queue.getMemoryReservationKey()).thenReturn(key);
+    Mockito.when(queue.getQueueIdentityKey()).thenReturn(key);
+    Mockito.when(queue.getActualAccountKey()).thenReturn(key);
 
     LocalExecutionResourceRegistry registry = new LocalExecutionResourceRegistry();
     registry.registerQueue(queue);
@@ -642,6 +644,421 @@ public class LocalExecutionResourceRegistryTest {
       } finally {
         registry.abortUntransferred(new RuntimeException("frozen cleanup"));
       }
+    }
+  }
+
+  @Test
+  public void boundRuntimeRegistryUsesCanonicalPoolFragmentIdentity() {
+    org.apache.iotdb.db.queryengine.common.FragmentInstanceId owner =
+        new org.apache.iotdb.db.queryengine.common.FragmentInstanceId(
+            new org.apache.iotdb.db.queryengine.common.PlanFragmentId(
+                new org.apache.iotdb.db.queryengine.common.QueryId("canonical_runtime"), 0),
+            "instance");
+    org.apache.iotdb.db.queryengine.execution.memory.MemoryPool pool =
+        new org.apache.iotdb.db.queryengine.execution.memory.MemoryPool(
+            "canonical-runtime", new org.apache.iotdb.commons.memory.MemoryManager(1024), 512);
+    SharedTsBlockQueue.MemoryReservationKey key =
+        new SharedTsBlockQueue.MemoryReservationKey(
+            owner.getQueryId().getId(), owner.getFragmentInstanceId(), "group");
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation reservation =
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.tryCreate(
+                pool, key, 1, 32, 512)
+            .get();
+    try {
+      LocalExecutionResourceRegistry registry = new LocalExecutionResourceRegistry();
+      registry.bindResourceAudit(owner);
+      registry.registerRuntimeFrontier("canonical-scan", reservation);
+      assertEquals(1, registry.snapshotRuntime(pool).groups().size());
+    } finally {
+      reservation.close();
+      pool.deRegisterFragmentInstanceFromQueryMemoryMap(
+          owner.getQueryId().getId(), owner.getFragmentInstanceId(), true);
+    }
+  }
+
+  @Test
+  public void runtimeDualKeysAndGroupAccountDoNotChangeTheFrozenV2Snapshot() {
+    org.apache.iotdb.db.queryengine.execution.memory.MemoryPool pool =
+        new org.apache.iotdb.db.queryengine.execution.memory.MemoryPool(
+            "registry-runtime", new org.apache.iotdb.commons.memory.MemoryManager(1024), 512);
+    SharedTsBlockQueue.MemoryReservationKey account =
+        new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.0", "group");
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation reservation =
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.tryCreate(
+                pool, account, 2, 32, 512)
+            .get();
+    LocalExecutionResourceRegistry registry = new LocalExecutionResourceRegistry();
+    java.util.concurrent.atomic.AtomicBoolean sourceClosed =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    try {
+      registry.registerRuntimeFrontier("scan", reservation);
+      SharedTsBlockQueue first = runtimeQueue("lane-a", account, 0);
+      SharedTsBlockQueue second = runtimeQueue("lane-b", account, 1);
+      org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel sink =
+          Mockito.mock(
+              org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel.class);
+      Mockito.when(sink.getSharedTsBlockQueue()).thenReturn(first);
+      org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle source =
+          Mockito.mock(
+              org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle.class);
+      Mockito.when(source.getSharedTsBlockQueue()).thenReturn(first);
+      Mockito.when(source.isClosed()).thenAnswer(call -> sourceClosed.get());
+      registry.registerQueue(first);
+      registry.registerQueue(second);
+      registry.registerSink(sink);
+      registry.registerSourceHandle(source);
+      LocalExecutionResourceRegistry.Snapshot before = registry.snapshot(512, 128);
+      LocalExecutionResourceRegistry.Snapshot frozen = registry.freeze(512, 128);
+      assertEquals(before, frozen);
+      assertEquals(2, frozen.objectCount());
+      assertEquals(2, frozen.uniqueMemoryKeyCount());
+      assertEquals(OptionalLong.of(256), frozen.nominalShareBytes());
+      assertEquals(128, frozen.effectiveRequestBytes());
+
+      org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot runtime =
+          registry.snapshotRuntime(pool);
+      assertEquals(3, runtime.schemaVersion());
+      assertEquals(4, runtime.resources().size());
+      assertEquals(1, runtime.accounts().size());
+      assertEquals(1, runtime.groups().size());
+      assertEquals(Long.valueOf(64), runtime.actualReservedBytes());
+      assertTrue(
+          runtime.resources().stream()
+              .allMatch(resource -> account.equals(resource.actualAccountKey())));
+      sourceClosed.set(true);
+      assertTrue(
+          registry.snapshotRuntime(pool).resources().stream()
+              .anyMatch(
+                  resource -> resource.kind().equals("SOURCE_HANDLE") && resource.terminal()));
+      assertFalse(
+          registry.snapshotRuntime(pool).resources().stream()
+              .filter(resource -> resource.kind().equals("SINK"))
+              .findFirst()
+              .get()
+              .terminal());
+      assertSame(frozen, registry.getFrozenSnapshot());
+      assertEquals(before, registry.snapshot(512, 128));
+      org.apache.iotdb.db.queryengine.execution.memory.MemoryPool other =
+          new org.apache.iotdb.db.queryengine.execution.memory.MemoryPool(
+              "registry-runtime", new org.apache.iotdb.commons.memory.MemoryManager(1024), 512);
+      assertThrows(IllegalArgumentException.class, () -> registry.snapshotRuntime(other));
+    } finally {
+      reservation.close();
+    }
+  }
+
+  @Test
+  public void conflictingRuntimeMappingCannotReplaceTheFirstV2Entry() {
+    LocalExecutionResourceRegistry registry = new LocalExecutionResourceRegistry();
+    Object identity = new Object();
+    SharedTsBlockQueue.MemoryReservationKey first =
+        new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.0", "first");
+    SharedTsBlockQueue.MemoryReservationKey other =
+        new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.0", "other");
+    registry.register(identity, "REMOTE", first);
+    assertThrows(
+        IllegalArgumentException.class, () -> registry.register(identity, "REMOTE", other));
+    assertEquals(1, registry.getObjectCount());
+    assertEquals(first, registry.snapshotEntries().get(0).memoryAccountKey());
+  }
+
+  @Test
+  public void runtimeClosureWaitsForBothRemoteSourceAndSinkReceipts() throws Exception {
+    for (boolean abort : new boolean[] {false, true}) {
+      RemoteClosureFixture f = new RemoteClosureFixture();
+      Throwable cause = new RuntimeException("FI stop");
+      com.google.common.util.concurrent.ListenableFuture<Void> closed =
+          f.registry.closeRuntimeOwners(abort, cause);
+      assertFalse(closed.isDone());
+      java.util.concurrent.atomic.AtomicBoolean monitorHeld =
+          new java.util.concurrent.atomic.AtomicBoolean();
+      java.util.concurrent.CountDownLatch observed = new java.util.concurrent.CountDownLatch(1);
+      closed.addListener(
+          () -> {
+            monitorHeld.set(
+                Thread.holdsLock(f.registry)
+                    || Thread.holdsLock(f.source)
+                    || Thread.holdsLock(f.sink));
+            observed.countDown();
+          },
+          com.google.common.util.concurrent.MoreExecutors.directExecutor());
+      if (abort) {
+        Mockito.verify(f.source).requestCoordinatedAbort(cause);
+        Mockito.verify(f.sink).requestCoordinatedAbort(cause);
+      } else {
+        Mockito.verify(f.source).requestCoordinatedClose();
+        Mockito.verify(f.sink).requestCoordinatedClose();
+      }
+      f.sourceReceipt.set(null);
+      assertFalse(closed.isDone());
+      f.sinkReceipt.set(null);
+      closed.get(5, java.util.concurrent.TimeUnit.SECONDS);
+      assertTrue(observed.await(5, java.util.concurrent.TimeUnit.SECONDS));
+      assertFalse(monitorHeld.get());
+    }
+  }
+
+  @Test
+  public void oneEndpointRequestFailureStillStopsOtherOwnersAndWaitsActualReceipt()
+      throws Exception {
+    RemoteClosureFixture f = new RemoteClosureFixture();
+    RuntimeException expected = new RuntimeException("source request failed");
+    Mockito.when(f.source.requestCoordinatedClose()).thenThrow(expected);
+    org.apache.iotdb.calc.execution.operator.Operator root =
+        Mockito.mock(org.apache.iotdb.calc.execution.operator.Operator.class);
+    f.registry.registerOperatorRoot(root);
+    com.google.common.util.concurrent.ListenableFuture<Void> closed =
+        f.registry.closeRuntimeOwners(false, null);
+    Mockito.verify(f.source).requestCoordinatedClose();
+    Mockito.verify(f.sink).requestCoordinatedClose();
+    Mockito.verify(root).close();
+    assertFalse(closed.isDone());
+    f.sinkReceipt.set(null);
+    java.util.concurrent.ExecutionException failure =
+        assertThrows(
+            java.util.concurrent.ExecutionException.class,
+            () -> closed.get(5, java.util.concurrent.TimeUnit.SECONDS));
+    assertSame(expected, failure.getCause());
+  }
+
+  @Test
+  public void runtimeClosureObserverCancellationDoesNotCancelEndpointSettlement() throws Exception {
+    RemoteClosureFixture f = new RemoteClosureFixture();
+    com.google.common.util.concurrent.ListenableFuture<Void> first =
+        f.registry.closeRuntimeOwners(false, null);
+    assertTrue(first.cancel(true));
+    assertFalse(f.sourceReceipt.isCancelled());
+    assertFalse(f.sinkReceipt.isCancelled());
+    com.google.common.util.concurrent.ListenableFuture<Void> second =
+        f.registry.closeRuntimeOwners(true, new RuntimeException("later cancellation"));
+    assertFalse(second.isDone());
+    assertFalse(second.isCancelled());
+    f.sourceReceipt.set(null);
+    assertFalse(second.isDone());
+    f.sinkReceipt.set(null);
+    second.get(5, java.util.concurrent.TimeUnit.SECONDS);
+    Mockito.verify(f.source, Mockito.times(1)).requestCoordinatedClose();
+    Mockito.verify(f.sink, Mockito.times(1)).requestCoordinatedClose();
+    Mockito.verify(f.source, Mockito.never()).requestCoordinatedAbort(Mockito.<Throwable>any());
+    Mockito.verify(f.sink, Mockito.never()).requestCoordinatedAbort(Mockito.<Throwable>any());
+  }
+
+  @Test
+  public void repeatedRuntimeClosureRetainsSameFailureReceiptWithoutReplayingOwners()
+      throws Exception {
+    RemoteClosureFixture f = new RemoteClosureFixture();
+    RuntimeException expected = new RuntimeException("asynchronous source failure");
+    org.apache.iotdb.calc.execution.operator.Operator root =
+        Mockito.mock(org.apache.iotdb.calc.execution.operator.Operator.class);
+    f.registry.registerOperatorRoot(root);
+    f.sourceReceipt.setException(expected);
+    com.google.common.util.concurrent.ListenableFuture<Void> first =
+        f.registry.closeRuntimeOwners(false, null);
+    assertFalse(first.isDone());
+    f.sinkReceipt.set(null);
+    for (int attempt = 0; attempt < 2; attempt++) {
+      com.google.common.util.concurrent.ListenableFuture<Void> observer =
+          attempt == 0
+              ? first
+              : f.registry.closeRuntimeOwners(true, new RuntimeException("repeat"));
+      java.util.concurrent.ExecutionException failure =
+          assertThrows(
+              java.util.concurrent.ExecutionException.class,
+              () -> observer.get(5, java.util.concurrent.TimeUnit.SECONDS));
+      assertSame(expected, failure.getCause());
+    }
+    Mockito.verify(f.source, Mockito.times(1)).requestCoordinatedClose();
+    Mockito.verify(f.sink, Mockito.times(1)).requestCoordinatedClose();
+    Mockito.verify(root, Mockito.times(1)).close();
+    Mockito.verify(f.source, Mockito.never()).requestCoordinatedAbort(Mockito.<Throwable>any());
+    Mockito.verify(f.sink, Mockito.never()).requestCoordinatedAbort(Mockito.<Throwable>any());
+  }
+
+  @Test
+  public void rootCloseFailureStillWaitsForRemoteEndpointsToReallyStop() throws Exception {
+    RemoteClosureFixture f = new RemoteClosureFixture();
+    RuntimeException expected = new RuntimeException("root close failed");
+    org.apache.iotdb.calc.execution.operator.Operator root =
+        Mockito.mock(org.apache.iotdb.calc.execution.operator.Operator.class);
+    Mockito.doAnswer(
+            call -> {
+              assertFalse(Thread.holdsLock(f.registry));
+              throw expected;
+            })
+        .when(root)
+        .close();
+    f.registry.registerOperatorRoot(root);
+    com.google.common.util.concurrent.ListenableFuture<Void> closed =
+        f.registry.closeRuntimeOwners(false, null);
+    Mockito.verify(f.source).requestCoordinatedClose();
+    Mockito.verify(f.sink).requestCoordinatedClose();
+    assertFalse(closed.isDone());
+    f.sourceReceipt.set(null);
+    assertFalse(closed.isDone());
+    f.sinkReceipt.set(null);
+    java.util.concurrent.ExecutionException failure =
+        assertThrows(
+            java.util.concurrent.ExecutionException.class,
+            () -> closed.get(5, java.util.concurrent.TimeUnit.SECONDS));
+    assertSame(expected, failure.getCause());
+    Mockito.verify(root, Mockito.times(1)).close();
+  }
+
+  @Test
+  public void priorLegacyAbortCannotTurnClearedOwnerSetIntoSuccessfulRuntimeReceipt()
+      throws Exception {
+    RemoteClosureFixture f = new RemoteClosureFixture();
+    RuntimeException original = new RuntimeException("legacy planning abort");
+    f.registry.abortUntransferred(original);
+    Mockito.verify(f.source).abort(original);
+    Mockito.verify(f.sink).abort();
+    com.google.common.util.concurrent.ListenableFuture<Void> first =
+        f.registry.closeRuntimeOwners(true, original);
+    java.util.concurrent.ExecutionException failure =
+        assertThrows(
+            java.util.concurrent.ExecutionException.class,
+            () -> first.get(5, java.util.concurrent.TimeUnit.SECONDS));
+    java.util.concurrent.ExecutionException repeated =
+        assertThrows(
+            java.util.concurrent.ExecutionException.class,
+            () ->
+                f.registry
+                    .closeRuntimeOwners(false, null)
+                    .get(5, java.util.concurrent.TimeUnit.SECONDS));
+    assertSame(failure.getCause(), repeated.getCause());
+    Mockito.verify(f.source, Mockito.never()).requestCoordinatedClose();
+    Mockito.verify(f.sink, Mockito.never()).requestCoordinatedClose();
+    Mockito.verify(f.source, Mockito.never()).requestCoordinatedAbort(Mockito.<Throwable>any());
+    Mockito.verify(f.sink, Mockito.never()).requestCoordinatedAbort(Mockito.<Throwable>any());
+    Mockito.verify(f.source, Mockito.times(1)).abort(original);
+    Mockito.verify(f.sink, Mockito.times(1)).abort();
+  }
+
+  private static final class RemoteClosureFixture {
+    final LocalExecutionResourceRegistry registry = new LocalExecutionResourceRegistry();
+    final org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle source =
+        Mockito.mock(org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle.class);
+    final org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel sink =
+        Mockito.mock(org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel.class);
+    final com.google.common.util.concurrent.SettableFuture<Void> sourceReceipt =
+        com.google.common.util.concurrent.SettableFuture.create();
+    final com.google.common.util.concurrent.SettableFuture<Void> sinkReceipt =
+        com.google.common.util.concurrent.SettableFuture.create();
+
+    RemoteClosureFixture() {
+      Mockito.when(source.requestCoordinatedClose())
+          .thenAnswer(
+              call -> {
+                assertFalse(Thread.holdsLock(registry));
+                return sourceReceipt;
+              });
+      Mockito.when(sink.requestCoordinatedClose())
+          .thenAnswer(
+              call -> {
+                assertFalse(Thread.holdsLock(registry));
+                return sinkReceipt;
+              });
+      Mockito.when(source.requestCoordinatedAbort(Mockito.<Throwable>any()))
+          .thenAnswer(
+              call -> {
+                assertFalse(Thread.holdsLock(registry));
+                return sourceReceipt;
+              });
+      Mockito.when(sink.requestCoordinatedAbort(Mockito.<Throwable>any()))
+          .thenAnswer(
+              call -> {
+                assertFalse(Thread.holdsLock(registry));
+                return sinkReceipt;
+              });
+      registry.register(
+          source,
+          "SOURCE_HANDLE",
+          new SharedTsBlockQueue.MemoryReservationKey("runtime_close", "0.0", "source"));
+      registry.register(
+          sink,
+          "SINK",
+          new SharedTsBlockQueue.MemoryReservationKey("runtime_close", "0.0", "sink"));
+    }
+  }
+
+  private static SharedTsBlockQueue runtimeQueue(
+      String node, SharedTsBlockQueue.MemoryReservationKey account, int lane) {
+    SharedTsBlockQueue queue = Mockito.mock(SharedTsBlockQueue.class);
+    SharedTsBlockQueue.MemoryReservationKey identity =
+        new SharedTsBlockQueue.MemoryReservationKey("q", "q.0.0", node);
+    Mockito.when(queue.getMemoryReservationKey()).thenReturn(identity);
+    Mockito.when(queue.getQueueIdentityKey()).thenReturn(identity);
+    Mockito.when(queue.getActualAccountKey()).thenReturn(account);
+    Mockito.when(queue.isFrontierMode()).thenReturn(true);
+    Mockito.when(queue.getFrontierLaneIndex()).thenReturn(lane);
+    return queue;
+  }
+
+  @Test
+  public void cancellationWithoutFailureCauseSettlesRealQueuesAndPendingConsumers()
+      throws Exception {
+    try (BQuotaCompatibilityContractTest.RealShuffle real =
+        new BQuotaCompatibilityContractTest.RealShuffle(2, 2)) {
+      LocalExecutionResourceRegistry registry = new LocalExecutionResourceRegistry();
+      java.util.List<org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle>
+          sources = new java.util.ArrayList<>();
+      for (SharedTsBlockQueue queue : real.localQueues) {
+        org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle source =
+            new org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle(
+                queue,
+                Mockito.mock(
+                    org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager
+                        .SourceHandleListener.class),
+                "cancel-without-failure");
+        sources.add(source);
+        registry.registerSourceHandle(source);
+        registry.registerQueue(queue);
+      }
+      com.google.common.util.concurrent.ListenableFuture<?> waiting = sources.get(1).isBlocked();
+      assertFalse(waiting.isDone());
+      real.sink.sendToChannel(0, BQuotaCompatibilityContractTest.block(1024));
+      assertTrue(real.localQueues.get(0).getBufferRetainedSizeInBytes() > 0);
+      assertTrue(real.pool.getRemainingBytes() < BQuotaCompatibilityContractTest.LEGACY_CAP * 2L);
+
+      registry.closeRuntimeOwners(true, null).get(5, java.util.concurrent.TimeUnit.SECONDS);
+      registry.closeRuntimeOwners(true, null).get(5, java.util.concurrent.TimeUnit.SECONDS);
+      for (org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle source :
+          sources) assertTrue(source.isAborted());
+      for (SharedTsBlockQueue queue : real.localQueues) {
+        assertTrue(queue.isClosed());
+        assertEquals(0L, queue.getBufferRetainedSizeInBytes());
+      }
+      assertTrue(waiting.isDone());
+      assertEquals(BQuotaCompatibilityContractTest.LEGACY_CAP * 2L, real.pool.getRemainingBytes());
+      assertEquals(
+          0L,
+          real.pool.snapshotFragmentReservations("quota_contract", "0.0").fragmentReservedBytes());
+    }
+  }
+
+  @Test
+  public void missingCancellationCauseIsSharedAndDoesNotReplaceARealFailure() throws Exception {
+    for (Throwable original : new Throwable[] {null, new IllegalStateException("actual failure")}) {
+      LocalExecutionResourceRegistry registry = new LocalExecutionResourceRegistry();
+      org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle first =
+          Mockito.mock(
+              org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle.class);
+      org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle second =
+          Mockito.mock(
+              org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle.class);
+      registry.registerSourceHandle(first);
+      registry.registerSourceHandle(second);
+      registry.closeRuntimeOwners(true, original).get(5, java.util.concurrent.TimeUnit.SECONDS);
+      org.mockito.ArgumentCaptor<Throwable> firstCause =
+          org.mockito.ArgumentCaptor.forClass(Throwable.class);
+      org.mockito.ArgumentCaptor<Throwable> secondCause =
+          org.mockito.ArgumentCaptor.forClass(Throwable.class);
+      Mockito.verify(first).abort(firstCause.capture());
+      Mockito.verify(second).abort(secondCause.capture());
+      assertSame(firstCause.getValue(), secondCause.getValue());
+      if (original == null)
+        assertTrue(firstCause.getValue() instanceof java.util.concurrent.CancellationException);
+      else assertSame(original, firstCause.getValue());
     }
   }
 }

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "mode": "ordinary-sql",
+  "manifest": "/ABS/candidate/deployment-manifest.json",
+  "sqlFile": "/ABS/sql/deadline.sql",
+  "out": "/ABS/evidence/deadline-candidate-001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "queryTimeoutSeconds": 1,
+  "fetchSize": 1024,
+  "requireActualSourceNodeCount": 2,
+  "requireGrowShrink": false,
+  "requireOrderedInitialOne": false,
+  "expectedOutcome": "DEADLINE",
+  "requireHashRepartition": false,
+  "pauseAfterFirstRowMs": 1500
+}

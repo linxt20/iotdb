@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
 
@@ -55,6 +57,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerT
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -153,6 +156,38 @@ public class SingleSourceGroupByHashRepartitionPlanningTest {
     assertTrue(
         planAndCollectNodes("SELECT s1 + 1, count(*) FROM testdb.table1 GROUP BY s1 + 1").stream()
             .anyMatch(TableHashPartitioningShuffleSinkNode.class::isInstance));
+  }
+
+  @Test
+  public void diffGroupingExpressionReachesHashSourceWithOriginalScanAdmissionDenied() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableTableGroupByHashRepartition(true);
+
+    List<PlanNode> nodes =
+        planAndCollectNodes("SELECT diff(s1), count(*) FROM testdb.table1 GROUP BY diff(s1)");
+    List<TableHashPartitioningShuffleSinkNode> hashSinks =
+        nodes.stream()
+            .filter(TableHashPartitioningShuffleSinkNode.class::isInstance)
+            .map(TableHashPartitioningShuffleSinkNode.class::cast)
+            .collect(Collectors.toList());
+    assertEquals(
+        "the single-region SQL must reach the hash-source admission boundary", 1, hashSinks.size());
+    List<PlanNode> sourceNodes = new ArrayList<>();
+    collectAll(hashSinks.get(0), sourceNodes);
+    assertTrue(
+        sourceNodes.stream()
+            .filter(ProjectNode.class::isInstance)
+            .map(ProjectNode.class::cast)
+            .flatMap(project -> project.getAssignments().getMap().values().stream())
+            .anyMatch(expression -> containsDiffFunction(expression)));
+    List<DeviceTableScanNode> scans =
+        sourceNodes.stream()
+            .filter(node -> node.getClass() == DeviceTableScanNode.class)
+            .map(DeviceTableScanNode.class::cast)
+            .collect(Collectors.toList());
+    assertEquals(1, scans.size());
+    assertFalse(
+        "a DIFF project must not erase the scan's original denial of unordered splitting",
+        scans.get(0).isAllowParallelScan());
   }
 
   @Test

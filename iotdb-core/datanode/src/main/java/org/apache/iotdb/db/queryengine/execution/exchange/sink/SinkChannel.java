@@ -19,6 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
+import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
+import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
+import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
@@ -28,18 +46,20 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.exception.exchange.GetTsBlockFromClosedOrAbortedChannelException;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
+import org.apache.iotdb.db.queryengine.execution.exchange.RpcResponseLeaseScope;
+import org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeBlockCodec;
+import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue.MemoryReservationKey;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool.MemoryReservationResult;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeEndpointFrontier;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.thrift.TApplicationException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.external.commons.lang3.Validate;
@@ -49,28 +69,15 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
-import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
-import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
-import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
-import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
-import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
-
 public class SinkChannel implements ISinkChannel {
 
   private static class TsBlockInfo {
     private TsBlock tsBlock;
     private ByteBuffer serializedTsBlock;
     private final long tsBlockSize;
+    private RuntimeFrontierReservation.BlockCredit credit;
+    private boolean mapOwner = true;
+    private int responsePins;
 
     // private Class, no need to do access control
     private TsBlockInfo(TsBlock tsBlock, ByteBuffer serializedTsBlock, long tsBlockSize) {
@@ -125,6 +132,20 @@ public class SinkChannel implements ISinkChannel {
   private boolean aborted = false;
 
   private boolean closed = false;
+
+  // Guarded by this. Future completion and terminal listener notifications happen outside this
+  // lock.
+  private final SettableFuture<Void> coordinatedCloseFuture = SettableFuture.create();
+  private int inFlightEndpointTasks;
+  private boolean coordinatedCloseRequested;
+  private boolean coordinatedNotificationClaimed;
+  private boolean terminalCleanupStarted;
+  private boolean terminalCleanupFinished;
+  private Throwable endpointFailure;
+  private Throwable terminalActionFailure;
+  private final RuntimeEndpointFrontier frontier;
+  private int pendingResponsePins;
+  private int pendingCreditReturns;
 
   private boolean noMoreTsBlocks = false;
 
@@ -187,6 +208,66 @@ public class SinkChannel implements ISinkChannel {
       boolean isHighestPriority,
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager) {
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        remotePlanNodeId,
+        localPlanNodeId,
+        localFragmentInstanceId,
+        localMemoryManager,
+        executorService,
+        serde,
+        sinkListener,
+        isHighestPriority,
+        mppDataExchangeServiceClientManager,
+        null);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SinkChannel(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remotePlanNodeId,
+      String localPlanNodeId,
+      TFragmentInstanceId localFragmentInstanceId,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SinkListener sinkListener,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager,
+      RuntimeEndpointFrontier frontier) {
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        remotePlanNodeId,
+        localPlanNodeId,
+        localFragmentInstanceId,
+        localMemoryManager,
+        executorService,
+        serde,
+        sinkListener,
+        false,
+        mppDataExchangeServiceClientManager,
+        frontier);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SinkChannel(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remotePlanNodeId,
+      String localPlanNodeId,
+      TFragmentInstanceId localFragmentInstanceId,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SinkListener sinkListener,
+      boolean isHighestPriority,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager,
+      RuntimeEndpointFrontier frontier) {
+    this.frontier = frontier;
     this.remoteEndpoint =
         Validate.notNull(
             remoteEndpoint,
@@ -233,13 +314,19 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.instanceId);
     this.bufferRetainedSizeInBytes = 0;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
-    localMemoryManager
-        .getQueryPool()
-        .registerPlanNodeIdToQueryMemoryMap(
-            localFragmentInstanceId.queryId,
-            fullFragmentInstanceId,
-            localPlanNodeId,
-            MemorySide.OUTPUT);
+    if (frontier == null) {
+      localMemoryManager
+          .getQueryPool()
+          .registerPlanNodeIdToQueryMemoryMap(
+              localFragmentInstanceId.queryId,
+              fullFragmentInstanceId,
+              localPlanNodeId,
+              MemorySide.OUTPUT);
+    } else {
+      frontier.bind(
+          localMemoryManager.getQueryPool(), localFragmentInstanceId, MemorySide.OUTPUT, this);
+      currentTsBlockSize = 0;
+    }
   }
 
   @Override
@@ -262,7 +349,7 @@ public class SinkChannel implements ISinkChannel {
   }
 
   private void submitSendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
-    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
+    submitOwnedTask(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
   @Override
@@ -279,6 +366,10 @@ public class SinkChannel implements ISinkChannel {
         throw new IllegalStateException(DataNodeQueryMessages.SINK_HANDLE_IS_BLOCKED);
       }
       if (noMoreTsBlocks) {
+        return;
+      }
+      if (frontier != null) {
+        sendFrontier(tsBlock);
         return;
       }
       long sizeInBytes = tsBlock.getSizeInBytes();
@@ -308,6 +399,169 @@ public class SinkChannel implements ISinkChannel {
     }
   }
 
+  private void sendFrontier(TsBlock tsBlock) {
+    int sequence = nextSequenceId;
+    int next = Math.incrementExact(sequence);
+    RuntimeFrontierReservation.BlockCredit credit =
+        frontier.reservation().acquireEnvelope(frontier.slot(), this);
+    boolean published = false;
+    try {
+      TsBlock compact =
+          org.apache.iotdb.db.queryengine.execution.operator.process.RuntimeCompactOutputOperator
+              .copyAllRowsBounded(
+                  tsBlock,
+                  Math.multiplyExact(4L, frontier.bounds().maxRetainedBytes()),
+                  frontier.bounds().maxRetainedBytes(),
+                  frontier.bounds().schema());
+      RuntimeExchangeBlockCodec.inspect(compact, frontier.bounds());
+      TsBlockInfo info = new TsBlockInfo(compact, null, compact.getRetainedSizeInBytes());
+      info.credit = credit;
+      sequenceIdToTsBlock.put(sequence, info);
+      nextSequenceId = next;
+      bufferRetainedSizeInBytes += info.tsBlockSize;
+      blocked = frontier.reservation().whenWritable(frontier.slot());
+      published = true;
+      submitSendNewDataBlockEventTask(sequence, ImmutableList.of(compact.getSizeInBytes()));
+    } finally {
+      if (!published) {
+        pendingCreditReturns++;
+        runOutsideMonitor(() -> returnFrontierCredit(credit));
+      }
+    }
+  }
+
+  /** Observation only: a legacy closed bit never manufactures a coordinated receipt. */
+  public synchronized ListenableFuture<Void> getCoordinatedCloseFuture() {
+    return coordinatedCloseRequested ? nonCancellationPropagating(coordinatedCloseFuture) : null;
+  }
+
+  public boolean isRuntimeFrontierMode() {
+    return frontier != null;
+  }
+
+  public RuntimeEndpointFrontier getRuntimeFrontier() {
+    return frontier;
+  }
+
+  public synchronized int getRuntimeInFlightTaskCount() {
+    return inFlightEndpointTasks;
+  }
+
+  public synchronized int getRuntimeConsumerCount() {
+    return 0;
+  }
+
+  public synchronized int getRuntimeResponsePinCount() {
+    return pendingResponsePins;
+  }
+
+  public synchronized int getRuntimePendingCreditReturnCount() {
+    return pendingCreditReturns;
+  }
+
+  /** Buffered payload only; active fetch/decoder/transport ownership is reported separately. */
+  public synchronized Long getRuntimeBufferedPayloadBytes() {
+    if (frontier == null) return null;
+    return sequenceIdToTsBlock.values().stream()
+        .mapToLong(
+            info ->
+                info.serializedTsBlock == null
+                    ? info.tsBlockSize
+                    : info.serializedTsBlock.remaining())
+        .sum();
+  }
+
+  public boolean isFrontierMode() {
+    return frontier != null;
+  }
+
+  public RuntimeFrontierReservation getFrontierReservation() {
+    return frontier == null ? null : frontier.reservation();
+  }
+
+  public int getFrontierSlotIndex() {
+    return frontier == null ? -1 : frontier.slot();
+  }
+
+  public MemoryReservationKey getActualAccountKey() {
+    return frontier == null
+        ? new MemoryReservationKey(
+            localFragmentInstanceId.getQueryId(), fullFragmentInstanceId, localPlanNodeId)
+        : frontier.reservation().getMemoryReservationKey();
+  }
+
+  /** Caller owns this monitor. Claimed returns stay in the close barrier until release finishes. */
+  private RuntimeFrontierReservation.BlockCredit claimCreditReturn(TsBlockInfo info) {
+    if (info.credit == null || info.mapOwner || info.responsePins != 0) return null;
+    RuntimeFrontierReservation.BlockCredit result = info.credit;
+    info.credit = null;
+    pendingCreditReturns++;
+    return result;
+  }
+
+  private void returnFrontierCredit(RuntimeFrontierReservation.BlockCredit credit) {
+    runOutsideMonitor(() -> settleFrontierCredit(credit));
+  }
+
+  private void settleFrontierCredit(RuntimeFrontierReservation.BlockCredit credit) {
+    try {
+      frontier.reservation().release(credit);
+    } catch (Throwable failure) {
+      recordEndpointFailure(failure);
+    } finally {
+      synchronized (this) {
+        pendingCreditReturns--;
+      }
+      advanceCoordinatedClose();
+    }
+  }
+
+  private void releaseResponsePin(TsBlockInfo info) {
+    RuntimeFrontierReservation.BlockCredit credit;
+    synchronized (this) {
+      info.responsePins--;
+      pendingResponsePins--;
+      credit = claimCreditReturn(info);
+    }
+    if (credit != null) returnFrontierCredit(credit);
+    else advanceCoordinatedClose();
+  }
+
+  public synchronized ByteBuffer borrowSerializedTsBlock(
+      int sequenceId, RpcResponseLeaseScope scope) throws IOException {
+    if (frontier == null) return getSerializedTsBlock(sequenceId);
+    if (closed || aborted) {
+      throw new GetTsBlockFromClosedOrAbortedChannelException(
+          DataNodeQueryMessages.SINKCHANNEL_IS_ABORTED_OR_CLOSED);
+    }
+    TsBlockInfo info = sequenceIdToTsBlock.get(sequenceId);
+    if (info == null)
+      throw new IllegalStateException("The data block does not exist: " + sequenceId);
+    if (info.serializedTsBlock == null) {
+      RuntimeExchangeBlockCodec.inspect(info.tsBlock, frontier.bounds());
+      ByteBuffer serialized = serde.serialize(info.tsBlock);
+      if (serialized.remaining() > frontier.bounds().maxSerializedBytes()) {
+        throw new IllegalStateException("Serde violated its admitted encoded bound");
+      }
+      info.serializedTsBlock = serialized;
+      info.tsBlock = null;
+    }
+    AtomicBoolean returned = new AtomicBoolean();
+    info.responsePins++;
+    pendingResponsePins++;
+    try {
+      scope.retain(
+          () -> {
+            if (returned.compareAndSet(false, true)) releaseResponsePin(info);
+          });
+    } catch (Throwable failure) {
+      info.responsePins--;
+      pendingResponsePins--;
+      throw failure;
+    }
+    return info.serializedTsBlock.duplicate();
+  }
+
   @Override
   public synchronized void setNoMoreTsBlocks() {
     if (LOGGER.isDebugEnabled()) {
@@ -316,67 +570,305 @@ public class SinkChannel implements ISinkChannel {
     if (aborted || closed) {
       return;
     }
-    executorService.submit(new SendEndOfDataBlockEventTask());
+    submitOwnedTask(new SendEndOfDataBlockEventTask());
   }
 
   @Override
-  public synchronized boolean abort() {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.START_ABORT_SINK_CHANNEL);
-    }
-    if (aborted || closed) {
-      return false;
-    }
-    sequenceIdToTsBlock.clear();
-    if (blocked != null) {
-      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
-    }
-    if (bufferRetainedSizeInBytes > 0) {
-      localMemoryManager
-          .getQueryPool()
-          .free(
-              localFragmentInstanceId.getQueryId(),
-              fullFragmentInstanceId,
-              localPlanNodeId,
-              bufferRetainedSizeInBytes);
-      bufferRetainedSizeInBytes = 0;
-    }
-    sinkListener.onAborted(this);
-    aborted = true;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.END_ABORT_SINK_CHANNEL);
-    }
-    return true;
+  public boolean abort() {
+    return terminateEndpoint(true);
   }
 
   @Override
-  public synchronized boolean close() {
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.START_CLOSE_SINK_CHANNEL);
+  public boolean close() {
+    return terminateEndpoint(false);
+  }
+
+  private boolean terminateEndpoint(boolean abort) {
+    ListenableFuture<Void> pendingMemory;
+    java.util.List<RuntimeFrontierReservation.BlockCredit> credits = new java.util.ArrayList<>();
+    boolean first;
+    synchronized (this) {
+      first = !terminalCleanupStarted;
+      pendingMemory = blocked;
+      if (first) {
+        terminalCleanupStarted = true;
+        aborted = abort;
+        closed = !abort;
+        if (frontier != null) {
+          for (TsBlockInfo info : sequenceIdToTsBlock.values()) {
+            info.mapOwner = false;
+            RuntimeFrontierReservation.BlockCredit credit = claimCreditReturn(info);
+            if (credit != null) credits.add(credit);
+          }
+        }
+        sequenceIdToTsBlock.clear();
+      }
     }
-    if (closed || aborted) {
-      return false;
+    if (first) {
+      runOutsideMonitor(
+          () -> {
+            try {
+              if (frontier == null) settleTerminalMemory(pendingMemory);
+              else {
+                for (RuntimeFrontierReservation.BlockCredit credit : credits)
+                  returnFrontierCredit(credit);
+                synchronized (this) {
+                  bufferRetainedSizeInBytes = 0;
+                }
+              }
+              try {
+                if (abort) {
+                  sinkListener.onAborted(this);
+                } else {
+                  invokeOnFinished();
+                }
+              } catch (Throwable failure) {
+                recordTerminalActionFailure(failure);
+              }
+            } finally {
+              synchronized (this) {
+                terminalCleanupFinished = true;
+              }
+              advanceCoordinatedClose();
+            }
+          });
+    } else {
+      advanceCoordinatedClose();
     }
-    sequenceIdToTsBlock.clear();
-    if (blocked != null) {
-      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
+    Throwable failure;
+    synchronized (this) {
+      failure = first ? terminalActionFailure : null;
     }
-    if (bufferRetainedSizeInBytes > 0) {
-      localMemoryManager
-          .getQueryPool()
-          .free(
-              localFragmentInstanceId.getQueryId(),
-              fullFragmentInstanceId,
-              localPlanNodeId,
-              bufferRetainedSizeInBytes);
-      bufferRetainedSizeInBytes = 0;
+    rethrowEndpointFailure(failure);
+    return first;
+  }
+
+  private void settleTerminalMemory(ListenableFuture<Void> pendingMemory) {
+    boolean cancellationKnown = true;
+    if (pendingMemory != null) {
+      try {
+        long cancelled = localMemoryManager.getQueryPool().tryCancel(pendingMemory);
+        synchronized (this) {
+          bufferRetainedSizeInBytes -= cancelled;
+        }
+      } catch (Throwable failure) {
+        recordTerminalActionFailure(failure);
+        cancellationKnown = false;
+      }
     }
-    invokeOnFinished();
-    closed = true;
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug(DataNodeQueryMessages.END_CLOSE_SINK_CHANNEL);
+    long retained;
+    synchronized (this) {
+      retained = bufferRetainedSizeInBytes;
     }
-    return true;
+    if (cancellationKnown && retained > 0) {
+      try {
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                retained);
+        synchronized (this) {
+          bufferRetainedSizeInBytes = 0;
+        }
+      } catch (Throwable failure) {
+        // A void free may have changed accounting before throwing. Never retry it.
+        recordTerminalActionFailure(failure);
+      }
+    }
+  }
+
+  private void recordEndpointFailure(Throwable failure) {
+    synchronized (this) {
+      if (endpointFailure == null) {
+        endpointFailure = failure;
+      } else if (endpointFailure != failure) {
+        endpointFailure.addSuppressed(failure);
+      }
+    }
+  }
+
+  private void recordTerminalActionFailure(Throwable failure) {
+    synchronized (this) {
+      if (terminalActionFailure == null) {
+        terminalActionFailure = failure;
+      }
+    }
+    recordEndpointFailure(failure);
+  }
+
+  private static void rethrowEndpointFailure(Throwable failure) {
+    if (failure instanceof Error) {
+      throw (Error) failure;
+    }
+    if (failure instanceof RuntimeException) {
+      throw (RuntimeException) failure;
+    }
+    if (failure != null) {
+      throw new RuntimeException(failure);
+    }
+  }
+
+  /** Count publication before execute, and release only after actual run exit or pre-run cancel. */
+  private final class OwnedTask extends java.util.concurrent.FutureTask<Void> {
+    private final java.util.concurrent.atomic.AtomicBoolean started =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.concurrent.atomic.AtomicBoolean settled =
+        new java.util.concurrent.atomic.AtomicBoolean();
+
+    private OwnedTask(Runnable task) {
+      super(
+          () -> {
+            try {
+              task.run();
+            } catch (Throwable failure) {
+              recordEndpointFailure(failure);
+              rethrowEndpointFailure(failure);
+            }
+            return null;
+          });
+    }
+
+    @Override
+    public void run() {
+      // Caller-runs/direct executors must not execute RPC callbacks under the submitter's lock.
+      runOutsideMonitor(this::runOutsideHandleMonitor);
+    }
+
+    private void runOutsideHandleMonitor() {
+      if (!started.compareAndSet(false, true)) {
+        return;
+      }
+      try {
+        super.run();
+      } finally {
+        settle();
+      }
+    }
+
+    @Override
+    protected void done() {
+      if (isCancelled()) {
+        recordEndpointFailure(
+            new java.util.concurrent.CancellationException(
+                "Endpoint task was cancelled before actual settlement"));
+      }
+      // FutureTask cancellation while running does not prove that the RPC/callback has exited.
+      if (!started.get()) {
+        settle();
+      }
+    }
+
+    private void settle() {
+      if (settled.compareAndSet(false, true)) {
+        synchronized (SinkChannel.this) {
+          inFlightEndpointTasks--;
+        }
+        advanceCoordinatedClose();
+      }
+    }
+  }
+
+  private java.util.concurrent.Future<?> submitOwnedTask(Runnable task) {
+    OwnedTask owned;
+    synchronized (this) {
+      if (terminalCleanupStarted || coordinatedCloseRequested) {
+        return com.google.common.util.concurrent.Futures.immediateVoidFuture();
+      }
+      inFlightEndpointTasks++;
+      owned = new OwnedTask(task);
+    }
+    executeOwnedTask(owned);
+    return owned;
+  }
+
+  private void executeOwnedTask(OwnedTask task) {
+    try {
+      executorService.execute(task);
+    } catch (Throwable failure) {
+      recordEndpointFailure(failure);
+      task.cancel(false);
+      rethrowEndpointFailure(failure);
+    }
+  }
+
+  private void completeCoordinatedNotification(Throwable failure) {
+    Runnable notification =
+        () -> {
+          if (failure == null) {
+            coordinatedCloseFuture.set(null);
+          } else {
+            coordinatedCloseFuture.setException(failure);
+          }
+        };
+    runOutsideMonitor(notification);
+  }
+
+  private void runOutsideMonitor(Runnable action) {
+    if (Thread.holdsLock(this)) {
+      // Direct executors and reentrant callers may still own an outer handle monitor.
+      java.util.concurrent.ForkJoinPool.commonPool()
+          .execute(
+              () -> {
+                synchronized (SinkChannel.this) {
+                  // Wait for the outermost caller to release its monitor before notifications.
+                }
+                action.run();
+              });
+    } else {
+      action.run();
+    }
+  }
+
+  /**
+   * Acknowledges this handle's tracked work, not ByteBuffers already handed to an RPC transport.
+   */
+  public ListenableFuture<Void> requestCoordinatedClose() {
+    return requestCoordinatedTermination(false, null);
+  }
+
+  public ListenableFuture<Void> requestCoordinatedAbort() {
+    return requestCoordinatedTermination(true, null);
+  }
+
+  public ListenableFuture<Void> requestCoordinatedAbort(Throwable cause) {
+    return requestCoordinatedTermination(true, cause);
+  }
+
+  private ListenableFuture<Void> requestCoordinatedTermination(boolean abort, Throwable cause) {
+    synchronized (this) {
+      coordinatedCloseRequested = true;
+    }
+    try {
+      if (abort) {
+        abort();
+      } else {
+        close();
+      }
+    } catch (Throwable failure) {
+      recordEndpointFailure(failure);
+    } finally {
+      advanceCoordinatedClose();
+    }
+    return nonCancellationPropagating(coordinatedCloseFuture);
+  }
+
+  private void advanceCoordinatedClose() {
+    Throwable failure;
+    synchronized (this) {
+      if (!coordinatedCloseRequested
+          || !terminalCleanupFinished
+          || inFlightEndpointTasks != 0
+          || pendingResponsePins != 0
+          || pendingCreditReturns != 0
+          || coordinatedNotificationClaimed) {
+        return;
+      }
+      coordinatedNotificationClaimed = true;
+      failure = endpointFailure;
+    }
+    completeCoordinatedNotification(failure);
   }
 
   private void invokeOnFinished() {
@@ -419,6 +911,9 @@ public class SinkChannel implements ISinkChannel {
   }
 
   public synchronized ByteBuffer getSerializedTsBlock(int sequenceId) throws IOException {
+    if (frontier != null) {
+      return borrowSerializedTsBlock(sequenceId, RpcResponseLeaseScope.requireCurrent());
+    }
     if (aborted || closed) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -458,6 +953,10 @@ public class SinkChannel implements ISinkChannel {
   }
 
   public void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
+    if (frontier != null) {
+      acknowledgeFrontier(startSequenceId, endSequenceId);
+      return;
+    }
     long freedBytes = 0L;
     synchronized (this) {
       if (aborted || closed) {
@@ -498,6 +997,27 @@ public class SinkChannel implements ISinkChannel {
     }
   }
 
+  private void acknowledgeFrontier(int startSequenceId, int endSequenceId) {
+    java.util.List<RuntimeFrontierReservation.BlockCredit> credits = new java.util.ArrayList<>();
+    synchronized (this) {
+      if (closed || aborted) return;
+      Iterator<Entry<Integer, TsBlockInfo>> iterator = sequenceIdToTsBlock.entrySet().iterator();
+      while (iterator.hasNext()) {
+        Entry<Integer, TsBlockInfo> entry = iterator.next();
+        if (entry.getKey() < startSequenceId) continue;
+        if (entry.getKey() >= endSequenceId) break;
+        TsBlockInfo info = entry.getValue();
+        iterator.remove();
+        info.mapOwner = false;
+        bufferRetainedSizeInBytes -= info.tsBlockSize;
+        RuntimeFrontierReservation.BlockCredit credit = claimCreditReturn(info);
+        if (credit != null) credits.add(credit);
+      }
+    }
+    for (RuntimeFrontierReservation.BlockCredit credit : credits) returnFrontierCredit(credit);
+    if (isFinished()) invokeOnFinished();
+  }
+
   public String getLocalPlanNodeId() {
     return localPlanNodeId;
   }
@@ -533,6 +1053,10 @@ public class SinkChannel implements ISinkChannel {
   @Override
   public synchronized void open() {
     if (aborted || closed) {
+      return;
+    }
+    if (frontier != null) {
+      blocked = frontier.reservation().whenWritable(frontier.slot());
       return;
     }
     // SinkChannel is opened when ShuffleSinkHandle choose it as the next channel
@@ -644,6 +1168,7 @@ public class SinkChannel implements ISinkChannel {
             LOGGER.warn(
                 DataNodeQueryMessages.FAILED_TO_SEND_NEW_DATA_BLOCK_EVENT_ATTEMPT, attempt, e);
             if (containsTApplicationException(e) || attempt == MAX_ATTEMPT_TIMES) {
+              recordEndpointFailure(e);
               sinkListener.onFailure(SinkChannel.this, e);
               return;
             }
@@ -651,7 +1176,9 @@ public class SinkChannel implements ISinkChannel {
               Thread.sleep(retryIntervalInMs);
             } catch (InterruptedException ex) {
               Thread.currentThread().interrupt();
+              recordEndpointFailure(e);
               sinkListener.onFailure(SinkChannel.this, e);
+              return;
             }
           } finally {
             DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
@@ -693,6 +1220,7 @@ public class SinkChannel implements ISinkChannel {
             LOGGER.warn(DataNodeQueryMessages.FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT, attempt, e);
             if (attempt == MAX_ATTEMPT_TIMES) {
               LOGGER.warn(DataNodeQueryMessages.FAILED_TO_SEND_END_OF_DATA_BLOCK_EVENT_2, e);
+              recordEndpointFailure(e);
               sinkListener.onFailure(SinkChannel.this, e);
               return;
             }
@@ -700,7 +1228,9 @@ public class SinkChannel implements ISinkChannel {
               Thread.sleep(retryIntervalInMs);
             } catch (InterruptedException ex) {
               Thread.currentThread().interrupt();
+              recordEndpointFailure(e);
               sinkListener.onFailure(SinkChannel.this, e);
+              return;
             }
           }
         }

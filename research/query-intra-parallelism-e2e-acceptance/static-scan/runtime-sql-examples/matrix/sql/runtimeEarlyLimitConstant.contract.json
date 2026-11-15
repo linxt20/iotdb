@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "PORTABLE_SQL_CONTRACT_V5_SERVICE_PENDING",
+  "sql": {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+    "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe",
+    "text": "SELECT CAST(1 AS INT64) AS c\nFROM runtime_dop_e2e.telemetry\nWHERE (SIN(CAST(s1 AS DOUBLE)) * SIN(CAST(s1 AS DOUBLE))\n       + COS(CAST(s1 AS DOUBLE)) * COS(CAST(s1 AS DOUBLE))) > 0.5\nLIMIT 257\n"
+  },
+  "oracleName": "runtimeEarlyLimitConstant",
+  "result": {
+    "columnNames": [
+      "c"
+    ],
+    "columnTypes": [
+      "INT64"
+    ],
+    "rows": 257,
+    "canonicalRow": "[1]\\n",
+    "orderingRequired": false,
+    "multiplicity": "Exactly257 complete typed rows, each the INT64 value1; no set/dedup or prefix acceptance."
+  },
+  "mathematics": {
+    "predicate": "Fixture s1 is nonNULL INT64[-1000,1000]; cast is exact. sin(x)^2+cos(x)^2>0.5 for every actual finite x with a margin vastly larger than Java Math1ulp plus floating-point product/sum error.",
+    "limit": "Fixture has9404416 qualifying rows. Ordinary SQL LIMIT257 returns exactly257 output rows. Every projected value is exactly INT64 1, so arbitrary SQL row selection and row order cannot change the complete typed result multiset.",
+    "smallFixtureRule": "For a separately configured fixture with fewer than257 total rows, generated oracle has min(totalRows,257) rows; the standard fixture requires257."
+  },
+  "optimizer": {
+    "expected": "Nonpushdown SIN/COS predicate retains a real residual Filter reading s1; LIMIT remains global above Filter; no ORDER BY is requested.",
+    "mustNotRelax": "Do not alter any scan pushdown/globalpagination guard or accept SERIAL as runtime early-stop.",
+    "actualEvidenceRequired": [
+      "Actual ordinary SQL roster/statistics prove a real runtime scan group with active logical lanes; no EXPLAIN-only inference.",
+      "Full JDBC result receipt is drained and exactly257 typed INT64 ones, with complete candidate/control/oracle multiplicities.",
+      "Frozen unique source output-row total satisfies0<rows<9404416, proving earlier source closeout rather than full scan.",
+      "All source/fragment terminal and resource settlement evidence remains strict."
+    ]
+  },
+  "fixture": {
+    "manifest": "<FIXTURE_ROOT>/manifest.json",
+    "sha256Binding": "<GENERATED_FIXTURE_MANIFEST_SHA256>",
+    "rows": 9404416
+  },
+  "preservation": "Original legal SERIAL R3 and no-runtime filter-before-limit evidence remain valid compatibility runs, never relabeled as runtime proof.",
+  "nonActions": "No production/sharedrepo edit, service, query, build or verifier relaxation. Tool/manifest extension follows."
+}

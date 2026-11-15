@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "status": "PORTABLE_SQL_CONTRACT_V5_SERVICE_PENDING",
+  "sql": {
+    "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+    "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+    "text": "SELECT time, device_id, g, s1, s2\nFROM runtime_dop_e2e.telemetry\nWHERE (CASE\n  WHEN (SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * SIN(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))\n        + COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE)))))) * COS(SIN(SIN(SIN(SIN(CAST(s1 AS DOUBLE))))))) > 0.5\n  THEN CASE WHEN time >= 0 AND time < 64 THEN s1 - s1 + 1 ELSE s1 - s1 END\n  ELSE s1 - s1\nEND) = 1\n"
+  },
+  "oracleName": "fullScanWindowFiltered",
+  "resultContract": {
+    "orderingRequired": false,
+    "columnNames": [
+      "time",
+      "device_id",
+      "g",
+      "s1",
+      "s2"
+    ],
+    "columnTypes": [
+      "TIMESTAMP",
+      "STRING",
+      "INT64",
+      "INT64",
+      "INT64"
+    ],
+    "expectedRows": 4096,
+    "sourceOracle": {
+      "path": "<FIXTURE_ROOT>/oracles/ordered.jsonl",
+      "sha256": "3f666730c52861dcf0dda9c69abb06f4c372d7e3ec056c629b6cb20cdd68f880"
+    },
+    "comparison": "Complete strict typed row multiplicities for candidate,control,independent oracle; no sequence requirement."
+  },
+  "mathematicalProof": {
+    "s1": "Fixture s1 is non-NULL INT64 in[-1000,1000]; cast to binary64 is exact.",
+    "outerCondition": "For the actual finite computed x=sin(sin(sin(sin(double(s1))))), sin(x)^2+cos(x)^2=1 in real arithmetic. Java Math sin/cos1-ulp error plus two products and one sum gives an absolute error far below2^-40, so comparison>0.5 is always true.",
+    "numericSafety": "All trig arguments/results finite and bounded. s1-s1 is exactly0 with no overflow; s1-s1+1 is exactly1.",
+    "equivalence": "The complete SQL predicate is true iff0<=time<64. For standard64 devices, exactly64 times/device in partition0 yield4096 rows. Other partitions produce no output but must remain scan inputs.",
+    "independentExhaustiveDiagnostic": {
+      "engine": "Python math/libm only; not a Java/IoTDB runtime claim",
+      "s1Values": 2001,
+      "minimumComputedOuterCondition": 0.9999999999999998,
+      "maximumComputedOuterCondition": 1.0000000000000002,
+      "threshold": 0.5
+    }
+  },
+  "optimizerContract": {
+    "rootShape": "One comparison of a SearchedCaseExpression against integer1; the time condition is nested only in the THEN case, with no top-leveltime conjunct.",
+    "staticConclusion": "Current inspected rules retain the row-dependent CASE and trigonometric functions and cannot extract the nested time interval into scan predicate.",
+    "runtimeEvidenceRequired": [
+      "Actual residualFilter above DeviceTableScan must contain CASE and SIN/COS.",
+      "No query-derived0<=time<64 scan time range; planner-generated full assigned partition bounds are permitted.",
+      "Source assignments span all four fixture partitions.",
+      "If frozen source output counters are available, their exact unique-source total must equal9404416; final output is4096.",
+      "Real2DN, ordinary SQL runtime groups, initial1→actualAPPLIEDgrow→actualAPPLIEDshrink, full result drain, frozen checksum, full resource cleanup remain unchanged."
+    ]
+  },
+  "sourceBindings": [
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/planner/IrExpressionInterpreter.java",
+      "sha256": "038b4d16f89a9c1ce1566e58112550ca736d71b49421b1113de9a2bba71d06b6",
+      "finding": "visitSearchedCaseExpression217+ retains unresolved condition and branches; visitArithmeticBinary552+ preserves unresolved s1-s1; visitFunctionCall882+ preserves unresolved SIN/COS."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/analyzer/predicate/PredicateCombineIntoTableScanChecker.java",
+      "sha256": "d320ee2356db7f1c4fd7ad5d4198b224cd4f7b8c7cf49d6826acc2c2522e07ba",
+      "finding": "visitComparison119+ requires time/field symbol or supported EXTRACT opposite a literal; CASE expression opposite1 fails. visitSearchedCase155+ explicitlyfalse."
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/planner/optimizations/PushPredicateIntoTableScan.java",
+      "sha256": "e6ff3cb894d16ee72bcbe3f1a0b09be496ab70157d4a576427aa721dcd9a78e7",
+      "finding": "splitPredicate684+ splits only top-level AND; whole CASE=1 is retained as one nonpushdown Filter, not its inner time clause."
+    },
+    {
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/plan/relational/planner/ir/GlobalTimePredicateExtractVisitor.java",
+      "sha256": "ec9d5c12caa29b9b4f688ee54997ae6ad0ea4a1cd50cb207bd8f789384b47ebd",
+      "finding": "CASE and unsupported comparison are not extracted as global time ranges."
+    },
+    {
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/transformation/dag/column/AbstractCaseWhenThenColumnTransformer.java",
+      "sha256": "e27bf0db07191cb1f17fe6fb0532ac455dad680e9ad37efc2b047701235b3347",
+      "finding": "evaluate starts by evaluating the first WHEN over the input column before selecting THEN, preserving the outer trigonometric compute on source rows."
+    },
+    {
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/transformation/dag/column/unary/scalar/SinColumnTransformer.java",
+      "sha256": "5d0e13a8ab692a4fbff64344337c8f3a876bd48af066405df8e5ce8ef4dd32de",
+      "finding": "Calls Math.sin."
+    },
+    {
+      "path": "iotdb-core/calc-commons/src/main/java/org/apache/iotdb/calc/transformation/dag/column/unary/scalar/CosColumnTransformer.java",
+      "sha256": "cae6b3c8a4db6124877c0079d2b0da425d0a1076bd7f2c0e4398532f67b1d2e6",
+      "finding": "Calls Math.cos."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "mode": "ordinary-sql",
+  "manifest": "/ABS/candidate/deployment-manifest.json",
+  "sqlFile": "/ABS/sql/limit.sql",
+  "out": "/ABS/evidence/limit-candidate-001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "queryTimeoutSeconds": 180,
+  "fetchSize": 1024,
+  "requireActualSourceNodeCount": 2,
+  "requireGrowShrink": false,
+  "requireOrderedInitialOne": false,
+  "expectedOutcome": "SUCCESS",
+  "requireHashRepartition": false
+}

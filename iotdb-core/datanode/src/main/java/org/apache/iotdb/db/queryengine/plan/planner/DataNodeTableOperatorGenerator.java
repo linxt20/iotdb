@@ -19,6 +19,58 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.EXTREME;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.MAX;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.MIN;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUM;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
+import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
+import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.math.LongMath;
+import jakarta.validation.constraints.NotNull;
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
@@ -47,7 +99,6 @@ import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.QualifiedObjectName;
-import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
@@ -122,6 +173,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tree
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeNonAlignedDeviceViewAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeToTableViewAdaptorOperator;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeEndpointFrontier;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
@@ -136,6 +188,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.BatchDeviceEntrySource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.InMemoryDeviceEntrySource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.SegmentDeviceEntrySource;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderedParallelScanEligibility;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
@@ -168,10 +221,6 @@ import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.math.LongMath;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -192,57 +241,6 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-
-import jakarta.validation.constraints.NotNull;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalLong;
-import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
-import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.EXTREME;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.MAX;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.MIN;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUM;
-import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
-import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
-import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
-import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
-import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
-import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
     extends TableOperatorGenerator<LocalExecutionPlanContext, Metadata>
@@ -372,6 +370,13 @@ public class DataNodeTableOperatorGenerator
         DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    List<RuntimeEndpointFrontier> runtimeFrontiers =
+        context.isRuntimeParallelismEnabled()
+            ? runtimeOutputFrontiers(
+                context,
+                node.getPlanNodeId().getId(),
+                node.getDownStreamChannelLocationList().size())
+            : null;
     ISinkHandle sinkHandle =
         MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
             node.getDownStreamChannelLocationList(),
@@ -379,13 +384,16 @@ public class DataNodeTableOperatorGenerator
             ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
-            context.getInstanceContext());
+            context.getInstanceContext(),
+            runtimeFrontiers);
     context
         .getResourceRegistry()
         .registerSinkHandle(sinkHandle, localInstanceId, node.getPlanNodeId().getId());
 
     if (node.getChildren().size() == 1) {
-      Operator child = node.getChildren().get(0).accept(this, context);
+      Operator child =
+          compactNativeOutput(
+              node.getChildren().get(0).accept(this, context), runtimeFrontiers, context);
       List<Operator> children = new ArrayList<>(1);
       children.add(child);
       context.recordLegacySinkQuota(sinkHandle, context.getMaxBytesOneHandleCanReserve());
@@ -428,6 +436,13 @@ public class DataNodeTableOperatorGenerator
         DataNodeQueryMessages.EXCEPTION_MPP_DATA_EXCHANGE_MANAGER_SHOULD_NOT_BE_NULL_44D7141E);
     FragmentInstanceId localInstanceId = context.getInstanceContext().getId();
     DownStreamChannelIndex downStreamChannelIndex = new DownStreamChannelIndex(0);
+    List<RuntimeEndpointFrontier> runtimeFrontiers =
+        context.isRuntimeParallelismEnabled()
+            ? runtimeOutputFrontiers(
+                context,
+                node.getPlanNodeId().getId(),
+                node.getDownStreamChannelLocationList().size())
+            : null;
     ISinkHandle sinkHandle =
         MPP_DATA_EXCHANGE_MANAGER.createShuffleSinkHandle(
             node.getDownStreamChannelLocationList(),
@@ -435,7 +450,8 @@ public class DataNodeTableOperatorGenerator
             ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
-            context.getInstanceContext());
+            context.getInstanceContext(),
+            runtimeFrontiers);
     context
         .getResourceRegistry()
         .registerSinkHandle(sinkHandle, localInstanceId, node.getPlanNodeId().getId());
@@ -468,7 +484,9 @@ public class DataNodeTableOperatorGenerator
               .EXCEPTION_TABLE_HASH_PARTITIONING_SYMBOLS_MUST_BE_OUTPUT_BY_ITS_SOURCE_OPERATOR_FAA0918F);
     }
 
-    Operator child = node.getChildren().get(0).accept(this, context);
+    Operator child =
+        compactNativeOutput(
+            node.getChildren().get(0).accept(this, context), runtimeFrontiers, context);
     context.recordLegacySinkQuota(sinkHandle, context.getMaxBytesOneHandleCanReserve());
     context.setISink(sinkHandle);
     return new HashPartitioningSinkOperator(
@@ -490,7 +508,12 @@ public class DataNodeTableOperatorGenerator
     FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
 
     TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
-    boolean isSameNode = isSameNode(upstreamEndPoint);
+    RuntimeEndpointFrontier frontier =
+        context.isRuntimeParallelismEnabled()
+            ? context.getRuntimeInputFrontier(node.getPlanNodeId().getId())
+            : null;
+    // Runtime external exchanges use the RPC ownership protocol, including loopback edges.
+    boolean isSameNode = frontier == null && isSameNode(upstreamEndPoint);
     ISourceHandle sourceHandle =
         isSameNode
             ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForFragment(
@@ -508,7 +531,8 @@ public class DataNodeTableOperatorGenerator
                 upstreamEndPoint,
                 remoteInstanceId.toThrift(),
                 context.getInstanceContext()::failed,
-                context.getInstanceContext().isHighestPriority());
+                context.getInstanceContext().isHighestPriority(),
+                frontier);
     if (!isSameNode) {
       context.addExchangeSumNum(1);
     }
@@ -520,12 +544,58 @@ public class DataNodeTableOperatorGenerator
         .register(
             sourceHandle,
             "SOURCE_HANDLE",
-            LocalExecutionResourceRegistry.memoryKey(accountFragment, accountPlanNodeId));
+            sourceHandle
+                    instanceof
+                    org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle
+                ? ((org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle)
+                        sourceHandle)
+                    .getActualAccountKey()
+                : LocalExecutionResourceRegistry.memoryKey(accountFragment, accountPlanNodeId));
     context.recordLegacySourceQuota(sourceHandle, context.getMaxBytesOneHandleCanReserve());
     ExchangeOperator exchangeOperator =
-        new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
+        frontier == null
+            ? new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId())
+            : new ExchangeOperator(
+                operatorContext,
+                sourceHandle,
+                node.getUpstreamPlanNodeId(),
+                Math.addExact(
+                    frontier.bounds().maxDecodedBytes(), frontier.bounds().maxScratchBytes()));
     context.addExchangeOperator(exchangeOperator);
     return exchangeOperator;
+  }
+
+  private static List<RuntimeEndpointFrontier> runtimeOutputFrontiers(
+      LocalExecutionPlanContext context, String sinkPlanNodeId, int channelCount) {
+    List<RuntimeEndpointFrontier> bindings = new ArrayList<>(channelCount);
+    for (int channel = 0; channel < channelCount; channel++) {
+      bindings.add(context.getRuntimeOutputFrontier(sinkPlanNodeId, channel));
+    }
+    return bindings;
+  }
+
+  private static Operator compactNativeOutput(
+      Operator child, List<RuntimeEndpointFrontier> bindings, LocalExecutionPlanContext context) {
+    if (bindings == null) return child;
+    long bound =
+        bindings.stream()
+            .mapToLong(binding -> binding.bounds().maxRetainedBytes())
+            .min()
+            .orElseThrow(
+                () -> new IllegalArgumentException("Runtime output has no prepaid channel"));
+    List<TSDataType> plannedSchema = bindings.get(0).bounds().schema();
+    if (plannedSchema == null
+        || bindings.stream()
+            .anyMatch(binding -> !plannedSchema.equals(binding.bounds().schema()))) {
+      throw new IllegalArgumentException(
+          "Runtime output channels have inconsistent planned schemas");
+    }
+    return new org.apache.iotdb.db.queryengine.execution.operator.process
+        .RuntimeCompactOutputOperator(
+        child,
+        bound,
+        context.getRuntimeExchangeBudget().maxOriginalScanBlockRetainedBytes(),
+        plannedSchema);
   }
 
   public static IDeviceID.TreeDeviceIdColumnValueExtractor createTreeDeviceIdColumnValueExtractor(
@@ -1564,6 +1634,7 @@ public class DataNodeTableOperatorGenerator
     String queryId = context.getFragmentInstanceId().getQueryId().getId();
     String fragmentId = context.getFragmentInstanceId().getFragmentInstanceId();
     int plannerInputDop = context.getDegreeOfParallelism();
+    final boolean runtimeScan = context.isRuntimeScan(node.getPlanNodeId().getId());
     final boolean dopEstimationEnabled =
         IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation();
     final List<Long> deviceCosts =
@@ -1576,7 +1647,9 @@ public class DataNodeTableOperatorGenerator
               context.getInstanceContext().getDataRegion(), devices.size());
       estimateStatus =
           deviceCosts == null ? "FALLBACK_DEVICE_COUNT" : "ESTIMATED_FROM_TSFILE_BYTES";
-      plannerInputDop = Math.max(1, Math.min(plannerInputDop, estimatedDop));
+      if (!runtimeScan) {
+        plannerInputDop = Math.max(1, Math.min(plannerInputDop, estimatedDop));
+      }
     }
     ScanParallelPlanner.Input input =
         new ScanParallelPlanner.Input(
@@ -1584,7 +1657,7 @@ public class DataNodeTableOperatorGenerator
             timePartitions,
             deviceCosts,
             plannerInputDop,
-            node.isAllowParallelScan(),
+            node.isAllowParallelScan() || runtimeScan,
             node.getDeviceEntryDataSetHandle().isPresent(),
             node.getPushDownLimit() > 0 && !node.isPushLimitToEachDevice()
                 || node.getPushDownOffset() > 0 && !node.isPushLimitToEachDevice(),
@@ -1594,6 +1667,18 @@ public class DataNodeTableOperatorGenerator
             queryId,
             fragmentId,
             node.getPlanNodeId().getId());
+    if (runtimeScan) {
+      return context
+          .getDynamicParallelPlanningService()
+          .selectRuntimeLayout(
+              input,
+              context,
+              dopEstimationEnabled,
+              estimateStatus,
+              estimatedDop,
+              context.getRuntimeMaxLogicalLanes(node.getPlanNodeId().getId()))
+          .getLanePlan();
+    }
     return context
         .getDynamicParallelPlanningService()
         .select(input, context, dopEstimationEnabled, estimateStatus, estimatedDop)
@@ -1727,14 +1812,14 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitSort(SortNode node, LocalExecutionPlanContext context) {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
-        || !(node.getChild() instanceof DeviceTableScanNode)) {
+        || !OrderedParallelScanEligibility.canUseLocalMergeTree(
+            node.getChild(), node.getOrderingScheme())) {
       return super.visitSort(node, context);
     }
 
     final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
-    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
-        || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
-      return super.visitSort(node, context);
+    if (context.getDegreeOfParallelism() <= 1) {
+      return constructSingleStreamOrderedFallback(scanNode, node, context, false);
     }
     Operator operator = constructParallelOrderedDeviceTableScan(scanNode, node, context);
     return operator;
@@ -1743,14 +1828,14 @@ public class DataNodeTableOperatorGenerator
   @Override
   public Operator visitStreamSort(StreamSortNode node, LocalExecutionPlanContext context) {
     if (!IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
-        || !(node.getChild() instanceof DeviceTableScanNode)) {
+        || !OrderedParallelScanEligibility.canUseLocalMergeTree(
+            node.getChild(), node.getOrderingScheme())) {
       return super.visitStreamSort(node, context);
     }
 
     final DeviceTableScanNode scanNode = (DeviceTableScanNode) node.getChild();
-    if (!canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(scanNode, context)
-        || !isNaturallyMergeableDeviceScanOrder(scanNode, node.getOrderingScheme())) {
-      return super.visitStreamSort(node, context);
+    if (context.getDegreeOfParallelism() <= 1) {
+      return constructSingleStreamOrderedFallback(scanNode, node, context, false);
     }
     Operator operator = constructParallelOrderedDeviceTableScan(scanNode, node, context);
     return operator;
@@ -1807,7 +1892,8 @@ public class DataNodeTableOperatorGenerator
    */
   private boolean canSplitDeviceTableScanIntoParallelPipelines(
       DeviceTableScanNode node, LocalExecutionPlanContext context) {
-    return node.isAllowParallelScan()
+    return (node.isAllowParallelScan()
+            || context.isApprovedRuntimeScan(node.getPlanNodeId().getId()))
         && canSplitDeviceTableScanIntoParallelPipelinesIgnoringOrder(node, context);
   }
 
@@ -1830,45 +1916,25 @@ public class DataNodeTableOperatorGenerator
   }
 
   /**
-   * A table scan consumes one device at a time, but its rows for that one device are naturally in
-   * scan-time order. Consequently a merge tree is safe precisely for constant per-device keys
-   * (TAG/ATTRIBUTE) followed by TIME. Anything else has to keep the regular TableSortOperator.
-   */
-  private static boolean isNaturallyMergeableDeviceScanOrder(
-      DeviceTableScanNode node, OrderingScheme orderingScheme) {
-    final List<Symbol> orderBy = orderingScheme.getOrderBy();
-    if (orderBy.isEmpty()) {
-      return false;
-    }
-    for (int i = 0; i < orderBy.size(); i++) {
-      final Symbol orderingSymbol = orderBy.get(i);
-      final ColumnSchema column = node.getAssignments().get(orderingSymbol);
-      if (column == null || !node.getOutputSymbols().contains(orderingSymbol)) {
-        return false;
-      }
-      if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
-        return i == orderBy.size() - 1
-            && (orderingScheme.getOrdering(orderBy.get(i)).isAscending()
-                == (node.getScanOrder() == Ordering.ASC));
-      }
-      if (column.getColumnCategory() != TsTableColumnCategory.TAG
-          && column.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
-        return false;
-      }
-    }
-    return false;
-  }
-
-  /**
    * Splits a naturally ordered table scan into independent driver-local merge trees and merges the
    * resulting sorted streams in the root driver. A group contains one single-device source per
    * device: grouping raw multi-device scans would be incorrect for ORDER BY time because such a
    * scan emits all of one device before advancing to the next.
    */
   private Operator constructSingleStreamOrderedFallback(
-      DeviceTableScanNode node, SortNode sort, LocalExecutionPlanContext context) {
-    // The source remains in the current driver. Let the established sort build its child once.
-    return super.visitSort(sort, context);
+      DeviceTableScanNode node,
+      SortNode sort,
+      LocalExecutionPlanContext context,
+      boolean serialPlanRecorded) {
+    if (OrderedParallelScanEligibility.canUseSerialConcatenation(node, sort.getOrderingScheme())) {
+      if (!serialPlanRecorded) recordSerialScanMetadata(context, node);
+      // Preserve the proven scan order without constructing any child pipeline or sorter.
+      return constructSerialDeviceTableScan(node, context, null);
+    }
+    // Missing cross-device proof must keep the established real sorting operator.
+    return sort instanceof StreamSortNode
+        ? super.visitStreamSort((StreamSortNode) sort, context)
+        : super.visitSort(sort, context);
   }
 
   private Operator constructParallelOrderedDeviceTableScan(
@@ -1881,7 +1947,7 @@ public class DataNodeTableOperatorGenerator
       context
           .getDynamicScanAssignments()
           .registerBucket(context.getDriverContext().getDriverTaskID().getPipelineId(), plan, 0);
-      return constructSingleStreamOrderedFallback(node, sortNode, context);
+      return constructSingleStreamOrderedFallback(node, sortNode, context, true);
     }
     final List<TSDataType> dataTypes =
         getOutputColumnTypes(sortNode, context.getTableTypeProvider());
@@ -1938,7 +2004,9 @@ public class DataNodeTableOperatorGenerator
                     parameter.measurementSchemas,
                     parameter.allSensors,
                     DeviceTableScanNode.class.getSimpleName());
-                deviceScanOperators.add(deviceScanOperator);
+                deviceScanOperators.add(
+                    compactRuntimeOutput(
+                        subContext, node.getPlanNodeId().getId(), deviceScanOperator));
               }
 
               final PlanNodeId localMergeId =
@@ -1959,13 +2027,31 @@ public class DataNodeTableOperatorGenerator
             });
     recordActualPipelineCount(context);
 
-    return new TableMergeSortOperator(
-        addOperatorContext(
-            context, sortNode.getPlanNodeId(), TableMergeSortOperator.class.getSimpleName()),
-        exchangeOperators,
-        dataTypes,
-        getComparatorForTable(
-            sortNode.getOrderingScheme().getOrderingList(), sortItemIndexes, sortItemDataTypes));
+    return compactRuntimeOutput(
+        context,
+        node.getPlanNodeId().getId(),
+        new TableMergeSortOperator(
+            addOperatorContext(
+                context, sortNode.getPlanNodeId(), TableMergeSortOperator.class.getSimpleName()),
+            exchangeOperators,
+            dataTypes,
+            getComparatorForTable(
+                sortNode.getOrderingScheme().getOrderingList(),
+                sortItemIndexes,
+                sortItemDataTypes)));
+  }
+
+  private Operator compactRuntimeOutput(
+      LocalExecutionPlanContext context, String sourceId, Operator operator) {
+    if (!context.isRuntimeScan(sourceId)) {
+      return operator;
+    }
+    LocalExecutionPlanContext.RuntimeExchangeBudget budget = context.getRuntimeExchangeBudget();
+    return new org.apache.iotdb.db.queryengine.execution.operator.process
+        .RuntimeCompactOutputOperator(
+        operator,
+        budget.maxCompactRetainedBlockBytes(),
+        budget.maxOriginalScanBlockRetainedBytes());
   }
 
   /**
@@ -2169,9 +2255,13 @@ public class DataNodeTableOperatorGenerator
         effectiveUseSizeWeightedSchedule
             ? ScanParallelPlan.withTimePartitionGroups(plan, scheduledTpGroups)
             : plan;
+    // Runtime buckets may contain several weighted work units. Consume every unit in that
+    // bucket rather than indexing one flattened (device, time) pair by lane number.
+    final boolean useIndexedWeightedSchedule =
+        effectiveUseSizeWeightedSchedule && !context.isRuntimeScan(node.getPlanNodeId().getId());
     final List<List<Long>> pipelineTpGroups = new ArrayList<>();
     final List<List<DeviceEntry>> pipelineDeviceGroups = new ArrayList<>();
-    if (effectiveUseSizeWeightedSchedule) {
+    if (useIndexedWeightedSchedule) {
       for (List<Long> tpGroup : scheduledTpGroups) {
         for (List<DeviceEntry> deviceGroup : deviceGroups) {
           pipelineTpGroups.add(tpGroup);
@@ -2200,12 +2290,11 @@ public class DataNodeTableOperatorGenerator
               final List<Operator> bucketOperators = new ArrayList<>();
               PlanNode firstRootNode = null;
               PlanNodeId firstUpstreamId = null;
-              final int unitCount =
-                  effectiveUseSizeWeightedSchedule ? 1 : bucket.getWorkUnits().size();
+              final int unitCount = useIndexedWeightedSchedule ? 1 : bucket.getWorkUnits().size();
               for (int unitIndex = 0; unitIndex < unitCount; unitIndex++) {
                 final List<Long> tpGroup;
                 final List<DeviceEntry> deviceGroup;
-                if (effectiveUseSizeWeightedSchedule) {
+                if (useIndexedWeightedSchedule) {
                   tpGroup = pipelineTpGroups.get(pipelineIndex);
                   deviceGroup = pipelineDeviceGroups.get(pipelineIndex);
                 } else {

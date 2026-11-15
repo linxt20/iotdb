@@ -862,6 +862,43 @@ public class RuntimeFrontierReservationTest {
     }
   }
 
+  @Test
+  public void explicitSidesPrepayAgainstUniformAggregateCapsAndCreditsDoNotRechargePool()
+      throws Exception {
+    RecordingPool pool = new RecordingPool(1024, 512);
+    org.apache.iotdb.db.queryengine.execution.memory.MemorySide output =
+        org.apache.iotdb.db.queryengine.execution.memory.MemorySide.OUTPUT;
+    org.apache.iotdb.db.queryengine.execution.memory.MemorySide input =
+        org.apache.iotdb.db.queryengine.execution.memory.MemorySide.INPUT;
+    RuntimeFrontierReservation scan =
+        RuntimeFrontierReservation.tryCreate(pool, key("scan-side"), output, 1, 80, 100).get();
+    assertFalse(
+        RuntimeFrontierReservation.tryCreate(pool, key("wrong-headroom"), output, 1, 10, 20)
+            .isPresent());
+    RuntimeFrontierReservation nativeOutput =
+        RuntimeFrontierReservation.tryCreate(pool, key("native-side"), output, 1, 20, 100).get();
+    RuntimeFrontierReservation remoteInput =
+        RuntimeFrontierReservation.tryCreate(pool, key("remote-side"), input, 1, 50, 100).get();
+    assertEquals(output, nativeOutput.getMemorySide());
+    assertEquals(input, remoteInput.getMemorySide());
+    assertEquals(150, pool.getReservedBytes());
+    Object endpoint = new Object();
+    remoteInput.claimEndpointSlot(0, endpoint);
+    RuntimeFrontierReservation.BlockCredit credit = remoteInput.acquireEnvelope(0, endpoint);
+    assertEquals(150, pool.getReservedBytes());
+    assertEquals(50, remoteInput.getInternalUsedBytes());
+    assertFalse(remoteInput.whenWritable(0).isDone());
+    remoteInput.release(credit);
+    remoteInput.release(credit);
+    assertEquals(150, pool.getReservedBytes());
+    assertEquals(0, pool.priorityCalls.get());
+    scan.requestClose().get(5, TimeUnit.SECONDS);
+    nativeOutput.requestClose().get(5, TimeUnit.SECONDS);
+    remoteInput.requestClose().get(5, TimeUnit.SECONDS);
+    assertEquals(0, pool.getReservedBytes());
+    assertEquals(3, pool.freeCalls.get());
+  }
+
   private static MemoryReservationKey key(String planNodeId) {
     return new MemoryReservationKey(QUERY, FI, planNodeId);
   }

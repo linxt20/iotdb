@@ -79,6 +79,37 @@ public final class ScanParallelPlanner {
         target);
   }
 
+  /** Keep logical buckets fixed while worker capacity is selected independently. */
+  public RuntimeScanLayout planRuntimeLayout(
+      Input input, DynamicScanGrouping grouping, int maxLogicalLanes, int initialWorkers) {
+    if (maxLogicalLanes < 1 || initialWorkers < 1) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+    }
+    ScanParallelPlan base = plan(input);
+    if (base.getMode() == ScanParallelPlan.Mode.SERIAL) {
+      return new RuntimeScanLayout(base, 1);
+    }
+    int cap = Math.min(input.dop, maxLogicalLanes);
+    ScanParallelPlan fixed;
+    if (grouping != null) {
+      fixed = planWithGrouping(input, grouping, cap);
+    } else {
+      int lanes = Math.max(1, Math.min(cap, base.getWorkUnits().size()));
+      fixed =
+          buildPlan(
+              base.getMode(),
+              base.getFallbackReason(),
+              input,
+              lanes,
+              base.getDeviceGroups(),
+              base.getTimePartitionGroups(),
+              base.getWorkUnits(),
+              lanes);
+    }
+    return new RuntimeScanLayout(fixed, Math.min(initialWorkers, fixed.getPipelineCount()));
+  }
+
   static ScanParallelPlan.FallbackReason qualificationFailure(Input input) {
     if (input.devices.isEmpty() || (input.timePartitionMorsel && input.timePartitions.isEmpty())) {
       return ScanParallelPlan.FallbackReason.EMPTY_INPUT;

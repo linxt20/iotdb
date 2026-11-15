@@ -1,0 +1,1 @@
+SELECT g, COUNT(*) AS n, COUNT(s2) AS n2, SUM(s1) AS sum1, SUM(s2) AS sum2, MIN(s1) AS lo, MAX(s1) AS hi FROM runtime_dop_e2e.telemetry GROUP BY g

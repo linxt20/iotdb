@@ -25,8 +25,12 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.exception.CpuNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /** The interface of fragment instance scheduling. */
 public interface IDriverScheduler {
@@ -49,6 +53,47 @@ public interface IDriverScheduler {
   void submitDrivers(
       QueryId queryId, List<IDriver> instances, long timeOut, SessionInfo sessionInfo)
       throws CpuNotEnoughException, MemoryNotEnoughException;
+
+  default RuntimeSchedulingGroup openRuntimeGroup(
+      FragmentInstanceContext context,
+      long originalAbsoluteDeadlineMillis,
+      SessionInfo session,
+      Runnable stopAndWake,
+      Consumer<Throwable> failFragment) {
+    throw new UnsupportedOperationException();
+  }
+
+  default PreparedDriverBatch prepareRuntimeDrivers(
+      RuntimeSchedulingGroup group, List<DriverSubmission> submissions, long fiBaseMemoryQuotaBytes)
+      throws CpuNotEnoughException, MemoryNotEnoughException {
+    throw new UnsupportedOperationException();
+  }
+
+  /** Growth may reject exact quota pressure after real rollback, without failing existing work. */
+  default RuntimeGrowthPreparation prepareRuntimeGrowth(
+      RuntimeSchedulingGroup group, List<DriverSubmission> submissions)
+      throws CpuNotEnoughException, MemoryNotEnoughException {
+    throw new UnsupportedOperationException();
+  }
+
+  default void activateRuntimeBatch(PreparedDriverBatch batch) {
+    throw new UnsupportedOperationException();
+  }
+
+  default ListenableFuture<Void> retireRuntimeWorker(
+      RuntimeSchedulingGroup group, TaskRegistration member) {
+    throw new UnsupportedOperationException();
+  }
+
+  default ListenableFuture<Void> stopRuntimeGroup(
+      RuntimeSchedulingGroup group, Throwable nullableCause) {
+    throw new UnsupportedOperationException();
+  }
+
+  default void submitDriverBatch(DriverBatchRequest request)
+      throws CpuNotEnoughException, MemoryNotEnoughException {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * Abort all the instances in this query.

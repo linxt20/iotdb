@@ -1,0 +1,1 @@
+SELECT time, device_id, s1, DIFF(s1) AS delta FROM (SELECT time, device_id, s1 FROM runtime_dop_e2e.telemetry WHERE device_id = 'd000' AND time >= 0 AND time < 64 ORDER BY time ASC) q ORDER BY time ASC

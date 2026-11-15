@@ -1296,4 +1296,158 @@ public class DynamicParallelPlanningProductionTest {
         factory.closeUncreated();
     }
   }
+
+  private void initializeRuntimeBudget(
+      LocalExecutionPlanContext target, DeviceTableScanNode node, int lanes) {
+    long cap = IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    long compactBytes = 4096;
+    org.apache.iotdb.db.queryengine.execution.memory.MemoryPool pool =
+        new org.apache.iotdb.db.queryengine.execution.memory.MemoryPool(
+            "runtime-planning",
+            new org.apache.iotdb.commons.memory.MemoryManager(Math.addExact(cap, cap)),
+            cap);
+    target.initializeRuntimeExchangeBudget(
+        pool,
+        new LocalExecutionPlanContext.RuntimeExchangeBudget(
+            0,
+            cap,
+            cap - lanes * compactBytes,
+            compactBytes,
+            Map.of(node.getPlanNodeId().getId(), lanes * compactBytes),
+            Set.of(),
+            1L << 20));
+  }
+
+  @Test
+  public void runtimeEstimatedWorkersDoNotChangeColdLogicalLayoutOrPublishLegacyDecision() {
+    DeviceTableScanNode node = fixtures.initDeviceTableScanNode(8);
+    node.setAllowParallelScan(true);
+    LocalExecutionPlanContext c = context("runtime_fixed_topology", 4);
+    initializeRuntimeBudget(c, node, 4);
+    DynamicParallelPlanningService service =
+        new DynamicParallelPlanningService(
+            new DynamicSnapshotHistoryStore(), DynamicParallelPlanningService.localEndpoint());
+    service.prepare(node, c);
+    ScanParallelPlanner.Input in = input(node, "fixed-query", 4, List.of(), false);
+    RuntimeScanLayout one =
+        service.selectRuntimeLayout(in, c, true, "ESTIMATED_FROM_TSFILE_BYTES", 1, 4);
+    RuntimeScanLayout four =
+        service.selectRuntimeLayout(in, c, true, "ESTIMATED_FROM_TSFILE_BYTES", 4, 4);
+    assertEquals(1, one.getInitialWorkers());
+    assertEquals(4, four.getInitialWorkers());
+    assertEquals(4, one.getLaneCount());
+    assertEquals(
+        one.getLanePlan().getPlanIdentityChecksum(), four.getLanePlan().getPlanIdentityChecksum());
+    assertNull(service.selections().iterator().next().getDecision());
+    service.registerFinal(four.getLanePlan(), c);
+    assertEquals(1, c.getDynamicScanAssignments().sourcePlans().size());
+    assertTrue(c.getDynamicScanAssignments().receipts().isEmpty());
+    assertSame(four.getLanePlan(), c.getRuntimeLayout(four.getLanePlan()).getLanePlan());
+  }
+
+  @Test
+  public void runtimeFinalWeightedPlanRebindsExactUnitsAndPreservesInitialWorkers() {
+    DeviceTableScanNode node = fixtures.initDeviceTableScanNode(8);
+    node.setAllowParallelScan(true);
+    LocalExecutionPlanContext c = context("runtime_weighted_binding", 4);
+    initializeRuntimeBudget(c, node, 4);
+    DynamicParallelPlanningService service =
+        new DynamicParallelPlanningService(
+            new DynamicSnapshotHistoryStore(), DynamicParallelPlanningService.localEndpoint());
+    service.prepare(node, c);
+    RuntimeScanLayout selected =
+        service.selectRuntimeLayout(
+            input(node, "weighted-query", 4, List.of(0L, 1L, 2L, 3L, 4L, 5L), false),
+            c,
+            true,
+            "ESTIMATED_FROM_TSFILE_BYTES",
+            1,
+            4);
+    ScanParallelPlan finalPlan =
+        ScanParallelPlan.withTimePartitionGroups(
+            selected.getLanePlan(),
+            List.of(List.of(0L, 4L), List.of(1L, 5L), List.of(2L), List.of(3L)));
+    service.registerFinal(finalPlan, c);
+    RuntimeScanLayout actual = c.getRuntimeLayout(finalPlan);
+    assertSame(finalPlan, actual.getLanePlan());
+    assertEquals(1, actual.getInitialWorkers());
+    assertEquals(4, actual.getLaneCount());
+    assertSame(finalPlan, service.selections().iterator().next().getPlan());
+    assertNull(service.selections().iterator().next().getDecision());
+    assertEquals(
+        finalPlan.getPlanIdentityChecksum(),
+        c.getDynamicScanAssignments()
+            .sourcePlans()
+            .iterator()
+            .next()
+            .getPlan()
+            .getPlanIdentityChecksum());
+    assertTrue(c.getDynamicScanAssignments().receipts().isEmpty());
+  }
+
+  @Test
+  public void runtimeSafetyRejectionStillReturnsSerialDespitePaidLaneBudget() {
+    DeviceTableScanNode node = fixtures.initDeviceTableScanNode(8);
+    node.setAllowParallelScan(true);
+    node.setPushDownLimit(10);
+    node.setPushLimitToEachDevice(false);
+    LocalExecutionPlanContext c = context("runtime_global_limit_guard", 4);
+    initializeRuntimeBudget(c, node, 4);
+    DynamicParallelPlanningService service =
+        new DynamicParallelPlanningService(
+            new DynamicSnapshotHistoryStore(), DynamicParallelPlanningService.localEndpoint());
+    service.prepare(node, c);
+    ScanParallelPlanner.Input guarded =
+        new ScanParallelPlanner.Input(
+            node.getDeviceEntries().stream()
+                .map(d -> String.valueOf(d.getDeviceID()))
+                .collect(Collectors.toList()),
+            List.of(),
+            null,
+            4,
+            true,
+            false,
+            true,
+            false,
+            false,
+            false,
+            "guard-query",
+            "0.i",
+            node.getPlanNodeId().getId());
+    RuntimeScanLayout layout = service.selectRuntimeLayout(guarded, c, false, "DISABLED", null, 4);
+    assertEquals(ScanParallelPlan.Mode.SERIAL, layout.getLanePlan().getMode());
+    assertEquals(
+        ScanParallelPlan.FallbackReason.GLOBAL_LIMIT_OR_OFFSET,
+        layout.getLanePlan().getFallbackReason());
+    assertEquals(1, layout.getLaneCount());
+    assertEquals(1, layout.getInitialWorkers());
+  }
+
+  @Test
+  public void runtimeLanesRemainAvailableWhenOptionalFeedbackIsDisabled() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableDynamicScanParallelism(false);
+    DeviceTableScanNode node = fixtures.initDeviceTableScanNode(8);
+    node.setAllowParallelScan(true);
+    LocalExecutionPlanContext c = context("runtime_without_feedback", 4);
+    initializeRuntimeBudget(c, node, 4);
+    DynamicParallelPlanningService service =
+        new DynamicParallelPlanningService(
+            new DynamicSnapshotHistoryStore(), DynamicParallelPlanningService.localEndpoint());
+    service.prepare(node, c);
+    RuntimeScanLayout layout =
+        service.selectRuntimeLayout(
+            input(node, "feedback-off-query", 4, List.of(), false),
+            c,
+            true,
+            "ESTIMATED_FROM_TSFILE_BYTES",
+            1,
+            4);
+    service.registerFinal(layout.getLanePlan(), c);
+    assertFalse(c.getDynamicScanAssignments().isEnabled());
+    assertTrue(c.getDynamicScanAssignments().sourcePlans().isEmpty());
+    assertTrue(c.getDynamicScanAssignments().receipts().isEmpty());
+    assertEquals(4, layout.getLaneCount());
+    assertEquals(1, layout.getInitialWorkers());
+    assertSame(layout.getLanePlan(), c.getRuntimeLayout(layout.getLanePlan()).getLanePlan());
+  }
 }

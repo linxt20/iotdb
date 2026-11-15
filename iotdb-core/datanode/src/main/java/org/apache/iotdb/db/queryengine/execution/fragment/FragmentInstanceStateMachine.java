@@ -91,6 +91,10 @@ public class FragmentInstanceStateMachine {
     }
   }
 
+  public Executor getNotificationExecutor() {
+    return executor;
+  }
+
   public long getCreatedTime() {
     return createdTime;
   }

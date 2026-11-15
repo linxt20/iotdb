@@ -32,6 +32,7 @@ public final class OperatorRuntimeSnapshot {
   private final long tsBlocks;
   private final Long estimatedMemory;
   private final Long exchangeBytes;
+  private final String runtimeControlEvidence;
 
   public OperatorRuntimeSnapshot(
       String planNodeId,
@@ -42,6 +43,29 @@ public final class OperatorRuntimeSnapshot {
       long tsBlocks,
       Long estimatedMemory,
       Long exchangeBytes) {
+    this(
+        planNodeId,
+        operatorType,
+        executionNanos,
+        calls,
+        outputRows,
+        tsBlocks,
+        estimatedMemory,
+        exchangeBytes,
+        null);
+  }
+
+  public OperatorRuntimeSnapshot(
+      String planNodeId,
+      String operatorType,
+      long executionNanos,
+      long calls,
+      long outputRows,
+      long tsBlocks,
+      Long estimatedMemory,
+      Long exchangeBytes,
+      String runtimeControlEvidence) {
+    this.runtimeControlEvidence = runtimeControlEvidence;
     this.planNodeId = requireText(planNodeId, "planNodeId");
     this.operatorType = requireText(operatorType, "operatorType");
     this.executionNanos = nonNegative(executionNanos, "executionNanos");
@@ -84,6 +108,10 @@ public final class OperatorRuntimeSnapshot {
     return exchangeBytes;
   }
 
+  public String getRuntimeControlEvidence() {
+    return runtimeControlEvidence;
+  }
+
   /** Adapt the existing Explain Analyze operator metric without inventing missing values. */
   public static OperatorRuntimeSnapshot fromThrift(TOperatorStatistics statistics) {
     if (statistics == null) {
@@ -97,7 +125,10 @@ public final class OperatorRuntimeSnapshot {
         statistics.getOutputRows(),
         statistics.isSetTsBlockCount() ? statistics.getTsBlockCount() : 0L,
         statistics.isSetMemoryUsage() ? statistics.getMemoryUsage() : null,
-        statistics.isSetOutputBytes() ? statistics.getOutputBytes() : null);
+        statistics.isSetOutputBytes() ? statistics.getOutputBytes() : null,
+        statistics.getSpecifiedInfo() == null
+            ? null
+            : statistics.getSpecifiedInfo().get("__runtime_dop_control"));
   }
 
   private static String requireText(String value, String name) {

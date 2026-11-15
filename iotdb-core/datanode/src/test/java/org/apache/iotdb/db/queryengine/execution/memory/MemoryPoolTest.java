@@ -554,6 +554,61 @@ public class MemoryPoolTest {
   }
 
   @Test
+  public void grantedFutureListenerAndConcurrentCancelPreserveSingleReservation() throws Exception {
+    Assert.assertTrue(pool.tryReserve(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512, 512));
+    ListenableFuture<Void> pending =
+        pool.reserveWithPriority(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256, 512, false)
+            .getFuture();
+    Assert.assertFalse(pending.isDone());
+    ExecutorService threads = Executors.newFixedThreadPool(2);
+    CountDownLatch listenerEntered = new CountDownLatch(1);
+    CountDownLatch releaseListener = new CountDownLatch(1);
+    CountDownLatch cancelStarted = new CountDownLatch(1);
+    AtomicBoolean listenerHasFutureMonitor = new AtomicBoolean();
+    AtomicBoolean listenerReleased = new AtomicBoolean();
+    pending.addListener(
+        () -> {
+          listenerHasFutureMonitor.set(Thread.holdsLock(pending));
+          listenerEntered.countDown();
+          try {
+            listenerReleased.set(releaseListener.await(5, TimeUnit.SECONDS));
+          } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+          }
+        },
+        com.google.common.util.concurrent.MoreExecutors.directExecutor());
+    try {
+      Future<?> grant =
+          threads.submit(() -> pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 256));
+      Assert.assertTrue(listenerEntered.await(5, TimeUnit.SECONDS));
+      Assert.assertTrue(
+          "owners must hand off listeners because grant publication holds the future monitor",
+          listenerHasFutureMonitor.get());
+      Assert.assertTrue(pending.isDone());
+      Future<Long> cancel =
+          threads.submit(
+              () -> {
+                cancelStarted.countDown();
+                return pool.tryCancel(pending);
+              });
+      Assert.assertTrue(cancelStarted.await(5, TimeUnit.SECONDS));
+      releaseListener.countDown();
+      grant.get(5, TimeUnit.SECONDS);
+      Assert.assertEquals(0L, cancel.get(5, TimeUnit.SECONDS).longValue());
+      Assert.assertTrue(listenerReleased.get());
+      Assert.assertFalse(pending.isCancelled());
+      Assert.assertEquals(0, pool.getMemoryReservationSize());
+      Assert.assertEquals(512, pool.getReservedBytes());
+      pool.free(QUERY_ID, FRAGMENT_INSTANCE_ID, PLAN_NODE_ID, 512);
+      Assert.assertEquals(0, pool.getReservedBytes());
+    } finally {
+      releaseListener.countDown();
+      threads.shutdownNow();
+      Assert.assertTrue(threads.awaitTermination(5, TimeUnit.SECONDS));
+    }
+  }
+
+  @Test
   public void testTryReserve() {
 
     Assert.assertTrue(

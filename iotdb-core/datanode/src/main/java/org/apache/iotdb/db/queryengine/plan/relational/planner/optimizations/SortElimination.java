@@ -34,7 +34,9 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TableFu
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderedParallelScanEligibility;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTableScanColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 
@@ -143,6 +145,9 @@ public class SortElimination implements PlanOptimizer {
       PlanNode child = node.getChild().accept(this, newContext);
       context.addCannotEliminateSort(newContext.cannotEliminateSort);
       OrderingScheme orderingScheme = node.getOrderingScheme();
+      if (shouldRetainOrderedScanMarker(child, orderingScheme)) {
+        return node.replaceChildren(Collections.singletonList(child));
+      }
       if (newContext.canEliminateSort()
           && newContext.getTotalDeviceEntrySize() == 1
           && orderingScheme.getOrderBy().get(0).getName().equals(context.getTimeColumnName())) {
@@ -158,12 +163,23 @@ public class SortElimination implements PlanOptimizer {
       Context newContext = new Context();
       PlanNode child = node.getChild().accept(this, newContext);
       context.addCannotEliminateSort(newContext.cannotEliminateSort);
+      if (shouldRetainOrderedScanMarker(child, node.getOrderingScheme())) {
+        return node.replaceChildren(Collections.singletonList(child));
+      }
       return newContext.canEliminateSort()
               && (node.isOrderByAllIdsAndTime()
                   || node.getStreamCompareKeyEndIndex()
                       == node.getOrderingScheme().getOrderBy().size() - 1)
           ? child
           : node.replaceChildren(Collections.singletonList(child));
+    }
+
+    private static boolean shouldRetainOrderedScanMarker(
+        PlanNode child, OrderingScheme orderingScheme) {
+      // This node carries a proven, explicit order into local pipeline construction. An
+      // allowParallelScan=false flag alone cannot distinguish ordering from DIFF or other guards.
+      return IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+          && OrderedParallelScanEligibility.canUseLocalMergeTree(child, orderingScheme);
     }
 
     @Override

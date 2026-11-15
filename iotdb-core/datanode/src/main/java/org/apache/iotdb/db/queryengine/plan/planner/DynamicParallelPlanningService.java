@@ -392,6 +392,34 @@ public final class DynamicParallelPlanningService {
     return selection;
   }
 
+  /** Reuse historical hints without treating worker changes as changes to logical topology. */
+  public RuntimeScanLayout selectRuntimeLayout(
+      ScanParallelPlanner.Input input,
+      LocalExecutionPlanContext context,
+      boolean dopEstimationEnabled,
+      String estimateStatus,
+      Integer estimatedDop,
+      int maxLogicalLanes) {
+    Selection hint = select(input, context, dopEstimationEnabled, estimateStatus, estimatedDop);
+    int initial = estimatedDop == null ? maxLogicalLanes : Math.max(1, estimatedDop);
+    if (hint.decision != null
+        && hint.decision.getAction() != DynamicParallelScheduleDecision.Action.KEEP_STATIC) {
+      initial = Math.max(1, hint.decision.getTargetDop());
+    }
+    RuntimeScanLayout layout =
+        new ScanParallelPlanner().planRuntimeLayout(input, hint.grouping, maxLogicalLanes, initial);
+    Selection actual = new Selection(layout.getLanePlan(), hint.shape, hint.grouping, null);
+    actual.contextDop = context.getDegreeOfParallelism();
+    actual.previousDop = hint.previousDop;
+    actual.dopEstimationEnabled = dopEstimationEnabled;
+    actual.estimateStatus = estimateStatus;
+    actual.estimatedDop = estimatedDop;
+    actual.inputs = hint.inputs;
+    selections.put(input.getPlanNodeId(), actual);
+    context.registerRuntimeLayout(input.getPlanNodeId(), layout);
+    return layout;
+  }
+
   public boolean isDynamic(ScanParallelPlan plan) {
     if (plan.getWorkUnits().isEmpty()) return false;
     Selection selection = selections.get(plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId());
@@ -406,6 +434,27 @@ public final class DynamicParallelPlanningService {
   }
 
   public void registerFinal(ScanParallelPlan plan, LocalExecutionPlanContext context) {
+    // Final time-partition weighting can rebuild work units. Bind observations to that exact plan.
+    RuntimeScanLayout runtime = context.getRuntimeLayout(plan);
+    if (runtime != null && !plan.getWorkUnits().isEmpty()) {
+      String sourceId = plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId();
+      Selection old = selections.get(sourceId);
+      Selection actual = new Selection(plan, old == null ? null : old.shape, null, null);
+      if (old != null) {
+        actual.checkSequence = old.checkSequence;
+        actual.contextDop = old.contextDop;
+        actual.previousDop = old.previousDop;
+        actual.dopEstimationEnabled = old.dopEstimationEnabled;
+        actual.estimateStatus = old.estimateStatus;
+        actual.estimatedDop = old.estimatedDop;
+        actual.inputs = old.inputs;
+      }
+      selections.put(sourceId, actual);
+      context.registerRuntimeLayout(
+          sourceId,
+          new RuntimeScanLayout(
+              plan, Math.min(runtime.getInitialWorkers(), plan.getPipelineCount())));
+    }
     if (!context.getDynamicScanAssignments().isEnabled() || plan.getWorkUnits().isEmpty()) return;
     String id = plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId();
     Selection selection = selections.get(id);

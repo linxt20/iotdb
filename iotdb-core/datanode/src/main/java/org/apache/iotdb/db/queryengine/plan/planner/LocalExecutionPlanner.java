@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -36,14 +38,18 @@ import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeBlockCodec;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.OperatorMemoryNotEnoughException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -59,6 +65,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.queryengine.common.SqlDialect.TREE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 
 /**
  * Used to plan a fragment instance. One fragment instance could be split into multiple pipelines so
@@ -114,6 +121,7 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
+    initializeRuntimeExchangeBudget(plan, context);
     context.getDynamicParallelPlanningService().prepare(plan, context);
     Operator root = generateOperator(instanceContext, context, plan);
     context.freezeDynamicScanAssignments();
@@ -135,6 +143,11 @@ public class LocalExecutionPlanner {
     context.finalizeDynamicAdmission();
 
     context.addPipelineDriverFactory(root, context.getDriverContext(), estimatedMemorySize);
+    if (context.isRuntimeParallelismEnabled()) {
+      instanceContext.setRuntimePlanBindings(
+          context.freezeRuntimeGroups(context.getPipelineDriverFactories()));
+    }
+
     java.util.Set<Integer> actualPipelines = new java.util.HashSet<>();
     for (PipelineDriverFactory factory : context.getPipelineDriverFactories())
       actualPipelines.add(factory.getDriverContext().getDriverTaskID().getPipelineId());
@@ -275,6 +288,243 @@ public class LocalExecutionPlanner {
             .getQueryPool());
   }
 
+  /**
+   * Freeze side budgets before any native handle or prepaid scan lane is created. Planning never
+   * follows the remote subtree attached to an ExchangeNode.
+   */
+  private void initializeRuntimeExchangeBudget(PlanNode plan, LocalExecutionPlanContext context) {
+    if (context.getInstanceContext().getRuntimeLifecycle() == null) return;
+    org.apache.iotdb.db.queryengine.execution.memory.MemoryPool pool =
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool();
+    context.initializeRuntimeExchangeBudget(pool, runtimeExchangeBudget(plan, context));
+  }
+
+  static LocalExecutionPlanContext.RuntimeExchangeBudget runtimeExchangeBudget(
+      PlanNode plan, LocalExecutionPlanContext context) {
+    long total = IoTDBDescriptor.getInstance().getMemoryConfig().getMaxBytesPerFragmentInstance();
+    java.util.Map<
+            String,
+            org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode>
+        scans = new java.util.LinkedHashMap<>();
+    java.util.Set<String> approved = new java.util.LinkedHashSet<>();
+    boolean[] input = {false};
+    collectRuntimeScanSources(plan, scans, input);
+    collectHashRuntimeApprovals(plan, approved);
+    approved.retainAll(scans.keySet());
+    long inputCap = input[0] ? total / 2 : 0;
+    long outputCap = Math.subtractExact(total, inputCap);
+    long nativeHeadroom = scans.isEmpty() ? outputCap : outputCap / 2;
+    long laneSlots =
+        Math.multiplyExact(
+            (long) Math.max(1, scans.size()), Math.max(1, context.getDegreeOfParallelism()));
+    long compactBound =
+        Math.min(256L * 1024, Math.max(1, (outputCap - nativeHeadroom) / laneSlots));
+    if (!scans.isEmpty() && compactBound < 4096) {
+      throw new MemoryNotEnoughException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED);
+    }
+    java.util.Map<String, Integer> outputChannels = new java.util.LinkedHashMap<>();
+    java.util.Map<String, PlanNode> outputNodes = new java.util.LinkedHashMap<>();
+    java.util.Map<String, ExchangeNode> inputNodes = new java.util.LinkedHashMap<>();
+    collectRuntimeEndpointSpecs(plan, outputChannels, outputNodes, inputNodes);
+    java.util.Map<String, List<RuntimeExchangeBlockCodec.Bounds>> outputBounds =
+        new java.util.LinkedHashMap<>();
+    for (Map.Entry<String, Integer> output : outputChannels.entrySet()) {
+      RuntimeExchangeBlockCodec.Bounds bounds =
+          runtimeEndpointBounds(outputNodes.get(output.getKey()), context);
+      outputBounds.put(output.getKey(), java.util.Collections.nCopies(output.getValue(), bounds));
+    }
+    java.util.Map<String, RuntimeExchangeBlockCodec.Bounds> inputBounds =
+        new java.util.LinkedHashMap<>();
+    for (Map.Entry<String, ExchangeNode> entry : inputNodes.entrySet()) {
+      inputBounds.put(entry.getKey(), runtimeEndpointBounds(entry.getValue(), context));
+    }
+    java.util.Map<String, Long> prepaid = new java.util.LinkedHashMap<>();
+    for (String source : scans.keySet()) {
+      prepaid.put(
+          source,
+          Math.multiplyExact((long) Math.max(1, context.getDegreeOfParallelism()), compactBound));
+    }
+    return new LocalExecutionPlanContext.RuntimeExchangeBudget(
+        inputCap,
+        outputCap,
+        nativeHeadroom,
+        compactBound,
+        prepaid,
+        approved,
+        16L * 1024 * 1024,
+        outputBounds,
+        inputBounds);
+  }
+
+  private static RuntimeExchangeBlockCodec.Bounds runtimeEndpointBounds(
+      PlanNode node, LocalExecutionPlanContext context) {
+    if (node instanceof IdentitySinkNode || node instanceof ShuffleSinkNode) {
+      if (node.getChildren().size() != 1) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+      }
+      node = node.getChildren().get(0);
+    }
+    List<org.apache.tsfile.enums.TSDataType> schema = new ArrayList<>();
+    int booleanColumns = 0;
+    for (org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol symbol :
+        node.getOutputSymbols()) {
+      org.apache.tsfile.read.common.type.Type type =
+          context.getTypeProvider().getTableModelType(symbol);
+      org.apache.tsfile.enums.TSDataType dataType =
+          org.apache.tsfile.enums.TSDataType.valueOf(type.getTypeEnum().name());
+      schema.add(dataType);
+      if (dataType == org.apache.tsfile.enums.TSDataType.BOOLEAN) booleanColumns++;
+    }
+    // A wire edge has one schema-derived contract on every FI. Do not shrink it by the local
+    // endpoint count: that could authorize a producer block which its consumer cannot admit.
+    // Insufficient local totals are rejected by RuntimeExchangeBudget before the first reserve.
+    long retained = 64L * 1024;
+    int rows = 8192; // A flat compact output has an eight-byte time value for every row.
+    long maskArray = org.apache.tsfile.utils.RamUsageEstimator.sizeOfByteArray((rows + 7) / 8);
+    long maskScratch = Math.multiplyExact((long) schema.size() + 1 + booleanColumns, maskArray);
+    long scratch =
+        Math.addExact(
+            Math.addExact(4096, Math.multiplyExact(512L, (long) schema.size() + 1)), maskScratch);
+    long logical = Math.multiplyExact(2L, retained);
+    int serialized = Math.toIntExact(Math.addExact(logical, 64L + 4L * schema.size()));
+    return new RuntimeExchangeBlockCodec.Bounds(
+            rows,
+            schema.size(),
+            retained,
+            logical,
+            serialized,
+            Math.multiplyExact(8L, retained),
+            scratch)
+        .withSchema(schema);
+  }
+
+  /** Cross-FI runtime edges all use the leased RPC path, including loopback. */
+  private static void collectRuntimeEndpointSpecs(
+      PlanNode node,
+      Map<String, Integer> outputChannels,
+      Map<String, PlanNode> outputNodes,
+      Map<String, ExchangeNode> inputNodes) {
+    if (node instanceof ExchangeNode) {
+      if (inputNodes.putIfAbsent(node.getPlanNodeId().getId(), (ExchangeNode) node) != null) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+      }
+      return;
+    }
+    int channels =
+        node instanceof IdentitySinkNode
+            ? ((IdentitySinkNode) node).getDownStreamChannelLocationList().size()
+            : node instanceof ShuffleSinkNode
+                ? ((ShuffleSinkNode) node).getDownStreamChannelLocationList().size()
+                : 0;
+    if (node instanceof IdentitySinkNode || node instanceof ShuffleSinkNode) {
+      if (channels <= 0
+          || outputChannels.putIfAbsent(node.getPlanNodeId().getId(), channels) != null) {
+        throw new IllegalArgumentException(
+            DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+      }
+      outputNodes.put(node.getPlanNodeId().getId(), node);
+    }
+    for (PlanNode child : node.getChildren()) {
+      collectRuntimeEndpointSpecs(child, outputChannels, outputNodes, inputNodes);
+    }
+  }
+
+  private static void collectRuntimeScanSources(
+      PlanNode node,
+      java.util.Map<
+              String,
+              org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode>
+          scans,
+      boolean[] input) {
+    if (node instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode) {
+      input[0] = true;
+      return;
+    }
+    if (node.getClass()
+        == org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode.class) {
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode scan =
+          (org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode) node;
+      boolean globalLimit =
+          (scan.getPushDownLimit() > 0 || scan.getPushDownOffset() > 0)
+              && !scan.isPushLimitToEachDevice();
+      if (!scan.getDeviceEntryDataSetHandle().isPresent()
+          && scan.getDeviceEntries() != null
+          && scan.getDeviceEntries().size() > 1
+          && !globalLimit) {
+        if (scans.putIfAbsent(scan.getPlanNodeId().getId(), scan) != null)
+          throw new IllegalArgumentException(
+              DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+      }
+    }
+    for (PlanNode child : node.getChildren()) collectRuntimeScanSources(child, scans, input);
+  }
+
+  private static void collectHashRuntimeApprovals(PlanNode node, java.util.Set<String> approved) {
+    if (node instanceof org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode)
+      return;
+    if (node
+            instanceof
+            org.apache.iotdb.db.queryengine.plan.relational.planner.node
+                .TableHashPartitioningShuffleSinkNode
+        && node.getChildren().size() == 1) {
+      PlanNode partial = node.getChildren().get(0);
+      if (partial
+              instanceof
+              org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode
+          && ((org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode)
+                      partial)
+                  .getStep()
+              == org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode
+                  .Step.PARTIAL
+          && partial.getChildren().size() == 1) {
+        PlanNode raw = partial.getChildren().get(0);
+        while (isTransparentRuntimeHashWrapper(raw) && raw.getChildren().size() == 1) {
+          raw = raw.getChildren().get(0);
+        }
+        if (raw.getClass()
+            == org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode
+                .class) {
+          approved.add(raw.getPlanNodeId().getId());
+        }
+      }
+    }
+    for (PlanNode child : node.getChildren()) collectHashRuntimeApprovals(child, approved);
+  }
+
+  private static boolean isTransparentRuntimeHashWrapper(PlanNode node) {
+    // Hash repartition permits unordered aggregation input, but DIFF still consumes the original
+    // scan sequence. Its presence must not turn the scan's existing admission denial into approval.
+    if (node instanceof FilterNode) {
+      return !containsDiffFunction(((FilterNode) node).getPredicate());
+    }
+    if (node instanceof ProjectNode) {
+      return ((ProjectNode) node)
+          .getAssignments().getMap().values().stream()
+              .noneMatch(expression -> containsDiffFunction(expression));
+    }
+    return false;
+  }
+
+  /** A separate physical operators-memory lease for each execution member. */
+  public AutoCloseable reserveRuntimeWorkerMemory(long bytes) {
+    if (bytes <= 0) throw new IllegalArgumentException();
+    if (allocateOperatorsMemory(bytes, false) != bytes) {
+      throw new MemoryNotEnoughException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED);
+    }
+    java.util.concurrent.atomic.AtomicBoolean released =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    return () -> {
+      if (released.compareAndSet(false, true)) OPERATORS_MEMORY_BLOCK.release(bytes);
+    };
+  }
+
   private long checkMemory(
       final PipelineMemoryEstimator memoryEstimator, FragmentInstanceContext instanceContext)
       throws MemoryNotEnoughException {
@@ -282,7 +532,9 @@ public class LocalExecutionPlanner {
     final AdmissionMemoryAccount admissionAccount = instanceContext.getAdmissionMemoryAccount();
     if (admissionAccount != null) admissionAccount.checked();
     // if it is disabled, just return
-    if (!IoTDBDescriptor.getInstance().getMemoryConfig().isEnableQueryMemoryEstimation()
+    boolean runtime = instanceContext.getRuntimeLifecycle() != null;
+    if (!runtime
+        && !IoTDBDescriptor.getInstance().getMemoryConfig().isEnableQueryMemoryEstimation()
         && !IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
       instanceContext.setAdmissionAccepted("CHECK_DISABLED");
       return 0;
@@ -294,7 +546,8 @@ public class LocalExecutionPlanner {
 
     if (admissionAccount != null && estimatedMemorySize > 0) admissionAccount.attempted();
     long reservedBytes =
-        allocateOperatorsMemory(estimatedMemorySize, instanceContext.isHighestPriority());
+        allocateOperatorsMemory(
+            estimatedMemorySize, !runtime && instanceContext.isHighestPriority());
     if (admissionAccount != null && reservedBytes > 0) admissionAccount.reserved(reservedBytes);
     if (reservedBytes < 0) {
       instanceContext.setAdmissionRejected("INSUFFICIENT_OPERATOR_MEMORY");
@@ -308,7 +561,25 @@ public class LocalExecutionPlanner {
     instanceContext.setAdmissionAccepted(
         reservedBytes == 0 && estimatedMemorySize > 0 ? "HIGHEST_PRIORITY_ZERO_RESERVATION" : null);
     FragmentInstanceStateMachine stateMachine = instanceContext.getStateMachine();
-    if (reservedBytes > 0) {
+    if (reservedBytes > 0 && runtime) {
+      java.util.concurrent.atomic.AtomicBoolean released =
+          new java.util.concurrent.atomic.AtomicBoolean();
+      AutoCloseable lease =
+          () -> {
+            if (released.compareAndSet(false, true)) {
+              OPERATORS_MEMORY_BLOCK.release(reservedBytes);
+              if (admissionAccount != null) admissionAccount.released(reservedBytes);
+            }
+          };
+      if (!instanceContext.registerQuotaMemoryLease(lease)) {
+        try {
+          lease.close();
+        } catch (Exception failure) {
+          throw new java.util.concurrent.CompletionException(failure);
+        }
+        throw new java.util.concurrent.CancellationException();
+      }
+    } else if (reservedBytes > 0) {
       stateMachine.addStateChangeListener(
           newState -> {
             if (newState.isDone()) {

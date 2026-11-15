@@ -72,6 +72,7 @@ public final class RuntimeCleanupCoordinator {
   private final Set<RuntimeScanGroup> groupIdentities =
       Collections.newSetFromMap(new IdentityHashMap<>());
   private final EnumMap<Phase, List<CleanupStep>> steps = new EnumMap<>(Phase.class);
+  private final Set<CleanupStep> requiredSteps = Collections.newSetFromMap(new IdentityHashMap<>());
   private final SettableFuture<Void> quiesced = SettableFuture.create();
   private final SettableFuture<Void> driversClosed = SettableFuture.create();
   private final SettableFuture<Void> completed = SettableFuture.create();
@@ -109,6 +110,51 @@ public final class RuntimeCleanupCoordinator {
     }
   }
 
+  /**
+   * Register a newly prepared execution member while the fragment is live. The stop transition and
+   * membership publication share this lock, so a successful registration cannot be missed by stop.
+   * Rejected members remain the caller's responsibility and must never be submitted or activated.
+   */
+  public void registerWorker(RuntimeScanWorker worker) {
+    Objects.requireNonNull(worker);
+    synchronized (lock) {
+      if (stopRequested) {
+        throw new IllegalStateException();
+      }
+      if (!driverIdentities.add(worker)) {
+        throw new IllegalArgumentException();
+      }
+      drivers.add(worker);
+    }
+  }
+
+  /**
+   * Drop strong ownership only after normal resource settlement and native mapping removal.
+   * Historical contributions must be accumulated by the caller before invoking this method. Once
+   * stop has captured membership, that fixed terminal set must remain intact.
+   */
+  public boolean unregisterRetiredWorker(RuntimeScanWorker worker) {
+    Objects.requireNonNull(worker);
+    ListenableFuture<?> retired = worker.getRetiredFuture();
+    ListenableFuture<?> removed = worker.getSchedulerRemovalFuture();
+    if (!retired.isDone() || !removed.isDone()) {
+      return false;
+    }
+    try {
+      Futures.getDone(retired);
+      Futures.getDone(removed);
+    } catch (ExecutionException | CancellationException failure) {
+      return false;
+    }
+    synchronized (lock) {
+      if (stopRequested || !driverIdentities.remove(worker)) {
+        return false;
+      }
+      drivers.remove(worker);
+      return true;
+    }
+  }
+
   public void registerGroup(RuntimeScanGroup group) {
     Objects.requireNonNull(group);
     boolean stop;
@@ -131,6 +177,20 @@ public final class RuntimeCleanupCoordinator {
     synchronized (lock) {
       requireOpen();
       steps.get(phase).add(step);
+    }
+  }
+
+  /**
+   * A failed required step withholds all later phases. Independent steps within the same phase are
+   * still attempted. Use this for native task removal and physical ownership settlement.
+   */
+  public void addRequiredCleanup(Phase phase, CleanupStep step) {
+    Objects.requireNonNull(phase);
+    Objects.requireNonNull(step);
+    synchronized (lock) {
+      requireOpen();
+      steps.get(phase).add(step);
+      requiredSteps.add(step);
     }
   }
 
@@ -191,6 +251,24 @@ public final class RuntimeCleanupCoordinator {
 
   public ListenableFuture<Void> getCompletedFuture() {
     return Futures.nonCancellationPropagating(completed);
+  }
+
+  /** Release strong graph ownership only after every required cleanup phase succeeded. */
+  public void releaseSuccessfulOwners() {
+    if (!completed.isDone()) throw new IllegalStateException();
+    try {
+      Futures.getDone(completed);
+    } catch (ExecutionException | CancellationException failure) {
+      throw new IllegalStateException(failure);
+    }
+    synchronized (lock) {
+      drivers.clear();
+      driverIdentities.clear();
+      groups.clear();
+      groupIdentities.clear();
+      for (List<CleanupStep> phase : steps.values()) phase.clear();
+      requiredSteps.clear();
+    }
   }
 
   private void requireOpen() {
@@ -263,8 +341,22 @@ public final class RuntimeCleanupCoordinator {
     awaitAll(
         pending,
         () -> {
+          Throwable physicalFailure = null;
+          for (ListenableFuture<?> result : pending) {
+            try {
+              Futures.getDone(result);
+            } catch (ExecutionException failure) {
+              physicalFailure = failure.getCause() == null ? failure : failure.getCause();
+              break;
+            } catch (CancellationException failure) {
+              physicalFailure = failure;
+              break;
+            }
+          }
+          final Throwable unsettledPhysicalOwner = physicalFailure;
           try {
-            driversClosed.set(null);
+            if (physicalFailure == null) driversClosed.set(null);
+            else driversClosed.setException(physicalFailure);
           } catch (Throwable failure) {
             recordFailure(failure);
           } finally {
@@ -273,27 +365,56 @@ public final class RuntimeCleanupCoordinator {
                 () ->
                     runPhase(
                         Phase.CLOSE_ENDPOINTS,
-                        () ->
-                            runPhase(
-                                Phase.RELEASE_FRONTIERS,
-                                () ->
-                                    runPhase(
-                                        Phase.RELEASE_RESOURCES,
-                                        () -> runPhase(Phase.DEREGISTER, this::finish)))));
+                        () -> {
+                          // A failed actual-close receipt certifies execution exit, but cannot
+                          // authorize releasing ambiguous operator or resource ownership.
+                          if (unsettledPhysicalOwner != null) {
+                            failUnsafe(unsettledPhysicalOwner);
+                            return;
+                          }
+                          runPhase(
+                              Phase.RELEASE_FRONTIERS,
+                              () ->
+                                  runPhase(
+                                      Phase.RELEASE_RESOURCES,
+                                      () -> runPhase(Phase.DEREGISTER, this::finish)));
+                        }));
           }
         });
   }
 
   private void runPhase(Phase phase, Runnable next) {
     List<ListenableFuture<?>> pending = new ArrayList<>();
+    List<ListenableFuture<?>> required = new ArrayList<>();
     for (CleanupStep step : steps.get(phase)) {
+      ListenableFuture<?> result;
       try {
-        pending.add(Objects.requireNonNull(step.run()));
+        result = Objects.requireNonNull(step.run());
       } catch (Throwable failure) {
         recordFailure(failure);
+        result = Futures.immediateFailedFuture(failure);
+      }
+      pending.add(result);
+      if (requiredSteps.contains(step)) {
+        required.add(result);
       }
     }
-    awaitAll(pending, next);
+    awaitAll(
+        pending,
+        () -> {
+          for (ListenableFuture<?> result : required) {
+            try {
+              Futures.getDone(result);
+            } catch (ExecutionException failure) {
+              failUnsafe(failure.getCause() == null ? failure : failure.getCause());
+              return;
+            } catch (CancellationException failure) {
+              failUnsafe(failure);
+              return;
+            }
+          }
+          next.run();
+        });
   }
 
   private void awaitAll(List<ListenableFuture<?>> pending, Runnable next) {

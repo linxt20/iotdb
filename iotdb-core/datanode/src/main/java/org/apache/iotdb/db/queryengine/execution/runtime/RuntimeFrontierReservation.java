@@ -42,6 +42,7 @@ public final class RuntimeFrontierReservation implements AutoCloseable {
   private final Object owner = new Object();
   private final MemoryPool pool;
   private final MemoryReservationKey key;
+  private final MemorySide side;
   private final long bytesPerLane;
   private final long reservationBytes;
   private final BlockCredit[] activeCredits;
@@ -59,11 +60,13 @@ public final class RuntimeFrontierReservation implements AutoCloseable {
   private RuntimeFrontierReservation(
       MemoryPool pool,
       MemoryReservationKey key,
+      MemorySide side,
       int laneCount,
       long bytesPerLane,
       long totalBytes) {
     this.pool = pool;
     this.key = key;
+    this.side = side;
     this.bytesPerLane = bytesPerLane;
     this.reservationBytes = totalBytes;
     this.activeCredits = new BlockCredit[laneCount];
@@ -90,6 +93,17 @@ public final class RuntimeFrontierReservation implements AutoCloseable {
       int laneCount,
       long bytesPerLane,
       long maxFiBytes) {
+    return tryCreate(pool, groupKey, MemorySide.OUTPUT, laneCount, bytesPerLane, maxFiBytes);
+  }
+
+  public static Optional<RuntimeFrontierReservation> tryCreate(
+      MemoryPool pool,
+      MemoryReservationKey groupKey,
+      MemorySide side,
+      int laneCount,
+      long bytesPerLane,
+      long maxFiBytes) {
+    Objects.requireNonNull(side);
     Objects.requireNonNull(pool);
     Objects.requireNonNull(groupKey);
     requireIdentity(groupKey.queryId());
@@ -101,13 +115,10 @@ public final class RuntimeFrontierReservation implements AutoCloseable {
     long totalBytes = Math.multiplyExact((long) laneCount, bytesPerLane);
     // Allocate the member arrays before obtaining any physical pool bytes.
     RuntimeFrontierReservation reservation =
-        new RuntimeFrontierReservation(pool, groupKey, laneCount, bytesPerLane, totalBytes);
+        new RuntimeFrontierReservation(pool, groupKey, side, laneCount, bytesPerLane, totalBytes);
     pool.registerFragmentInstanceSharedBudget(groupKey.queryId(), groupKey.fragmentInstanceId());
     pool.registerPlanNodeIdToQueryMemoryMap(
-        groupKey.queryId(),
-        groupKey.fragmentInstanceId(),
-        groupKey.planNodeId(),
-        MemorySide.OUTPUT);
+        groupKey.queryId(), groupKey.fragmentInstanceId(), groupKey.planNodeId(), side);
     if (!pool.tryReserve(
         groupKey.queryId(),
         groupKey.fragmentInstanceId(),
@@ -125,8 +136,26 @@ public final class RuntimeFrontierReservation implements AutoCloseable {
     }
   }
 
+  /** Exact pool object backing this owner; exposed for identity-safe observation only. */
+  public MemoryPool getMemoryPool() {
+    return pool;
+  }
+
   public MemoryReservationKey getMemoryReservationKey() {
     return key;
+  }
+
+  public MemorySide getMemorySide() {
+    return side;
+  }
+
+  public void claimEndpointSlot(int slot, Object endpoint) {
+    claimQueueLane(slot, endpoint);
+  }
+
+  /** Native/remote credits cover a fixed envelope; they do not measure actual resident bytes. */
+  public BlockCredit acquireEnvelope(int slot, Object endpoint) {
+    return acquire(slot, endpoint, bytesPerLane);
   }
 
   public int getLaneCount() {

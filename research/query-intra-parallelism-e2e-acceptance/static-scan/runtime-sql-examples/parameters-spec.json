@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "entry": "StaticScanAcceptanceDriver --mode <ordinary-sql|load-runtime-fixture> --params <absolute-parameters.json>",
+  "pathResolution": "manifest,sqlFile,out,deploymentManifest resolve against parameter JSON parent; fixture partition paths resolve against fixture manifest parent. Use absolute paths for reviewed runs.",
+  "common": {
+    "schemaVersion": "required integer 1",
+    "mode": "required and must equal CLI mode",
+    "manifest": "required JSON path: deployment for ordinary-sql, fixture for load-runtime-fixture",
+    "out": "required fresh directory; existing output rejected",
+    "username": "optional; deployment username then root",
+    "passwordEnv": "recommended; explicit environment variable, never archived secret",
+    "password": "optional alternative; redacted from archived parameters"
+  },
+  "ordinarySql": {
+    "sqlFile": "required exact UTF-8 ordinary SELECT/WITH; executed.sql adds one unique run comment and saves both SHA values",
+    "queryTimeoutSeconds": "default180, DEADLINE default1; 1..600; actual JDBC timeout and original server deadlines are archived",
+    "fetchSize": "default 1024; 1..65536",
+    "auditDurationMs": "default 300000; <=600000",
+    "rosterPollMs": "default 25; 5..1000",
+    "rosterTimeoutMs": "default 15000; result drain waits for actual ready roster",
+    "terminalTimeoutSeconds": "default 45 for frozen statistics and resource settlement",
+    "requireActualSourceNodeCount": "default 2; 0..2; actual ConfigNode IDs and actual DeviceScan FI hosts are checked",
+    "requireGrowShrink": "default false; true requires real event INITIAL_ACTIVATED1 -> APPLIED grow -> later APPLIED shrink in one group with supported stable layout",
+    "requireOrderedInitialOne": "defaultfalse; true requires each actually observed runtime-group FI frozen splitMode=ORDERED and actualPipelineCount>1, plus supported stable multi-lane group layout initialActivatedWorkers1,maxAppliedWorkers1. Ordinary DEVICE scan plus final sort does not qualify.",
+    "expectedOutcome": "default SUCCESS; SUCCESS|CANCELLED|DEADLINE|EXCEPTION. Negative cases require actual unsuccessful FI terminal state, positive real runtime-group activation, all planned FI frozen snapshots and actual resource settlement; disconnect/parse-only failure never qualifies.",
+    "expectedSqlErrorCode": "EXCEPTION explicit effective code; CANCELLED715, DEADLINE720. Nonzero JDBC fields authoritative and conflicts reject. Raw0 fallback only exact SQLException, actual fixed ResultSet.next origin, null cause/SQLState, anchored allowed prefix, saved provenance.",
+    "pauseAfterFirstRowMs": "default0; DEADLINE1500; CANCELLED max(2000,cancelAfterActivityMs+1500) capped30000; optional0..30000. Only client row-drain pacing, never server/controller mutation.",
+    "cancelAfterActivityMs": "CANCELLED only; default500; 0..30000; wait after actual planned FI driver/resource evidence and a live actual DeviceScan source before targeted KILL QUERY",
+    "interventionTimeoutSeconds": "CANCELLED only; default30; 1..120; independent ordinary TABLE JDBC connection sends KILL QUERY for exact real internal queryId captured from unique SQL hash roster",
+    "requireHashRepartition": "defaultfalse; true requires actual TableHashPartitioningShuffleSinkNode source keys(FI ID+sink node ID), >=2 unique source FIs, actual consistent positive P/routing descriptor, complete unique N x P SINK_CHANNEL and reciprocal EXCHANGE_INPUT edges, P distinct hosted owner FI IDs, real target ExchangeNode and actual aggregation metadata; both actual exchange endpoints verified. P comes from plan, never assumed2."
+  },
+  "loadRuntimeFixture": {
+    "deploymentManifest": "required deployment JSON path",
+    "tabletBatchRows": "default4096; <=65536; each batch stays within one device cell",
+    "fixtureVersion": "runtime_sql_fixture_v1 only",
+    "format": "gzip-tsv-v1; exact time/device_id/g/s1/s2 schema and null marker \\N",
+    "freshData": "CREATE DATABASE has no IF NOT EXISTS; existing fixture fails instead of appending",
+    "flush": "one explicit successful FLUSH after each of four partitions",
+    "notProved": "Successful Tablet RPC row submissions and partition FLUSH are recorded. SQL table row count, TsFile physical placement and per-region file-size headroom remain separate verification.",
+    "setupSql": "exact three statements from the frozen fixture manifest are executed and archived; IF NOT EXISTS rejected for database",
+    "timePrecision": "actual JDBC open-session time factor must be1000 before fixture writes"
+  },
+  "deploymentContract": {
+    "schemaVersion": 1,
+    "jdbcUrl": "TABLE dialect JDBC URL",
+    "tableSessionNodeUrls": [
+      "host:rpcPort",
+      "host:rpcPort"
+    ],
+    "jmxHost": "default127.0.0.1",
+    "expectedDataNodeCount": 2,
+    "configNodes": [
+      {
+        "internalEndpoint": {
+          "ip": "127.0.0.1",
+          "port": 10710
+        }
+      }
+    ],
+    "nodes": [
+      {
+        "dataNodeId": null,
+        "internalEndpoint": {
+          "ip": "127.0.0.1",
+          "port": 10730
+        },
+        "rpcEndpoint": {
+          "ip": "127.0.0.1",
+          "port": 6667
+        },
+        "jmxPort": 10750
+      },
+      {
+        "dataNodeId": null,
+        "internalEndpoint": {
+          "ip": "127.0.0.1",
+          "port": 10830
+        },
+        "rpcEndpoint": {
+          "ip": "127.0.0.1",
+          "port": 7667
+        },
+        "jmxPort": 10850
+      }
+    ]
+  },
+  "discovery": "ConfigNode showDataNodes and getDataNodeConfiguration(-1) raw Thrift are archived; actual IDs/endpoints bind JMX and FI roster. Manifest null node IDs are never treated as actual identity.",
+  "resultEncoding": "Streaming typed compact JSON arrays, UTF-8 LF, integers/NULL preserved. SHA256 covers actual JDBC sequence for successful full drain, or actual captured prefix on execution error. This is order-sensitive and is never a multiset SHA.",
+  "proofBoundary": "ordinary-sql-receipt is published only after independent terminal/resource collection and all audit windows/client manager/evidence writers close successfully. SUCCESS proves actual full typed sequence capture; expected negative proves actual server SQL termination and FI/resource cleanup. oracleCompared=false and multisetCompared=false always; external oracle/multiset verifier owns correctness. No query graph construction or controller resize mutation.",
+  "classpath": "Compile both Java files together on the exact server/JDBC/session/isession/tsfile/generated-Thrift/Gson classpath. The new loader adds the existing TableSessionBuilder/ITableSession client dependency.",
+  "validation": "Portable contract only; final v5 target-host build, strict native constant schema, deadline-cause preservation and service outcomes PENDING.",
+  "terminalIntegrity": "Each actual terminal response is archived as binary and JSON Thrift before validation; RuntimeSnapshotAdapters recomputes checksum and structured validity. Positive matching APPLIED requested/observed workers only; zero-at-stop never counts as SHRINK.",
+  "failureCollection": "Original execution failure preserved with suppressed close/evidence failures; actual terminal responses archived before validation; one FI/resource failure does not skip other independent FI/window cleanup. Success receipt withheld on any infrastructure failure.",
+  "selfTestSqlErrors": {
+    "entry": "StaticScanAcceptanceDriver --self-test-sql-errors",
+    "expectedChecks": 25,
+    "scope": "Actual frozen JDBC with in-memory synthetic RPC only."
+  },
+  "runtimeEarlyStopEvidence": "R3-runtime-constant has no special driver mutation or unsupported flags. Full ordinary-sql capture plus external complete oracle and mandatory read-only runtime-group/partial-source proof are jointly required."
+}

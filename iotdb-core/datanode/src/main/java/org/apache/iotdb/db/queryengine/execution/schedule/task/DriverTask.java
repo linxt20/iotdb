@@ -46,7 +46,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public class DriverTask implements IDIndexedAccessible {
 
   private final IDriver driver;
-  private DriverTaskStatus status;
+  private DriverTaskId cachedTaskId;
+  private volatile DriverTaskStatus status;
 
   private final long ddl;
   private final Lock lock;
@@ -61,6 +62,7 @@ public class DriverTask implements IDIndexedAccessible {
   private long lastEnterReadyQueueTime;
   private long lastEnterBlockQueueTime;
   private boolean reservedInReadyQueue;
+  private volatile boolean runnableGateOpen = true;
 
   private long estimatedMemorySize;
 
@@ -76,16 +78,57 @@ public class DriverTask implements IDIndexedAccessible {
       DriverTaskHandle driverTaskHandle,
       long estimatedMemorySize,
       boolean isHighestPriority) {
-    this.driver = driver;
-    this.setStatus(status);
+    this(
+        driver,
+        computeDeadlineTimeInMs(timeoutMs),
+        status,
+        driverTaskHandle,
+        estimatedMemorySize,
+        isHighestPriority,
+        true);
+  }
 
-    this.ddl = computeDeadlineTimeInMs(timeoutMs);
+  private DriverTask(
+      IDriver driver,
+      long absoluteDeadlineMs,
+      DriverTaskStatus status,
+      DriverTaskHandle driverTaskHandle,
+      long estimatedMemorySize,
+      boolean isHighestPriority,
+      boolean absolute) {
+    this.driver = driver;
+    this.cachedTaskId = driver.getDriverTaskId();
+    this.setStatus(status);
+    this.ddl = absoluteDeadlineMs;
 
     this.lock = new ReentrantLock();
     this.driverTaskHandle = driverTaskHandle;
     this.priority = new AtomicReference<>(new Priority(0, 0));
     this.estimatedMemorySize = estimatedMemorySize;
     this.isHighestPriority = isHighestPriority;
+  }
+
+  public static DriverTask withAbsoluteDeadline(
+      IDriver driver,
+      long absoluteDeadlineMs,
+      DriverTaskStatus status,
+      DriverTaskHandle handle,
+      long estimatedMemorySize,
+      boolean high) {
+    return new DriverTask(
+        driver, absoluteDeadlineMs, status, handle, estimatedMemorySize, high, true);
+  }
+
+  public boolean isRunnableGateOpen() {
+    return runnableGateOpen;
+  }
+
+  public void setRunnableGateOpen(boolean value) {
+    runnableGateOpen = value;
+  }
+
+  public DriverTaskHandle getDriverTaskHandle() {
+    return driverTaskHandle;
   }
 
   public static long computeDeadlineTimeInMs(long timeoutMs) {
@@ -101,15 +144,16 @@ public class DriverTask implements IDIndexedAccessible {
 
   @Override
   public DriverTaskId getDriverTaskId() {
-    return driver.getDriverTaskId();
+    return cachedTaskId;
   }
 
   public long getEstimatedMemorySize() {
-    return driver.getEstimatedMemorySize();
+    return estimatedMemorySize;
   }
 
   @Override
   public void setId(ID id) {
+    cachedTaskId = (DriverTaskId) id;
     driver.setDriverTaskId((DriverTaskId) id);
   }
 
@@ -156,7 +200,7 @@ public class DriverTask implements IDIndexedAccessible {
 
   @Override
   public int hashCode() {
-    return driver.getDriverTaskId().hashCode();
+    return cachedTaskId.hashCode();
   }
 
   @Override

@@ -104,6 +104,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntr
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryReader;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySortedMaterializer;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.SpilledDeviceEntryDataSet;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderedParallelScanEligibility;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
@@ -854,8 +855,7 @@ public class TableDistributedPlanGenerator
         // one DeviceTableScan child with a two-level local merge tree. If it decides the concrete
         // scan cannot be split (e.g. spilled entries), the ordinary SortOperator remains a safe
         // fallback. This marker is serialized with the fragment, unlike a transient scan flag.
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
-            && childrenNodes.get(0) instanceof DeviceTableScanNode) {
+        if (shouldRetainOrderedScanMarker(childrenNodes.get(0), node.getOrderingScheme())) {
           node.setChild(childrenNodes.get(0));
           return Collections.singletonList(node);
         }
@@ -872,7 +872,13 @@ public class TableDistributedPlanGenerator
             queryId.genPlanNodeId(), node.getOrderingScheme(), node.getOutputSymbols());
     for (PlanNode child : childrenNodes) {
       if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
-        mergeSortNode.addChild(child);
+        // Preserve the explicit local order at every region, even when its current scan already
+        // satisfies it. Local planning consumes this serialized marker to build ordered lanes.
+        mergeSortNode.addChild(
+            shouldRetainOrderedScanMarker(child, node.getOrderingScheme())
+                ? new SortNode(
+                    queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false)
+                : child);
       } else {
         SortNode subSortNode =
             new SortNode(queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false);
@@ -882,6 +888,12 @@ public class TableDistributedPlanGenerator
     nodeOrderingMap.put(mergeSortNode.getPlanNodeId(), mergeSortNode.getOrderingScheme());
 
     return Collections.singletonList(mergeSortNode);
+  }
+
+  private static boolean shouldRetainOrderedScanMarker(
+      PlanNode child, OrderingScheme orderingScheme) {
+    return IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
+        && OrderedParallelScanEligibility.canUseLocalMergeTree(child, orderingScheme);
   }
 
   // if current SortNode is prefix of child, this SortNode doesn't need to exist, return true
@@ -926,8 +938,7 @@ public class TableDistributedPlanGenerator
           node.getOrderingScheme(), nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId()))) {
         // See visitSort: retain the otherwise redundant node as the serialized marker consumed by
         // the DataNode's guarded ordered-parallel merge-tree implementation.
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableOrderedParallelScan()
-            && childrenNodes.get(0) instanceof DeviceTableScanNode) {
+        if (shouldRetainOrderedScanMarker(childrenNodes.get(0), node.getOrderingScheme())) {
           node.setChild(childrenNodes.get(0));
           return Collections.singletonList(node);
         }
@@ -956,7 +967,13 @@ public class TableDistributedPlanGenerator
             queryId.genPlanNodeId(), node.getOrderingScheme(), node.getOutputSymbols());
     for (PlanNode child : childrenNodes) {
       if (canSortEliminated(node.getOrderingScheme(), nodeOrderingMap.get(child.getPlanNodeId()))) {
-        mergeSortNode.addChild(child);
+        // Preserve the explicit local order at every region, even when its current scan already
+        // satisfies it. Local planning consumes this serialized marker to build ordered lanes.
+        mergeSortNode.addChild(
+            shouldRetainOrderedScanMarker(child, node.getOrderingScheme())
+                ? new SortNode(
+                    queryId.genPlanNodeId(), child, node.getOrderingScheme(), false, false)
+                : child);
       } else if (hasOrderingPrefix(
           node.getOrderingScheme(),
           nodeOrderingMap.get(child.getPlanNodeId()),

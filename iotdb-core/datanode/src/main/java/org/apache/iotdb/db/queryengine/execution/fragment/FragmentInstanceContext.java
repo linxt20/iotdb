@@ -88,6 +88,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -216,6 +217,152 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   private volatile LocalExecutionPlanContext planningContext;
+  private boolean runtimeDataQueryContext;
+  private volatile org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFragmentLifecycle
+      runtimeLifecycle;
+  private volatile LocalExecutionPlanContext.RuntimePlanBindings runtimePlanBindings;
+  private final AtomicBoolean runtimeQueryResourcesReleased = new AtomicBoolean();
+  private volatile org.apache.iotdb.db.queryengine.execution.runtime.RuntimeDopExecutionSnapshot
+      runtimeControlEvidence;
+
+  public synchronized void setRuntimeControlEvidence(
+      org.apache.iotdb.db.queryengine.execution.runtime.RuntimeDopExecutionSnapshot evidence) {
+    java.util.Objects.requireNonNull(evidence);
+    if (runtimeControlEvidence != null && runtimeControlEvidence != evidence) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    runtimeControlEvidence = evidence;
+  }
+
+  public org.apache.iotdb.db.queryengine.execution.runtime.RuntimeDopExecutionSnapshot
+      getRuntimeControlEvidence() {
+    return runtimeControlEvidence;
+  }
+
+  /** Called after the lifecycle's successful completion, while retaining its terminal sentinel. */
+  public void clearRuntimePlanBindings() {
+    if (runtimeLifecycle == null || !runtimeLifecycle.getCompletedFuture().isDone()) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+    }
+    try {
+      com.google.common.util.concurrent.Futures.getDone(runtimeLifecycle.getCompletedFuture());
+    } catch (Exception failure) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE, failure);
+    }
+    runtimePlanBindings = null;
+  }
+
+  public org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFragmentLifecycle
+      getRuntimeLifecycle() {
+    return runtimeLifecycle;
+  }
+
+  public void setRuntimePlanBindings(LocalExecutionPlanContext.RuntimePlanBindings bindings) {
+    this.runtimePlanBindings = java.util.Objects.requireNonNull(bindings);
+  }
+
+  public LocalExecutionPlanContext.RuntimePlanBindings getRuntimePlanBindings() {
+    return runtimePlanBindings;
+  }
+
+  /** Called only after logical driver closure and physical resource settlement. */
+  public void releaseRuntimeQueryResources() {
+    if (runtimeLifecycle == null) throw new IllegalStateException();
+    if (runtimeQueryResourcesReleased.compareAndSet(false, true)) {
+      releaseDataNodeQueryContext();
+      sourcePaths = null;
+    }
+  }
+
+  private final Object quotaMemoryLock = new Object();
+  private final java.util.List<AutoCloseable> quotaMemoryLeases = new java.util.ArrayList<>();
+  private final CountDownLatch quotaMemoryCleanupDone = new CountDownLatch(1);
+  private boolean quotaMemoryRegistrationClosed;
+  private boolean quotaMemoryCleanupClaimed;
+  private Thread quotaMemoryCleanupOwner;
+  private boolean strictQuotaMemoryCleanup;
+  private Throwable quotaMemoryCleanupFailure;
+
+  /**
+   * Attach estimated FI memory ownership before publishing native work. A false result leaves the
+   * lease with the caller: terminal cleanup has already sealed registration. CPU ownership has a
+   * separate lifetime and must not be registered here.
+   */
+  public boolean registerQuotaMemoryLease(AutoCloseable lease) {
+    java.util.Objects.requireNonNull(lease);
+    synchronized (quotaMemoryLock) {
+      if (quotaMemoryRegistrationClosed) {
+        return false;
+      }
+      quotaMemoryLeases.add(lease);
+      return true;
+    }
+  }
+
+  private void closeQuotaMemoryLeases() {
+    java.util.List<AutoCloseable> closing;
+    synchronized (quotaMemoryLock) {
+      closing = new java.util.ArrayList<>(quotaMemoryLeases);
+    }
+    Throwable first = null;
+    java.util.List<AutoCloseable> failed = new java.util.ArrayList<>();
+    for (AutoCloseable lease : closing) {
+      try {
+        lease.close();
+      } catch (Throwable failure) {
+        failed.add(lease);
+        if (first == null) {
+          first = failure;
+        } else if (first != failure) {
+          first.addSuppressed(failure);
+        }
+      }
+    }
+    synchronized (quotaMemoryLock) {
+      quotaMemoryLeases.clear();
+      // Retain failed ownership for diagnosis. An ambiguous close must never be replayed.
+      quotaMemoryLeases.addAll(failed);
+    }
+    rethrowQuotaMemoryCleanupFailure(first);
+  }
+
+  private static void rethrowQuotaMemoryCleanupFailure(Throwable failure) {
+    if (failure instanceof Error) {
+      throw (Error) failure;
+    }
+    if (failure instanceof RuntimeException) {
+      throw (RuntimeException) failure;
+    }
+    if (failure != null) {
+      throw new RuntimeException(failure);
+    }
+  }
+
+  private boolean isStrictQuotaMemoryCleanup() {
+    synchronized (quotaMemoryLock) {
+      return strictQuotaMemoryCleanup && quotaMemoryCleanupOwner == Thread.currentThread();
+    }
+  }
+
+  private boolean awaitQuotaMemoryCleanup(CountDownLatch barrier) {
+    boolean interrupted = false;
+    while (true) {
+      try {
+        barrier.await();
+        return interrupted;
+      } catch (InterruptedException failure) {
+        // Restore after the complete cleanup/observation, never inside this wait loop.
+        interrupted = true;
+        LOGGER.warn(
+            DataNodeQueryMessages
+                .INTERRUPTED_WHEN_AWAIT_ON_ALLDRIVERSCLOSED_FRAGMENTINSTANCE_ID_IS_ARG,
+            this.getId());
+      }
+    }
+  }
 
   private final AtomicLong initQueryDataSourceCost = new AtomicLong(0);
   private final AtomicInteger initQueryDataSourceRetryCount = new AtomicInteger(0);
@@ -266,6 +413,24 @@ public class FragmentInstanceContext extends QueryContext {
     return cancelledBeforeDispatch;
   }
 
+  /**
+   * Explicit schema-production entry. Schema contexts cannot participate in the runtime protocol.
+   * The legacy overload is retained for existing callers that always use the schema path.
+   */
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      boolean debug,
+      boolean isVerbose,
+      boolean runtimeExecutionEnabled) {
+    if (runtimeExecutionEnabled) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+    }
+    return createFragmentInstanceContext(id, stateMachine, sessionInfo, debug, isVerbose);
+  }
+
   // This method is only used in groupby
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
@@ -283,6 +448,12 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  /**
+   * Legacy component-test factory. Production dispatch must use the overload carrying the
+   * serialized runtime protocol selection instead of deriving it from this worker's local
+   * configuration.
+   */
+  @TestOnly
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id,
       FragmentInstanceStateMachine stateMachine,
@@ -307,6 +478,53 @@ public class FragmentInstanceContext extends QueryContext {
     instanceContext.initialize();
     instanceContext.start();
     return instanceContext;
+  }
+
+  /**
+   * Production data-query entry. The serialized plan, rather than this worker's local inference,
+   * selects the runtime protocol. The prior overload retains its existing component-test behavior.
+   */
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id,
+      FragmentInstanceStateMachine stateMachine,
+      SessionInfo sessionInfo,
+      IDataRegionForQuery dataRegion,
+      TimePredicate globalTimePredicate,
+      Map<QueryId, DataNodeQueryContext> dataNodeQueryContextMap,
+      long outerQueryDeadlineMs,
+      boolean debug,
+      boolean isVerbose,
+      boolean runtimeExecutionEnabled) {
+    validateRuntimeExecutionSettings(runtimeExecutionEnabled, sessionInfo);
+    FragmentInstanceContext instanceContext =
+        new FragmentInstanceContext(
+            id,
+            stateMachine,
+            sessionInfo,
+            dataRegion,
+            globalTimePredicate,
+            dataNodeQueryContextMap,
+            outerQueryDeadlineMs,
+            debug,
+            isVerbose);
+    instanceContext.runtimeDataQueryContext = runtimeExecutionEnabled;
+    instanceContext.initialize();
+    instanceContext.start();
+    return instanceContext;
+  }
+
+  // Called before a production data-node query context or FI context is allocated. A worker cannot
+  // silently downgrade a plan that already selected runtime RPC/frontier ownership.
+  static void validateRuntimeExecutionSettings(
+      boolean runtimeExecutionEnabled, SessionInfo sessionInfo) {
+    if (runtimeExecutionEnabled
+        && (sessionInfo == null
+            || sessionInfo.getSqlDialect()
+                != org.apache.iotdb.commons.queryengine.common.SqlDialect.TABLE
+            || !IoTDBDescriptor.getInstance().getConfig().isEnableRuntimeScanParallelism())) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+    }
   }
 
   public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
@@ -414,6 +632,7 @@ public class FragmentInstanceContext extends QueryContext {
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
     this.sessionInfo = sessionInfo;
     this.outerQueryDeadlineMs = outerQueryDeadlineMs;
+    this.runtimeDataQueryContext = true;
     this.dataRegion = dataRegion;
     this.globalTimeFilter =
         globalTimePredicate == null
@@ -573,6 +792,16 @@ public class FragmentInstanceContext extends QueryContext {
   // instead of the constructor to prevent leaking the "this" reference to
   // another thread, which will cause unsafe publication of this instance.
   private void initialize() {
+    if (runtimeDataQueryContext
+        && !cancelledBeforeDispatch
+        && sessionInfo != null
+        && sessionInfo.getSqlDialect()
+            == org.apache.iotdb.commons.queryengine.common.SqlDialect.TABLE
+        && IoTDBDescriptor.getInstance().getConfig().isEnableRuntimeScanParallelism()) {
+      runtimeLifecycle =
+          new org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFragmentLifecycle(
+              this, stateMachine.getNotificationExecutor());
+    }
     stateMachine.addStateChangeListener(this::updateStatsIfDone);
   }
 
@@ -597,8 +826,12 @@ public class FragmentInstanceContext extends QueryContext {
       // because we may have no chane to run the releaseResourceWhenAllDriversAreClosed which is
       // called in callback of FragmentInstanceExecution
       // FragmentInstanceExecution won't be created if we meet some errors like MemoryNotEnough
-      releaseDataNodeQueryContext();
-      sourcePaths = null;
+      if (runtimeLifecycle != null) {
+        runtimeLifecycle.requestStop();
+      } else {
+        releaseDataNodeQueryContext();
+        sourcePaths = null;
+      }
     }
   }
 
@@ -823,6 +1056,9 @@ public class FragmentInstanceContext extends QueryContext {
       // last runtime usage closes the shared resource and deletes its temporary run files.
       externalTsFileQueryResource.closeByFragmentInstance();
     } catch (Exception e) {
+      if (isStrictQuotaMemoryCleanup()) {
+        throw new RuntimeException("External fragment resource cleanup failed", e);
+      }
       LOGGER.warn(
           DataNodeQueryMessages.MESSAGE_FAILED_TO_RELEASE_EXTERNAL_TSFILE_QUERY_RESOURCE_712EE978,
           e);
@@ -1301,26 +1537,55 @@ public class FragmentInstanceContext extends QueryContext {
     allDriversClosed.countDown();
   }
 
-  @SuppressWarnings("squid:S2142")
   public void releaseResourceWhenAllDriversAreClosed() {
-    long startTime = System.nanoTime();
-    while (true) {
-      try {
-        allDriversClosed.await();
-        break;
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOGGER.warn(
-            DataNodeQueryMessages
-                .INTERRUPTED_WHEN_AWAIT_ON_ALLDRIVERSCLOSED_FRAGMENTINSTANCE_ID_IS_ARG,
-            this.getId());
+    boolean owner;
+    synchronized (quotaMemoryLock) {
+      quotaMemoryRegistrationClosed = true;
+      owner = !quotaMemoryCleanupClaimed;
+      if (owner) {
+        quotaMemoryCleanupClaimed = true;
+        quotaMemoryCleanupOwner = Thread.currentThread();
+        strictQuotaMemoryCleanup = !quotaMemoryLeases.isEmpty();
+      } else if (quotaMemoryCleanupOwner == Thread.currentThread()) {
+        throw new IllegalStateException("Reentrant fragment memory cleanup is not complete");
       }
     }
-    long duration = System.nanoTime() - startTime;
-    if (duration >= LONG_WAIT_DURATION) {
-      LOGGER.warn(DataNodeQueryMessages.WAIT_MS_FOR_ALL_DRIVERS_CLOSED, duration / 1_000_000);
+    boolean interrupted = false;
+    try {
+      if (owner) {
+        Throwable failure = null;
+        try {
+          long startTime = System.nanoTime();
+          interrupted = awaitQuotaMemoryCleanup(allDriversClosed);
+          long duration = System.nanoTime() - startTime;
+          if (duration >= LONG_WAIT_DURATION) {
+            LOGGER.warn(DataNodeQueryMessages.WAIT_MS_FOR_ALL_DRIVERS_CLOSED, duration / 1_000_000);
+          }
+          // This operation can partially decrease file references. Never replay it, even on error.
+          releaseResource();
+          closeQuotaMemoryLeases();
+        } catch (Throwable cleanupFailure) {
+          failure = cleanupFailure;
+        } finally {
+          synchronized (quotaMemoryLock) {
+            quotaMemoryCleanupFailure = failure;
+            quotaMemoryCleanupOwner = null;
+          }
+          quotaMemoryCleanupDone.countDown();
+        }
+      } else {
+        interrupted = awaitQuotaMemoryCleanup(quotaMemoryCleanupDone);
+      }
+      Throwable failure;
+      synchronized (quotaMemoryLock) {
+        failure = quotaMemoryCleanupFailure;
+      }
+      rethrowQuotaMemoryCleanupFailure(failure);
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
     }
-    releaseResource();
   }
 
   /**
@@ -1405,6 +1670,9 @@ public class FragmentInstanceContext extends QueryContext {
     try {
       getQueryChunkReaders().close();
     } catch (IOException e) {
+      if (isStrictQuotaMemoryCleanup()) {
+        throw new RuntimeException("Fragment reader cleanup failed", e);
+      }
       LOGGER.warn(DataNodeQueryMessages.LOG_FAILED_TO_RELEASE_QUERY_CHUNK_RESOURCES_91573FE5, e);
     }
     batchQueryDataSourceLeases.forEach(QueryDataSourceLease::close);

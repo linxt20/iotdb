@@ -52,7 +52,10 @@ import java.nio.ByteBuffer;
 import java.time.ZoneId;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 public class FragmentInstanceSerdeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -134,6 +137,66 @@ public class FragmentInstanceSerdeTest {
     assertNull(deserializeFragmentInstance.getExecutorType());
     deserializeFragmentInstance.setExecutorType(fragmentInstance.getExecutorType());
     assertEquals(deserializeFragmentInstance, fragmentInstance);
+  }
+
+  @Test
+  public void runtimeProtocolSelectionSurvivesExactFragmentBodyRoundTrip()
+      throws IllegalPathException {
+    FragmentInstance instance = runtimeProtocolFragment();
+    assertFalse(instance.isRuntimeExecutionEnabled());
+    for (boolean selected : new boolean[] {false, true}) {
+      instance.setRuntimeExecutionEnabled(selected);
+      ByteBuffer body = instance.serializeToByteBuffer();
+      FragmentInstance decoded = FragmentInstance.deserializeFrom(body);
+      assertEquals(selected, decoded.isRuntimeExecutionEnabled());
+      assertEquals(instance, decoded);
+      assertEquals(instance.hashCode(), decoded.hashCode());
+      assertFalse(body.hasRemaining());
+    }
+  }
+
+  @Test
+  public void exactLegacyFragmentBodyDefaultsToLegacyProtocol() throws IllegalPathException {
+    FragmentInstance instance = runtimeProtocolFragment();
+    instance.setRuntimeExecutionEnabled(true);
+    ByteBuffer legacy = instance.serializeToByteBuffer();
+    legacy.limit(legacy.limit() - 1);
+    assertFalse(FragmentInstance.deserializeFrom(legacy).isRuntimeExecutionEnabled());
+    assertFalse(legacy.hasRemaining());
+  }
+
+  @Test
+  public void runtimeProtocolRejectsTrailingDataAndUnknownFieldValue() throws IllegalPathException {
+    ByteBuffer body = runtimeProtocolFragment().serializeToByteBuffer();
+    ByteBuffer extra = ByteBuffer.allocate(body.remaining() + 1);
+    extra.put(body.duplicate()).put((byte) 0).flip();
+    assertThrows(IllegalArgumentException.class, () -> FragmentInstance.deserializeFrom(extra));
+
+    body.put(body.limit() - 1, (byte) 2);
+    assertThrows(IllegalArgumentException.class, () -> FragmentInstance.deserializeFrom(body));
+  }
+
+  @Test
+  public void fragmentIdentityIncludesItsSelectedRuntimeProtocol() throws IllegalPathException {
+    FragmentInstance instance = runtimeProtocolFragment();
+    ByteBuffer body = instance.serializeToByteBuffer();
+    FragmentInstance samePlan = FragmentInstance.deserializeFrom(body);
+    assertEquals(instance, samePlan);
+    samePlan.setRuntimeExecutionEnabled(true);
+    assertNotEquals(instance, samePlan);
+  }
+
+  private FragmentInstance runtimeProtocolFragment() throws IllegalPathException {
+    PlanFragmentId id = new PlanFragmentId("runtime_protocol", 0);
+    return new FragmentInstance(
+        new PlanFragment(id, constructPlanNodeTree()),
+        id.genFragmentInstanceId(),
+        null,
+        QueryType.READ,
+        1000,
+        sessionInfo,
+        false,
+        false);
   }
 
   private PlanNode constructPlanNodeTree() throws IllegalPathException {

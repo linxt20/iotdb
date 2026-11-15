@@ -42,10 +42,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSetHandle;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderedParallelScanEligibility;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableHashPartitioningShuffleSinkNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SortElimination;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -54,6 +58,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.mockito.Mockito;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -67,6 +72,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 
@@ -207,6 +213,213 @@ public class PropertyDrivenDistributionTest {
       assertFalse(
           "EXPLAIN ANALYZE must not turn an ordered scan into a parallel one",
           scan.isAllowParallelScan());
+    }
+  }
+
+  @Test
+  public void naturalDeviceTimeOrderKeepsLocalMergeMarkersAcrossRegions() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    for (String direction : List.of("ASC", "DESC")) {
+      String sql = naturalDeviceTimeQuery(direction);
+      DistributedQueryPlan distributed = planWithRegions(sql);
+      List<SortNode> markers = orderedScanMarkers(distributed);
+      assertTrue("each multi-device data region must retain its local order", markers.size() > 1);
+      assertNaturalDeviceTimeMarkers(distributed, markers, direction);
+    }
+  }
+
+  @Test
+  public void naturalDeviceTimeOrderSurvivesSingleRegionSortElimination() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    for (String direction : List.of("ASC", "DESC")) {
+      DistributedQueryPlan distributed = plan(naturalDeviceTimeQuery(direction));
+      List<SortNode> markers = orderedScanMarkers(distributed);
+      assertEquals(1, markers.size());
+      assertNaturalDeviceTimeMarkers(distributed, markers, direction);
+    }
+  }
+
+  @Test
+  public void disabledOrderedScanStillEliminatesRedundantNaturalSorts() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(false);
+    String sql = naturalDeviceTimeQuery("ASC");
+    assertTrue(orderedScanMarkers(plan(sql)).isEmpty());
+    assertTrue(orderedScanMarkers(planWithRegions(sql)).isEmpty());
+  }
+
+  @Test
+  public void orderedScanFlagDoesNotInferOrderFromDiffOrUnsupportedSorts() {
+    String[] queries = {
+      "SELECT * FROM testdb.table1",
+      "SELECT diff(s1) FROM testdb.table1",
+      "SELECT * FROM testdb.table1 ORDER BY s1",
+      "SELECT * FROM testdb.table1 ORDER BY time, tag1"
+    };
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    for (String sql : queries) {
+      config.setEnableOrderedParallelScan(false);
+      String baseline = planShape(sql);
+      config.setEnableOrderedParallelScan(true);
+      assertEquals(sql, baseline, planShape(sql));
+    }
+    String diffSql = "SELECT diff(s1) FROM testdb.table1";
+    config.setEnableOrderedParallelScan(false);
+    List<DeviceTableScanNode> baselineScans = planAndCollectScans(diffSql);
+    assertFalse("expected the actual baseline DIFF scan", baselineScans.isEmpty());
+    List<Boolean> baselinePermissions =
+        baselineScans.stream()
+            .map(DeviceTableScanNode::isAllowParallelScan)
+            .collect(Collectors.toList());
+    List<String> baselineContracts = scanOptimizationContracts(diffSql);
+    assertTrue(
+        "baseline DIFF has no explicit ordered marker",
+        orderedScanMarkers(plan(diffSql)).isEmpty());
+
+    config.setEnableOrderedParallelScan(true);
+    List<Boolean> candidatePermissions =
+        planAndCollectScans(diffSql).stream()
+            .map(DeviceTableScanNode::isAllowParallelScan)
+            .collect(Collectors.toList());
+    // DIFF is centralized above its input merge. Its existing generic scan permission
+    // is a baseline behavior, not evidence that the ordered-lane marker was enabled.
+    // Preserve that exact permission and all pushed-scan contracts under the new flag.
+    assertEquals(
+        "ordered flag changed DIFF scan permission", baselinePermissions, candidatePermissions);
+    assertEquals(
+        "ordered flag changed DIFF pushed-scan contract",
+        baselineContracts,
+        scanOptimizationContracts(diffSql));
+    assertTrue(
+        "DIFF must not acquire an ordered marker without explicit safe order",
+        orderedScanMarkers(plan(diffSql)).isEmpty());
+    System.out.println(
+        "DIFF_ORDERED_FLAG_COMPATIBILITY baseline="
+            + baselinePermissions
+            + " candidate="
+            + candidatePermissions);
+  }
+
+  @Test
+  public void orderedScanMarkerAndOrderingSurviveFragmentSerialization() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    SortNode marker = orderedScanMarkers(planWithRegions(naturalDeviceTimeQuery("DESC"))).get(0);
+    ByteBuffer bytes = ByteBuffer.allocate(64 * 1024);
+    marker.serialize(bytes);
+    bytes.flip();
+    SortNode restored = (SortNode) PlanNodeDeserializeHelper.deserialize(bytes);
+    assertEquals(marker.getOrderingScheme(), restored.getOrderingScheme());
+    assertEquals(DeviceTableScanNode.class, restored.getChild().getClass());
+    assertEquals(
+        ((DeviceTableScanNode) marker.getChild()).getDeviceEntries(),
+        ((DeviceTableScanNode) restored.getChild()).getDeviceEntries());
+    assertTrue(
+        OrderedParallelScanEligibility.canUseLocalMergeTree(
+            restored.getChild(), restored.getOrderingScheme()));
+  }
+
+  @Test
+  public void sortEliminationRetainsOnlySafeNaturalMergeMarkers() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    SortNode marker = orderedScanMarkers(plan(naturalDeviceTimeQuery("ASC"))).get(0);
+    DeviceTableScanNode scan = (DeviceTableScanNode) marker.getChild();
+    // An explicit marker survives the final optimizer; ordinary unsafe shapes retain legacy
+    // elimination instead of creating unreachable or incorrect parallel lane plans.
+    Analysis analysis = new Analysis(null, java.util.Collections.emptyMap());
+    analysis.setSortNode(true);
+    PlanOptimizer.Context context = Mockito.mock(PlanOptimizer.Context.class);
+    Mockito.when(context.getAnalysis()).thenReturn(analysis);
+    SortElimination elimination = new SortElimination();
+    assertTrue(elimination.optimize(marker, context) instanceof SortNode);
+
+    scan.setPushDownLimit(5);
+    scan.setPushLimitToEachDevice(false);
+    assertSame(scan, elimination.optimize(marker, context));
+    scan.setPushDownLimit(0);
+    scan.setPushDownOffset(2);
+    assertSame(scan, elimination.optimize(marker, context));
+    scan.setPushDownOffset(0);
+    scan.setDeviceEntryDataSetHandle(
+        new DeviceEntryDataSetHandle(
+            "ordered_marker_spill",
+            scan.getPlanNodeId(),
+            org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+            1,
+            6,
+            true));
+    assertSame(scan, elimination.optimize(marker, context));
+  }
+
+  @Test
+  public void orderedScanProofRequiresSupportedTypeAndExplicitTimeOrder() {
+    IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+    SortNode marker = orderedScanMarkers(plan(naturalDeviceTimeQuery("ASC"))).get(0);
+    DeviceTableScanNode scan = (DeviceTableScanNode) marker.getChild();
+    scan.setAllowParallelScan(false);
+    assertFalse(OrderedParallelScanEligibility.canUseLocalMergeTree(scan, null));
+    assertFalse(
+        OrderedParallelScanEligibility.canUseLocalMergeTree(
+            Mockito.mock(
+                org.apache.iotdb.db.queryengine.plan.relational.planner.node
+                    .AggregationTableScanNode.class),
+            marker.getOrderingScheme()));
+    Symbol time = new Symbol("time");
+    Symbol tag = new Symbol("tag1");
+    Symbol field = new Symbol("s1");
+    assertFalse(
+        OrderedParallelScanEligibility.canUseLocalMergeTree(
+            scan,
+            new OrderingScheme(
+                List.of(time, tag),
+                ImmutableMap.of(time, SortOrder.ASC_NULLS_FIRST, tag, SortOrder.ASC_NULLS_FIRST))));
+    assertFalse(
+        OrderedParallelScanEligibility.canUseLocalMergeTree(
+            scan,
+            new OrderingScheme(
+                Collections.singletonList(field),
+                Collections.singletonMap(field, SortOrder.ASC_NULLS_FIRST))));
+    List<org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry> devices =
+        new ArrayList<>(scan.getDeviceEntries());
+    scan.setDeviceEntries(Collections.singletonList(devices.get(0)));
+    assertFalse(
+        OrderedParallelScanEligibility.canUseLocalMergeTree(scan, marker.getOrderingScheme()));
+  }
+
+  private static String naturalDeviceTimeQuery(String timeDirection) {
+    return "SELECT * FROM testdb.table1 ORDER BY tag1, tag2, tag3, time "
+        + timeDirection
+        + " NULLS LAST";
+  }
+
+  private static List<SortNode> orderedScanMarkers(DistributedQueryPlan distributed) {
+    List<PlanNode> nodes = new ArrayList<>();
+    distributed.getFragments().forEach(fragment -> collectAll(fragment.getPlanNodeTree(), nodes));
+    return nodes.stream()
+        .filter(SortNode.class::isInstance)
+        .map(SortNode.class::cast)
+        .filter(sort -> sort.getChild().getClass() == DeviceTableScanNode.class)
+        .collect(Collectors.toList());
+  }
+
+  private static void assertNaturalDeviceTimeMarkers(
+      DistributedQueryPlan distributed, List<SortNode> markers, String direction) {
+    List<DeviceTableScanNode> scans = new ArrayList<>();
+    distributed.getFragments().forEach(fragment -> collectScans(fragment.getPlanNodeTree(), scans));
+    assertEquals(
+        "every scan in this fixture has multiple devices and must keep exactly one marker",
+        scans.stream().map(PlanNode::getPlanNodeId).collect(Collectors.toSet()),
+        markers.stream().map(sort -> sort.getChild().getPlanNodeId()).collect(Collectors.toSet()));
+    for (SortNode marker : markers) {
+      DeviceTableScanNode scan = (DeviceTableScanNode) marker.getChild();
+      assertTrue(scan.getDeviceEntries().size() > 1);
+      assertFalse(
+          "ordered merge is distinct from unordered collect permission",
+          scan.isAllowParallelScan());
+      assertEquals(
+          List.of(new Symbol("tag1"), new Symbol("tag2"), new Symbol("tag3"), new Symbol("time")),
+          marker.getOrderingScheme().getOrderBy());
+      assertEquals(
+          "DESC".equals(direction) ? SortOrder.DESC_NULLS_LAST : SortOrder.ASC_NULLS_LAST,
+          marker.getOrderingScheme().getOrdering(new Symbol("time")));
     }
   }
 
@@ -803,11 +1016,23 @@ public class PropertyDrivenDistributionTest {
   }
 
   private static DistributedQueryPlan plan(String sql, MPPQueryContext queryContext) {
+    return plan(sql, queryContext, true);
+  }
+
+  private static DistributedQueryPlan planWithRegions(String sql) {
+    return plan(
+        sql,
+        new MPPQueryContext(sql, new QueryId("ordered_regions_test"), SESSION_INFO, null, null),
+        false);
+  }
+
+  private static DistributedQueryPlan plan(
+      String sql, MPPQueryContext queryContext, boolean singleRegion) {
     Analysis analysis = analyzeSQL(sql, TEST_MATADATA, queryContext);
-    // force all devices into a single data region, so that any parallelism observed comes from
-    // splitting one scan rather than from having one scan per region
     analysis.setDataPartitionInfo(
-        MockTableModelDataPartition.constructSingleRegionDataPartition(SINGLE_REGION_DB));
+        singleRegion
+            ? MockTableModelDataPartition.constructSingleRegionDataPartition(SINGLE_REGION_DB)
+            : MockTableModelDataPartition.constructDataPartition(SINGLE_REGION_DB));
 
     SymbolAllocator symbolAllocator = new SymbolAllocator();
     LogicalQueryPlan logicalQueryPlan =

@@ -1,0 +1,1 @@
+SHOW DEVICES FROM runtime_dop_e2e.telemetry

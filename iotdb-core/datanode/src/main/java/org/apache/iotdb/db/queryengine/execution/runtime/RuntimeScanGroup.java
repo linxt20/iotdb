@@ -223,11 +223,26 @@ public final class RuntimeScanGroup {
   }
 
   public Snapshot snapshot() {
+    return snapshotWithObservedOutputs(Collections.emptySet());
+  }
+
+  /** Credit observations are sampled before entering this monitor, never by callbacks under it. */
+  public Snapshot snapshotWithObservedOutputs(Set<Integer> observedFullOutputs) {
     synchronized (lock) {
+      int backpressured = 0;
+      for (int index : observedFullOutputs) {
+        if (index < 0 || index >= lanes.size()) throw new IllegalArgumentException();
+        Lane lane = lanes.get(index);
+        if (!lane.finished && lane.dependencyReady && lane.lease == null && lane.blocked != null) {
+          backpressured++;
+        }
+      }
       return new Snapshot(
           lanes.size(),
           ready.size(),
           leasedByWorker.size(),
+          finishedCount,
+          backpressured,
           stopped,
           finishedCount == lanes.size());
     }
@@ -394,13 +409,24 @@ public final class RuntimeScanGroup {
     private final int size;
     private final int readyCount;
     private final int leasedCount;
+    private final int finishedCount;
+    private final int backpressuredCount;
     private final boolean stopped;
     private final boolean finished;
 
-    private Snapshot(int size, int readyCount, int leasedCount, boolean stopped, boolean finished) {
+    private Snapshot(
+        int size,
+        int readyCount,
+        int leasedCount,
+        int finishedCount,
+        int backpressuredCount,
+        boolean stopped,
+        boolean finished) {
       this.size = size;
       this.readyCount = readyCount;
       this.leasedCount = leasedCount;
+      this.finishedCount = finishedCount;
+      this.backpressuredCount = backpressuredCount;
       this.stopped = stopped;
       this.finished = finished;
     }
@@ -415,6 +441,14 @@ public final class RuntimeScanGroup {
 
     public int getLeasedCount() {
       return leasedCount;
+    }
+
+    public int getUnfinishedCount() {
+      return size - finishedCount;
+    }
+
+    public int getBackpressuredCount() {
+      return backpressuredCount;
     }
 
     public boolean isStopped() {

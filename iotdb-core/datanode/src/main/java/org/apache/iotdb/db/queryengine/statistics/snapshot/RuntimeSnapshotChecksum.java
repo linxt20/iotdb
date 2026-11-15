@@ -133,6 +133,15 @@ public final class RuntimeSnapshotChecksum {
       fields.add(String.valueOf(operator.getEstimatedMemory()));
       fields.add(String.valueOf(operator.getExchangeBytes()));
     }
+    // Optional extension is domain separated and absent on all historical snapshots. Include both
+    // the owning operator identity and exact serialized JSON so altered control evidence is caught.
+    for (OperatorRuntimeSnapshot operator : snapshot.getOperators()) {
+      if (operator.getRuntimeControlEvidence() != null) {
+        fields.add("IOTDB_RUNTIME_DOP_CONTROL_V1");
+        fields.add(operator.getPlanNodeId());
+        fields.add(operator.getRuntimeControlEvidence());
+      }
+    }
     StaticParallelPlanIdentity plan = snapshot.getPlanIdentity();
     if (plan != null) {
       fields.add(plan.getPlanIdentityChecksum());

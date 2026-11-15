@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "mode": "load-runtime-fixture",
+  "manifest": "/ABS/fixture/manifest.json",
+  "deploymentManifest": "/ABS/candidate/deployment-manifest.json",
+  "out": "/ABS/evidence/load-candidate-001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "tabletBatchRows": 4096
+}

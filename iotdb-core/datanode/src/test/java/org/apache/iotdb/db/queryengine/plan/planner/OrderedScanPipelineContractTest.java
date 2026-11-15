@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 import org.apache.iotdb.calc.execution.operator.Operator;
 import org.apache.iotdb.calc.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.calc.execution.operator.process.TableSortOperator;
+import org.apache.iotdb.calc.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.calc.plan.planner.memory.PipelineMemoryEstimator;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.metadata.ColumnSchema;
@@ -29,6 +30,8 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.OrderingSche
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
@@ -43,14 +46,20 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderedParallelScanEligibility;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -136,6 +145,303 @@ public class OrderedScanPipelineContractTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(originalOrdered);
     IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(originalEstimate);
     IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(originalMorsel);
+  }
+
+  @Test
+  public void dopOneElidesOnlyAProvenSerialNaturalSort() throws Exception {
+    for (boolean descending : new boolean[] {false, true}) {
+      DeviceTableScanNode scan =
+          serialScan(
+              descending ? new String[] {"c", "b", "a"} : new String[] {"a", "b", "c"}, descending);
+      LocalExecutionPlanContext context =
+          fixture.createLocalExecutionPlanContext("serial_natural_" + descending);
+      context.setDegreeOfParallelism(1);
+      SortOrder order = descending ? SortOrder.DESC_NULLS_LAST : SortOrder.ASC_NULLS_FIRST;
+      Operator root = null;
+      try {
+        root =
+            sort(
+                    scan,
+                    Arrays.asList(TAG, TIME),
+                    Arrays.asList(order, order),
+                    "dop_one_" + descending)
+                .accept(generator, context);
+        context.registerPipelineRoot(root);
+        assertTrue(root instanceof TableScanOperator);
+        assertEquals(0, context.getPipelineNumber());
+        assertEquals(0, context.getExchangeSumNum());
+        List<Row> actual = drainRows(root);
+        assertEquals(12, actual.size());
+        List<Row> expected = new ArrayList<>(actual);
+        expected.sort(independentComparator(true, descending, !descending, descending));
+        assertEquals(expected, actual);
+      } finally {
+        cleanup(context, root);
+      }
+    }
+  }
+
+  @Test
+  public void estimatedSerialPlanKeepsScanInsteadOfReintroducingRedundantSort() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(true);
+    DeviceTableScanNode scan = serialScan(new String[] {"a", "b", "c"}, false);
+    LocalExecutionPlanContext context =
+        fixture.createLocalExecutionPlanContext("ordered_estimate_one");
+    context.setDegreeOfParallelism(4);
+    TsFileManager files = mock(TsFileManager.class);
+    when(files.getTimePartitions()).thenReturn(Set.of(0L));
+    TsFileResource tiny = mock(TsFileResource.class);
+    when(tiny.getTsFileSize()).thenReturn(1024L);
+    when(files.getAllTsFileListForQuery(isNull(), isNull()))
+        .thenReturn(new Pair<>(Collections.singletonList(tiny), Collections.emptyList()));
+    when(((DataRegion) context.getInstanceContext().getDataRegion()).getTsFileManager())
+        .thenReturn(files);
+    Operator root = null;
+    try {
+      root =
+          sort(
+                  scan,
+                  Arrays.asList(TAG, TIME),
+                  Arrays.asList(SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST),
+                  "estimate_one")
+              .accept(generator, context);
+      context.registerPipelineRoot(root);
+      assertTrue(root instanceof TableScanOperator);
+      assertEquals("SERIAL", context.getInstanceContext().getSplitMode());
+      assertEquals("DOP_NOT_GREATER_THAN_ONE", context.getInstanceContext().getSplitReason());
+      assertEquals(0, context.getPipelineNumber());
+    } finally {
+      cleanup(context, root);
+    }
+  }
+
+  @Test
+  public void resourceSerialFallbackPreservesItsReasonAndAvoidsRedundantSort() throws Exception {
+    DeviceTableScanNode scan = serialScan(new String[] {"a", "b", "c"}, false);
+    LocalExecutionPlanContext context =
+        fixture.createLocalExecutionPlanContext("ordered_budget_one");
+    context.setDegreeOfParallelism(4);
+    List<String> devices = new ArrayList<>();
+    scan.getDeviceEntries().forEach(device -> devices.add(String.valueOf(device.getDeviceID())));
+    ScanParallelPlanner.Input input =
+        new ScanParallelPlanner.Input(
+            devices,
+            Collections.emptyList(),
+            null,
+            4,
+            false,
+            false,
+            false,
+            true,
+            true,
+            false,
+            context.getFragmentInstanceId().getQueryId().getId(),
+            context.getFragmentInstanceId().getFragmentInstanceId(),
+            scan.getPlanNodeId().getId());
+    ScanParallelPlan serial =
+        ScanParallelPlanner.serialForDynamicFallback(
+            input, ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_BUDGET_EXCEEDED);
+    DataNodeTableOperatorGenerator selected = PowerMockito.spy(generator);
+    // Replace only the admission result; fallback construction and proof are production code.
+    PowerMockito.doReturn(serial)
+        .when(
+            selected, "createStaticScanPlan", scan, context, Collections.emptyList(), true, false);
+    Operator root = null;
+    try {
+      root =
+          sort(
+                  scan,
+                  Arrays.asList(TAG, TIME),
+                  Arrays.asList(SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST),
+                  "budget_one")
+              .accept(selected, context);
+      context.registerPipelineRoot(root);
+      assertTrue(root instanceof TableScanOperator);
+      assertEquals(
+          "DYNAMIC_GROUPING_BUDGET_EXCEEDED", context.getInstanceContext().getSplitReason());
+      assertEquals(0, context.getPipelineNumber());
+    } finally {
+      cleanup(context, root);
+    }
+  }
+
+  @Test
+  public void dopOneRetainsRealSortForTimeOnlyDuplicatePrefixAndUnsortedDevices() throws Exception {
+    for (String scenario : Arrays.asList("time_only", "duplicate", "unsorted")) {
+      DeviceTableScanNode scan =
+          serialScan(
+              "duplicate".equals(scenario)
+                  ? new String[] {"a", "a", "b"}
+                  : "unsorted".equals(scenario)
+                      ? new String[] {"b", "a", "c"}
+                      : new String[] {"a", "b", "c"},
+              false);
+      List<Symbol> keys =
+          "time_only".equals(scenario) ? Collections.singletonList(TIME) : Arrays.asList(TAG, TIME);
+      List<SortOrder> orders =
+          "time_only".equals(scenario)
+              ? Collections.singletonList(SortOrder.ASC_NULLS_FIRST)
+              : Arrays.asList(SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST);
+      LocalExecutionPlanContext context =
+          fixture.createLocalExecutionPlanContext("ordered_true_sort_" + scenario);
+      context.setDegreeOfParallelism(1);
+      Operator root = null;
+      try {
+        root = sort(scan, keys, orders, scenario).accept(generator, context);
+        context.registerPipelineRoot(root);
+        assertEquals(TableSortOperator.class, root.getClass());
+        assertEquals(0, context.getPipelineNumber());
+      } finally {
+        cleanup(context, root);
+      }
+    }
+  }
+
+  @Test
+  public void dopOneRetainsRealStreamSortWhenDevicePrefixTies() throws Exception {
+    DeviceTableScanNode scan = serialScan(new String[] {"a", "a", "b"}, false);
+    OrderingScheme order =
+        sort(
+                scan,
+                Arrays.asList(TAG, TIME),
+                Arrays.asList(SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST),
+                "stream_tie")
+            .getOrderingScheme();
+    StreamSortNode marker =
+        new StreamSortNode(new PlanNodeId("stream_tie"), scan, order, false, false, 0);
+    LocalExecutionPlanContext context =
+        fixture.createLocalExecutionPlanContext("ordered_stream_tie");
+    context.setDegreeOfParallelism(1);
+    Operator root = null;
+    try {
+      root = marker.accept(generator, context);
+      context.registerPipelineRoot(root);
+      assertEquals(TableStreamSortOperator.class, root.getClass());
+      assertEquals(0, context.getPipelineNumber());
+    } finally {
+      cleanup(context, root);
+    }
+  }
+
+  @Test
+  public void serialProofUsesSqlMultiKeyDirectionNullsAndAttributes() {
+    Symbol tag2 = new Symbol("tag2");
+    Symbol attribute = new Symbol("attribute");
+    DeviceTableScanNode scan = serialScan(new String[] {"a", "b"}, true);
+    Map<Symbol, ColumnSchema> assignments = new HashMap<>(scan.getAssignments());
+    assignments.put(
+        tag2,
+        new ColumnSchema(
+            "tag2", TypeFactory.getType(TSDataType.STRING), false, TsTableColumnCategory.TAG));
+    assignments.put(
+        attribute,
+        new ColumnSchema(
+            "attribute",
+            TypeFactory.getType(TSDataType.STRING),
+            false,
+            TsTableColumnCategory.ATTRIBUTE));
+    scan.setAssignments(assignments);
+    List<Symbol> outputs = new ArrayList<>(scan.getOutputSymbols());
+    outputs.add(tag2);
+    outputs.add(attribute);
+    scan.setOutputSymbols(outputs);
+    scan.getTagAndAttributeIndexMap().put(tag2, 1);
+    scan.getTagAndAttributeIndexMap().put(attribute, 0);
+    scan.setDeviceEntries(
+        Arrays.asList(
+            proofDevice(null, "z", null),
+            proofDevice(null, "z", "a"),
+            proofDevice(null, "a", null),
+            proofDevice("a", "z", null)));
+    OrderingScheme order =
+        sort(
+                scan,
+                Arrays.asList(TAG, tag2, attribute, TIME),
+                Arrays.asList(
+                    SortOrder.ASC_NULLS_FIRST,
+                    SortOrder.DESC_NULLS_LAST,
+                    SortOrder.ASC_NULLS_FIRST,
+                    SortOrder.DESC_NULLS_LAST),
+                "multi_key")
+            .getOrderingScheme();
+    assertTrue(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+    List<DeviceEntry> reversedPair = new ArrayList<>(scan.getDeviceEntries());
+    Collections.swap(reversedPair, 1, 2);
+    scan.setDeviceEntries(reversedPair);
+    assertFalse(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+    scan.getTagAndAttributeIndexMap().remove(attribute);
+    assertFalse(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+  }
+
+  @Test
+  public void serialProofUsesBinaryUnicodeOrderRatherThanJavaStringOrder() {
+    String bmp = "\uE000";
+    String supplementary = "\uD800\uDC00";
+    assertTrue(supplementary.compareTo(bmp) < 0);
+    DeviceTableScanNode scan = serialScan(new String[] {bmp, supplementary}, false);
+    OrderingScheme order =
+        sort(
+                scan,
+                Arrays.asList(TAG, TIME),
+                Arrays.asList(SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST),
+                "unicode")
+            .getOrderingScheme();
+    assertTrue(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+    Collections.reverse(scan.getDeviceEntries());
+    assertFalse(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+  }
+
+  @Test
+  public void serialProofRejectsTimeOnlyEqualPrefixesDirectionMismatchAndGlobalPagination() {
+    DeviceTableScanNode scan = serialScan(new String[] {"a", "b"}, false);
+    OrderingScheme order =
+        sort(
+                scan,
+                Arrays.asList(TAG, TIME),
+                Arrays.asList(SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_FIRST),
+                "proof_guards")
+            .getOrderingScheme();
+    assertTrue(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+    assertFalse(
+        OrderedParallelScanEligibility.canUseSerialConcatenation(
+            scan,
+            sort(
+                    scan,
+                    Collections.singletonList(TIME),
+                    Collections.singletonList(SortOrder.ASC_NULLS_FIRST),
+                    "time_only")
+                .getOrderingScheme()));
+    scan.setScanOrder(Ordering.DESC);
+    assertFalse(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+    scan.setScanOrder(Ordering.ASC);
+    scan.setDeviceEntries(
+        Arrays.asList(proofDevice("a", "device1", null), proofDevice("a", "device2", null)));
+    assertFalse(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+    scan.setDeviceEntries(serialScan(new String[] {"a", "b"}, false).getDeviceEntries());
+    scan.setPushDownLimit(5);
+    scan.setPushLimitToEachDevice(false);
+    assertFalse(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+    scan.setPushDownLimit(0);
+    scan.setPushDownOffset(2);
+    assertFalse(OrderedParallelScanEligibility.canUseSerialConcatenation(scan, order));
+  }
+
+  private DeviceTableScanNode serialScan(String[] tags, boolean descending) {
+    DeviceTableScanNode scan = fixture.initDeviceTableScanNode(tags.length);
+    List<DeviceEntry> devices = new ArrayList<>();
+    for (int i = 0; i < tags.length; i++) {
+      devices.add(proofDevice(tags[i], "device" + i, null));
+    }
+    scan.setDeviceEntries(devices);
+    scan.setScanOrder(descending ? Ordering.DESC : Ordering.ASC);
+    scan.setAllowParallelScan(false);
+    return scan;
+  }
+
+  private static DeviceEntry proofDevice(String tag, String tag2, String attribute) {
+    return new AlignedDeviceEntry(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(new String[] {"table1", tag, tag2}),
+        new Binary[] {attribute == null ? null : new Binary(attribute, StandardCharsets.UTF_8)});
   }
 
   @Test(timeout = 20000)

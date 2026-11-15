@@ -1386,7 +1386,14 @@ public final class StaticScanAcceptanceDriver {
     int code = 0;
     try {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      if (args.length == 4 && "--fixture".equals(args[0])) {
+      if (args.length == 1 && "--self-test-sql-errors".equals(args[0])) {
+        OrdinarySqlAcceptanceDriver.selfTestSqlErrors();
+      } else if (args.length == 4
+          && "--mode".equals(args[0])
+          && ("ordinary-sql".equals(args[1]) || "load-runtime-fixture".equals(args[1]))
+          && "--params".equals(args[2])) {
+        OrdinarySqlAcceptanceDriver.run(args[1], Path.of(args[3]));
+      } else if (args.length == 4 && "--fixture".equals(args[0])) {
         loadFixture(
             JsonParser.parseString(Files.readString(Path.of(args[1]))).getAsJsonObject(),
             Path.of(args[2]),

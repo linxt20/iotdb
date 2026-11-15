@@ -35,8 +35,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SinkListener;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager.SourceHandleListener;
+import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
+import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.PipelineSourceHandle;
@@ -47,31 +50,50 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
+import org.apache.iotdb.db.queryengine.execution.operator.process.RuntimeCompactOutputOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -80,6 +102,7 @@ public class LocalExecutionPlanContextBudgetTest {
   private int previousBlockSize;
   private MemoryPool pool;
   private LocalExecutionPlanContext context;
+  private final List<ExecutorService> runtimeExecutors = new ArrayList<>();
 
   @Before
   public void setUp() {
@@ -94,6 +117,15 @@ public class LocalExecutionPlanContextBudgetTest {
 
   @After
   public void tearDown() {
+    if (context != null && context.isRuntimeParallelismEnabled()) {
+      context.getResourceRegistry().abortUntransferred(new IllegalStateException("test cleanup"));
+      for (RuntimeFrontierReservation reservation : context.getOwnedRuntimeFrontiers()) {
+        reservation.requestClose();
+      }
+    }
+    for (ExecutorService executor : runtimeExecutors) {
+      executor.shutdownNow();
+    }
     IoTDBDescriptor.getInstance().getMemoryConfig().setMaxBytesPerFragmentInstance(previousBudget);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(previousBlockSize);
   }
@@ -611,5 +643,466 @@ public class LocalExecutionPlanContextBudgetTest {
     context.setExchangeMemoryLimits(
         node(PlanNodeType.IDENTITY_SINK, node(PlanNodeType.SERIES_SCAN)), pool);
     verify(sink).setMaxBytesCanReserve(64);
+  }
+
+  @Test
+  public void testRuntimeBudgetIsSharedAndImmutableAcrossNestedContexts() {
+    Map<String, Long> paid = new HashMap<>();
+    paid.put("normal-scan", 512L);
+    Set<String> approved = new HashSet<>();
+    LocalExecutionPlanContext.RuntimeExchangeBudget budget =
+        new LocalExecutionPlanContext.RuntimeExchangeBudget(
+            256, 768, 128, 256, paid, approved, 4096);
+    context.setDegreeOfParallelism(8);
+    context.initializeRuntimeExchangeBudget(pool, budget);
+    LocalExecutionPlanContext child = context.createSubContext();
+    LocalExecutionPlanContext nested = child.createSubContext();
+    paid.put("late-scan", 256L);
+    approved.add("late-scan");
+    IoTDBDescriptor.getInstance().getMemoryConfig().setMaxBytesPerFragmentInstance(64);
+
+    assertSame(budget, child.getRuntimeExchangeBudget());
+    assertSame(budget, nested.getRuntimeExchangeBudget());
+    assertEquals(Map.of("normal-scan", 512L), budget.groupPrepaidBudgets());
+    assertTrue(budget.approvedRawScanPlanNodeIds().isEmpty());
+    assertTrue(nested.isRuntimeScan("normal-scan"));
+    assertFalse(nested.isApprovedRuntimeScan("normal-scan"));
+    assertFalse(nested.isRuntimeScan("late-scan"));
+    assertEquals(2, nested.getRuntimeMaxLogicalLanes("normal-scan"));
+    expectRuntimeFailure(
+        UnsupportedOperationException.class,
+        () -> budget.groupPrepaidBudgets().put("mutation", 1L));
+    expectRuntimeFailure(
+        IllegalStateException.class, () -> child.initializeRuntimeExchangeBudget(pool, budget));
+    assertSame(budget, context.getRuntimeExchangeBudget());
+  }
+
+  @Test
+  public void testRuntimeInputAndOutputUseOneFrozenBudgetDespiteConfigAndExchangeCountChanges() {
+    context.initializeRuntimeExchangeBudget(pool, runtimeBudget("normal-scan"));
+    LocalExecutionPlanContext child = context.createSubContext();
+    ISourceHandle remote = addSource(child);
+    ISinkHandle sink = sinkHandle();
+    child.setISink(sink);
+    context.setExchangeSumNum(99);
+    child.setExchangeSumNum(7);
+    IoTDBDescriptor.getInstance().getMemoryConfig().setMaxBytesPerFragmentInstance(64);
+
+    child.setExchangeMemoryLimits(node(PlanNodeType.IDENTITY_SINK, collect()), pool);
+    verify(remote).setMaxBytesCanReserve(256);
+    verify(sink).setMaxBytesCanReserve(768);
+    assertEquals(256, context.getInstanceContext().getInputMaxBytes());
+    assertEquals(768, context.getInstanceContext().getOutputMaxBytes());
+    assertAdmissionIsShared(true, MemorySide.INPUT, 256);
+    assertAdmissionIsShared(true, MemorySide.OUTPUT, 768);
+    expectRuntimeFailure(
+        IllegalStateException.class,
+        () ->
+            context.setExchangeMemoryLimits(
+                collect(), new MemoryPool("different-pool", new MemoryManager(4096), 1024)));
+  }
+
+  @Test
+  public void testRuntimeBudgetRejectsOvercommitAndInvalidScopedApproval() {
+    expectRuntimeFailure(
+        IllegalArgumentException.class,
+        () ->
+            new LocalExecutionPlanContext.RuntimeExchangeBudget(
+                -1, 768, 128, 256, Map.of("scan", 512L), Set.of(), 4096));
+    expectRuntimeFailure(
+        IllegalArgumentException.class,
+        () ->
+            new LocalExecutionPlanContext.RuntimeExchangeBudget(
+                256, 768, 128, 256, Map.of("scan", 641L), Set.of(), 4096));
+    expectRuntimeFailure(
+        IllegalArgumentException.class,
+        () ->
+            new LocalExecutionPlanContext.RuntimeExchangeBudget(
+                256, 768, 128, 256, Map.of("scan", 512L), Set.of("unpaid"), 4096));
+    expectRuntimeFailure(
+        IllegalArgumentException.class,
+        () ->
+            new LocalExecutionPlanContext.RuntimeExchangeBudget(
+                256, 768, 128, 0, Map.of("scan", 512L), Set.of(), 4096));
+    expectRuntimeFailure(
+        ArithmeticException.class,
+        () ->
+            new LocalExecutionPlanContext.RuntimeExchangeBudget(
+                0, Long.MAX_VALUE, 0, 256, Map.of("a", Long.MAX_VALUE, "b", 1L), Set.of(), 4096));
+
+    LocalExecutionPlanContext.RuntimeExchangeBudget overcommitted =
+        new LocalExecutionPlanContext.RuntimeExchangeBudget(
+            512, 768, 128, 256, Map.of("scan", 512L), Set.of(), 4096);
+    expectRuntimeFailure(
+        IllegalStateException.class,
+        () -> context.initializeRuntimeExchangeBudget(pool, overcommitted));
+    assertFalse(context.isRuntimeParallelismEnabled());
+    assertEquals(0, pool.getReservedBytes());
+    assertEquals(0, context.getInstanceContext().getInputMaxBytes());
+    assertEquals(0, context.getInstanceContext().getOutputMaxBytes());
+  }
+
+  @Test
+  public void testRuntimeBudgetCannotInitializeAfterNativeFactoryCreation() {
+    LocalExecutionPlanContext child = context.createSubContext();
+    child.addPipelineDriverFactory(mock(Operator.class), child.getDriverContext(), 0);
+    expectRuntimeFailure(
+        IllegalStateException.class,
+        () -> context.initializeRuntimeExchangeBudget(pool, runtimeBudget("scan")));
+    assertFalse(context.isRuntimeParallelismEnabled());
+    assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testPaidNormalRuntimeScanDoesNotNeedScopedPropertyOverride() {
+    String source = "paid-normal-scan";
+    context.initializeRuntimeExchangeBudget(pool, runtimeBudget(source));
+    context.setDegreeOfParallelism(8);
+    RuntimeScanLayout layout = runtimeLayout(source, 2);
+    context.registerRuntimeLayout(source, layout);
+    assertTrue(context.isRuntimeScan(source));
+    assertFalse(context.isApprovedRuntimeScan(source));
+    assertSame(layout, context.getRuntimeLayout(layout.getLanePlan()));
+    RuntimeScanGroupDescriptor.Builder builder = context.beginRuntimeScanGroup(source, layout);
+    assertSame(builder.getReservation(), context.getOwnedRuntimeFrontiers().get(0));
+    assertEquals(512, pool.getReservedBytes());
+    assertEquals(2, context.getRuntimeMaxLogicalLanes(source));
+    expectRuntimeFailure(
+        IllegalStateException.class, () -> context.beginRuntimeScanGroup(source, layout));
+    expectRuntimeFailure(
+        IllegalStateException.class, () -> context.registerRuntimeLayout(source, layout));
+    builder.abortBuild(new IllegalStateException("incomplete construction"));
+    assertTrue(builder.getReservation().getClosedFuture().isDone());
+    assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  public void testFrozenExecutionBindingsSurviveFeedbackMetadataEviction() {
+    String source = "metadata-independent-scan";
+    context.initializeRuntimeExchangeBudget(pool, runtimeBudget(source));
+    RuntimeScanGroupDescriptor.Builder builder = beginRuntimeTestGroup(source, 2);
+    RuntimeTestLane first = addRuntimeLane(builder, 0);
+    RuntimeTestLane second = addRuntimeLane(builder, 1);
+    builder.completeConstruction();
+    LocalExecutionPlanContext.RuntimePlanBindings bindings =
+        context.freezeRuntimeGroups(new ArrayList<>(context.getPipelineDriverFactories()));
+    RuntimeScanGroupDescriptor descriptor = bindings.getGroups().get(0);
+    assertNotNull(
+        context
+            .getDynamicScanAssignments()
+            .assignmentsFor(first.factory.getDriverContext().getPipelineId()));
+
+    // Exercise the real default metadata budget; dropping diagnostics must not own execution.
+    String oversizedSource = "x".repeat((int) (DynamicSnapshotRecord.MAX_RECORD_BYTES / 2 + 1));
+    ScanParallelPlan tooLarge = runtimeLayout(oversizedSource, 1).getLanePlan();
+    context.getDynamicScanAssignments().registerBucket(100000, tooLarge, 0);
+    assertEquals(
+        "DYNAMIC_FEEDBACK_METADATA_BUDGET_EXCEEDED",
+        context.getDynamicScanAssignments().getFeedbackDropReason());
+    assertEquals(0, context.getDynamicScanAssignments().getRetainedMetadataBytes());
+    assertNull(
+        context
+            .getDynamicScanAssignments()
+            .assignmentsFor(first.factory.getDriverContext().getPipelineId()));
+    assertSame(bindings, context.getRuntimePlanBindings());
+    assertSame(descriptor, context.getRuntimeGroupDescriptors().get(0));
+    assertSame(descriptor, bindings.groupForFactory(first.factory));
+    assertSame(descriptor, bindings.groupForFactory(second.factory));
+    assertSame(builder.getReservation(), descriptor.getReservation());
+    assertSame(first.source, descriptor.getLanes().get(0).getSource());
+    assertFalse(builder.getReservation().isCloseRequested());
+    assertEquals(512, pool.getReservedBytes());
+    expectRuntimeFailure(UnsupportedOperationException.class, () -> descriptor.getLanes().clear());
+    expectRuntimeFailure(
+        IllegalStateException.class,
+        () -> context.freezeRuntimeGroups(new ArrayList<>(context.getPipelineDriverFactories())));
+  }
+
+  @Test
+  public void testOriginalNativeFactoryIndicesRemainSeparateFromOwnConsumerClose()
+      throws Exception {
+    String source = "dependency-scan";
+    context.initializeRuntimeExchangeBudget(pool, runtimeBudget(source));
+    LocalExecutionPlanContext nested = context.createSubContext();
+    PipelineDriverFactory nativeNested =
+        nested.addPipelineDriverFactoryAndReturn(
+            mock(Operator.class), nested.getDriverContext(), 0);
+    SettableFuture<Void> nestedStartGate = SettableFuture.create();
+    ExchangeOperator nestedConsumer = mock(ExchangeOperator.class);
+    when(nestedConsumer.getBlockedDependencyDriver()).thenReturn(nestedStartGate);
+    nativeNested.setDownstreamOperator(nestedConsumer);
+
+    RuntimeScanGroupDescriptor.Builder builder = beginRuntimeTestGroup(source, 2);
+    RuntimeTestLane first = addRuntimeLane(builder, 0);
+    RuntimeTestLane second = addRuntimeLane(builder, 1);
+    builder.completeConstruction();
+
+    PipelineDriverFactory nativeRoot =
+        context.addPipelineDriverFactoryAndReturn(
+            mock(Operator.class), context.getDriverContext(), 0);
+    SettableFuture<Void> rootStartGate = SettableFuture.create();
+    ExchangeOperator rootConsumer = mock(ExchangeOperator.class);
+    when(rootConsumer.getBlockedDependencyDriver()).thenReturn(rootStartGate);
+    nativeRoot.setDownstreamOperator(rootConsumer);
+    first.factory.setDependencyPipeline(0);
+    second.factory.setDependencyPipeline(3);
+
+    LocalExecutionPlanContext.RuntimePlanBindings bindings =
+        context.freezeRuntimeGroups(new ArrayList<>(context.getPipelineDriverFactories()));
+    RuntimeScanGroupDescriptor descriptor = bindings.getGroups().get(0);
+    RuntimeScanGroupDescriptor.Lane firstLane = descriptor.getLanes().get(0);
+    RuntimeScanGroupDescriptor.Lane secondLane = descriptor.getLanes().get(1);
+    assertEquals(1, firstLane.getOriginalFactoryIndex());
+    assertEquals(2, secondLane.getOriginalFactoryIndex());
+    assertEquals(
+        first.factory.getDriverContext().getPipelineId(), firstLane.getOriginalPipelineId());
+    assertTrue(firstLane.getOriginalPipelineId() != firstLane.getOriginalFactoryIndex());
+    assertEquals(0, nativeRoot.getDriverContext().getPipelineId());
+    assertNull(bindings.groupForFactory(nativeRoot));
+    assertNull(bindings.groupForFactory(nativeNested));
+    assertTrue(bindings.startDependencyFor(nativeRoot).isDone());
+    assertFalse(firstLane.getStartDependency().isDone());
+    assertFalse(firstLane.getOwnConsumerClose().isDone());
+    assertFalse(secondLane.getStartDependency().isDone());
+
+    firstLane.getStartDependency().cancel(false);
+    firstLane.getOwnConsumerClose().cancel(false);
+    assertFalse(nestedStartGate.isCancelled());
+    assertFalse(first.exchange.getBlockedDependencyDriver().isCancelled());
+    assertFalse(bindings.startDependencyFor(first.factory).isDone());
+    nestedStartGate.set(null);
+    assertTrue(firstLane.getStartDependency().isDone());
+    assertFalse(firstLane.getOwnConsumerClose().isDone());
+    assertFalse(secondLane.getStartDependency().isDone());
+    first.exchange.close();
+    assertTrue(firstLane.getOwnConsumerClose().isDone());
+    assertFalse(rootStartGate.isDone());
+    assertFalse(secondLane.getOwnConsumerClose().isDone());
+    rootStartGate.set(null);
+    assertTrue(secondLane.getStartDependency().isDone());
+  }
+
+  @Test
+  public void testRuntimeBindingRejectsReorderedNativeFactoryList() {
+    context.initializeRuntimeExchangeBudget(pool, runtimeBudget("scan"));
+    LocalExecutionPlanContext first = context.createSubContext();
+    LocalExecutionPlanContext second = context.createSubContext();
+    first.addPipelineDriverFactory(mock(Operator.class), first.getDriverContext(), 0);
+    second.addPipelineDriverFactory(mock(Operator.class), second.getDriverContext(), 0);
+    List<PipelineDriverFactory> reordered = new ArrayList<>(context.getPipelineDriverFactories());
+    Collections.reverse(reordered);
+    expectRuntimeFailure(IllegalStateException.class, () -> context.freezeRuntimeGroups(reordered));
+  }
+
+  @Test
+  public void testRuntimeBindingRejectsInvalidNativeDependencyTargets() {
+    for (int dependency : new int[] {-2, 0, 2}) {
+      LocalExecutionPlanContext candidate = newContext();
+      candidate.initializeRuntimeExchangeBudget(pool, runtimeBudget("scan"));
+      LocalExecutionPlanContext child = candidate.createSubContext();
+      PipelineDriverFactory factory =
+          child.addPipelineDriverFactoryAndReturn(
+              mock(Operator.class), child.getDriverContext(), 0);
+      factory.setDependencyPipeline(dependency);
+      expectRuntimeFailure(
+          IllegalStateException.class,
+          () ->
+              candidate.freezeRuntimeGroups(
+                  new ArrayList<>(candidate.getPipelineDriverFactories())));
+      candidate.getResourceRegistry().abortUntransferred(new IllegalStateException("cleanup"));
+    }
+
+    LocalExecutionPlanContext candidate = newContext();
+    candidate.initializeRuntimeExchangeBudget(pool, runtimeBudget("scan"));
+    LocalExecutionPlanContext first = candidate.createSubContext();
+    LocalExecutionPlanContext second = candidate.createSubContext();
+    PipelineDriverFactory factory =
+        first.addPipelineDriverFactoryAndReturn(mock(Operator.class), first.getDriverContext(), 0);
+    second.addPipelineDriverFactory(mock(Operator.class), second.getDriverContext(), 0);
+    factory.setDependencyPipeline(1);
+    expectRuntimeFailure(
+        IllegalStateException.class,
+        () ->
+            candidate.freezeRuntimeGroups(new ArrayList<>(candidate.getPipelineDriverFactories())));
+    candidate.getResourceRegistry().abortUntransferred(new IllegalStateException("cleanup"));
+  }
+
+  @Test
+  public void testRuntimeBindingRejectsNativeDependencyCycle() {
+    context.initializeRuntimeExchangeBudget(pool, runtimeBudget("scan"));
+    LocalExecutionPlanContext first = context.createSubContext();
+    LocalExecutionPlanContext second = context.createSubContext();
+    PipelineDriverFactory a =
+        first.addPipelineDriverFactoryAndReturn(mock(Operator.class), first.getDriverContext(), 0);
+    PipelineDriverFactory b =
+        second.addPipelineDriverFactoryAndReturn(
+            mock(Operator.class), second.getDriverContext(), 0);
+    ExchangeOperator aConsumer = mock(ExchangeOperator.class);
+    ExchangeOperator bConsumer = mock(ExchangeOperator.class);
+    when(aConsumer.getBlockedDependencyDriver()).thenReturn(SettableFuture.create());
+    when(bConsumer.getBlockedDependencyDriver()).thenReturn(SettableFuture.create());
+    a.setDownstreamOperator(aConsumer);
+    b.setDownstreamOperator(bConsumer);
+    a.setDependencyPipeline(1);
+    b.setDependencyPipeline(0);
+    expectRuntimeFailure(
+        IllegalStateException.class,
+        () -> context.freezeRuntimeGroups(new ArrayList<>(context.getPipelineDriverFactories())));
+  }
+
+  @Test
+  public void testPartialRuntimeBuildAbortReleasesPaidCreditAndRegistryClosesRootOnce()
+      throws Exception {
+    context.initializeRuntimeExchangeBudget(pool, runtimeBudget("failed-scan"));
+    RuntimeScanGroupDescriptor.Builder builder = beginRuntimeTestGroup("failed-scan", 2);
+    RuntimeTestLane first = addRuntimeLane(builder, 0);
+    first.source.isBlocked();
+    TsBlockBuilder blockBuilder =
+        new TsBlockBuilder(1, Collections.singletonList(TSDataType.INT64));
+    blockBuilder.getTimeColumnBuilder().writeLong(1);
+    blockBuilder.getColumnBuilder(0).writeLong(2);
+    blockBuilder.declarePosition();
+    TsBlock block = blockBuilder.build();
+    assertTrue(block.getRetainedSizeInBytes() <= 256);
+    ListenableFuture<Void> writable = first.queue.add(block);
+    assertEquals(1, builder.getReservation().getLeasedCreditCount());
+    IllegalStateException failure = new IllegalStateException("second lane construction failure");
+
+    builder.abortBuild(failure);
+    builder.abortBuild(failure);
+    assertTrue(writable.isDone());
+    assertEquals(0, builder.getReservation().getLeasedCreditCount());
+    assertTrue(builder.getReservation().getClosedFuture().isDone());
+    assertEquals(0, pool.getReservedBytes());
+    verify(first.rawRoot, never()).close();
+    expectRuntimeFailure(
+        IllegalStateException.class,
+        () -> context.freezeRuntimeGroups(new ArrayList<>(context.getPipelineDriverFactories())));
+
+    context.getResourceRegistry().abortUntransferred(failure);
+    context.getResourceRegistry().abortUntransferred(failure);
+    first.factory.closeUncreated();
+    first.factory.closeUncreated();
+    verify(first.rawRoot, times(1)).close();
+    assertEquals(0, pool.getReservedBytes());
+  }
+
+  private LocalExecutionPlanContext.RuntimeExchangeBudget runtimeBudget(String source) {
+    return new LocalExecutionPlanContext.RuntimeExchangeBudget(
+        256, 768, 128, 256, Map.of(source, 512L), Set.of(), 4096);
+  }
+
+  private RuntimeScanGroupDescriptor.Builder beginRuntimeTestGroup(String source, int lanes) {
+    context.setDegreeOfParallelism(Math.max(context.getDegreeOfParallelism(), lanes));
+    RuntimeScanLayout layout = runtimeLayout(source, lanes);
+    context.registerRuntimeLayout(source, layout);
+    return context.beginRuntimeScanGroup(source, layout);
+  }
+
+  private RuntimeScanLayout runtimeLayout(String source, int laneCount) {
+    List<ScanParallelPlan.WorkUnit> units = new ArrayList<>();
+    List<ScanParallelPlan.Bucket> buckets = new ArrayList<>();
+    List<List<String>> devices = new ArrayList<>();
+    for (int lane = 0; lane < laneCount; lane++) {
+      List<String> group = Collections.singletonList("device-" + lane);
+      ScanParallelPlan.WorkUnit unit =
+          new ScanParallelPlan.WorkUnit(
+              new ScanParallelPlan.SourceKey(
+                  "budget", "budget.0", source, "DEVICE", "all", Integer.toString(lane)),
+              group,
+              Collections.emptyList(),
+              1,
+              true);
+      units.add(unit);
+      devices.add(group);
+      buckets.add(new ScanParallelPlan.Bucket(lane, Collections.singletonList(unit), 1));
+    }
+    return new RuntimeScanLayout(
+        new ScanParallelPlan(
+            ScanParallelPlan.Mode.DEVICE,
+            ScanParallelPlan.FallbackReason.NONE,
+            Math.max(2, laneCount),
+            laneCount,
+            devices,
+            Collections.emptyList(),
+            units,
+            buckets),
+        1);
+  }
+
+  private RuntimeTestLane addRuntimeLane(RuntimeScanGroupDescriptor.Builder builder, int lane) {
+    LocalExecutionPlanContext child = context.createSubContext();
+    Operator raw = mock(Operator.class);
+    Operator root = new RuntimeCompactOutputOperator(raw, 256, 4096);
+    PipelineDriverFactory factory =
+        child.addPipelineDriverFactoryAndReturn(root, child.getDriverContext(), 0);
+    child
+        .getDynamicScanAssignments()
+        .registerBucket(
+            child.getDriverContext().getPipelineId(), builder.getLayout().getLanePlan(), lane);
+    LocalMemoryManager manager = mock(LocalMemoryManager.class);
+    when(manager.getQueryPool()).thenReturn(pool);
+    ExecutorService notifications = newDirectExecutorService();
+    runtimeExecutors.add(notifications);
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(
+            context.getFragmentInstanceId().toThrift(),
+            "runtime-lane-" + lane,
+            manager,
+            notifications,
+            false,
+            builder.getReservation(),
+            lane);
+    builder.captureQueue(lane, queue);
+    LocalSinkChannel sink =
+        new LocalSinkChannel(
+            context.getFragmentInstanceId().toThrift(), queue, mock(SinkListener.class));
+    LocalSourceHandle source =
+        new LocalSourceHandle(
+            context.getFragmentInstanceId().toThrift(),
+            "runtime-parent-" + lane,
+            queue,
+            mock(SourceHandleListener.class));
+    ExchangeOperator exchange = exchange(context, source);
+    factory.setDownstreamOperator(exchange);
+    context.getResourceRegistry().registerQueue(queue);
+    context.getResourceRegistry().registerSink(sink);
+    context.getResourceRegistry().registerSourceHandle(source, queue.getMemoryReservationKey());
+    context.registerRuntimeLane(builder, lane, factory, exchange, sink, source);
+    return new RuntimeTestLane(raw, factory, queue, source, exchange);
+  }
+
+  private static void expectRuntimeFailure(
+      Class<? extends Throwable> expected, Runnable operation) {
+    try {
+      operation.run();
+      fail("Expected " + expected.getSimpleName());
+    } catch (Throwable failure) {
+      if (!expected.isInstance(failure)) {
+        throw new AssertionError(
+            "Unexpected failure instead of " + expected.getSimpleName(), failure);
+      }
+    }
+  }
+
+  private static final class RuntimeTestLane {
+    private final Operator rawRoot;
+    private final PipelineDriverFactory factory;
+    private final SharedTsBlockQueue queue;
+    private final LocalSourceHandle source;
+    private final ExchangeOperator exchange;
+
+    private RuntimeTestLane(
+        Operator rawRoot,
+        PipelineDriverFactory factory,
+        SharedTsBlockQueue queue,
+        LocalSourceHandle source,
+        ExchangeOperator exchange) {
+      this.rawRoot = rawRoot;
+      this.factory = factory;
+      this.queue = queue;
+      this.source = source;
+      this.exchange = exchange;
+    }
   }
 }

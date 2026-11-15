@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.exchange;
 
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -192,14 +194,40 @@ public final class ResourceAuditManager {
       String memoryQuery,
       String memoryFragment,
       String memoryPlanNode) {
+    SharedTsBlockQueue.MemoryReservationKey key =
+        memoryQuery == null && memoryFragment == null && memoryPlanNode == null
+            ? null
+            : new SharedTsBlockQueue.MemoryReservationKey(
+                memoryQuery, memoryFragment, memoryPlanNode);
+    registerObject(query, fragment, identity, kind, terminal, key, key);
+  }
+
+  /** Keep endpoint identity and terminal state separate from its shared physical pool account. */
+  public void registerObject(
+      String query,
+      String fragment,
+      Object identity,
+      String kind,
+      BooleanSupplier terminal,
+      SharedTsBlockQueue.MemoryReservationKey queueIdentityKey,
+      SharedTsBlockQueue.MemoryReservationKey actualAccountKey) {
+    java.util.Objects.requireNonNull(identity);
+    java.util.Objects.requireNonNull(kind);
+    java.util.Objects.requireNonNull(terminal);
+    RuntimeResourceSnapshot.validateMapping(identity, queueIdentityKey, actualAccountKey);
     if (windows.isEmpty()) return;
     expire();
     for (Window window : windows.values())
       synchronized (window) {
+        Entity entity = window.entities.get(identity);
+        if (entity != null
+            && (!java.util.Objects.equals(entity.queueIdentityKey, queueIdentityKey)
+                || !java.util.Objects.equals(entity.actualAccountKey, actualAccountKey))) {
+          throw new IllegalArgumentException("Conflicting resource account mapping");
+        }
         Record record = window.record(query, fragment);
         if (record == null) continue;
         if (kind.equals("FACTORY") && !record.terminalEvidence.isEmpty()) record.incomplete = true;
-        Entity entity = window.entities.get(identity);
         if (entity == null) {
           if (window.entities.size() >= maxObjects) {
             window.overflow = true;
@@ -207,16 +235,64 @@ public final class ResourceAuditManager {
           }
           entity =
               new Entity(
-                  window.entities.size() + 1L,
-                  kind,
-                  terminal,
-                  memoryQuery,
-                  memoryFragment,
-                  memoryPlanNode);
+                  window.entities.size() + 1L, kind, terminal, queueIdentityKey, actualAccountKey);
           window.entities.put(identity, entity);
         }
+        record.runtime.register(
+            entity.token, identity, kind, terminal, queueIdentityKey, actualAccountKey);
         record.entities.put(identity, entity);
       }
+  }
+
+  public void registerRuntimeFrontier(
+      String query, String fragment, String groupId, RuntimeFrontierReservation reservation) {
+    java.util.Objects.requireNonNull(reservation);
+    if (groupId == null
+        || groupId.isBlank()
+        || !java.util.Objects.equals(query, reservation.getMemoryReservationKey().queryId())
+        || !fullFragmentId(query, fragment)
+            .equals(
+                fullFragmentId(
+                    query, reservation.getMemoryReservationKey().fragmentInstanceId()))) {
+      throw new IllegalArgumentException();
+    }
+    if (windows.isEmpty()) return;
+    expire();
+    for (Window window : windows.values()) {
+      synchronized (window) {
+        Record record = window.record(query, fragment);
+        if (record == null) continue;
+        // Ownership validation is not subject to the observational object budget.
+        window.runtimeOwners.registerFrontier(key(query, fragment) + "\0" + groupId, reservation);
+        record.runtime.registerFrontier(groupId, reservation);
+      }
+    }
+  }
+
+  /** Independent V3 view; the legacy snapshot's schema and counts are unchanged. */
+  public RuntimeResourceSnapshot snapshotRuntime(
+      String id, String query, String fragment, MemoryPool pool) {
+    Window window = requireWindow(id);
+    RuntimeResourceSnapshot.Tracker tracker;
+    boolean complete;
+    synchronized (window) {
+      Record record = window.records.get(key(query, fragment));
+      tracker = record == null ? new RuntimeResourceSnapshot.Tracker() : record.runtime;
+      complete =
+          !window.closed
+              && !window.overflow
+              && record != null
+              && record.began
+              && !record.incomplete;
+    }
+    RuntimeResourceSnapshot value = tracker.snapshot(pool);
+    return new RuntimeResourceSnapshot(
+        3,
+        complete && value.complete(),
+        value.resources(),
+        value.accounts(),
+        value.groups(),
+        value.actualReservedBytes());
   }
 
   public void driverCreated(String query, String fragment, Object driver) {
@@ -462,6 +538,7 @@ public final class ResourceAuditManager {
     final long deadline, exchangeBytes, operatorBytes;
     final Map<String, Record> records = new LinkedHashMap<>();
     final IdentityHashMap<Object, Entity> entities = new IdentityHashMap<>();
+    final RuntimeResourceSnapshot.Tracker runtimeOwners = new RuntimeResourceSnapshot.Tracker();
     boolean overflow, closed;
     java.util.concurrent.ScheduledFuture<?> expiryTask;
     int driverCount, futureCount;
@@ -490,6 +567,7 @@ public final class ResourceAuditManager {
 
   private static final class Record {
     final String query, fragment;
+    final RuntimeResourceSnapshot.Tracker runtime = new RuntimeResourceSnapshot.Tracker();
     boolean began, incomplete;
     Map<String, Object> terminalEvidence = Collections.emptyMap();
     final IdentityHashMap<Object, Entity> entities = new IdentityHashMap<>();
@@ -511,20 +589,22 @@ public final class ResourceAuditManager {
     final long token;
     final String kind, memoryQuery, memoryFragment, memoryPlanNode;
     final BooleanSupplier terminal;
+    final SharedTsBlockQueue.MemoryReservationKey queueIdentityKey, actualAccountKey;
 
     Entity(
         long token,
         String kind,
         BooleanSupplier terminal,
-        String memoryQuery,
-        String memoryFragment,
-        String memoryPlanNode) {
+        SharedTsBlockQueue.MemoryReservationKey queueIdentityKey,
+        SharedTsBlockQueue.MemoryReservationKey actualAccountKey) {
       this.token = token;
       this.kind = kind;
       this.terminal = terminal;
-      this.memoryQuery = memoryQuery;
-      this.memoryFragment = memoryFragment;
-      this.memoryPlanNode = memoryPlanNode;
+      this.queueIdentityKey = queueIdentityKey;
+      this.actualAccountKey = actualAccountKey;
+      this.memoryQuery = queueIdentityKey == null ? null : queueIdentityKey.queryId();
+      this.memoryFragment = queueIdentityKey == null ? null : queueIdentityKey.fragmentInstanceId();
+      this.memoryPlanNode = queueIdentityKey == null ? null : queueIdentityKey.planNodeId();
     }
   }
 }

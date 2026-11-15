@@ -73,6 +73,10 @@ public class FragmentInstance implements IConsensusRequest {
 
   private boolean isHighestPriority;
 
+  // The coordinator selects one exchange/runtime protocol for the complete query graph.
+  // Default false also covers tree queries and legacy serialized fragment instances.
+  private boolean runtimeExecutionEnabled;
+
   // indicate which index we are retrying
   private transient int nextRetryIndex = 0;
 
@@ -198,6 +202,14 @@ public class FragmentInstance implements IConsensusRequest {
     isHighestPriority = highestPriority;
   }
 
+  public boolean isRuntimeExecutionEnabled() {
+    return runtimeExecutionEnabled;
+  }
+
+  public void setRuntimeExecutionEnabled(boolean runtimeExecutionEnabled) {
+    this.runtimeExecutionEnabled = runtimeExecutionEnabled;
+  }
+
   public TimePredicate getGlobalTimePredicate() {
     return globalTimePredicate;
   }
@@ -269,6 +281,26 @@ public class FragmentInstance implements IConsensusRequest {
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
     fragmentInstance.isExplainAnalyze = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.setHighestPriority(ReadWriteIOUtils.readBool(buffer));
+    // FragmentInstance is the complete, bounded RPC/consensus body. Only zero remaining bytes is a
+    // legacy body. A current body owns exactly one explicit protocol byte, with no trailing data.
+    if (buffer.remaining() != 0) {
+      if (buffer.remaining() != 1) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_INVALID_ARG_ARG_2946DBE5,
+                "fragment runtime protocol length",
+                buffer.remaining()));
+      }
+      byte protocol = buffer.get();
+      if (protocol != 0 && protocol != 1) {
+        throw new IllegalArgumentException(
+            String.format(
+                DataNodeQueryMessages.EXCEPTION_INVALID_ARG_ARG_2946DBE5,
+                "fragment runtime protocol",
+                protocol));
+      }
+      fragmentInstance.runtimeExecutionEnabled = protocol == 1;
+    }
     return fragmentInstance;
   }
 
@@ -296,6 +328,7 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(isExplainAnalyze, outputStream);
       ReadWriteIOUtils.write(isHighestPriority, outputStream);
+      ReadWriteIOUtils.write(runtimeExecutionEnabled, outputStream);
       return ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
     } catch (IOException e) {
       LOGGER.error(
@@ -311,6 +344,7 @@ public class FragmentInstance implements IConsensusRequest {
     FragmentInstance instance = (FragmentInstance) o;
     return Objects.equals(id, instance.id)
         && type == instance.type
+        && runtimeExecutionEnabled == instance.runtimeExecutionEnabled
         && Objects.equals(fragment, instance.fragment)
         && Objects.equals(executorType, instance.executorType)
         && Objects.equals(hostDataNode, instance.hostDataNode)
@@ -319,7 +353,14 @@ public class FragmentInstance implements IConsensusRequest {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, type, fragment, executorType, hostDataNode, globalTimePredicate);
+    return Objects.hash(
+        id,
+        type,
+        fragment,
+        executorType,
+        hostDataNode,
+        globalTimePredicate,
+        runtimeExecutionEnabled);
   }
 
   public TDataNodeLocation getHostDataNode() {

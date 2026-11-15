@@ -97,8 +97,29 @@ public class LocalScanPipelineFailureIntegrationTest {
     assertProductionBuilderFailure(FailurePoint.SOURCE_CONSTRUCTOR);
   }
 
-  @SuppressWarnings("unchecked")
+  @Test(timeout = 15000)
+  public void runtimeLaterLaneFactoryFailureReleasesPrepaidAndEarlierNativeLane() throws Exception {
+    assertProductionBuilderFailure(FailurePoint.BEFORE_QUEUE, true);
+  }
+
+  @Test(timeout = 15000)
+  public void runtimeSinkConstructionFailureReleasesPrepaidFrontier() throws Exception {
+    assertProductionBuilderFailure(FailurePoint.SINK_CONSTRUCTOR, true);
+  }
+
+  @Test(timeout = 15000)
+  public void runtimeSourceConstructionFailureReleasesPrepaidAndClosesFactoryOnce()
+      throws Exception {
+    assertProductionBuilderFailure(FailurePoint.SOURCE_CONSTRUCTOR, true);
+  }
+
   private void assertProductionBuilderFailure(FailurePoint point) throws Exception {
+    assertProductionBuilderFailure(point, false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertProductionBuilderFailure(FailurePoint point, boolean runtime)
+      throws Exception {
     RuntimeException primary = new IllegalArgumentException("injected-" + point);
     if (point == FailurePoint.SINK_CONSTRUCTOR) {
       PowerMockito.whenNew(LocalSinkChannel.class).withAnyArguments().thenThrow(primary);
@@ -108,7 +129,10 @@ public class LocalScanPipelineFailureIntegrationTest {
     FragmentInstanceId id =
         new FragmentInstanceId(
             new PlanFragmentId(
-                new QueryId("builder_failure_" + point.name().toLowerCase(java.util.Locale.ROOT)),
+                new QueryId(
+                    "builder_failure_"
+                        + (runtime ? "runtime_" : "")
+                        + point.name().toLowerCase(java.util.Locale.ROOT)),
                 0),
             "0");
     FragmentInstanceManager manager = FragmentInstanceManager.getInstance();
@@ -136,9 +160,7 @@ public class LocalScanPipelineFailureIntegrationTest {
             invocation -> {
               LocalExecutionPlanContext context = invocation.getArgument(1);
               planning.set(context);
-              LocalScanPipelineBuilder.build(
-                  context,
-                  point == FailurePoint.BEFORE_QUEUE ? 2 : 1,
+              LocalScanPipelineBuilder.PipelineFactory pipelineFactory =
                   (index, subContext) -> {
                     if (point == FailurePoint.BEFORE_QUEUE && index == 1) throw primary;
                     DataSourceOperator root = mock(DataSourceOperator.class);
@@ -150,7 +172,52 @@ public class LocalScanPipelineFailureIntegrationTest {
                     when(scan.getType()).thenReturn(PlanNodeType.SERIES_SCAN);
                     return new LocalScanPipelineBuilder.PipelineSpec(
                         root, scan, plan.getPlanNodeId(), scanId);
-                  });
+                  };
+              if (runtime) {
+                long cap =
+                    IoTDBDescriptor.getInstance()
+                        .getMemoryConfig()
+                        .getMaxBytesPerFragmentInstance();
+                long compact = 4096;
+                String sourceId = "runtime-scan";
+                context.setDegreeOfParallelism(2);
+                context.initializeRuntimeExchangeBudget(
+                    pool,
+                    new LocalExecutionPlanContext.RuntimeExchangeBudget(
+                        0,
+                        cap,
+                        cap - 2 * compact,
+                        compact,
+                        java.util.Map.of(sourceId, 2 * compact),
+                        java.util.Set.of(),
+                        1L << 20));
+                org.apache.iotdb.db.queryengine.plan.planner.RuntimeScanLayout layout =
+                    new org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlanner()
+                        .planRuntimeLayout(
+                            new org.apache.iotdb.db.queryengine.plan.planner.ScanParallelPlanner
+                                .Input(
+                                java.util.Arrays.asList("device-0", "device-1"),
+                                java.util.Collections.emptyList(),
+                                null,
+                                2,
+                                true,
+                                false,
+                                false,
+                                false,
+                                false,
+                                false,
+                                id.getQueryId().getId(),
+                                id.getFragmentInstanceId(),
+                                sourceId),
+                            null,
+                            2,
+                            1);
+                context.registerRuntimeLayout(sourceId, layout);
+                LocalScanPipelineBuilder.build(context, layout.getLanePlan(), pipelineFactory);
+              } else {
+                LocalScanPipelineBuilder.build(
+                    context, point == FailurePoint.BEFORE_QUEUE ? 2 : 1, pipelineFactory);
+              }
               throw new AssertionError("construction should have failed at " + point);
             })
         .when(plan)
@@ -195,6 +262,18 @@ public class LocalScanPipelineFailureIntegrationTest {
       }
       assertEquals(
           "LOCAL_QUEUE", planning.get().getResourceRegistry().snapshotEntries().get(0).kind());
+      if (runtime) {
+        assertEquals(1, planning.get().getOwnedRuntimeFrontiers().size());
+        assertTrue(planning.get().getOwnedRuntimeFrontiers().get(0).getClosedFuture().isDone());
+        assertEquals(0, planning.get().getOwnedRuntimeFrontiers().get(0).getLeasedCreditCount());
+        for (Object endpoint : entries.keySet()) {
+          SharedTsBlockQueue queue = (SharedTsBlockQueue) endpoint;
+          assertTrue(queue.isFrontierMode());
+          assertEquals(
+              planning.get().getOwnedRuntimeFrontiers().get(0).getMemoryReservationKey(),
+              queue.getActualAccountKey());
+        }
+      }
       MemoryPool.FragmentReservationSnapshot memory =
           pool.snapshotFragmentReservations(id.getQueryId().getId(), id.getFragmentInstanceId());
       assertFalse(memory.present());

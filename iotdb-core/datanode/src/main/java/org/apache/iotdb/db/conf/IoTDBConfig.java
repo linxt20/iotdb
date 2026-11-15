@@ -385,6 +385,17 @@ public class IoTDBConfig implements DefaultEncodingProvider {
   /** Select future scan plans from validated terminal feedback. Captured once per fragment. */
   private boolean enableDynamicScanParallelism = false;
 
+  /** Allow worker count changes during one table fragment; fixed logical lanes remain unchanged. */
+  private boolean enableRuntimeScanParallelism = false;
+
+  public boolean isEnableRuntimeScanParallelism() {
+    return enableRuntimeScanParallelism;
+  }
+
+  public void setEnableRuntimeScanParallelism(boolean value) {
+    enableRuntimeScanParallelism = value;
+  }
+
   public boolean isEnableDynamicScanParallelism() {
     return enableDynamicScanParallelism;
   }

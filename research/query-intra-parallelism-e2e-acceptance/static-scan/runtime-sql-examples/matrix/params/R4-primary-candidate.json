@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "mode": "ordinary-sql",
+  "manifest": "<CLUSTER_ROOT>/candidate/deployment-manifest.json",
+  "sqlFile": "../sql/rawFiltered.sql",
+  "out": "<OUTPUT_ROOT>/R4/primary/candidate/r001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "expectedOutcome": "CANCELLED",
+  "queryTimeoutSeconds": 180,
+  "fetchSize": 1,
+  "auditDurationMs": 300000,
+  "rosterPollMs": 25,
+  "rosterTimeoutMs": 15000,
+  "terminalTimeoutSeconds": 45,
+  "requireActualSourceNodeCount": 2,
+  "requireGrowShrink": false,
+  "requireOrderedInitialOne": false,
+  "requireHashRepartition": false,
+  "cancelAfterActivityMs": 500,
+  "interventionTimeoutSeconds": 30,
+  "statisticsPolicy": "REQUIRE_FROZEN"
+}

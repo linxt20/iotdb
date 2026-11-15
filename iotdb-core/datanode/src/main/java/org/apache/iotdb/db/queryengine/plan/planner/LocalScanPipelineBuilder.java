@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.operator.process.RuntimeCompactOutputOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 
 import java.util.ArrayList;
@@ -98,6 +99,10 @@ public final class LocalScanPipelineBuilder {
         () ->
             String.format(
                 DataNodeQueryMessages.EXCEPTION_ARGUMENT_MUST_NOT_BE_NULL_ARG_A1C0C918, "plan"));
+    RuntimeScanLayout runtimeLayout = parentContext.getRuntimeLayout(plan);
+    if (runtimeLayout != null && plan.getMode() != ScanParallelPlan.Mode.SERIAL) {
+      return buildRuntime(parentContext, runtimeLayout, factory);
+    }
     return build(
         parentContext,
         plan.getBuckets().size(),
@@ -189,5 +194,91 @@ public final class LocalScanPipelineBuilder {
     }
     parentContext.addExchangeSumNum(exchangeOperators.size());
     return exchangeOperators;
+  }
+
+  /** Construct stable logical lanes; worker leases never own or close these resources. */
+  public static List<Operator> buildRuntime(
+      LocalExecutionPlanContext parentContext, RuntimeScanLayout layout, PipelineFactory factory) {
+    Objects.requireNonNull(parentContext);
+    Objects.requireNonNull(layout);
+    Objects.requireNonNull(factory);
+    ScanParallelPlan plan = layout.getLanePlan();
+    if (plan.getMode() == ScanParallelPlan.Mode.SERIAL || plan.getWorkUnits().isEmpty()) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+    }
+    String sourceId = plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId();
+    RuntimeScanGroupDescriptor.Builder group =
+        parentContext.beginRuntimeScanGroup(sourceId, layout);
+    LocalExecutionPlanContext.RuntimeExchangeBudget budget =
+        parentContext.getRuntimeExchangeBudget();
+    List<Operator> exchanges = new ArrayList<>(layout.getLaneCount());
+    try {
+      for (int lane = 0; lane < layout.getLaneCount(); lane++) {
+        final int laneIndex = lane;
+        LocalExecutionPlanContext subContext = parentContext.createSubContext();
+        subContext
+            .getDynamicScanAssignments()
+            .registerBucket(subContext.getDriverContext().getPipelineId(), plan, lane);
+        PipelineSpec spec = Objects.requireNonNull(factory.create(lane, subContext));
+        Operator root =
+            new RuntimeCompactOutputOperator(
+                spec.rootOperator,
+                budget.maxCompactRetainedBlockBytes(),
+                budget.maxOriginalScanBlockRetainedBytes());
+        // Register the composite before allocating a queue, including its source leaves.
+        subContext.registerPipelineRoot(root);
+        ISinkChannel sinkChannel =
+            MPP_DATA_EXCHANGE_MANAGER.createLocalSinkChannelForPipeline(
+                subContext.getDriverContext(),
+                spec.upstreamPlanNodeId.getId(),
+                group.getReservation(),
+                lane,
+                queue -> {
+                  group.captureQueue(laneIndex, queue);
+                  parentContext.getResourceRegistry().registerQueue(queue);
+                });
+        if (!(sinkChannel instanceof LocalSinkChannel)) {
+          throw new IllegalStateException(
+              DataNodeQueryMessages
+                  .EXCEPTION_UNORDERED_SCAN_PIPELINE_MUST_USE_A_LOCAL_SINK_CHANNEL_8F69FB47);
+        }
+        LocalSinkChannel sink = (LocalSinkChannel) sinkChannel;
+        subContext.setISink(sink);
+        parentContext.getResourceRegistry().registerQueue(sink.getSharedTsBlockQueue());
+        parentContext.getResourceRegistry().registerSink(sink);
+        PipelineDriverFactory driverFactory =
+            subContext.addPipelineDriverFactoryAndReturn(root, subContext.getDriverContext(), 0);
+        subContext.constructPipelineMemoryEstimator(
+            root, spec.memoryParentPlanNodeId, spec.rootPlanNode, -1);
+        ISourceHandle source =
+            MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandleForPipeline(
+                sink.getSharedTsBlockQueue(), parentContext.getDriverContext());
+        parentContext
+            .getResourceRegistry()
+            .registerSourceHandle(source, sink.getSharedTsBlockQueue().getMemoryReservationKey());
+        ExchangeOperator exchange =
+            new ExchangeOperator(
+                parentContext
+                    .getDriverContext()
+                    .addOperatorContext(
+                        parentContext.getNextOperatorId(),
+                        null,
+                        ExchangeOperator.class.getSimpleName()),
+                source,
+                spec.upstreamPlanNodeId,
+                root.calculateMaxReturnSize());
+        driverFactory.setDownstreamOperator(exchange);
+        parentContext.addExchangeOperator(exchange);
+        parentContext.registerRuntimeLane(group, lane, driverFactory, exchange, sink, source);
+        exchanges.add(exchange);
+      }
+      group.completeConstruction();
+      parentContext.addExchangeSumNum(exchanges.size());
+      return exchanges;
+    } catch (Throwable failure) {
+      group.abortBuild(failure);
+      throw failure;
+    }
   }
 }

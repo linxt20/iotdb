@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "mode": "load-runtime-fixture",
+  "manifest": "<FIXTURE_ROOT>/manifest.json",
+  "deploymentManifest": "<CLUSTER_ROOT>/control/deployment-manifest.json",
+  "out": "<OUTPUT_ROOT>/fixture-load/control/r001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "tabletBatchRows": 4096
+}

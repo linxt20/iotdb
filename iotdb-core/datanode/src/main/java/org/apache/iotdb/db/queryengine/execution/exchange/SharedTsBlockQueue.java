@@ -190,7 +190,9 @@ public class SharedTsBlockQueue {
     this.frontierLaneIndex = frontierLaneIndex;
     if (frontierMode) {
       MemoryReservationKey account = frontierReservation.getMemoryReservationKey();
-      if (frontierLaneIndex < 0
+      if (frontierReservation.getMemorySide()
+              != org.apache.iotdb.db.queryengine.execution.memory.MemorySide.OUTPUT
+          || frontierLaneIndex < 0
           || frontierLaneIndex >= frontierReservation.getLaneCount()
           || !frontierReservation.isBackedBy(localMemoryManager.getQueryPool())
           || !localFragmentInstanceId.getQueryId().equals(account.queryId())
@@ -206,9 +208,8 @@ public class SharedTsBlockQueue {
             this,
             "LOCAL_QUEUE",
             this::isClosed,
-            fragmentInstanceId.getQueryId(),
-            fullFragmentInstanceId,
-            planNodeId);
+            getQueueIdentityKey(),
+            getActualAccountKey());
   }
 
   public boolean hasNoMoreTsBlocks() {

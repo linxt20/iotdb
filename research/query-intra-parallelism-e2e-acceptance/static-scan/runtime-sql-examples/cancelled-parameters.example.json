@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "mode": "ordinary-sql",
+  "manifest": "/ABS/candidate/deployment-manifest.json",
+  "sqlFile": "/ABS/sql/cancelled.sql",
+  "out": "/ABS/evidence/cancelled-candidate-001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "queryTimeoutSeconds": 180,
+  "fetchSize": 1024,
+  "requireActualSourceNodeCount": 2,
+  "requireGrowShrink": false,
+  "requireOrderedInitialOne": false,
+  "expectedOutcome": "CANCELLED",
+  "requireHashRepartition": false,
+  "cancelAfterActivityMs": 500,
+  "interventionTimeoutSeconds": 30
+}

@@ -32,18 +32,27 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
+import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
+import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
+import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.operator.process.RuntimeCompactOutputOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableReadyCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
@@ -63,10 +72,12 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,6 +86,8 @@ import java.util.concurrent.ExecutorService;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -616,6 +629,460 @@ public class DeviceTableScanParallelPipelineTest {
       operator.close();
     } catch (Exception ignored) {
       // ignore the exception during close in test
+    }
+  }
+
+  @Test
+  public void testRuntimePaidDeviceScanDoesNotRequireGroupByApproval() throws Exception {
+    try (RuntimeGeneratorOptions ignored = new RuntimeGeneratorOptions();
+        RuntimeGeneratorFixture fixture =
+            new RuntimeGeneratorFixture("runtime_native_device", "DeviceTableScanNode", false)) {
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+      assertFalse(fixture.context.isApprovedRuntimeScan(node.getPlanNodeId().getId()));
+
+      Operator root = node.accept(generator, fixture.context);
+      fixture.freeze(root);
+      assertEquals(TableReadyCollectOperator.class, root.getClass());
+      RuntimeScanGroupDescriptor group = assertRuntimeDescriptor(fixture, node, 4);
+      assertEquals(ScanParallelPlan.Mode.DEVICE, group.getLayout().getLanePlan().getMode());
+      assertEquals(4, group.getLayout().getInitialWorkers());
+      Set<String> actualDevices = new HashSet<>();
+      int deviceOccurrences = 0;
+      for (RuntimeScanGroupDescriptor.Lane lane : group.getLanes()) {
+        assertEquals(
+            RuntimeCompactOutputOperator.class, lane.getFactory().getOperation().getClass());
+        assertEquals(
+            TableScanOperator.class, runtimeDelegate(lane.getFactory().getOperation()).getClass());
+        for (Operator scan : runtimeLaneSources(lane)) {
+          for (DeviceEntry entry : runtimeScanDevices(scan)) {
+            assertTrue(
+                "Duplicate device in actual scans",
+                actualDevices.add(entry.getDeviceID().toString()));
+            deviceOccurrences++;
+          }
+        }
+      }
+      assertEquals(runtimeDeviceIds(node), actualDevices);
+      assertEquals(8, deviceOccurrences);
+      assertTrue(node.isAllowParallelScan());
+    }
+  }
+
+  @Test
+  public void testRuntimeApprovedGroupByRawScanKeepsOriginalAdmissionFlag() throws Exception {
+    try (RuntimeGeneratorOptions ignored = new RuntimeGeneratorOptions();
+        RuntimeGeneratorFixture fixture =
+            new RuntimeGeneratorFixture("runtime_group_by_raw", "DeviceTableScanNode", true)) {
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      assertFalse(node.isAllowParallelScan());
+      assertTrue(fixture.context.isApprovedRuntimeScan(node.getPlanNodeId().getId()));
+
+      Operator root = node.accept(generator, fixture.context);
+      fixture.freeze(root);
+      assertEquals(TableReadyCollectOperator.class, root.getClass());
+      RuntimeScanGroupDescriptor group = assertRuntimeDescriptor(fixture, node, 4);
+      assertEquals(ScanParallelPlan.Mode.DEVICE, group.getLayout().getLanePlan().getMode());
+      assertFalse(
+          "Scoped runtime approval must not mutate the serialized scan flag",
+          node.isAllowParallelScan());
+      assertEquals(8, group.getLayout().getLanePlan().getWorkUnits().size());
+    }
+  }
+
+  @Test
+  public void testRuntimeEstimatedDopOneKeepsFourLogicalLanes() throws Exception {
+    try (RuntimeGeneratorOptions ignored = new RuntimeGeneratorOptions();
+        RuntimeGeneratorFixture fixture =
+            new RuntimeGeneratorFixture("runtime_estimate_one", "DeviceTableScanNode", false)) {
+      IoTDBDescriptor.getInstance().getConfig().setEnableDopEstimation(true);
+      TsFileManager files = Mockito.mock(TsFileManager.class);
+      Mockito.when(files.getTimePartitions()).thenReturn(Collections.singleton(0L));
+      TsFileResource smallFile = Mockito.mock(TsFileResource.class);
+      Mockito.when(smallFile.getTsFileSize()).thenReturn(1024L * 1024);
+      Mockito.when(files.getAllTsFileListForQuery(Mockito.isNull(), Mockito.isNull()))
+          .thenReturn(
+              new org.apache.tsfile.utils.Pair<>(
+                  Collections.singletonList(smallFile), Collections.emptyList()));
+      DataRegion region = Mockito.mock(DataRegion.class);
+      Mockito.when(region.getTsFileManager()).thenReturn(files);
+      fixture.context.getInstanceContext().setDataRegion(region);
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+
+      Operator root = node.accept(generator, fixture.context);
+      fixture.freeze(root);
+      RuntimeScanGroupDescriptor group = assertRuntimeDescriptor(fixture, node, 4);
+      assertEquals(8, group.getLayout().getLanePlan().getInputDop());
+      assertEquals(1, group.getLayout().getInitialWorkers());
+      assertEquals(5, fixture.context.getPipelineNumber());
+      assertEquals(4, ((TableReadyCollectOperator) root).getChildren().size());
+    }
+  }
+
+  @Test
+  public void testRuntimeWeightedTimePartitionBucketsExecuteEveryActualWorkUnit() throws Exception {
+    try (RuntimeGeneratorOptions ignored = new RuntimeGeneratorOptions();
+        RuntimeGeneratorFixture fixture =
+            new RuntimeGeneratorFixture("runtime_weighted_tp", "DeviceTableScanNode", false)) {
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorsel(true);
+      IoTDBDescriptor.getInstance().getConfig().setEnableTimePartitionMorselSizeWeighting(true);
+      List<Long> partitions = Arrays.asList(0L, 1L, 2L, 3L);
+      TsFileManager files = Mockito.mock(TsFileManager.class);
+      Mockito.when(files.getTimePartitions()).thenReturn(new HashSet<>(partitions));
+      List<TsFileResource> allFiles = new ArrayList<>();
+      long[] sizes = {900L, 100L, 10L, 1L};
+      for (int index = 0; index < partitions.size(); index++) {
+        TsFileResource file = Mockito.mock(TsFileResource.class);
+        Mockito.when(file.getTsFileSize()).thenReturn(sizes[index]);
+        allFiles.add(file);
+        Mockito.when(files.getTsFileListSnapshot(partitions.get(index)))
+            .thenReturn(
+                new org.apache.tsfile.utils.Pair<>(
+                    Collections.singletonList(file), Collections.emptyList()));
+      }
+      Mockito.when(files.getAllTsFileListForQuery(Mockito.isNull(), Mockito.isNull()))
+          .thenReturn(new org.apache.tsfile.utils.Pair<>(allFiles, Collections.emptyList()));
+      DataRegion region = Mockito.mock(DataRegion.class);
+      Mockito.when(region.getTsFileManager()).thenReturn(files);
+      fixture.context.getInstanceContext().setDataRegion(region);
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+
+      Operator root = node.accept(generator, fixture.context);
+      fixture.freeze(root);
+      RuntimeScanGroupDescriptor group = assertRuntimeDescriptor(fixture, node, 4);
+      assertEquals(ScanParallelPlan.Mode.TIME_PARTITION, group.getLayout().getLanePlan().getMode());
+      assertEquals(8, group.getLayout().getLanePlan().getWorkUnits().size());
+      assertTrue(
+          group.getLayout().getLanePlan().getBuckets().stream()
+              .allMatch(bucket -> bucket.getWorkUnits().size() > 1));
+
+      Map<String, Integer> actualCoverage = new HashMap<>();
+      int actualSources = 0;
+      long interval = TimePartitionUtils.getTimePartitionInterval();
+      for (RuntimeScanGroupDescriptor.Lane lane : group.getLanes()) {
+        Operator laneRoot = runtimeDelegate(lane.getFactory().getOperation());
+        assertEquals(TableReadyCollectOperator.class, laneRoot.getClass());
+        assertEquals(
+            group
+                .getLayout()
+                .getLanePlan()
+                .getBuckets()
+                .get(lane.getLaneIndex())
+                .getWorkUnits()
+                .size(),
+            runtimeLaneSources(lane).size());
+        for (Operator scan : runtimeLaneSources(lane)) {
+          actualSources++;
+          assertEquals(
+              "LPT_TSFILE_BYTES",
+              scan.getOperatorContext().getSpecifiedInfo().get("MORSEL_SCHEDULING"));
+          SeriesScanOptions options = (SeriesScanOptions) runtimeField(scan, "seriesScanOptions");
+          Set<Long> actualPartitions = new HashSet<>();
+          for (Long partition : partitions) {
+            if (options.getGlobalTimeFilter().satisfy(partition * interval + interval / 2, null)) {
+              actualPartitions.add(partition);
+            }
+          }
+          assertFalse(actualPartitions.isEmpty());
+          assertFalse(options.getGlobalTimeFilter().satisfy(-interval / 2, null));
+          assertFalse(options.getGlobalTimeFilter().satisfy(4 * interval + interval / 2, null));
+          for (DeviceEntry entry : runtimeScanDevices(scan)) {
+            for (Long partition : actualPartitions) {
+              actualCoverage.merge(entry.getDeviceID() + "@" + partition, 1, Integer::sum);
+            }
+          }
+        }
+      }
+      Map<String, Integer> expectedCoverage = new HashMap<>();
+      for (String device : runtimeDeviceIds(node)) {
+        for (Long partition : partitions) {
+          expectedCoverage.put(device + "@" + partition, 1);
+        }
+      }
+      assertEquals(expectedCoverage, actualCoverage);
+      assertEquals(8, actualSources);
+    }
+  }
+
+  @Test
+  public void testRuntimeOrderedScanCompactsRootLanesAndEveryDeviceHead() throws Exception {
+    try (RuntimeGeneratorOptions ignored = new RuntimeGeneratorOptions();
+        RuntimeGeneratorFixture fixture =
+            new RuntimeGeneratorFixture("runtime_ordered_heads", "DeviceTableScanNode", false)) {
+      IoTDBDescriptor.getInstance().getConfig().setEnableOrderedParallelScan(true);
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      Symbol time = new Symbol("time");
+      SortNode sort =
+          new SortNode(
+              new PlanNodeId("runtime-order"),
+              node,
+              new OrderingScheme(
+                  Collections.singletonList(time),
+                  Collections.singletonMap(time, SortOrder.ASC_NULLS_FIRST)),
+              false,
+              false);
+
+      Operator root = sort.accept(generator, fixture.context);
+      fixture.freeze(root);
+      assertEquals(RuntimeCompactOutputOperator.class, root.getClass());
+      assertEquals(4096L, root.calculateMaxReturnSize());
+      Operator rootMerge = runtimeDelegate(root);
+      assertEquals(TableMergeSortOperator.class, rootMerge.getClass());
+      RuntimeScanGroupDescriptor group = assertRuntimeDescriptor(fixture, node, 4);
+      assertEquals(ScanParallelPlan.Mode.ORDERED, group.getLayout().getLanePlan().getMode());
+      List<Operator> rootInputs = runtimeChildren(rootMerge);
+      assertEquals(4, rootInputs.size());
+      Set<String> actualDevices = new HashSet<>();
+      int compactDeviceHeads = 0;
+      for (RuntimeScanGroupDescriptor.Lane lane : group.getLanes()) {
+        assertSame(lane.getOwnExchange(), rootInputs.get(lane.getLaneIndex()));
+        Operator compactLane = lane.getFactory().getOperation();
+        assertEquals(RuntimeCompactOutputOperator.class, compactLane.getClass());
+        assertEquals(4096L, compactLane.calculateMaxReturnSize());
+        Operator laneMerge = runtimeDelegate(compactLane);
+        assertEquals(TableMergeSortOperator.class, laneMerge.getClass());
+        List<Operator> deviceHeads = runtimeChildren(laneMerge);
+        assertEquals(2, deviceHeads.size());
+        for (Operator head : deviceHeads) {
+          assertEquals(RuntimeCompactOutputOperator.class, head.getClass());
+          assertEquals(4096L, head.calculateMaxReturnSize());
+          Operator scan = runtimeDelegate(head);
+          assertEquals(TableScanOperator.class, scan.getClass());
+          assertTrue(runtimeLaneSources(lane).contains(scan));
+          List<DeviceEntry> devices = runtimeScanDevices(scan);
+          assertEquals(1, devices.size());
+          assertTrue(actualDevices.add(devices.get(0).getDeviceID().toString()));
+          compactDeviceHeads++;
+        }
+      }
+      assertEquals(runtimeDeviceIds(node), actualDevices);
+      assertEquals(8, compactDeviceHeads);
+      assertFalse(node.isAllowParallelScan());
+    }
+  }
+
+  @Test
+  public void testRuntimePaidAndApprovedScanStillRejectsGlobalLimit() throws Exception {
+    try (RuntimeGeneratorOptions ignored = new RuntimeGeneratorOptions();
+        RuntimeGeneratorFixture fixture =
+            new RuntimeGeneratorFixture("runtime_global_limit", "DeviceTableScanNode", true)) {
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+      node.setPushDownLimit(10);
+      node.setPushLimitToEachDevice(false);
+
+      Operator root = node.accept(generator, fixture.context);
+      fixture.freeze(root);
+      assertEquals(TableScanOperator.class, root.getClass());
+      assertEquals(1, fixture.context.getPipelineNumber());
+      assertTrue(fixture.context.getRuntimeGroupDescriptors().isEmpty());
+      assertTrue(fixture.context.getOwnedRuntimeFrontiers().isEmpty());
+      assertEquals(10L, node.getPushDownLimit());
+      assertFalse(node.isPushLimitToEachDevice());
+    }
+  }
+
+  @Test
+  public void testRuntimeBudgetDoesNotConvertUnpaidSourceFromNativeStaticPath() throws Exception {
+    try (RuntimeGeneratorOptions ignored = new RuntimeGeneratorOptions();
+        RuntimeGeneratorFixture fixture =
+            new RuntimeGeneratorFixture("runtime_unpaid_source", "some-other-source", false)) {
+      DeviceTableScanNode node = initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+
+      Operator root = node.accept(generator, fixture.context);
+      fixture.freeze(root);
+      assertEquals(TableReadyCollectOperator.class, root.getClass());
+      assertEquals(8, ((TableReadyCollectOperator) root).getChildren().size());
+      assertEquals(9, fixture.context.getPipelineNumber());
+      assertTrue(fixture.context.getRuntimeGroupDescriptors().isEmpty());
+      assertTrue(fixture.context.getOwnedRuntimeFrontiers().isEmpty());
+      for (Operator child : ((TableReadyCollectOperator) root).getChildren()) {
+        ExchangeOperator exchange = (ExchangeOperator) child;
+        SharedTsBlockQueue queue =
+            ((LocalSourceHandle) exchange.getSourceHandle()).getSharedTsBlockQueue();
+        assertFalse(queue.isFrontierMode());
+      }
+      for (int index = 0; index < fixture.context.getPipelineNumber() - 1; index++) {
+        assertEquals(
+            TableScanOperator.class,
+            fixture.context.getPipelineDriverFactories().get(index).getOperation().getClass());
+      }
+    }
+  }
+
+  private RuntimeScanGroupDescriptor assertRuntimeDescriptor(
+      RuntimeGeneratorFixture fixture, DeviceTableScanNode node, int expectedLanes) {
+    assertEquals(1, fixture.context.getRuntimeGroupDescriptors().size());
+    RuntimeScanGroupDescriptor group = fixture.context.getRuntimeGroupDescriptors().get(0);
+    assertEquals(node.getPlanNodeId().getId(), group.getSourcePlanNodeId());
+    assertEquals(expectedLanes, group.getLayout().getLaneCount());
+    assertEquals(expectedLanes, group.getLanes().size());
+    assertEquals(expectedLanes * 4096L, group.getReservation().getTotalReservedBytes());
+    assertEquals(0, group.getReservation().getLeasedCreditCount());
+    Set<SharedTsBlockQueue.MemoryReservationKey> identities = new HashSet<>();
+    for (RuntimeScanGroupDescriptor.Lane lane : group.getLanes()) {
+      SharedTsBlockQueue queue = lane.getSink().getSharedTsBlockQueue();
+      assertTrue(queue.isFrontierMode());
+      assertEquals(lane.getLaneIndex(), queue.getFrontierLaneIndex());
+      assertEquals(group.getReservation().getMemoryReservationKey(), queue.getActualAccountKey());
+      assertTrue(identities.add(queue.getQueueIdentityKey()));
+      assertFalse(queue.getQueueIdentityKey().equals(queue.getActualAccountKey()));
+      assertSame(queue, ((LocalSourceHandle) lane.getSource()).getSharedTsBlockQueue());
+      assertSame(lane.getSource(), lane.getOwnExchange().getSourceHandle());
+      assertSame(
+          lane.getFactory(),
+          fixture.context.getPipelineDriverFactories().get(lane.getOriginalFactoryIndex()));
+      assertEquals(
+          lane.getFactory().getDriverContext().getPipelineId(), lane.getOriginalPipelineId());
+      assertTrue(lane.getStartDependency().isDone());
+      assertFalse(lane.getOwnConsumerClose().isDone());
+    }
+    SharedTsBlockQueue.MemoryReservationKey key = group.getReservation().getMemoryReservationKey();
+    assertEquals(
+        expectedLanes * 4096L,
+        fixture.pool.getPlanNodeMemoryReservedBytes(
+            key.queryId(), key.fragmentInstanceId(), key.planNodeId()));
+    return group;
+  }
+
+  private static List<Operator> runtimeLaneSources(RuntimeScanGroupDescriptor.Lane lane) {
+    return new ArrayList<>(
+        ((DataDriverContext) lane.getFactory().getDriverContext()).getSourceOperators());
+  }
+
+  private static Operator runtimeDelegate(Operator compact) throws Exception {
+    assertEquals(RuntimeCompactOutputOperator.class, compact.getClass());
+    return (Operator) runtimeField(compact, "delegate");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<Operator> runtimeChildren(Operator parent) throws Exception {
+    return (List<Operator>) runtimeField(parent, "children");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<DeviceEntry> runtimeScanDevices(Operator scan) throws Exception {
+    Object source = runtimeField(scan, "deviceEntrySource");
+    assertEquals(
+        org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.InMemoryDeviceEntrySource
+            .class,
+        source.getClass());
+    return new ArrayList<>((List<DeviceEntry>) runtimeField(source, "entries"));
+  }
+
+  private static Object runtimeField(Object instance, String name) throws Exception {
+    for (Class<?> type = instance.getClass(); type != null; type = type.getSuperclass()) {
+      try {
+        Field field = type.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(instance);
+      } catch (NoSuchFieldException ignored) {
+        // Operator state is declared on the corresponding source or consume-all superclass.
+      }
+    }
+    throw new NoSuchFieldException(name);
+  }
+
+  private static Set<String> runtimeDeviceIds(DeviceTableScanNode node) {
+    Set<String> devices = new HashSet<>();
+    for (DeviceEntry entry : node.getDeviceEntries()) {
+      devices.add(entry.getDeviceID().toString());
+    }
+    return devices;
+  }
+
+  private final class RuntimeGeneratorFixture implements AutoCloseable {
+    private final LocalExecutionPlanContext context;
+    private final MemoryPool pool;
+    private final long originalReservedBytes;
+
+    private RuntimeGeneratorFixture(String queryId, String paidSource, boolean approve) {
+      context = createLocalExecutionPlanContext(queryId);
+      context.setDegreeOfParallelism(8);
+      pool =
+          MPPDataExchangeService.getInstance()
+              .getMPPDataExchangeManager()
+              .getLocalMemoryManager()
+              .getQueryPool();
+      originalReservedBytes = pool.getReservedBytes();
+      long output = context.getMaxBytesOneHandleCanReserve();
+      long prepaid = 4 * 4096L;
+      assertTrue(output >= prepaid);
+      context.initializeRuntimeExchangeBudget(
+          pool,
+          new LocalExecutionPlanContext.RuntimeExchangeBudget(
+              0,
+              output,
+              output - prepaid,
+              4096,
+              Collections.singletonMap(paidSource, prepaid),
+              approve ? Collections.singleton(paidSource) : Collections.emptySet(),
+              1024L * 1024));
+    }
+
+    private void freeze(Operator root) {
+      // Parent dependencies are final only after the original root factory has also been appended.
+      context.addPipelineDriverFactory(root, context.getDriverContext(), 0);
+      context.freezeRuntimeGroups(new ArrayList<>(context.getPipelineDriverFactories()));
+    }
+
+    @Override
+    public void close() {
+      Throwable cleanup = new IllegalStateException("Runtime generator test cleanup");
+      for (PipelineDriverFactory factory : context.getPipelineDriverFactories()) {
+        try {
+          factory.closeUncreated();
+        } catch (Throwable failure) {
+          cleanup.addSuppressed(failure);
+        }
+      }
+      try {
+        context.getResourceRegistry().abortUntransferred(cleanup);
+      } catch (Throwable failure) {
+        cleanup.addSuppressed(failure);
+      }
+      for (RuntimeFrontierReservation reservation : context.getOwnedRuntimeFrontiers()) {
+        try {
+          assertTrue(reservation.requestClose().isDone());
+          assertEquals(0, reservation.getLeasedCreditCount());
+          assertEquals(0L, reservation.getInternalUsedBytes());
+        } catch (Throwable failure) {
+          cleanup.addSuppressed(failure);
+        }
+      }
+      assertEquals(originalReservedBytes, pool.getReservedBytes());
+      if (cleanup.getSuppressed().length != 0) {
+        throw new AssertionError("Runtime generator cleanup failed", cleanup);
+      }
+    }
+  }
+
+  private static final class RuntimeGeneratorOptions implements AutoCloseable {
+    private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    private final boolean timeMorsel = config.isEnableTimePartitionMorsel();
+    private final boolean timeWeighting = config.isEnableTimePartitionMorselSizeWeighting();
+    private final boolean estimation = config.isEnableDopEstimation();
+    private final boolean ordered = config.isEnableOrderedParallelScan();
+    private final boolean dynamic = config.isEnableDynamicScanParallelism();
+
+    private RuntimeGeneratorOptions() {
+      config.setEnableTimePartitionMorsel(false);
+      config.setEnableTimePartitionMorselSizeWeighting(false);
+      config.setEnableDopEstimation(false);
+      config.setEnableOrderedParallelScan(false);
+      config.setEnableDynamicScanParallelism(false);
+    }
+
+    @Override
+    public void close() {
+      config.setEnableTimePartitionMorsel(timeMorsel);
+      config.setEnableTimePartitionMorselSizeWeighting(timeWeighting);
+      config.setEnableDopEstimation(estimation);
+      config.setEnableOrderedParallelScan(ordered);
+      config.setEnableDynamicScanParallelism(dynamic);
     }
   }
 }

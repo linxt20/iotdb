@@ -26,6 +26,9 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.IChannelRoutingSi
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,6 +66,8 @@ public final class LocalExecutionResourceRegistry {
       QuotaPolicy quotaPolicy) {}
 
   private final Map<Object, ResourceEntry> entries = new IdentityHashMap<>();
+  private final RuntimeResourceSnapshot.Tracker runtimeResources =
+      new RuntimeResourceSnapshot.Tracker();
   // Quota aliases share one physical buffer; endpoint termination state remains per wrapper.
   private final Set<Object> ownedEndpoints = Collections.newSetFromMap(new IdentityHashMap<>());
   private Snapshot frozenSnapshot;
@@ -122,6 +127,102 @@ public final class LocalExecutionResourceRegistry {
     }
   }
 
+  private com.google.common.util.concurrent.SettableFuture<Void> runtimeOwnerClosure;
+
+  /**
+   * Close each real endpoint and await its owned transport tasks, independently of wrapper bits.
+   */
+  public com.google.common.util.concurrent.ListenableFuture<Void> closeRuntimeOwners(
+      boolean abort, Throwable cause) {
+    List<Operator> roots;
+    List<Object> endpoints;
+    com.google.common.util.concurrent.SettableFuture<Void> receipt;
+    boolean legacyClosureStarted;
+    synchronized (this) {
+      if (runtimeOwnerClosure != null)
+        return com.google.common.util.concurrent.Futures.nonCancellationPropagating(
+            runtimeOwnerClosure);
+      runtimeOwnerClosure = com.google.common.util.concurrent.SettableFuture.create();
+      receipt = runtimeOwnerClosure;
+      legacyClosureStarted = aborted;
+      aborted = true;
+      // Retain owner references through failed closure; success is followed by FI deregistration.
+      roots = new ArrayList<>(ownedRoots);
+      endpoints = new ArrayList<>(ownedEndpoints);
+    }
+    if (legacyClosureStarted) {
+      receipt.setException(
+          new IllegalStateException(DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE));
+      return com.google.common.util.concurrent.Futures.nonCancellationPropagating(receipt);
+    }
+    // CANCELLED/ABORTED fragment states need not carry a failure exception. Every
+    // owned endpoint still needs one concrete cancellation cause for abort, including
+    // SharedTsBlockQueue, whose abort contract deliberately rejects null.
+    Throwable abortCause =
+        abort && cause == null ? new java.util.concurrent.CancellationException() : cause;
+    List<com.google.common.util.concurrent.ListenableFuture<?>> pending = new ArrayList<>();
+    for (Object endpoint : endpoints) {
+      try {
+        if (endpoint
+            instanceof org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) {
+          org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle source =
+              (org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) endpoint;
+          pending.add(
+              abort
+                  ? source.requestCoordinatedAbort(abortCause)
+                  : source.requestCoordinatedClose());
+        } else if (endpoint
+            instanceof org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) {
+          org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel sink =
+              (org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) endpoint;
+          pending.add(
+              abort ? sink.requestCoordinatedAbort(abortCause) : sink.requestCoordinatedClose());
+        } else if (endpoint instanceof ISourceHandle) {
+          if (abort) ((ISourceHandle) endpoint).abort(abortCause);
+          else ((ISourceHandle) endpoint).close();
+        } else if (endpoint instanceof ISink) {
+          if (abort) ((ISink) endpoint).abort();
+          else ((ISink) endpoint).close();
+        } else if (endpoint instanceof SharedTsBlockQueue) {
+          if (abort) ((SharedTsBlockQueue) endpoint).abort(abortCause);
+          else ((SharedTsBlockQueue) endpoint).close();
+        }
+      } catch (Throwable failure) {
+        pending.add(com.google.common.util.concurrent.Futures.immediateFailedFuture(failure));
+      }
+    }
+    for (Operator root : roots) {
+      try {
+        root.close();
+      } catch (Throwable failure) {
+        pending.add(com.google.common.util.concurrent.Futures.immediateFailedFuture(failure));
+      }
+    }
+    com.google.common.util.concurrent.ListenableFuture<?> all =
+        com.google.common.util.concurrent.Futures.successfulAsList(pending);
+    all.addListener(
+        () -> {
+          Throwable first = null;
+          for (com.google.common.util.concurrent.ListenableFuture<?> owner : pending) {
+            try {
+              com.google.common.util.concurrent.Futures.getDone(owner);
+            } catch (Throwable failure) {
+              Throwable actual =
+                  failure instanceof java.util.concurrent.ExecutionException
+                          && failure.getCause() != null
+                      ? failure.getCause()
+                      : failure;
+              if (first == null) first = actual;
+              else if (first != actual) first.addSuppressed(actual);
+            }
+          }
+          if (first == null) receipt.set(null);
+          else receipt.setException(first);
+        },
+        com.google.common.util.concurrent.MoreExecutors.directExecutor());
+    return com.google.common.util.concurrent.Futures.nonCancellationPropagating(receipt);
+  }
+
   private org.apache.iotdb.db.queryengine.common.FragmentInstanceId auditOwner;
 
   public synchronized void bindResourceAudit(
@@ -130,6 +231,30 @@ public final class LocalExecutionResourceRegistry {
     if (owner == null) return;
     org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
         .beginFragment(owner.getQueryId().getId(), owner.getFullId());
+  }
+
+  /** Runtime ownership is independent of the legacy frozen quota diagnostics. */
+  public synchronized void registerRuntimeFrontier(
+      String groupId, RuntimeFrontierReservation reservation) {
+    ensureQuotaMutable();
+    Objects.requireNonNull(reservation);
+    if (auditOwner != null
+        && (!auditOwner.getQueryId().getId().equals(reservation.getMemoryReservationKey().queryId())
+            || !auditOwner
+                .getFragmentInstanceId()
+                .equals(reservation.getMemoryReservationKey().fragmentInstanceId()))) {
+      throw new IllegalArgumentException("Frontier belongs to a different fragment");
+    }
+    runtimeResources.registerFrontier(groupId, reservation);
+    if (auditOwner != null) {
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .registerRuntimeFrontier(
+              auditOwner.getQueryId().getId(), auditOwner.getFullId(), groupId, reservation);
+    }
+  }
+
+  public RuntimeResourceSnapshot snapshotRuntime(MemoryPool pool) {
+    return runtimeResources.snapshot(pool);
   }
 
   public synchronized void registerQueue(SharedTsBlockQueue queue) {
@@ -193,15 +318,12 @@ public final class LocalExecutionResourceRegistry {
         }
       } else if (channel
           instanceof org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) {
-        String actualNode =
-            ((org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) channel)
-                .getLocalPlanNodeId();
-        if (actualNode != null)
-          actualKey =
-              actualMemoryKey(
-                  ((org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) channel)
-                      .getLocalFragmentInstanceId(),
-                  actualNode);
+        org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel remote =
+            (org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) channel;
+        actualKey =
+            remote.isRuntimeFrontierMode()
+                ? remote.getActualAccountKey()
+                : actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
       }
       register(channel, "SINK_CHANNEL", actualKey);
     }
@@ -235,7 +357,10 @@ public final class LocalExecutionResourceRegistry {
         instanceof org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) {
       org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle remote =
           (org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) sourceHandle;
-      memoryKey = actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
+      memoryKey =
+          remote.isRuntimeFrontierMode()
+              ? remote.getActualAccountKey()
+              : actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
     }
     register(sourceHandle, "SOURCE_HANDLE", memoryKey);
   }
@@ -260,7 +385,10 @@ public final class LocalExecutionResourceRegistry {
     if (sink instanceof org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) {
       org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel remote =
           (org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) sink;
-      key = actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
+      key =
+          remote.isRuntimeFrontierMode()
+              ? remote.getActualAccountKey()
+              : actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
     }
     register(sink, "SINK", key);
   }
@@ -330,22 +458,49 @@ public final class LocalExecutionResourceRegistry {
       physicalMemoryKey = ((SharedTsBlockQueue) physicalResource).getMemoryReservationKey();
       physicalKind = "LOCAL_QUEUE";
     }
+    SharedTsBlockQueue queue = RuntimeResourceSnapshot.queueOf(identity);
+    SharedTsBlockQueue.MemoryReservationKey queueKey =
+        queue == null ? memoryAccountKey : queue.getQueueIdentityKey();
+    SharedTsBlockQueue.MemoryReservationKey actualKey =
+        queue == null ? memoryAccountKey : queue.getActualAccountKey();
+    if (identity
+        instanceof org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) {
+      org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle remote =
+          (org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) identity;
+      if (remote.isRuntimeFrontierMode()) {
+        queueKey =
+            actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
+        actualKey = remote.getActualAccountKey();
+        physicalMemoryKey = actualKey;
+      }
+    } else if (identity
+        instanceof org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) {
+      org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel remote =
+          (org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) identity;
+      if (remote.isRuntimeFrontierMode()) {
+        queueKey =
+            actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
+        actualKey = remote.getActualAccountKey();
+        physicalMemoryKey = actualKey;
+      }
+    }
+    java.util.function.BooleanSupplier terminal =
+        () -> {
+          if (identity instanceof SharedTsBlockQueue)
+            return ((SharedTsBlockQueue) identity).isClosed();
+          if (identity instanceof ISourceHandle) {
+            ISourceHandle source = (ISourceHandle) identity;
+            return source.isClosed() || source.isAborted();
+          }
+          if (identity instanceof ISink)
+            return ((ISink) identity).isClosed() || ((ISink) identity).isAborted();
+          return false;
+        };
+    runtimeResources.register(identity, kind, terminal, queueKey, actualKey);
     entries.putIfAbsent(physicalResource, new ResourceEntry(physicalKind, physicalMemoryKey));
     ownedEndpoints.add(identity);
     ownedEndpoints.add(physicalResource);
     if (auditOwner != null) {
-      java.util.function.BooleanSupplier terminal =
-          () -> {
-            if (identity instanceof SharedTsBlockQueue)
-              return ((SharedTsBlockQueue) identity).isClosed();
-            if (identity instanceof ISourceHandle) {
-              ISourceHandle source = (ISourceHandle) identity;
-              return source.isClosed() || source.isAborted();
-            }
-            if (identity instanceof ISink)
-              return ((ISink) identity).isClosed() || ((ISink) identity).isAborted();
-            return false;
-          };
       org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
           .registerObject(
               auditOwner.getQueryId().getId(),
@@ -353,9 +508,8 @@ public final class LocalExecutionResourceRegistry {
               identity,
               kind,
               terminal,
-              memoryAccountKey == null ? null : memoryAccountKey.queryId(),
-              memoryAccountKey == null ? null : memoryAccountKey.fragmentInstanceId(),
-              memoryAccountKey == null ? null : memoryAccountKey.planNodeId());
+              queueKey,
+              actualKey);
     }
   }
 

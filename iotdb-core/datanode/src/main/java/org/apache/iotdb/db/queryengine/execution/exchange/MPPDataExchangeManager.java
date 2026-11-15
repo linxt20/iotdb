@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
+import org.apache.iotdb.db.queryengine.execution.runtime.RuntimeEndpointFrontier;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntrySpillManager;
@@ -880,6 +881,45 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     }
   }
 
+  /**
+   * Create a local lane with prepaid frontier ownership. Caller owns the reservation before
+   * entering this method. Resource callbacks run outside the exchange-manager monitor.
+   */
+  public ISinkChannel createLocalSinkChannelForPipeline(
+      DriverContext driverContext,
+      String planNodeId,
+      org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation reservation,
+      int laneIndex,
+      java.util.function.Consumer<SharedTsBlockQueue> onQueueCreated) {
+    synchronized (this) {
+      rejectCancelledFragment(driverContext.getDriverTaskID().getFragmentInstanceId().toThrift());
+    }
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(
+            driverContext.getDriverTaskID().getFragmentInstanceId().toThrift(),
+            planNodeId,
+            localMemoryManager,
+            executorService,
+            driverContext.getFragmentInstanceContext().isHighestPriority(),
+            reservation,
+            laneIndex);
+    try {
+      onQueueCreated.accept(queue);
+      queue.allowAddingTsBlock();
+      return new LocalSinkChannel(
+          queue,
+          new PipelineSinkListenerImpl(
+              driverContext.getFragmentInstanceContext(), driverContext::failed));
+    } catch (Throwable failure) {
+      try {
+        queue.abort(failure);
+      } catch (Throwable cleanupFailure) {
+        if (cleanupFailure != failure) failure.addSuppressed(cleanupFailure);
+      }
+      throw failure;
+    }
+  }
+
   private ISinkChannel createSinkChannel(
       TFragmentInstanceId localFragmentInstanceId,
       TEndPoint remoteEndpoint,
@@ -890,7 +930,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext,
       AtomicInteger cnt,
-      AtomicBoolean hasChannelFailedOrAborted) {
+      AtomicBoolean hasChannelFailedOrAborted,
+      RuntimeEndpointFrontier frontier) {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
@@ -916,7 +957,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             cnt,
             hasChannelFailedOrAborted),
         instanceContext.isHighestPriority(),
-        mppDataExchangeServiceClientManager);
+        mppDataExchangeServiceClientManager,
+        frontier);
   }
 
   @Override
@@ -929,6 +971,33 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       // TODO: replace with callbacks to decouple MPPDataExchangeManager from
       // FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
+    return createShuffleSinkHandle(
+        downStreamChannelLocationList,
+        downStreamChannelIndex,
+        shuffleStrategyEnum,
+        localFragmentInstanceId,
+        localPlanNodeId,
+        instanceContext,
+        null);
+  }
+
+  public synchronized ISinkHandle createShuffleSinkHandle(
+      List<DownStreamChannelLocation> downStreamChannelLocationList,
+      DownStreamChannelIndex downStreamChannelIndex,
+      ShuffleSinkHandle.ShuffleStrategyEnum shuffleStrategyEnum,
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      // TODO: replace with callbacks to decouple MPPDataExchangeManager from
+      // FragmentInstanceContext
+      FragmentInstanceContext instanceContext,
+      List<RuntimeEndpointFrontier> runtimeFrontiers) {
+    if (runtimeFrontiers != null) {
+      if (runtimeFrontiers.size() != downStreamChannelLocationList.size()
+          || runtimeFrontiers.stream().anyMatch(java.util.Objects::isNull)) {
+        throw new IllegalArgumentException(
+            "Every runtime output channel requires a prepaid binding");
+      }
+    }
     rejectCancelledFragment(localFragmentInstanceId);
     if (shuffleSinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException(
@@ -944,14 +1013,36 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     try {
       for (DownStreamChannelLocation location : downStreamChannelLocationList) {
         ISinkChannel channel =
-            createChannelForShuffleSink(
-                localFragmentInstanceId,
-                localPlanNodeId,
-                location,
-                instanceContext,
-                cnt,
-                hasChannelFailedOrAborted);
+            runtimeFrontiers == null
+                ? createChannelForShuffleSink(
+                    localFragmentInstanceId,
+                    localPlanNodeId,
+                    location,
+                    instanceContext,
+                    cnt,
+                    hasChannelFailedOrAborted)
+                : createSinkChannel(
+                    localFragmentInstanceId,
+                    location.getRemoteEndpoint(),
+                    location.getRemoteFragmentInstanceId(),
+                    location.getRemotePlanNodeId(),
+                    localPlanNodeId,
+                    instanceContext,
+                    cnt,
+                    hasChannelFailedOrAborted,
+                    runtimeFrontiers.get(downStreamChannelList.size()));
         downStreamChannelList.add(channel);
+        SharedTsBlockQueue localQueue =
+            org.apache.iotdb.db.queryengine.execution.runtime.RuntimeResourceSnapshot.queueOf(
+                channel);
+        SharedTsBlockQueue.MemoryReservationKey identityKey =
+            localQueue == null
+                ? new SharedTsBlockQueue.MemoryReservationKey(
+                    localFragmentInstanceId.getQueryId(),
+                    FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                        localFragmentInstanceId),
+                    localPlanNodeId)
+                : localQueue.getQueueIdentityKey();
         ResourceAuditManager.getInstance()
             .registerObject(
                 localFragmentInstanceId.getQueryId(),
@@ -960,10 +1051,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
                 channel,
                 "SINK_CHANNEL",
                 () -> channel.isClosed() || channel.isAborted(),
-                localFragmentInstanceId.getQueryId(),
-                FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
-                    localFragmentInstanceId),
-                localPlanNodeId);
+                identityKey,
+                channel instanceof SinkChannel
+                    ? ((SinkChannel) channel).getActualAccountKey()
+                    : localQueue == null ? identityKey : localQueue.getActualAccountKey());
       }
       ShuffleSinkHandle handle =
           new ShuffleSinkHandle(
@@ -1011,7 +1102,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
           localPlanNodeId,
           instanceContext,
           cnt,
-          hasChannelFailedOrAborted);
+          hasChannelFailedOrAborted,
+          null);
     }
   }
 
@@ -1104,7 +1196,6 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, localSourceHandle);
-    SharedTsBlockQueue.MemoryReservationKey auditKey = queue.getMemoryReservationKey();
     ResourceAuditManager.getInstance()
         .registerObject(
             localFragmentInstanceId.getQueryId(),
@@ -1113,9 +1204,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             localSourceHandle,
             "SOURCE_HANDLE",
             () -> localSourceHandle.isClosed() || localSourceHandle.isAborted(),
-            auditKey.queryId(),
-            auditKey.fragmentInstanceId(),
-            auditKey.planNodeId());
+            queue.getQueueIdentityKey(),
+            queue.getActualAccountKey());
     return localSourceHandle;
   }
 
@@ -1146,6 +1236,26 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
       TFragmentInstanceId remoteFragmentInstanceId,
       IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
       boolean isHighestPriority) {
+    return createSourceHandle(
+        localFragmentInstanceId,
+        localPlanNodeId,
+        indexOfUpstreamSinkHandle,
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        onFailureCallback,
+        isHighestPriority,
+        null);
+  }
+
+  public synchronized ISourceHandle createSourceHandle(
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      IMPPDataExchangeManagerCallback<Throwable> onFailureCallback,
+      boolean isHighestPriority,
+      RuntimeEndpointFrontier frontier) {
     rejectCancelledFragment(localFragmentInstanceId);
     Map<String, ISourceHandle> sourceHandleMap = sourceHandles.get(localFragmentInstanceId);
     if (sourceHandleMap != null && sourceHandleMap.containsKey(localPlanNodeId)) {
@@ -1176,7 +1286,8 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             tsBlockSerdeFactory.get(),
             new SourceHandleListenerImpl(onFailureCallback),
             isHighestPriority,
-            mppDataExchangeServiceClientManager);
+            mppDataExchangeServiceClientManager,
+            frontier);
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, sourceHandle);
@@ -1188,10 +1299,12 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
             sourceHandle,
             "SOURCE_HANDLE",
             () -> sourceHandle.isClosed() || sourceHandle.isAborted(),
-            localFragmentInstanceId.getQueryId(),
-            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
-                localFragmentInstanceId),
-            localPlanNodeId);
+            new SharedTsBlockQueue.MemoryReservationKey(
+                localFragmentInstanceId.getQueryId(),
+                FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(
+                    localFragmentInstanceId),
+                localPlanNodeId),
+            sourceHandle.getActualAccountKey());
     return sourceHandle;
   }
 

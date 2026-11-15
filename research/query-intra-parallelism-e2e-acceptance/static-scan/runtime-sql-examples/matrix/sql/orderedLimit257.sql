@@ -1,0 +1,1 @@
+SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE time >= 0 AND time < 64 ORDER BY device_id ASC, time ASC LIMIT 257

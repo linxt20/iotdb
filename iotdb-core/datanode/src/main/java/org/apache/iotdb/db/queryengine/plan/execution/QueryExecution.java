@@ -64,6 +64,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -99,7 +100,21 @@ public class QueryExecution implements IQueryExecution {
 
   private IAnalysis analysis;
   private LogicalQueryPlan logicalPlan;
-  private DistributedQueryPlan distributedPlan;
+  private volatile DistributedQueryPlan distributedPlan;
+  // The binding is replaced for every distribution attempt. Its descriptor owns detached scalar
+  // metadata only; the plan identity here is already owned by distributedPlan and its node trees
+  // remain free to be cleared by the dispatcher after serialization.
+  private volatile PublishedPlanDescription publishedPlanDescription;
+
+  private static final class PublishedPlanDescription {
+    private final DistributedQueryPlan plan;
+    private final Map<String, Object> description;
+
+    private PublishedPlanDescription(DistributedQueryPlan plan, Map<String, Object> description) {
+      this.plan = plan;
+      this.description = description;
+    }
+  }
 
   // The result of QueryExecution will be written to the MPPDataExchangeManager in current Node.
   // We use this SourceHandle to fetch the TsBlock from it.
@@ -371,13 +386,28 @@ public class QueryExecution implements IQueryExecution {
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
-    this.distributedPlan = planner.doDistributionPlan(analysis, logicalPlan, context);
+    DistributedQueryPlan nextPlan = planner.doDistributionPlan(analysis, logicalPlan, context);
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
     // that the sub-tasks of the ShowQueries instances could be executed first.
     if (analysis.needSetHighestPriority()) {
-      distributedPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
+      nextPlan.getInstances().forEach(instance -> instance.setHighestPriority(true));
     }
+
+    // Ordinary dispatch releases PlanFragment.planNodeTree. Capture only when TABLE runtime
+    // execution or an explicit audit window needs it; legacy/off-path planning keeps no descriptor.
+    boolean captureDescription =
+        (CONFIG.isEnableRuntimeScanParallelism()
+                && context.getSession().getSqlDialect() == SqlDialect.TABLE)
+            || org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+                .isEnabled();
+    Map<String, Object> description =
+        captureDescription ? QueryExecutionDescription.capturePlan(nextPlan, getQueryId()) : null;
+    this.distributedPlan = nextPlan;
+    // Replace on every attempt, including an off-path attempt after a window closes. Never reuse
+    // an older attempt's metadata merely because a plan identity or SQL happens to match.
+    this.publishedPlanDescription =
+        description == null ? null : new PublishedPlanDescription(nextPlan, description);
 
     if (LOGGER.isDebugEnabled() && isQuery()) {
       LOGGER.debug(
@@ -702,6 +732,28 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
+  static boolean usesRuntimeResultExchange(
+      boolean runtimeEnabled,
+      SqlDialect dialect,
+      FragmentInstanceId producerId,
+      DistributedQueryPlan plan) {
+    if (!runtimeEnabled || dialect != SqlDialect.TABLE) {
+      return false;
+    }
+    FragmentInstance producer =
+        plan.getInstances().stream()
+            .filter(instance -> instance.getId().equals(producerId))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalStateException("Result producer is missing from distributed plan"));
+    // The distributed planner selected this protocol for the whole graph and serialized it with
+    // every FI. A QueryExecutor root may merge SchemaRegion producers and must not infer
+    // eligibility
+    // from its own executor type.
+    return producer.isRuntimeExecutionEnabled();
+  }
+
   private void initResultHandle() {
     org.apache.iotdb.db.queryengine.common.FragmentInstanceId auditResultId =
         context.getResultNodeContext().getVirtualFragmentInstanceId();
@@ -710,8 +762,17 @@ public class QueryExecution implements IQueryExecution {
 
     TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
 
-    this.resultHandle =
+    // The producer's explicit whole-query protocol decides local queue versus leased RPC.
+    // This coordinator remains a serialized consumer on either transport.
+    boolean useLocalResult =
         isSameNode(upstreamEndPoint)
+            && !usesRuntimeResultExchange(
+                CONFIG.isEnableRuntimeScanParallelism(),
+                context.getSession().getSqlDialect(),
+                context.getResultNodeContext().getUpStreamFragmentInstanceId(),
+                distributedPlan);
+    this.resultHandle =
+        useLocalResult
             ? MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
                 .createLocalSourceHandleForFragment(
@@ -778,8 +839,18 @@ public class QueryExecution implements IQueryExecution {
         context.getQueryId(), tsstatus, stateMachine.isFailureCausedByInterruption(tsstatus));
   }
 
+  /** Current query state without waiting for status or changing query execution. */
+  public QueryState getQueryState() {
+    return stateMachine.getState();
+  }
+
   public DistributedQueryPlan getDistributedPlan() {
     return distributedPlan;
+  }
+
+  Map<String, Object> getPublishedPlanDescription(DistributedQueryPlan expectedPlan) {
+    PublishedPlanDescription published = publishedPlanDescription;
+    return published != null && published.plan == expectedPlan ? published.description : null;
   }
 
   @Override

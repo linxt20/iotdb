@@ -602,6 +602,12 @@ public class IoTDBDescriptor {
                 "enable_dynamic_scan_parallelism",
                 Boolean.toString(conf.isEnableDynamicScanParallelism()))));
 
+    conf.setEnableRuntimeScanParallelism(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_runtime_scan_parallelism",
+                Boolean.toString(conf.isEnableRuntimeScanParallelism()))));
+
     conf.setEnableDopEstimation(
         Boolean.parseBoolean(
             properties.getProperty(

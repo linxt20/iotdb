@@ -18,17 +18,28 @@
  */
 package org.apache.iotdb.db.queryengine.plan.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.partition.ExecutorType;
+import org.apache.iotdb.commons.partition.QueryExecutor;
+import org.apache.iotdb.commons.partition.StorageExecutor;
 import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.IPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -52,6 +63,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -152,6 +164,105 @@ public class QueryExecutionRetryTest {
     assertEquals(Arrays.asList("begin", "analyze", "rollback"), planner.getAnalysisEvents());
     ExecutionResult result = execution.getStatus();
     assertEquals(TSStatusCode.QUERY_WAS_KILLED.getStatusCode(), result.status.code);
+  }
+
+  @Test
+  public void runtimeTableDataRegionResultUsesRpcForItsActualProducer() {
+    FragmentInstance data =
+        resultProducer("result_data", storageExecutor(TConsensusGroupType.DataRegion));
+    data.setRuntimeExecutionEnabled(true);
+    assertTrue(
+        QueryExecution.usesRuntimeResultExchange(
+            true,
+            SqlDialect.TABLE,
+            data.getId(),
+            new DistributedQueryPlan(null, Collections.singletonList(data))));
+  }
+
+  @Test
+  public void runtimeTableSchemaRegionResultRetainsLegacyQueueForItsActualProducer() {
+    FragmentInstance schema =
+        resultProducer("result_schema", storageExecutor(TConsensusGroupType.SchemaRegion));
+    FragmentInstance data =
+        resultProducer("other_data", storageExecutor(TConsensusGroupType.DataRegion));
+    // A single-region SHOW DEVICE root executes in the schema context, with no runtime frontier.
+    assertFalse(
+        QueryExecution.usesRuntimeResultExchange(
+            true,
+            SqlDialect.TABLE,
+            schema.getId(),
+            new DistributedQueryPlan(null, Arrays.asList(data, schema))));
+  }
+
+  @Test
+  public void runtimeTableQueryExecutorResultUsesRpcWithoutAStorageRegion() {
+    FragmentInstance producer =
+        resultProducer("result_data_merge", new QueryExecutor(new TDataNodeLocation()));
+    producer.setRuntimeExecutionEnabled(true);
+    assertTrue(
+        QueryExecution.usesRuntimeResultExchange(
+            true,
+            SqlDialect.TABLE,
+            producer.getId(),
+            new DistributedQueryPlan(null, Collections.singletonList(producer))));
+  }
+
+  @Test
+  public void disabledRuntimeAndTreeResultsKeepLegacyRoutingWithoutProducerLookup() {
+    assertFalse(QueryExecution.usesRuntimeResultExchange(false, SqlDialect.TABLE, null, null));
+    assertFalse(QueryExecution.usesRuntimeResultExchange(true, SqlDialect.TREE, null, null));
+  }
+
+  @Test
+  public void schemaMergeQueryExecutorRootUsesItsExplicitLegacyProtocol() {
+    FragmentInstance root =
+        resultProducer("schema_merge", new QueryExecutor(new TDataNodeLocation()));
+    FragmentInstance schema =
+        resultProducer("schema_source", storageExecutor(TConsensusGroupType.SchemaRegion));
+    // The whole-graph planner selected false for both, despite the root being a QueryExecutor.
+    root.setRuntimeExecutionEnabled(false);
+    schema.setRuntimeExecutionEnabled(false);
+    assertFalse(
+        QueryExecution.usesRuntimeResultExchange(
+            true,
+            SqlDialect.TABLE,
+            root.getId(),
+            new DistributedQueryPlan(null, Arrays.asList(root, schema))));
+  }
+
+  @Test
+  public void dataRegionResultCannotInferRuntimeFromItsExecutorType() {
+    FragmentInstance data =
+        resultProducer("data_legacy", storageExecutor(TConsensusGroupType.DataRegion));
+    data.setRuntimeExecutionEnabled(false);
+    assertFalse(
+        QueryExecution.usesRuntimeResultExchange(
+            true,
+            SqlDialect.TABLE,
+            data.getId(),
+            new DistributedQueryPlan(null, Collections.singletonList(data))));
+  }
+
+  private static StorageExecutor storageExecutor(TConsensusGroupType type) {
+    return new StorageExecutor(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(type, 1), Collections.singletonList(new TDataNodeLocation())));
+  }
+
+  private static FragmentInstance resultProducer(String queryId, ExecutorType executor) {
+    PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
+    FragmentInstance producer =
+        new FragmentInstance(
+            new PlanFragment(fragmentId, null),
+            fragmentId.genFragmentInstanceId(),
+            null,
+            QueryType.READ,
+            1000,
+            null,
+            false,
+            false);
+    producer.setExecutorAndHost(executor);
+    return producer;
   }
 
   private static MPPQueryContext createQueryContext(String queryId) {

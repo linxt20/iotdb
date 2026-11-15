@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.schedule.task;
 
 /** The status enum of {@link DriverTask}. */
 public enum DriverTaskStatus {
+  /* Registered but not published. */
+  PENDING,
   /* Ready to be executed */
   READY,
 

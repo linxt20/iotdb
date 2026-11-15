@@ -255,6 +255,145 @@ public class MPPDataExchangeManagerTest {
         localPlanNodeId);
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  public void runtimeLoopbackFactoriesUsePaidRpcEndpointsInsteadOfLocalQueues() throws Exception {
+    RuntimeExchangeBlockCodec.Bounds bounds =
+        new RuntimeExchangeBlockCodec.Bounds(128, 1, 4096, 4096, 4096, 8192, 8192)
+            .withSchema(java.util.List.of(org.apache.tsfile.enums.TSDataType.INT64));
+    long outputBytes = bounds.outputEnvelopeBytes();
+    long inputBytes = bounds.inputEnvelopeBytes();
+    MemoryPool pool =
+        new MemoryPool(
+            "runtime-loopback",
+            new MemoryManager(4 * (outputBytes + inputBytes)),
+            2 * (outputBytes + inputBytes)) {
+          @Override
+          public MemoryReservationResult reserveWithPriority(
+              String q, String f, String n, long bytes, long cap, boolean highest) {
+            throw new AssertionError("Runtime loopback factory used a legacy reservation");
+          }
+        };
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation output =
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.tryCreate(
+                pool,
+                new SharedTsBlockQueue.MemoryReservationKey("runtime_loopback", "0.0", "paid-out"),
+                MemorySide.OUTPUT,
+                1,
+                outputBytes,
+                2 * outputBytes)
+            .get();
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation input =
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFrontierReservation.tryCreate(
+                pool,
+                new SharedTsBlockQueue.MemoryReservationKey("runtime_loopback", "1.0", "paid-in"),
+                MemorySide.INPUT,
+                1,
+                inputBytes,
+                2 * inputBytes)
+            .get();
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel sink = null;
+    org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle source = null;
+    try {
+      LocalMemoryManager memory = Mockito.mock(LocalMemoryManager.class);
+      Mockito.when(memory.getQueryPool()).thenReturn(pool);
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clients =
+          Mockito.mock(IClientManager.class);
+      Mockito.when(clients.borrowClient(Mockito.any(TEndPoint.class)))
+          .thenReturn(Mockito.mock(SyncDataNodeMPPDataExchangeServiceClient.class));
+      MPPDataExchangeManager manager =
+          new MPPDataExchangeManager(memory, new TsBlockSerdeFactory(), executor, clients);
+      TEndPoint loopback =
+          new TEndPoint(
+              IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
+              IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+      TFragmentInstanceId producer = new TFragmentInstanceId("runtime_loopback", 0, "0");
+      TFragmentInstanceId consumer = new TFragmentInstanceId("runtime_loopback", 1, "0");
+      FragmentInstanceContext context = Mockito.mock(FragmentInstanceContext.class);
+      Mockito.when(context.getFailureCause()).thenReturn(java.util.Optional.empty());
+      ISinkHandle handle =
+          manager.createShuffleSinkHandle(
+              java.util.List.of(new DownStreamChannelLocation(loopback, consumer, "remote-input")),
+              new DownStreamChannelIndex(0),
+              ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+              producer,
+              "native-output",
+              context,
+              java.util.List.of(
+                  new org.apache.iotdb.db.queryengine.execution.runtime.RuntimeEndpointFrontier(
+                      output, 0, bounds)));
+      Assert.assertTrue(
+          handle.getChannel(0)
+              instanceof org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel);
+      sink =
+          (org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel)
+              handle.getChannel(0);
+      source =
+          (org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle)
+              manager.createSourceHandle(
+                  consumer,
+                  "remote-input",
+                  0,
+                  loopback,
+                  producer,
+                  failure -> {
+                    throw new AssertionError(failure);
+                  },
+                  false,
+                  new org.apache.iotdb.db.queryengine.execution.runtime.RuntimeEndpointFrontier(
+                      input, 0, bounds));
+      Assert.assertTrue(sink.isRuntimeFrontierMode());
+      Assert.assertTrue(source.isRuntimeFrontierMode());
+      Assert.assertEquals(output.getMemoryReservationKey(), sink.getActualAccountKey());
+      Assert.assertEquals(input.getMemoryReservationKey(), source.getActualAccountKey());
+      sink.open();
+      Assert.assertEquals(outputBytes + inputBytes, pool.getReservedBytes());
+      Assert.assertEquals(0, pool.getMemoryReservationSize());
+      Assert.assertNull(sink.getCoordinatedCloseFuture());
+      Assert.assertNull(source.getCoordinatedCloseFuture());
+    } finally {
+      if (source != null)
+        source.requestCoordinatedAbort().get(5, java.util.concurrent.TimeUnit.SECONDS);
+      if (sink != null)
+        sink.requestCoordinatedAbort().get(5, java.util.concurrent.TimeUnit.SECONDS);
+      output.requestClose().get(5, java.util.concurrent.TimeUnit.SECONDS);
+      input.requestClose().get(5, java.util.concurrent.TimeUnit.SECONDS);
+      executor.shutdownNow();
+    }
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void runtimeShuffleFactoryRejectsMissingBindingBeforePublishingAnyChannel() {
+    LocalMemoryManager memory = Mockito.mock(LocalMemoryManager.class);
+    IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient> clients =
+        Mockito.mock(IClientManager.class);
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      MPPDataExchangeManager manager =
+          new MPPDataExchangeManager(memory, new TsBlockSerdeFactory(), executor, clients);
+      Assert.assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              manager.createShuffleSinkHandle(
+                  java.util.List.of(
+                      new DownStreamChannelLocation(
+                          new TEndPoint("remote", 12345),
+                          new TFragmentInstanceId("missing_binding", 1, "0"),
+                          "input")),
+                  new DownStreamChannelIndex(0),
+                  ShuffleSinkHandle.ShuffleStrategyEnum.PLAIN,
+                  new TFragmentInstanceId("missing_binding", 0, "0"),
+                  "output",
+                  Mockito.mock(FragmentInstanceContext.class),
+                  java.util.List.of()));
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
   private static void assertProducerOwnsQueue(
       MemoryPool pool,
       ISinkHandle sink,

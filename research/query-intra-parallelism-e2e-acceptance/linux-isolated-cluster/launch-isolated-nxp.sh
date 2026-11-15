@@ -25,23 +25,116 @@ readonly DN_CLASS='org.apache.iotdb.db.service.DataNode'
 readonly TABLE_DISTRIBUTED_PLANNER_CLASS='org/apache/iotdb/db/queryengine/plan/relational/planner/distribute/TableDistributedPlanner.class'
 readonly HASH_CHANNEL_GUARD_MARKER='hashChannelIndex'
 MODE='' ROOT='' DIST='' DEPLOYMENT=both TIMEOUT=120 PORT_OFFSET=0
+CANDIDATE_PROFILE=legacy CONTROL_PROFILE=legacy
+JAVA_EXE='' DN_XMS=256m DN_XMX=512m CN_XMS=256m CN_XMX=512m
+JMX_ENABLED='' QUERY_THREAD_COUNT=0 TIME_PARTITION_INTERVAL_MS=604800000
+declare -A ROLE_OVERRIDES=()
+readonly RUNTIME_CLASS='org/apache/iotdb/db/queryengine/execution/runtime/RuntimeFragmentLifecycle.class'
+readonly MBEAN_CLASS='org/apache/iotdb/db/queryengine/execution/exchange/MPPDataExchangeServiceMBean.class'
 
-usage() { printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status|start-datanodes|stop-datanodes --root ROOT [--distribution-root DIST] [--deployment candidate|control|both] [--port-offset NON_NEGATIVE_INTEGER]'; }
+usage() {
+  printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status|start-datanodes|stop-datanodes --root ROOT [--distribution-root DIST] [--deployment candidate|control|both] [--port-offset N]'
+  printf '%s\n' 'Prepare: --candidate-profile/--control-profile legacy|runtime|fixed-one|fixed-eight|hash-disabled; --java ABS; --datanode-xms/xmx SIZE --confignode-xms/xmx SIZE; --query-thread-count N; --jmx-enabled true|false'
+  printf '%s\n' 'Per-side: --candidate- or --control- followed by runtime-enabled|estimation-enabled|logical-lane-ceiling|property-planning|hash-repartition|ordered-parallel|timepartition-morsel VALUE'
+}
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 need() { [[ -n "${2:-}" ]] || die "Missing value for $1"; }
 while (($#)); do
   case "$1" in
-    --mode|--root|--distribution-root|--deployment|--startup-timeout-seconds|--port-offset) need "$1" "${2:-}"; key="${1#--}"; key="${key//-/_}"; case "$key" in mode) MODE="$2";; root) ROOT="$2";; distribution_root) DIST="$2";; deployment) DEPLOYMENT="$2";; startup_timeout_seconds) TIMEOUT="$2";; port_offset) PORT_OFFSET="$2";; esac; shift 2 ;;
+    --mode|--root|--distribution-root|--deployment|--startup-timeout-seconds|--port-offset|--candidate-profile|--control-profile|--java|--datanode-xms|--datanode-xmx|--confignode-xms|--confignode-xmx|--query-thread-count|--jmx-enabled|--time-partition-interval-ms)
+      need "$1" "${2:-}"
+      case "$1" in
+        --mode) MODE="$2";; --root) ROOT="$2";; --distribution-root) DIST="$2";;
+        --deployment) DEPLOYMENT="$2";; --startup-timeout-seconds) TIMEOUT="$2";;
+        --port-offset) PORT_OFFSET="$2";; --candidate-profile) CANDIDATE_PROFILE="$2";;
+        --control-profile) CONTROL_PROFILE="$2";; --java) JAVA_EXE="$2";;
+        --datanode-xms) DN_XMS="$2";; --datanode-xmx) DN_XMX="$2";;
+        --confignode-xms) CN_XMS="$2";; --confignode-xmx) CN_XMX="$2";;
+        --query-thread-count) QUERY_THREAD_COUNT="$2";; --jmx-enabled) JMX_ENABLED="$2";;
+        --time-partition-interval-ms) TIME_PARTITION_INTERVAL_MS="$2";;
+      esac
+      shift 2 ;;
+    --candidate-*|--control-*)
+      need "$1" "${2:-}"
+      name="${1#--}"; suffix="${name#*-}"
+      case "$suffix" in
+        runtime-enabled|estimation-enabled|logical-lane-ceiling|property-planning|hash-repartition|ordered-parallel|timepartition-morsel) ROLE_OVERRIDES["$name"]="$2";;
+        *) die "Unknown argument: $1";;
+      esac
+      shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) die "Unknown argument: $1" ;;
   esac
 done
-[[ "$MODE" =~ ^(prepare|start|stop|status|start-datanodes|stop-datanodes)$ ]] || die '--mode must be prepare, start, stop, status, start-datanodes, or stop-datanodes'
+[[ "$MODE" =~ ^(prepare|start|stop|status|start-datanodes|stop-datanodes)$ ]] || die 'Invalid --mode'
 [[ -n "$ROOT" ]] || die '--root is required'
-[[ "$DEPLOYMENT" =~ ^(candidate|control|both)$ ]] || die '--deployment must be candidate, control, or both'
+[[ "$DEPLOYMENT" =~ ^(candidate|control|both)$ ]] || die 'Invalid --deployment'
 [[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || die '--startup-timeout-seconds must be positive'
-[[ "$PORT_OFFSET" =~ ^[0-9]+$ ]] && ((PORT_OFFSET <= 26000)) || die '--port-offset must be a non-negative integer no greater than 26000'
+[[ "$PORT_OFFSET" =~ ^(0|[1-9][0-9]*)$ ]] && ((PORT_OFFSET <= 26000)) || die '--port-offset must be 0..26000'
+for profile in "$CANDIDATE_PROFILE" "$CONTROL_PROFILE"; do
+  [[ "$profile" =~ ^(legacy|runtime|fixed-one|fixed-eight|hash-disabled)$ ]] || die "Unsupported profile: $profile"
+done
+[[ "$QUERY_THREAD_COUNT" =~ ^(0|[1-9][0-9]*)$ ]] && ((QUERY_THREAD_COUNT <= 1024)) || die '--query-thread-count must be 0..1024'
+[[ "$TIME_PARTITION_INTERVAL_MS" =~ ^[1-9][0-9]*$ ]] || die 'Time partition interval must be positive'
+for heap in "$DN_XMS" "$DN_XMX" "$CN_XMS" "$CN_XMX"; do
+  [[ "$heap" =~ ^[1-9][0-9]*[mMgG]$ ]] || die "Heap must use positive MiB/GiB suffix: $heap"
+done
+heap_bytes() {
+  local value="$1" number="${1%[mMgG]}" factor=1048576
+  [[ "$value" != *[gG] ]] || factor=1073741824
+  printf '%s' "$((number * factor))"
+}
+(( $(heap_bytes "$DN_XMS") <= $(heap_bytes "$DN_XMX") )) || die 'DataNode Xms exceeds Xmx'
+(( $(heap_bytes "$CN_XMS") <= $(heap_bytes "$CN_XMX") )) || die 'ConfigNode Xms exceeds Xmx'
+for name in "${!ROLE_OVERRIDES[@]}"; do
+  value="${ROLE_OVERRIDES[$name]}"
+  if [[ "$name" == *-logical-lane-ceiling ]]; then
+    [[ "$value" =~ ^[1-9][0-9]*$ ]] && ((value <= 1024)) || die "Invalid logical lane ceiling: $value"
+  else
+    [[ "$value" =~ ^(true|false)$ ]] || die "Expected true|false for $name"
+  fi
+done
 ROOT="$(realpath -m -- "$ROOT")"; [[ -z "$DIST" ]] || DIST="$(realpath -m -- "$DIST")"
+[[ "$ROOT" != / && "$ROOT" != /root && "$ROOT" != /root/rivermind-data ]] || die 'Unsafe isolation root'
+[[ -z "$DIST" || "$ROOT" != "$DIST" ]] || die 'Isolation root cannot equal distribution'
+if [[ -n "$DIST" ]]; then case "$ROOT/" in "$DIST/"*) die 'Isolation root cannot be inside distribution';; esac; fi
+role_value() {
+  local d="$1" key="$2" profile="$CANDIDATE_PROFILE" value=false
+  [[ "$d" == control ]] && profile="$CONTROL_PROFILE"
+  case "$key" in
+    logical-lane-ceiling) case "$profile" in runtime|fixed-eight) value=8;; fixed-one|hash-disabled) value=1;; *) value=4;; esac;;
+    runtime-enabled|estimation-enabled) [[ "$profile" == runtime ]] && value=true;;
+    property-planning|hash-repartition)
+      if [[ "$profile" == legacy ]]; then [[ "$d" == candidate ]] && value=true
+      elif [[ "$key" == property-planning || "$profile" != hash-disabled ]]; then value=true; fi;;
+    ordered-parallel|timepartition-morsel) [[ "$profile" != legacy ]] && value=true;;
+    *) die "Unknown role field: $key";;
+  esac
+  printf '%s' "${ROLE_OVERRIDES[$d-$key]:-$value}"
+}
+if [[ -z "$JMX_ENABLED" ]]; then
+  JMX_ENABLED=false
+  [[ "$CANDIDATE_PROFILE" == legacy && "$CONTROL_PROFILE" == legacy
+      && "$(role_value candidate runtime-enabled)" == false
+      && "$(role_value control runtime-enabled)" == false ]] || JMX_ENABLED=true
+fi
+[[ "$JMX_ENABLED" =~ ^(true|false)$ ]] || die '--jmx-enabled must be true|false'
+jmx_port() {
+  case "$1/$2" in
+    candidate/confignode) printf '%s' "$((27911 + PORT_OFFSET))";;
+    candidate/datanode-1) printf '%s' "$((27912 + PORT_OFFSET))";;
+    candidate/datanode-2) printf '%s' "$((28912 + PORT_OFFSET))";;
+    control/confignode) printf '%s' "$((37911 + PORT_OFFSET))";;
+    control/datanode-1) printf '%s' "$((37912 + PORT_OFFSET))";;
+    control/datanode-2) printf '%s' "$((38912 + PORT_OFFSET))";;
+    *) die 'Unknown node for JMX';;
+  esac
+}
+resolve_java() {
+  [[ -n "$JAVA_EXE" ]] || JAVA_EXE="$(command -v java || true)"
+  [[ "$JAVA_EXE" == /* && -x "$JAVA_EXE" ]] || die '--java must resolve to an executable absolute path'
+  JAVA_EXE="$(realpath -- "$JAVA_EXE")"
+}
 
 # deployment|name|role|rpc|internal|consensus|mpp|schema|data-consensus|metric
 nodes() {
@@ -103,6 +196,7 @@ assert_ports_free() {
   local d n r rpc internal consensus mpp schema data metric p
   while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do
     for p in "$rpc" "$internal" "$consensus" "$mpp" "$schema" "$data" "$metric"; do [[ "$p" == - ]] || ! port_bound "$p" || die "Refusing occupied isolated port: $p"; done
+    [[ "$JMX_ENABLED" != true ]] || ! port_bound "$(jmx_port "$d" "$n")" || die "Occupied JMX port: $d/$n"
   done < <(selected)
 }
 assert_datanode_ports_free() {
@@ -112,18 +206,153 @@ assert_datanode_ports_free() {
     for p in "$rpc" "$internal" "$mpp" "$schema" "$data" "$metric"; do
       ! port_bound "$p" || die "Refusing occupied isolated DataNode port: $p"
     done
+    [[ "$JMX_ENABLED" != true ]] || ! port_bound "$(jmx_port "$d" "$n")" || die "Occupied JMX port: $d/$n"
   done < <(selected)
 }
-write_manifest() {
-  local jar
-  jar="$(server_jar "$DIST")"
-  { printf 'schema_version=2\n'; printf 'purpose=linux-isolated-1c2d-candidate-control-nxp-group-by\n'; printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; printf 'repository_git_sha=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unavailable)"; printf 'distribution_root=%q\n' "$DIST"; printf 'deployment_root=%q\n' "$ROOT"; printf 'port_offset=%s\n' "$PORT_OFFSET"; printf 'distribution_jar_count=%s\n' "$(find "$DIST/lib" -maxdepth 1 -name '*.jar' -type f | wc -l | tr -d ' ')"; printf 'distribution_server_jar_sha256=%s\n' "$(sha256 "$jar")"; printf 'distribution_hash_channel_guard=%q\n' "$HASH_CHANNEL_GUARD_MARKER"; } > "$ROOT/$MANIFEST"
+assert_runtime_distribution() {
+  local jar="$(server_jar "$DIST")"
+  if [[ "$(role_value candidate runtime-enabled)" == true || "$(role_value control runtime-enabled)" == true ]]; then
+    unzip -p "$jar" "$RUNTIME_CLASS" | LC_ALL=C grep -aqF 'sealConstruction' || die "No runtime lifecycle in $jar"
+    unzip -p "$jar" "$MBEAN_CLASS" | LC_ALL=C grep -aqF 'describeQueryExecutionBySqlHash' || die "No actual ordinary-SQL JMX identity API in $jar"
+  fi
 }
-read_manifest() { [[ -f "$ROOT/$MANIFEST" ]] || die "No $MANIFEST below $ROOT; run prepare"; source "$ROOT/$MANIFEST"; [[ "${deployment_root:-}" == "$ROOT" ]] || die 'Manifest root mismatch'; DIST="$distribution_root"; PORT_OFFSET="${port_offset:-0}"; }
+write_manifest() {
+  local jar d key field
+  jar="$(server_jar "$DIST")"
+  {
+    printf 'schema_version=3\npurpose=linux-isolated-1c2d-candidate-control-query-acceptance\n'
+    printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'repository_git_sha=%s\n' "$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || printf unavailable)"
+    printf 'distribution_root=%q\ndeployment_root=%q\nport_offset=%s\n' "$DIST" "$ROOT" "$PORT_OFFSET"
+    printf 'distribution_jar_count=%s\n' "$(find "$DIST/lib" -maxdepth 1 -name '*.jar' -type f | wc -l | tr -d ' ')"
+    printf 'distribution_server_jar_sha256=%s\ndistribution_hash_channel_guard=%q\n' "$(sha256 "$jar")" "$HASH_CHANNEL_GUARD_MARKER"
+    printf 'java_executable=%q\njava_sha256=%s\n' "$JAVA_EXE" "$(sha256 "$JAVA_EXE")"
+    printf 'datanode_xms=%q\ndatanode_xmx=%q\nconfignode_xms=%q\nconfignode_xmx=%q\n' "$DN_XMS" "$DN_XMX" "$CN_XMS" "$CN_XMX"
+    printf 'jmx_enabled=%s\nquery_thread_count=%s\ntime_partition_interval_ms=%s\n' "$JMX_ENABLED" "$QUERY_THREAD_COUNT" "$TIME_PARTITION_INTERVAL_MS"
+    printf 'candidate_profile=%s\ncontrol_profile=%s\n' "$CANDIDATE_PROFILE" "$CONTROL_PROFILE"
+    for d in candidate control; do
+      for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel; do
+        field="${key//-/_}"; printf '%s_%s=%q\n' "$d" "$field" "$(role_value "$d" "$key")"
+      done
+    done
+  } > "$ROOT/$MANIFEST"
+}
+read_manifest() {
+  [[ -f "$ROOT/$MANIFEST" ]] || die "No $MANIFEST below $ROOT; run prepare"
+  source "$ROOT/$MANIFEST"
+  [[ "${deployment_root:-}" == "$ROOT" ]] || die 'Manifest root mismatch'
+  DIST="$distribution_root"; PORT_OFFSET="${port_offset:-0}"
+  JAVA_EXE="${java_executable:-$JAVA_EXE}"
+  DN_XMS="${datanode_xms:-256m}"; DN_XMX="${datanode_xmx:-512m}"
+  CN_XMS="${confignode_xms:-256m}"; CN_XMX="${confignode_xmx:-512m}"
+  JMX_ENABLED="${jmx_enabled:-false}"; QUERY_THREAD_COUNT="${query_thread_count:-0}"
+  TIME_PARTITION_INTERVAL_MS="${time_partition_interval_ms:-604800000}"
+  CANDIDATE_PROFILE="${candidate_profile:-legacy}"; CONTROL_PROFILE="${control_profile:-legacy}"
+  local d key field
+  for d in candidate control; do
+    for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel; do
+      field="$d-${key//-/_}"; field="${field//-/_}"
+      [[ -z "${!field:-}" ]] || ROLE_OVERRIDES["$d-$key"]="${!field}"
+    done
+  done
+}
+write_json_manifests() {
+  nodes > "$ROOT/topology.nodes.tsv"
+  local candidate_values='' control_values='' key
+  for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel; do
+    candidate_values+="$(role_value candidate "$key")|"
+    control_values+="$(role_value control "$key")|"
+  done
+  python3 - "$ROOT" "$DIST" "$JAVA_EXE" "$DN_XMS" "$DN_XMX" "$CN_XMS" "$CN_XMX" "$JMX_ENABLED" "$QUERY_THREAD_COUNT" "$CANDIDATE_PROFILE" "$CONTROL_PROFILE" "$candidate_values" "$control_values" <<'PYJSON'
+import hashlib,json,sys
+from pathlib import Path
+root,dist,java,dn_min,dn_max,cn_min,cn_max,jmx,threads,cp,rp,cv,rv=sys.argv[1:]
+root,dist=Path(root),Path(dist)
+def sha(path):
+    value=hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        for chunk in iter(lambda:stream.read(1048576),b''):value.update(chunk)
+    return value.hexdigest()
+jar=dist/'lib/iotdb-server-2.0.11-SNAPSHOT.jar'
+jars=[{'path':str(p),'sha256':sha(p),'bytes':p.stat().st_size} for p in sorted((dist/'lib').glob('*.jar'))]
+keys=['runtimeEnabled','estimationEnabled','logicalLaneCeiling','propertyPlanning','hashRepartition','orderedParallel','timepartitionMorsel']
+for side,profile,values in [('candidate',cp,cv),('control',rp,rv)]:
+    settings=dict(zip(keys,values.rstrip('|').split('|')))
+    settings={k:int(v) if k=='logicalLaneCeiling' else v=='true' for k,v in settings.items()}
+    data={'schemaVersion':1,'deployment':side,'deploymentRoot':str(root/side),
+          'distributionRoot':str(dist),'profile':profile,'runtimeProfile':settings,
+          'expectedDataNodeCount':2,'jmxHost':'127.0.0.1','jmxEnabled':jmx=='true',
+          'javaPath':java,'javaSha256':sha(java),'serverJarSha256':sha(jar),
+          'runtimeJars':jars,'queryThreadCount':int(threads) if int(threads)>0 else None,
+          'nodes':[],'configNodes':[],'loadedClassIdentityStatus':'REQUIRES_POST_START_VERIFICATION'}
+    for line in (root/'topology.nodes.tsv').read_text().splitlines():
+        d,name,role,rpc,internal,consensus,mpp,schema,consensus_data,metric=line.split('|')
+        if d!=side:continue
+        node_root=root/side/name
+        config=node_root/'conf/iotdb-system.properties'
+        node={'name':name,'role':role,'nodeRoot':str(node_root),'dataNodeId':None,
+              'nodeIdStatus':'DISCOVER_ACTUAL_ID_AFTER_START',
+              'internalEndpoint':{'ip':'127.0.0.1','port':int(internal)},
+              'jmxPort':int(metric)+10 if jmx=='true' else None,
+              'configPath':str(config),'configSha256':sha(config),
+              'xms':dn_min if role=='DataNode' else cn_min,'xmx':dn_max if role=='DataNode' else cn_max}
+        if role=='DataNode':
+            node['rpcEndpoint']={'ip':'127.0.0.1','port':int(rpc)}
+            node['mppEndpoint']={'ip':'127.0.0.1','port':int(mpp)}
+            data['nodes'].append(node)
+        else:data['configNodes'].append(node)
+    data['tableSessionNodeUrls']=['127.0.0.1:'+str(node['rpcEndpoint']['port']) for node in data['nodes']]
+    data['jdbcUrl']='jdbc:iotdb://'+data['tableSessionNodeUrls'][0]+'/?sql_dialect=table'
+    (root/side/'deployment-manifest.json').write_text(json.dumps(data,indent=2)+'\n')
+PYJSON
+}
+assert_runtime_identity() {
+  resolve_java
+  [[ -z "${java_sha256:-}" || "$(sha256 "$JAVA_EXE")" == "${java_sha256:-}" ]] || die 'Java executable changed since prepare'
+  [[ -z "${distribution_server_jar_sha256:-}" || "$(sha256 "$(server_jar "$DIST")")" == "${distribution_server_jar_sha256:-}" ]] || die 'Server JAR changed since prepare'
+  if [[ -f "$ROOT/candidate/deployment-manifest.json" ]]; then
+    python3 - "$ROOT/candidate/deployment-manifest.json" "$DIST" <<'PYIDENTITY'
+import hashlib,json,sys
+from pathlib import Path
+manifest=json.loads(Path(sys.argv[1]).read_text())
+expected=manifest['runtimeJars']
+actual={str(path) for path in (Path(sys.argv[2])/'lib').glob('*.jar')}
+if actual != {entry['path'] for entry in expected}:
+    raise SystemExit('Runtime JAR roster changed since prepare')
+for entry in expected:
+    digest=hashlib.sha256()
+    with Path(entry['path']).open('rb') as stream:
+        for block in iter(lambda:stream.read(1048576),b''):digest.update(block)
+    if digest.hexdigest()!=entry['sha256']:
+        raise SystemExit('Runtime JAR identity changed: '+entry['path'])
+PYIDENTITY
+  fi
+}
+assert_config_identity() {
+  local current="$1/conf/iotdb-system.properties" frozen="$1/identity/config-prepared.properties"
+  [[ -f "$frozen" ]] || return 0
+  [[ "$(sha256 "$current")" == "$(sha256 "$frozen")" ]] && return 0
+  [[ "$(awk -F= '$1=="enable_runtime_scan_parallelism"{print $2}' "$current")" == false ]] || die "Runtime config changed: $current"
+  [[ "$(awk -F= '$1=="enable_dop_estimation"{print $2}' "$current")" == false ]] || die "Estimated-DOP config changed: $current"
+  local before after dop
+  before="$(awk '$0 !~ /^degree_of_query_parallelism=/' "$frozen" | sha256sum | awk '{print $1}')"
+  after="$(awk '$0 !~ /^degree_of_query_parallelism=/' "$current" | sha256sum | awk '{print $1}')"
+  dop="$(awk -F= '$1=="degree_of_query_parallelism"{print $2}' "$current")"
+  [[ "$before" == "$after" && "$dop" =~ ^[1-9][0-9]*$ ]] && ((dop<=1024)) || die "Unexpected config drift: $current"
+  printf 'Accepted explicit fixed-DOP-only restart: %s dop=%s config_sha256=%s\n' "$1" "$dop" "$(sha256 "$current")"
+}
 
 write_config() {
   local d="$1" n="$2" role="$3" rpc="$4" internal="$5" consensus="$6" mpp="$7" schema="$8" data="$9" metric="${10}" root="$ROOT/$1/$2" conf="$ROOT/$1/$2/conf" enabled=false dn_rpc="$4" dn_internal="$5" dn_mpp="$7" dn_schema="$8" dn_data="$9" dn_metric="${10}"
-  [[ "$d" == candidate ]] && enabled=true
+  local runtime estimation dop property hash ordered tp profile custom_region_policy=false
+  runtime="$(role_value "$d" runtime-enabled)"; estimation="$(role_value "$d" estimation-enabled)"
+  dop="$(role_value "$d" logical-lane-ceiling)"; property="$(role_value "$d" property-planning)"
+  hash="$(role_value "$d" hash-repartition)"; ordered="$(role_value "$d" ordered-parallel)"
+  tp="$(role_value "$d" timepartition-morsel)"
+  profile="$CANDIDATE_PROFILE"; [[ "$d" != control ]] || profile="$CONTROL_PROFILE"
+  # The new fixture explicitly caps DataRegions at two. IoTDB permits that database
+  # setting only under CUSTOM. Keep the legacy profile's original extension policy.
+  [[ "$profile" == legacy && "$runtime" == false && "$estimation" == false ]] || custom_region_policy=true
   if [[ "$role" == ConfigNode ]]; then
     if [[ "$d" == candidate ]]; then dn_rpc=$((27667 + PORT_OFFSET)); dn_internal=$((27130 + PORT_OFFSET)); dn_mpp=$((27140 + PORT_OFFSET)); dn_schema=$((27150 + PORT_OFFSET)); dn_data=$((27160 + PORT_OFFSET)); dn_metric=$((27902 + PORT_OFFSET)); else dn_rpc=$((37667 + PORT_OFFSET)); dn_internal=$((37130 + PORT_OFFSET)); dn_mpp=$((37140 + PORT_OFFSET)); dn_schema=$((37150 + PORT_OFFSET)); dn_data=$((37160 + PORT_OFFSET)); dn_metric=$((37902 + PORT_OFFSET)); fi
   fi
@@ -135,10 +364,15 @@ cn_seed_config_node=127.0.0.1:$(cn_internal "$d")
 dn_seed_config_node=127.0.0.1:$(cn_internal "$d")
 schema_replication_factor=1
 data_replication_factor=1
-degree_of_query_parallelism=4
-enable_dop_estimation=false
-enable_property_driven_planning=$enabled
-enable_table_group_by_hash_repartition=$enabled
+degree_of_query_parallelism=$dop
+enable_dop_estimation=$estimation
+enable_dynamic_scan_parallelism=false
+enable_runtime_scan_parallelism=$runtime
+enable_property_driven_planning=$property
+enable_table_group_by_hash_repartition=$hash
+enable_timepartition_morsel=$tp
+enable_ordered_parallel_scan=$ordered
+time_partition_interval=$TIME_PARTITION_INTERVAL_MS
 table_group_by_hash_repartition_partition_count=2
 cn_internal_address=127.0.0.1
 cn_internal_port=$(cn_internal "$d")
@@ -165,21 +399,43 @@ cn_metric_prometheus_reporter_port=$metric
 dn_metric_reporter_list=
 dn_metric_prometheus_reporter_port=$dn_metric
 EOF
+  [[ "$custom_region_policy" != true ]] || printf 'data_region_group_extension_policy=CUSTOM\n' >> "$conf/iotdb-system.properties"
+  [[ "$QUERY_THREAD_COUNT" == 0 ]] || printf 'query_thread_count=%s\n' "$QUERY_THREAD_COUNT" >> "$conf/iotdb-system.properties"
+  mkdir -p "$root/identity" "$root/tmp"
+  cp -- "$conf/iotdb-system.properties" "$root/identity/config-prepared.properties"
 }
 prepare() {
   [[ -n "$DIST" ]] || die '--distribution-root is required for prepare'; assert_dist "$DIST"
+  resolve_java; assert_runtime_distribution
+  command -v python3 >/dev/null || die 'python3 is required for typed deployment manifests'
   [[ ! -e "$ROOT" ]] || ! find "$ROOT" -mindepth 1 -print -quit | grep -q . || die "Prepare refuses non-empty root: $ROOT"
   assert_ports_free; mkdir -p "$ROOT"
   local d n r rpc internal consensus mpp schema data metric
   while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do write_config "$d" "$n" "$r" "$rpc" "$internal" "$consensus" "$mpp" "$schema" "$data" "$metric"; done < <(nodes)
-  write_manifest; printf 'Prepared %s (SHA %s)\n' "$ROOT" "$(grep '^repository_git_sha=' "$ROOT/$MANIFEST" | cut -d= -f2-)"
+  write_manifest; write_json_manifests; printf 'Prepared %s (SHA %s)\n' "$ROOT" "$(grep '^repository_git_sha=' "$ROOT/$MANIFEST" | cut -d= -f2-)"
 }
 classpath() { local j; shopt -s nullglob; local jars=("$DIST"/lib/*.jar); shopt -u nullglob; (IFS=:; printf '%s' "${jars[*]}"); }
 wait_port() { local p="$1" deadline=$((SECONDS + TIMEOUT)); while ((SECONDS < deadline)); do port_bound "$p" && return; sleep .5; done; return 1; }
 start_node() {
   local d="$1" n="$2" role="$3" rpc="$4" internal="$5" root="$ROOT/$1/$2" conf="$ROOT/$1/$2/conf" logs="$ROOT/$1/$2/logs" data="$ROOT/$1/$2/data" class="$DN_CLASS" prefix=IOTDB log="$ROOT/$1/$2/conf/logback-datanode.xml" port="$4" pid listener cmd
   [[ "$role" == ConfigNode ]] && { class="$CN_CLASS"; prefix=CONFIGNODE; log="$conf/logback-confignode.xml"; port="$internal"; }
-  nohup java --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED "-Dlogback.configurationFile=$log" "-D${prefix}_HOME=$DIST" "-D${prefix}_DATA_HOME=$data" "-D${prefix}_CONF=$conf" "-D${prefix}_LOGS=$logs" "-D${prefix}_LOG_DIR=$logs" "-DTSFILE_HOME=$DIST" "-DTSFILE_CONF=$conf" -Dfile.encoding=UTF-8 -Diotdb-foreground=yes -Xms256m -Xmx512m -cp "$(classpath)" "$class" -s >"$logs/stdout.log" 2>"$logs/stderr.log" &
+  local xms="$DN_XMS" xmx="$DN_XMX" jmx pid_exe
+  local -a jmx_options=()
+  [[ "$role" != ConfigNode ]] || { xms="$CN_XMS"; xmx="$CN_XMX"; }
+  assert_config_identity "$root"
+  mkdir -p "$root/tmp" "$root/identity"
+  if [[ "$JMX_ENABLED" == true ]]; then
+    jmx="$(jmx_port "$d" "$n")"
+    jmx_options=(-Dcom.sun.management.jmxremote
+      "-Dcom.sun.management.jmxremote.port=$jmx"
+      "-Dcom.sun.management.jmxremote.rmi.port=$jmx"
+      -Dcom.sun.management.jmxremote.host=127.0.0.1
+      -Djava.rmi.server.hostname=127.0.0.1
+      -Dcom.sun.management.jmxremote.local.only=true
+      -Dcom.sun.management.jmxremote.authenticate=false
+      -Dcom.sun.management.jmxremote.ssl=false)
+  fi
+  nohup "$JAVA_EXE" "${jmx_options[@]}" "-Djava.io.tmpdir=$root/tmp" "-Xlog:class+load=info:file=$root/identity/classes-loaded-%p.log:time,uptime,level,tags:filecount=0" --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED "-Dlogback.configurationFile=$log" "-D${prefix}_HOME=$DIST" "-D${prefix}_DATA_HOME=$data" "-D${prefix}_CONF=$conf" "-D${prefix}_LOGS=$logs" "-D${prefix}_LOG_DIR=$logs" "-DTSFILE_HOME=$DIST" "-DTSFILE_CONF=$conf" -Dfile.encoding=UTF-8 -Diotdb-foreground=yes "-Xms$xms" "-Xmx$xmx" -cp "$(classpath)" "$class" -s >"$logs/stdout.log" 2>"$logs/stderr.log" &
   pid=$!
   wait_port "$port" || { kill -0 "$pid" 2>/dev/null && kill "$pid" || true; die "Timed out waiting for $n on $port; inspect $logs"; }
   listener="$(listener_pid "$port")" || {
@@ -191,17 +447,32 @@ start_node() {
     kill -0 "$pid" 2>/dev/null && kill "$pid" || true
     die "Listener PID $listener on port $port is not isolated node $n"
   }
-  { printf 'pid=%s\nroot=%q\nclass=%q\nstarted_at_utc=%s\n' "$listener" "$root" "$class" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"; } > "$root/process.env"
+  pid_exe="$(readlink -f "/proc/$listener/exe")"
+  [[ "$pid_exe" == "$JAVA_EXE" ]] || die "Started Java differs: $pid_exe"
+  if [[ "$JMX_ENABLED" == true ]]; then
+    wait_port "$jmx" || die "JMX not ready: $d/$n $jmx"
+    [[ "$(listener_pid "$jmx")" == "$listener" ]] || die "JMX is not owned by isolated node $d/$n"
+  fi
+  {
+    printf 'pid=%s\nroot=%q\nclass=%q\nstarted_at_utc=%s\n' "$listener" "$root" "$class" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'java_executable=%q\njava_sha256=%s\nxms=%s\nxmx=%s\n' "$pid_exe" "$(sha256 "$pid_exe")" "$xms" "$xmx"
+    printf 'config_sha256=%s\nserver_jar_sha256=%s\njmx_enabled=%s\njmx_port=%s\n' "$(sha256 "$conf/iotdb-system.properties")" "$(sha256 "$(server_jar "$DIST")")" "$JMX_ENABLED" "${jmx:-0}"
+    printf 'loaded_class_log=%q\n' "$root/identity/classes-loaded-$listener.log"
+    printf 'actual_configured_dop=%s\n' "$(awk -F= '$1=="degree_of_query_parallelism"{print $2}' "$conf/iotdb-system.properties")"
+  } > "$root/process.env"
+  cp -- "/proc/$listener/cmdline" "$root/identity/proc-cmdline.bin"
+  cp -- "$conf/iotdb-system.properties" "$root/identity/config-started.properties"
+  printf '%s\n' "$cmd" > "$root/identity/proc-cmdline.txt"
 }
 start() {
-  read_manifest; assert_dist "$DIST"; command -v java >/dev/null || die 'java is absent'; assert_ports_free
+  read_manifest; assert_dist "$DIST"; assert_runtime_identity; assert_runtime_distribution; assert_ports_free
   local d n r rpc internal consensus mpp schema data metric
   while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do [[ "$r" == ConfigNode ]] && start_node "$d" "$n" "$r" "$rpc" "$internal"; done < <(selected)
   while IFS='|' read -r d n r rpc internal consensus mpp schema data metric; do [[ "$r" == DataNode ]] && start_node "$d" "$n" "$r" "$rpc" "$internal"; done < <(selected)
   printf 'Started %s below %s; archive evidence before stop.\n' "$DEPLOYMENT" "$ROOT"
 }
 start_datanodes() {
-  read_manifest; assert_dist "$DIST"; command -v java >/dev/null || die 'java is absent'
+  read_manifest; assert_dist "$DIST"; assert_runtime_identity; assert_runtime_distribution
   # ConfigNodes intentionally remain up during a fixed-DOP transition.  Checking their ports here
   # would make a safe DataNode-only restart impossible; verify every selected DataNode port instead.
   assert_datanode_ports_free

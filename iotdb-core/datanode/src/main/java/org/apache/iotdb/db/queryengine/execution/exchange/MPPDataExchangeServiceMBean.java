@@ -37,6 +37,10 @@ public interface MPPDataExchangeServiceMBean {
 
   String openResourceAuditWindow(long durationMs);
 
+  String describeQueryExecution(long actualRpcQueryId);
+
+  String describeQueryExecutionBySqlHash(String exactUtf8Sha256);
+
   String listResourceAuditFragments(String windowId, String queryId);
 
   String readResourceAudit(String windowId, String queryId, String fragmentInstanceId);

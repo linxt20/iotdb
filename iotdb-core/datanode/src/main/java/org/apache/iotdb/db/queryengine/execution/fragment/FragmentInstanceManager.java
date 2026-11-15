@@ -147,6 +147,8 @@ public class FragmentInstanceManager {
   @SuppressWarnings("squid:S1181")
   public FragmentInstanceInfo execDataQueryFragmentInstance(
       FragmentInstance instance, IDataRegionForQuery dataRegion) {
+    FragmentInstanceContext.validateRuntimeExecutionSettings(
+        instance.isRuntimeExecutionEnabled(), instance.getSessionInfo());
     long startTime = System.nanoTime();
     FragmentInstanceId instanceId = instance.getId();
     AtomicLong driversCount = new AtomicLong();
@@ -181,10 +183,14 @@ public class FragmentInstanceManager {
                               dataNodeQueryContextMap,
                               DriverTask.computeDeadlineTimeInMs(instance.getTimeOut()),
                               instance.isDebug(),
-                              instance.isVerbose());
+                              instance.isVerbose(),
+                              instance.isRuntimeExecutionEnabled());
                         });
                 rejectIfRepeatedDispatch(contextCreated[0], instanceId);
                 context.setHighestPriority(instance.isHighestPriority());
+                if (context.getRuntimeLifecycle() != null) {
+                  context.getRuntimeLifecycle().bindExchangeManager(exchangeManager);
+                }
 
                 List<PipelineDriverFactory> driverFactories = new ArrayList<>();
                 List<IDriver> drivers = new ArrayList<>();
@@ -219,7 +225,7 @@ public class FragmentInstanceManager {
                           instance.getTimeOut(),
                           instance.isExplainAnalyze(),
                           exchangeManager);
-                  context.setPlanningContext(null);
+                  if (context.getRuntimeLifecycle() == null) context.setPlanningContext(null);
                   return createdExecution;
                 } catch (Throwable t) {
                   if ("ADMISSION_REJECTED".equals(context.getAdmissionStatus())
@@ -266,6 +272,10 @@ public class FragmentInstanceManager {
                   failedInstanceInfo.set(context.getInstanceInfo());
                   clearFIRelatedResources(instanceId);
                   return null;
+                } finally {
+                  if (context.getRuntimeLifecycle() != null) {
+                    context.getRuntimeLifecycle().sealConstruction();
+                  }
                 }
               });
 
@@ -323,8 +333,12 @@ public class FragmentInstanceManager {
       FragmentInstanceContext context) {
     for (PipelineDriverFactory factory : factories) {
       checkDriverCreationAllowed(context);
-      drivers.add(factory.createDriver());
+      IDriver driver = factory.createDriver();
+      drivers.add(driver);
       createdCount[0]++;
+      if (context.getRuntimeLifecycle() != null) {
+        context.getRuntimeLifecycle().registerOriginalDriver(factory, driver);
+      }
       checkDriverCreationAllowed(context);
     }
   }
@@ -335,6 +349,11 @@ public class FragmentInstanceManager {
       int createdFactoryCount,
       FragmentInstanceContext context,
       Throwable primary) {
+    if (context.getRuntimeLifecycle() != null) {
+      // The construction finally seals every late-created owner before terminal cleanup proceeds.
+      context.getRuntimeLifecycle().requestStop();
+      return;
+    }
     for (IDriver driver : drivers) {
       try {
         driver.close();
@@ -369,6 +388,11 @@ public class FragmentInstanceManager {
   }
 
   private void clearFIRelatedResources(FragmentInstanceId instanceId) {
+    FragmentInstanceContext context = instanceContext.get(instanceId);
+    if (context != null && context.getRuntimeLifecycle() != null) {
+      context.getRuntimeLifecycle().requestStop();
+      return;
+    }
     // close and remove all the handles of the fragment instance
     exchangeManager.forceDeregisterFragmentInstance(instanceId.toThrift());
     // clear MemoryPool
@@ -384,6 +408,10 @@ public class FragmentInstanceManager {
   @SuppressWarnings("squid:S1181")
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
       FragmentInstance instance, ISchemaRegion schemaRegion) {
+    if (instance.isRuntimeExecutionEnabled()) {
+      throw new IllegalStateException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY);
+    }
     FragmentInstanceId instanceId = instance.getId();
     AtomicReference<FragmentInstanceInfo> failedInstanceInfo = new AtomicReference<>();
     FragmentInstanceExecution execution =
@@ -404,7 +432,8 @@ public class FragmentInstanceManager {
                             stateMachine,
                             instance.getSessionInfo(),
                             instance.isDebug(),
-                            instance.isVerbose());
+                            instance.isVerbose(),
+                            instance.isRuntimeExecutionEnabled());
                       });
               rejectIfRepeatedDispatch(contextCreated[0], instanceId);
               context.setHighestPriority(instance.isHighestPriority());

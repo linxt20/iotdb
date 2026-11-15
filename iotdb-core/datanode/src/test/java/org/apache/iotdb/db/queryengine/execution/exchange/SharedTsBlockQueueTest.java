@@ -805,6 +805,33 @@ public class SharedTsBlockQueueTest {
     }
   }
 
+  @Test
+  public void testInputFrontierCannotBackAnOutputQueue() throws Exception {
+    TFragmentInstanceId id = new TFragmentInstanceId("input_frontier_queue", 0, "0");
+    MemoryReservationKey key =
+        new MemoryReservationKey(
+            id.queryId,
+            FragmentInstanceId.createFragmentInstanceIdFromTFragmentInstanceId(id),
+            "input_owner");
+    MemoryPool pool = new MemoryPool("input-owner-pool", new MemoryManager(4096), 4096);
+    LocalMemoryManager manager = Mockito.mock(LocalMemoryManager.class);
+    Mockito.when(manager.getQueryPool()).thenReturn(pool);
+    RuntimeFrontierReservation owner =
+        RuntimeFrontierReservation.tryCreate(pool, key, MemorySide.INPUT, 1, 1024, 1024).get();
+    ExecutorService executor = newDirectExecutorService();
+    try {
+      Assert.assertThrows(
+          IllegalArgumentException.class,
+          () -> new SharedTsBlockQueue(id, "invalid_output", manager, executor, false, owner, 0));
+      Assert.assertEquals(1024, pool.getReservedBytes());
+      Assert.assertEquals(0, owner.getLeasedCreditCount());
+    } finally {
+      owner.requestClose().get(5, TimeUnit.SECONDS);
+      executor.shutdownNow();
+    }
+    Assert.assertEquals(0, pool.getReservedBytes());
+  }
+
   private static TsBlock realBlock() {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
     builder.getTimeColumnBuilder().writeLong(1L);

@@ -19,15 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.NodeDistribution;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -307,6 +311,13 @@ public class TableDistributedPlanner {
                     subPlan, analysis, mppQueryContext, WritePlanNode::splitByPartition)
                 .parallelPlan();
 
+    configureRuntimeExecution(
+        fragmentInstances,
+        mppQueryContext.isQuery()
+            && mppQueryContext.getSession() != null
+            && mppQueryContext.getSession().getSqlDialect() == SqlDialect.TABLE
+            && IoTDBDescriptor.getInstance().getConfig().isEnableRuntimeScanParallelism());
+
     // only execute this step for READ operation
     if (mppQueryContext.isQuery()) {
       setSinkForRootInstance(subPlan, fragmentInstances);
@@ -314,6 +325,28 @@ public class TableDistributedPlanner {
     }
 
     return new DistributedQueryPlan(subPlan, fragmentInstances);
+  }
+
+  /**
+   * Select one protocol before any FI is dispatched. Schema-region producers use legacy queues, so
+   * every FI in a graph containing one, including QueryExecutor merge/root FIs, stays legacy.
+   * Looking only at the result producer cannot establish this query-wide property.
+   */
+  static void configureRuntimeExecution(List<FragmentInstance> instances, boolean runtimeEnabled) {
+    boolean selected =
+        runtimeEnabled
+            && !instances.isEmpty()
+            && instances.stream()
+                .allMatch(
+                    instance ->
+                        instance.getType() == QueryType.READ
+                            && instance.getExecutorType() != null
+                            && (!instance.getExecutorType().isStorageExecutor()
+                                || (instance.getRegionReplicaSet() != null
+                                    && instance.getRegionReplicaSet().getRegionId() != null
+                                    && instance.getRegionReplicaSet().getRegionId().getType()
+                                        == TConsensusGroupType.DataRegion)));
+    instances.forEach(instance -> instance.setRuntimeExecutionEnabled(selected));
   }
 
   public void setSinkForRootInstance(SubPlan subPlan, List<FragmentInstance> instances) {

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sourceEvidence": [
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceExecution.java",
+      "sha256": "c1dba23309fc116af47fba417ae58fc00ebafb74e0d9ee6fa0c7d9248c5286b5"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+      "sha256": "124fe771db7bd9044b894c8840e372e1ed46314be2a910cc6a87a56c52efe2dc"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/thrift/impl/DataNodeInternalRPCServiceImpl.java",
+      "sha256": "0e48bd8d24ada9db1c97b26bead82621edb4d9b055456f92fde6080861b2e0eb"
+    }
+  ],
+  "legacyStatisticsCache": "FIE legacy initialize only captures at terminal for isExplainAnalyze||dynamicEnabled, and ordinary fixed-one with both disabled has no frozen stats.",
+  "statisticsRpc": "Manager returns NOT_FOUND actual response if execution absent and context.statistics null, or context absent; it preserves FI ID and EXECUTE_STATEMENT_ERROR.",
+  "infoRpc": "Separate normal context cache still supports real state/endTime. getInstanceInfo returnsnull if absent/cancellationRequested; RPC mapsnull to NO_SUCH_INSTANCE.",
+  "controlGuard": "Explicit opt-in, real profile/config hashes and disabled feature flags. Never infer missing=0.",
+  "productionModified": false,
+  "configsChanged": false,
+  "controlParameters": [
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json",
+    "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/load-control.json"
+  ],
+  "driverSha256": "2dcb4c56ad9810d417d4d4b02cd6c8025a65713288be20fa7efeaa3102112471",
+  "statisticsPolicyValues": {
+    "candidate": "REQUIRE_FROZEN",
+    "fixedOneControl": "ALLOW_UNRETAINED_CONTROL"
+  },
+  "scope": "Explicit observation capability contract, not executed service results."
+}

@@ -27,13 +27,17 @@ import org.apache.iotdb.calc.execution.operator.source.relational.aggregation.Ta
 import org.apache.iotdb.calc.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.calc.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.queryengine.common.SessionInfo;
+import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
@@ -54,10 +58,13 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.management.ObjectName;
 
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -70,10 +77,94 @@ import static java.util.Collections.singletonList;
 import static org.apache.iotdb.db.queryengine.common.QueryId.MOCK_QUERY_ID;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class FragmentInstanceContextTest {
+
+  private static int originalDataNodeId;
+
+  @BeforeClass
+  public static void initializeDataNodeIdentity() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    originalDataNodeId = config.getDataNodeId();
+    // Runtime cleanup can initialize Coordinator and its QueryIdGenerator.
+    config.setDataNodeId(1);
+  }
+
+  @AfterClass
+  public static void restoreDataNodeIdentity() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(originalDataNodeId);
+  }
+
+  @Test
+  public void explicitLegacyDataContextDoesNotCreateRuntimeLifecycle() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    boolean previous = config.isEnableRuntimeScanParallelism();
+    try {
+      config.setEnableRuntimeScanParallelism(true);
+      FragmentInstanceContext context = protocolDataContext("legacy_schema_merge", false);
+      assertNull(context.getRuntimeLifecycle());
+      context.finished();
+    } finally {
+      config.setEnableRuntimeScanParallelism(previous);
+    }
+  }
+
+  @Test
+  public void explicitRuntimeDataContextCreatesLifecycle() throws Exception {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    boolean previous = config.isEnableRuntimeScanParallelism();
+    try {
+      config.setEnableRuntimeScanParallelism(true);
+      FragmentInstanceContext context = protocolDataContext("runtime_data_merge", true);
+      assertNotNull(context.getRuntimeLifecycle());
+      context.getRuntimeLifecycle().sealConstruction();
+      context.getRuntimeLifecycle().requestStop().get(5, TimeUnit.SECONDS);
+    } finally {
+      config.setEnableRuntimeScanParallelism(previous);
+    }
+  }
+
+  @Test
+  public void selectedRuntimeProtocolIsRejectedWhenWorkerRuntimeIsDisabled() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    boolean previous = config.isEnableRuntimeScanParallelism();
+    try {
+      config.setEnableRuntimeScanParallelism(false);
+      assertThrows(
+          IllegalStateException.class, () -> protocolDataContext("runtime_worker_mismatch", true));
+    } finally {
+      config.setEnableRuntimeScanParallelism(previous);
+    }
+  }
+
+  @Test
+  public void schemaProductionContextRejectsRuntimeProtocol() {
+    FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId("schema_protocol", 0), "0");
+    FragmentInstanceStateMachine machine = new FragmentInstanceStateMachine(id, Runnable::run);
+    SessionInfo session =
+        new SessionInfo(1, "test", ZoneId.systemDefault(), null, SqlDialect.TABLE);
+    assertThrows(
+        IllegalStateException.class,
+        () -> createFragmentInstanceContext(id, machine, session, false, false, true));
+    assertNull(
+        createFragmentInstanceContext(id, machine, session, false, false, false)
+            .getRuntimeLifecycle());
+  }
+
+  private static FragmentInstanceContext protocolDataContext(String query, boolean selected) {
+    FragmentInstanceId id = new FragmentInstanceId(new PlanFragmentId(query, 0), "0");
+    FragmentInstanceStateMachine machine = new FragmentInstanceStateMachine(id, Runnable::run);
+    SessionInfo session =
+        new SessionInfo(1, "test", ZoneId.systemDefault(), null, SqlDialect.TABLE);
+    Map<QueryId, DataNodeQueryContext> contexts = new HashMap<>();
+    contexts.put(id.getQueryId(), new DataNodeQueryContext(1));
+    return createFragmentInstanceContext(
+        id, machine, session, null, null, contexts, 0, false, false, selected);
+  }
 
   @Test
   public void testConcurrentQueryDataSourceStatistics() throws InterruptedException {

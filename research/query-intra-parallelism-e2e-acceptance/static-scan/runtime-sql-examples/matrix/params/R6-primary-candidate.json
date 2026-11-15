@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "mode": "ordinary-sql",
+  "manifest": "<CLUSTER_ROOT>/candidate/deployment-manifest.json",
+  "sqlFile": "../sql/runtimeException.sql",
+  "out": "<OUTPUT_ROOT>/R6/primary/candidate/r001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "expectedOutcome": "EXCEPTION",
+  "queryTimeoutSeconds": 180,
+  "fetchSize": 1,
+  "auditDurationMs": 300000,
+  "rosterPollMs": 5,
+  "rosterTimeoutMs": 15000,
+  "terminalTimeoutSeconds": 45,
+  "requireActualSourceNodeCount": 2,
+  "requireGrowShrink": false,
+  "requireOrderedInitialOne": false,
+  "requireHashRepartition": false,
+  "expectedSqlErrorCode": 701,
+  "statisticsPolicy": "REQUIRE_FROZEN"
+}

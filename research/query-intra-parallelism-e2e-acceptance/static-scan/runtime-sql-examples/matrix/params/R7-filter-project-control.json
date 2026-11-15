@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "mode": "ordinary-sql",
+  "manifest": "<CLUSTER_ROOT>/control/deployment-manifest.json",
+  "sqlFile": "../sql/filterProjectGrouped.sql",
+  "out": "<OUTPUT_ROOT>/R7/filter-project/control/r001",
+  "username": "root",
+  "passwordEnv": "IOTDB_ACCEPTANCE_PASSWORD",
+  "expectedOutcome": "SUCCESS",
+  "queryTimeoutSeconds": 180,
+  "fetchSize": 1024,
+  "auditDurationMs": 300000,
+  "rosterPollMs": 25,
+  "rosterTimeoutMs": 15000,
+  "terminalTimeoutSeconds": 45,
+  "requireActualSourceNodeCount": 2,
+  "requireGrowShrink": false,
+  "requireOrderedInitialOne": false,
+  "requireHashRepartition": false,
+  "statisticsPolicy": "ALLOW_UNRETAINED_CONTROL"
+}

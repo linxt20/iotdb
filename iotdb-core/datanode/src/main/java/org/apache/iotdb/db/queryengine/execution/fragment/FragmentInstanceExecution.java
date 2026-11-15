@@ -102,6 +102,12 @@ public class FragmentInstanceExecution {
         new FragmentInstanceExecution(
             instanceId, context, drivers, sinkHandle, stateMachine, timeOut, exchangeManager);
     execution.initialize(scheduler, isExplainAnalyze);
+    if (context.getRuntimeLifecycle() != null) {
+      context
+          .getRuntimeLifecycle()
+          .prepareAndSubmit(scheduler, context.getRuntimePlanBindings(), drivers);
+      return execution;
+    }
     synchronized (context) {
       if (context.isCancellationRequested()) {
         throw new java.util.concurrent.CancellationException(
@@ -468,6 +474,7 @@ public class FragmentInstanceExecution {
     }
     boolean res = fillFragmentInstanceStatistics(context, statistics);
     if (!res) {
+      attachRuntimeControlEvidence(statistics);
       runtimeSnapshot = buildJavaRuntimeSnapshot(statistics, driverSnapshots);
       statistics.setSnapshotChecksum(runtimeSnapshot.getChecksum());
       return statistics;
@@ -515,15 +522,195 @@ public class FragmentInstanceExecution {
     statistics.getOperatorStatisticsMap().putAll(pipelineSnapshots);
 
     mergeOperatorStatisticsIfDuplicate(statistics.getOperatorStatisticsMap());
+    // The merge utility intentionally drops scan-specific metadata. Attach control evidence only
+    // after merging so the frozen response, Java checksum and Thrift transport cover the same JSON.
+    attachRuntimeControlEvidence(statistics);
     runtimeSnapshot = buildJavaRuntimeSnapshot(statistics, driverSnapshots);
     statistics.setSnapshotChecksum(runtimeSnapshot.getChecksum());
 
     return statistics;
   }
 
-  // this is a separate method to ensure that the `this` reference is not leaked during construction
+  private void attachRuntimeControlEvidence(TFetchFragmentInstanceStatisticsResp statistics) {
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeDopExecutionSnapshot evidence =
+        context.getRuntimeControlEvidence();
+    if (evidence == null) return;
+    String json = evidence.toJson();
+    OperatorContext rootContext = null;
+    if (drivers != null) {
+      for (IDriver driver : drivers) {
+        if (driver.getDriverTaskId().getPipelineId() == 0) {
+          List<OperatorContext> operators = driver.getDriverContext().getOperatorContexts();
+          if (!operators.isEmpty()) rootContext = operators.get(0);
+          break;
+        }
+      }
+    }
+    String key =
+        rootContext == null ? "__runtimeDopControl" : rootContext.getPlanNodeId().toString();
+    if (!statistics.isSetOperatorStatisticsMap()) {
+      statistics.setOperatorStatisticsMap(new HashMap<>());
+    }
+    Map<String, TOperatorStatistics> operators = statistics.getOperatorStatisticsMap();
+    TOperatorStatistics root = operators.get(key);
+    if (root == null && key.contains("-")) {
+      root = operators.get(key.substring(0, key.indexOf('-')));
+    }
+    if (root == null) {
+      root = new TOperatorStatistics();
+      if (rootContext == null) {
+        root.setPlanNodeId(key);
+        root.setOperatorType("RuntimeDopControl");
+        // This metadata row has no execution or workspace. The IDL requires memoryUsage on the
+        // wire, so set its zero explicitly before computing the checksum.
+        root.setMemoryUsage(0);
+      } else {
+        rootContext.getSpecifiedInfo().put("__runtime_dop_control", json);
+        setOperatorStatistics(root, rootContext);
+      }
+      operators.put(key, root);
+    }
+    if (rootContext != null) {
+      rootContext.getSpecifiedInfo().put("__runtime_dop_control", json);
+    }
+    Map<String, String> info =
+        root.getSpecifiedInfo() == null ? new HashMap<>() : new HashMap<>(root.getSpecifiedInfo());
+    info.put("__runtime_dop_control", json);
+    root.setSpecifiedInfo(info);
+  }
+
+  /** Keep terminal actuation evidence even when richer optional statistics cannot be published. */
+  private TFetchFragmentInstanceStatisticsResp buildRuntimeControlOnlyStatistics() {
+    TFetchFragmentInstanceStatisticsResp response = new TFetchFragmentInstanceStatisticsResp();
+    response.setStatus(org.apache.iotdb.rpc.RpcUtils.SUCCESS_STATUS);
+    response.setFragmentInstanceId(instanceId.toThrift());
+    response.setSchemaVersion(2);
+    response.setSnapshotGeneration(snapshotGeneration.incrementAndGet());
+    response.setCapturedAtNanos(System.nanoTime());
+    response.setSourceNodeId(Integer.toString(CONFIG.getDataNodeId()));
+    response.setSourceEndpoint(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
+    response.setState(getInstanceState().toString());
+    response.setIsTerminal(true);
+    response.addToValidityReasons("PARTIAL_RUNTIME_CONTROL_ONLY");
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeDopExecutionSnapshot evidence =
+        context.getRuntimeControlEvidence();
+    if (evidence != null) {
+      TOperatorStatistics control = new TOperatorStatistics();
+      control.setPlanNodeId("__runtimeDopControl");
+      control.setOperatorType("RuntimeDopControl");
+      // memoryUsage is required in Thrift; an unset local bit becomes set after round-trip.
+      // This synthetic metadata row owns no operator workspace.
+      control.setMemoryUsage(0);
+      control.setSpecifiedInfo(
+          java.util.Collections.singletonMap("__runtime_dop_control", evidence.toJson()));
+      response.setOperatorStatisticsMap(
+          java.util.Collections.singletonMap("__runtimeDopControl", control));
+    }
+    runtimeSnapshot = buildJavaRuntimeSnapshot(response, java.util.Collections.emptyList());
+    response.setSnapshotChecksum(runtimeSnapshot.getChecksum());
+    return response;
+  }
+
   @SuppressWarnings("squid:S1181")
+  private void freezeRuntimeTerminalStatistics(boolean isExplainAnalyze) {
+    // Freeze this small immutable record before optional full statistics. It owns no driver,
+    // operator, endpoint or planning objects and remains usable after successful graph release.
+    context.setRuntimeControlEvidence(context.getRuntimeLifecycle().freezeControlEvidence());
+    org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord.Payload
+        feedbackPayload = null;
+    org.apache.iotdb.db.queryengine.plan.planner.DynamicScanAssignmentRegistry scanAssignments =
+        context.getDynamicScanAssignments();
+    boolean dynamicEnabled = scanAssignments != null && scanAssignments.wantsTerminalFeedback();
+    statisticsLock.writeLock().lock();
+    try {
+      for (IDriver driver : drivers) {
+        driver.recordMorselCompletionStatistics();
+      }
+      TFetchFragmentInstanceStatisticsResp frozen;
+      try {
+        frozen = buildStatistics();
+      } catch (Throwable publicationFailure) {
+        LOGGER.warn(DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED, publicationFailure);
+        frozen = buildRuntimeControlOnlyStatistics();
+      }
+      // Runtime-only ordinary queries need the same terminal cache as EXPLAIN ANALYZE.
+      context.setFragmentInstanceStatistics(frozen);
+      if (dynamicEnabled) {
+        try {
+          feedbackPayload =
+              org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord.capture(
+                  instanceId.getQueryId().getId(),
+                  instanceId.getFragmentInstanceId(),
+                  org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelPlanningService
+                      .localEndpoint(),
+                  frozen,
+                  scanAssignments.sourcePlans(),
+                  scanAssignments.receipts());
+        } catch (Throwable publicationFailure) {
+          LOGGER.warn(
+              DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED, publicationFailure);
+        }
+      }
+    } finally {
+      staticsRemoved = true;
+      statisticsLock.writeLock().unlock();
+      context.setDynamicScanAssignments(null);
+    }
+    if (feedbackPayload != null) {
+      try {
+        org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelPlanningService.historyStore()
+            .publish(
+                org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord.validate(
+                    feedbackPayload));
+      } catch (Throwable publicationFailure) {
+        LOGGER.warn(DataNodeQueryMessages.DYNAMIC_SNAPSHOT_PUBLICATION_FAILED, publicationFailure);
+      }
+    }
+  }
+
+  private void initializeRuntime(boolean isExplainAnalyze) {
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeCleanupCoordinator cleanup =
+        context.getRuntimeLifecycle().getCleanupCoordinator();
+    cleanup.addRequiredCleanup(
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeCleanupCoordinator.Phase
+            .BEFORE_DRIVER_CLOSE,
+        () -> {
+          if (sink != null) clearShuffleSinkHandle(stateMachine.getState());
+          return com.google.common.util.concurrent.Futures.immediateVoidFuture();
+        });
+    cleanup.addCleanup(
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeCleanupCoordinator.Phase
+            .FREEZE_STATISTICS,
+        () -> {
+          freezeRuntimeTerminalStatistics(isExplainAnalyze);
+          return com.google.common.util.concurrent.Futures.immediateVoidFuture();
+        });
+    cleanup.addCleanup(
+        org.apache.iotdb.db.queryengine.execution.runtime.RuntimeCleanupCoordinator.Phase
+            .RELEASE_RESOURCES,
+        () -> {
+          deleteTmpFile();
+          return com.google.common.util.concurrent.Futures.immediateVoidFuture();
+        });
+    com.google.common.util.concurrent.ListenableFuture<Void> completed =
+        context.getRuntimeLifecycle().getCompletedFuture();
+    completed.addListener(
+        () -> {
+          try {
+            com.google.common.util.concurrent.Futures.getDone(completed);
+            drivers = null;
+          } catch (Exception failure) {
+            LOGGER.error(DataNodeQueryMessages.ERRORS_FINISHING_FI_PROCESS, failure);
+          }
+        },
+        com.google.common.util.concurrent.MoreExecutors.directExecutor());
+  }
+
   private void initialize(IDriverScheduler scheduler, boolean isExplainAnalyze) {
+    if (context.getRuntimeLifecycle() != null) {
+      initializeRuntime(isExplainAnalyze);
+      return;
+    }
     stateMachine.addStateChangeListener(
         newState -> {
           try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {

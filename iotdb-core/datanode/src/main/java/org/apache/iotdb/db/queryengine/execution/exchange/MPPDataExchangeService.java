@@ -85,7 +85,9 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   @Override
   public void initTProcessor() {
     initSyncedServiceImpl(null);
-    processor = new Processor<>(mppDataExchangeManager.getOrCreateMPPDataExchangeServiceImpl());
+    processor =
+        RuntimeExchangeResponseProcessor.wrap(
+            new Processor<>(mppDataExchangeManager.getOrCreateMPPDataExchangeServiceImpl()));
   }
 
   public MPPDataExchangeManager getMPPDataExchangeManager() {
@@ -105,6 +107,26 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
             mppDataExchangeManager.getLocalMemoryManager().getQueryPool().getRemainingBytes(),
             org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner.getInstance()
                 .getFreeMemoryForOperators());
+  }
+
+  @Override
+  public String describeQueryExecution(long actualRpcQueryId) {
+    return new com.google.gson.GsonBuilder()
+        .serializeNulls()
+        .create()
+        .toJson(
+            org.apache.iotdb.db.queryengine.plan.execution.QueryExecutionDescription.describe(
+                actualRpcQueryId));
+  }
+
+  @Override
+  public String describeQueryExecutionBySqlHash(String exactUtf8Sha256) {
+    return new com.google.gson.GsonBuilder()
+        .serializeNulls()
+        .create()
+        .toJson(
+            org.apache.iotdb.db.queryengine.plan.execution.QueryExecutionDescription
+                .describeBySqlHash(exactUtf8Sha256));
   }
 
   @Override

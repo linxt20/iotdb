@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 2,
+  "scope": "Exact portable SQL, parameters, contracts and example bytes. Excludes this index; no executed service conclusion.",
+  "sqlBytesRule": "SQL files preserve exact UTF-8 source bytes without added license comments, semicolons or acceptance markers. Repository Apache License applies. Driver adds its separately hashed run marker at execution.",
+  "caseManifestSha256": "6a7df717207b1faa278d6b41fb371bd9109e7a8e9dddb3fafa83237558c4ec7b",
+  "files": [
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/cancelled-parameters.example.json",
+      "sha256": "319bc407bad4f0736705ef355226ca0bd0650bb2faea3ad25c11ebc6093e7c69",
+      "bytes": 557
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/deadline-parameters.example.json",
+      "sha256": "424699dab54a1410a83e2467b73203a4b8b9be3cb49b1ee8982fd2d11258a2bd",
+      "bytes": 516
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/filter-project-grouped-parameters.example.json",
+      "sha256": "dbbd44489826a6b2b2b3abe98b255f2c9f2d6a4c2348981a2cbbb45baca6eb1d",
+      "bytes": 512
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/grouped-parameters.example.json",
+      "sha256": "2fc46eed608f669b7b630709b087017d7bbd140c46a1268ac1e6005255b3cf09",
+      "bytes": 482
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/grow-shrink-parameters.example.json",
+      "sha256": "72a0d583d2d450e0f6a4183bc7ebb925e2f044ef6315be7c0d40286b081e7e55",
+      "bytes": 490
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/limit-parameters.example.json",
+      "sha256": "3d428408f1b5884c95ffc621d66be305e290dce75a75468be9547715193999dc",
+      "bytes": 479
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/load-parameters.example.json",
+      "sha256": "f9c5ca3192eb29550243cb3a64f37c8c107afe8ba10053ad4aaef0a806a03e2f",
+      "bytes": 310
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json",
+      "sha256": "6a7df717207b1faa278d6b41fb371bd9109e7a8e9dddb3fafa83237558c4ec7b",
+      "bytes": 62453
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json",
+      "sha256": "8648f1f95d68068eb33f5025f1cda96946a2a57c0403c333e1a4f06aae254cf4",
+      "bytes": 11369
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-candidate.json",
+      "sha256": "097ea8241947bc6d25e134bb05cff3742f7b111044afa4614b0ac2fafa2ce3e1",
+      "bytes": 658
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/COMPAT-DIFF-primary-control.json",
+      "sha256": "8881259b3b1cf87e8f133e5ab8d1e08cc0e669d7bd8ccb0aa9136ed3c6b77d1a",
+      "bytes": 664
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-candidate.json",
+      "sha256": "be89f289764eecb396c7488e4b23c59d122f5295d183681724bf0dd6e1a754da",
+      "bytes": 660
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-primary-control.json",
+      "sha256": "768705da7deab68fb567e5a18c0c32c89f106231aec744c5e7d0e57bfcf459cc",
+      "bytes": 667
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-candidate.json",
+      "sha256": "fa5190d1984e93eff14019141bf249501cfdc279f8335138a072f50900a9344c",
+      "bytes": 658
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-raw-high-output-control.json",
+      "sha256": "d634f07fc40e87e1c324b81c18dc3601f3128b88bcd45ddcae2b684ab8c43973",
+      "bytes": 664
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-candidate.json",
+      "sha256": "341ccc9b9f90192d9b24e8bc040759e0466ff06d03249f4cd57c6fbd576f7613",
+      "bytes": 664
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R1-trig-backup-control.json",
+      "sha256": "eb235bef040c8cec4bd11c85eb468fafa0470a120fd633cd9cb0a3d651a2b733",
+      "bytes": 670
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-candidate.json",
+      "sha256": "b8bc1ebbd4766240ebabb65325b1c109926af894969c7779235880cb164a83d6",
+      "bytes": 644
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-primary-control.json",
+      "sha256": "fd833d35f401d0253c81f3fa7f4d5aa10888663e6ba7b701a501dd4e2368e5ad",
+      "bytes": 651
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-candidate.json",
+      "sha256": "5da84f115daf46ea3e65df69bd5acf8c9c40d0d0190442e493cb6044f459382b",
+      "bytes": 654
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R2-time-only-control.json",
+      "sha256": "70690f956c71ad3d1339b4accb9a68181ea516aa18dba7e2bca4d7bccc6667ee",
+      "bytes": 661
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json",
+      "sha256": "02f7690a5c4c46217d8853445d040ef9c21f09c783c9dfb97475c9b18e3fee22",
+      "bytes": 653
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+      "sha256": "27a53caea108d7ff911f10bbf041c24d2e4c5f2737cea66c1a10cde7568651a9",
+      "bytes": 656
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-candidate.json",
+      "sha256": "eeccdd8c57a3db4a1c9b4dcb94a5a14cb8a55110b6ca31916df855c6df738fc7",
+      "bytes": 672
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-control.json",
+      "sha256": "75f84b69ca20aec494762e4371f5576a979bfb38d468b2e4fcec5baacb0b9b25",
+      "bytes": 675
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R4-primary-candidate.json",
+      "sha256": "e5cdd96bca9f1f64978be8a2c08a01d486ed30c357b1824520ba496b913c78a1",
+      "bytes": 717
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R5-primary-candidate.json",
+      "sha256": "8880fbc90810397a64055372f1ef45e84df2d8baa12df3c5b3ac8e3dca02aac4",
+      "bytes": 689
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R6-primary-candidate.json",
+      "sha256": "9888346534eea0fea5d39b8fc2706a30d981ffe9362e2a45bcba3cf1936fa7b8",
+      "bytes": 684
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-candidate.json",
+      "sha256": "2dbad0a8d5f55045eb964d274d67d00ccdd702c0508b06dbafa9db6a47e200e8",
+      "bytes": 665
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-filter-project-control.json",
+      "sha256": "ffdfa2dd503206a9e19360be1d7aeea764ec006ad3212f8f263d993dc09a73bb",
+      "bytes": 672
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-candidate.json",
+      "sha256": "0a828febabe65311b99a13dfe8447b69d8663cc6711bbe78c3758be0eb920241",
+      "bytes": 645
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json",
+      "sha256": "51480d23032307e9cb50574f0f3425420f62c1152a8092469bdcb76b9ce379c4",
+      "bytes": 652
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/load-candidate.json",
+      "sha256": "ef41f2c040f35437c7d83364904cff6d209ad7bb22424fe13d14abfa29a361f3",
+      "bytes": 331
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/load-control.json",
+      "sha256": "4bc54b00b71509918235d2bf64a328670876470ba630d39a0c968221f6fa14ca",
+      "bytes": 327
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-diff.sql",
+      "sha256": "73d0f1794d940f1a201e6eed4578adebef7d4b61465e477b0ba8c1025e914746",
+      "bytes": 201
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-show-devices-filtered.sql",
+      "sha256": "48d009e41a6207632dca1013da6336f7ab7268f5cd0c58293d76a4afb8a2ecea",
+      "bytes": 68
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/compat-show-devices.sql",
+      "sha256": "c2ea768a85dea294d51e4b6c3aae214ea8ae8f61a0f46408cf95dbe0c13b8c84",
+      "bytes": 43
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/filterProjectGrouped.sql",
+      "sha256": "04cec75cff7f274baf693f7bd835b57eb7052ecb74bc3bdf8746bb1e0a9eae8f",
+      "bytes": 136
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.contract.json",
+      "sha256": "559b0b1f5a9ba0af0f740f2045fa7b589ec4f1bc05211f40467eb630146c3b7e",
+      "bytes": 5897
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/fullScanWindowFiltered.sql",
+      "sha256": "7b1f5213882717d29a37d5ac78cfb1b5879a53c9d1f802b7842aecc32ca47ee5",
+      "bytes": 381
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/grouped.sql",
+      "sha256": "8ff251c0303f9013e23df14a7cfb94b1a3c05a519ad82913f5bc5a5976e4eb78",
+      "bytes": 146
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/ordered.sql",
+      "sha256": "97f3c76cf61bfe45e8ea57eea76814a41d2f037fc73ee398ed6b1b1667c2e119",
+      "bytes": 127
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedLimit257.sql",
+      "sha256": "3f1427ed1fa5692d7e129e42e3e112212ccd92eacac5c4d03b0fb83f4eac9d13",
+      "bytes": 137
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/orderedTimeOnly.sql",
+      "sha256": "8cc15c26de9a85e29d52057a964896ecf8161337ab5e477de81c15c946d0e9d6",
+      "bytes": 113
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFiltered.sql",
+      "sha256": "26822f98e6840ff27dcb4f6f2e61140ed6b5f448dd37dd0970d8ecb7b5c6723d",
+      "bytes": 92
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/rawFilteredTrigBackup.sql",
+      "sha256": "07d5a831b1e8aad4c9bba62c472cfa30041de4c30c5dbe723cedcd2df8ee72d1",
+      "bytes": 206
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.contract.json",
+      "sha256": "96bb13fc2255288aed96ec7739549c471157566c6a71d7d4e00c663819fe5ce8",
+      "bytes": 2756
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeEarlyLimitConstant.sql",
+      "sha256": "d47d6069ae910260890ad71b0811d60c44d8ceb4de5626c0613fc11f45a9b9fe",
+      "bytes": 193
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeException.sql",
+      "sha256": "e3030f05d2a372b03ed63582d2c97562bee965c38b05a41c10985c3f8dfc2b57",
+      "bytes": 459
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionDivisionHistorical.sql",
+      "sha256": "9c2e1f680632a57e37012f5f5c96d0a2141efaa9b89444d0a961e36337b0718e",
+      "bytes": 216
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/sql/runtimeExceptionNativeCast.sql",
+      "sha256": "2468c3ec77b56c32c076423e4b62a6651ce3d4e4c50bbc46947e295f28ee0adb",
+      "bytes": 203
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json",
+      "sha256": "34f7451621cea7bf7d9bbe0f87e1805ed4009e4becadab19c4367dcdc1a2c856",
+      "bytes": 3045
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/ordered-parameters.example.json",
+      "sha256": "ddc691a7803d0fb3f50dc41db4cf267868e3443f95043ad4d506a14f3c20f782",
+      "bytes": 482
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/ordinary-parameters.example.json",
+      "sha256": "2fc46eed608f669b7b630709b087017d7bbd140c46a1268ac1e6005255b3cf09",
+      "bytes": 482
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/parameters-spec.json",
+      "sha256": "766f8ab996e938fc29c39a6488fc23ab76ecd4db917fb2bfdd5cee3100cc2ae3",
+      "bytes": 7804
+    }
+  ]
+}

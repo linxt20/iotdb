@@ -1,0 +1,1 @@
+SELECT k, COUNT(*) AS n, SUM(v) AS total FROM (SELECT g + 1 AS k, s1 + 7 AS v FROM runtime_dop_e2e.telemetry WHERE s1 >= 0) q GROUP BY k

@@ -21,6 +21,27 @@ package org.apache.iotdb.db.i18n;
 
 public final class DataNodeQueryMessages {
 
+  public static final String EXCEPTION_NATIVE_SCHEDULER_BATCH_QUOTA_REJECTED_55A3C12F =
+      "Native scheduler batch admission was rejected by the CPU or memory quota.";
+
+  public static final String RUNTIME_COMPACT_OUTPUT_UNSUPPORTED_COLUMN =
+      "Runtime compact output cannot bound retained memory for column %s.";
+
+  public static final String EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT =
+      "Invalid runtime scan layout.";
+  public static final String EXCEPTION_RUNTIME_SCAN_BUDGET_NOT_INITIALIZED =
+      "Runtime scan budget is not initialized.";
+  public static final String EXCEPTION_RUNTIME_SCAN_BUDGET_EXHAUSTED =
+      "Runtime scan frontier budget is exhausted.";
+  public static final String EXCEPTION_INVALID_RUNTIME_SCAN_DEPENDENCY =
+      "Invalid original runtime scan dependency.";
+  public static final String EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE =
+      "Invalid runtime scan descriptor state.";
+  public static final String RUNTIME_COMPACT_OUTPUT_MEMORY_LIMIT_EXCEEDED =
+      "Runtime compact output requires %d bytes but its memory limit is %d bytes.";
+  public static final String RUNTIME_COMPACT_OUTPUT_LIMIT_MUST_BE_POSITIVE =
+      "Runtime compact output memory limits must be positive.";
+
   public static final String EXCEPTION_UNSUPPORTED_JOIN_CRETERIA_ARG_AFTER_PREDICATE_PUSH_DOWN_92BDB23B =
       "Unsupported Join creteria [%s] after predicate push down";
   public static final String EXCEPTION_QUERY_CHUNK_RESOURCES_ARE_ALREADY_CLOSED_CA6A0559 =

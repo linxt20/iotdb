@@ -1,0 +1,1 @@
+SELECT time, device_id, g, s1, s2 FROM runtime_dop_e2e.telemetry WHERE ((s1 * 17) % 97) >= 0

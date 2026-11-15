@@ -23,11 +23,17 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ScanParallelPlannerTest {
 
@@ -352,5 +358,315 @@ public class ScanParallelPlannerTest {
     org.junit.Assert.assertEquals(100000, coverage.size());
     org.junit.Assert.assertEquals(8, plan.getBuckets().size());
     org.junit.Assert.assertEquals(8, plan.getWorkUnits().size());
+  }
+
+  @Test
+  public void runtimeInitialWorkersDoNotChangeLogicalTopologyForAnyScanMode() {
+    ScanParallelPlanner.Input[] inputs = {
+      input(8, true, false, false, false, false, false),
+      input(8, true, false, false, false, true, false),
+      input(8, false, false, false, true, false, true)
+    };
+    ScanParallelPlan.Mode[] modes = {
+      ScanParallelPlan.Mode.DEVICE,
+      ScanParallelPlan.Mode.TIME_PARTITION,
+      ScanParallelPlan.Mode.ORDERED
+    };
+    for (int index = 0; index < inputs.length; index++) {
+      RuntimeScanLayout oneWorker = planner.planRuntimeLayout(inputs[index], null, 4, 1);
+      RuntimeScanLayout fourWorkers = planner.planRuntimeLayout(inputs[index], null, 4, 4);
+      assertEquals(modes[index], oneWorker.getLanePlan().getMode());
+      assertEquals(4, oneWorker.getLaneCount());
+      assertEquals(1, oneWorker.getInitialWorkers());
+      assertEquals(4, fourWorkers.getInitialWorkers());
+      assertEquals(
+          runtimeTopologySignature(oneWorker.getLanePlan()),
+          runtimeTopologySignature(fourWorkers.getLanePlan()));
+      assertRuntimeWorkCoverage(oneWorker.getLanePlan(), runtimeDevices(), runtimePartitions());
+      assertRuntimeWorkCoverage(fourWorkers.getLanePlan(), runtimeDevices(), runtimePartitions());
+    }
+  }
+
+  @Test
+  public void runtimeLogicalLaneCapPreservesEveryOriginalWorkUnit() {
+    ScanParallelPlanner.Input input = input(8, true, false, false, false, true, false);
+    ScanParallelPlan original = planner.plan(input);
+    RuntimeScanLayout capped = planner.planRuntimeLayout(input, null, 2, 8);
+
+    assertEquals(ScanParallelPlan.Mode.TIME_PARTITION, capped.getLanePlan().getMode());
+    assertEquals(2, capped.getLaneCount());
+    assertEquals(2, capped.getInitialWorkers());
+    assertEquals(6, original.getWorkUnits().size());
+    assertEquals(
+        runtimeWorkUnitSignatures(original), runtimeWorkUnitSignatures(capped.getLanePlan()));
+    assertTrue(
+        capped.getLanePlan().getBuckets().stream()
+            .anyMatch(bucket -> bucket.getWorkUnits().size() > 1));
+    assertRuntimeWorkCoverage(capped.getLanePlan(), runtimeDevices(), runtimePartitions());
+  }
+
+  @Test
+  public void runtimeOneLogicalLaneKeepsAllWorkWithoutRelaxingScanSemantics() {
+    RuntimeScanLayout layout =
+        planner.planRuntimeLayout(input(8, false, false, false, true, false, true), null, 1, 4);
+
+    assertEquals(ScanParallelPlan.Mode.ORDERED, layout.getLanePlan().getMode());
+    assertEquals(1, layout.getLaneCount());
+    assertEquals(1, layout.getInitialWorkers());
+    assertEquals(8, layout.getLanePlan().getBuckets().get(0).getWorkUnits().size());
+    assertRuntimeWorkCoverage(layout.getLanePlan(), runtimeDevices(), runtimePartitions());
+  }
+
+  @Test
+  public void runtimeLaneAndWorkerCountsRespectOriginalInputDop() {
+    RuntimeScanLayout layout =
+        planner.planRuntimeLayout(input(4, true, false, false, false, false, false), null, 32, 32);
+
+    assertEquals(4, layout.getLanePlan().getInputDop());
+    assertEquals(4, layout.getLaneCount());
+    assertEquals(4, layout.getInitialWorkers());
+    assertRuntimeWorkCoverage(layout.getLanePlan(), runtimeDevices(), runtimePartitions());
+  }
+
+  @Test
+  public void runtimeWorkerCountAlsoClampsToAvailableWork() {
+    List<String> devices = Arrays.asList("d0", "d1");
+    ScanParallelPlanner.Input input =
+        new ScanParallelPlanner.Input(
+            devices, runtimePartitions(), 8, true, false, false, false, false, false);
+
+    RuntimeScanLayout layout = planner.planRuntimeLayout(input, null, 16, 16);
+    assertEquals(2, layout.getLaneCount());
+    assertEquals(2, layout.getInitialWorkers());
+    assertRuntimeWorkCoverage(layout.getLanePlan(), devices, runtimePartitions());
+  }
+
+  @Test
+  public void runtimeFineTimePartitionGroupingRetainsAllUnitsWhenLanesAreCompacted() {
+    ScanParallelPlanner.Input input = input(8, true, false, false, false, true, false);
+    DynamicScanGrouping grouping = runtimeFineTimePartitionGrouping();
+    RuntimeScanLayout oneWorker = planner.planRuntimeLayout(input, grouping, 4, 1);
+    RuntimeScanLayout fourWorkers = planner.planRuntimeLayout(input, grouping, 4, 4);
+
+    assertEquals(ScanParallelPlan.Mode.TIME_PARTITION, oneWorker.getLanePlan().getMode());
+    assertEquals(4, oneWorker.getLaneCount());
+    assertEquals(1, oneWorker.getInitialWorkers());
+    assertEquals(4, fourWorkers.getInitialWorkers());
+    assertEquals(24, oneWorker.getLanePlan().getWorkUnits().size());
+    assertEquals(
+        runtimeTopologySignature(oneWorker.getLanePlan()),
+        runtimeTopologySignature(fourWorkers.getLanePlan()));
+    assertRuntimeWorkCoverage(oneWorker.getLanePlan(), runtimeDevices(), runtimePartitions());
+
+    long assignedCost = 0;
+    for (ScanParallelPlan.Bucket bucket : oneWorker.getLanePlan().getBuckets()) {
+      assertTrue(bucket.getWorkUnits().size() > 1);
+      for (ScanParallelPlan.WorkUnit unit : bucket.getWorkUnits()) {
+        assertTrue(unit.isEstimateSupported());
+        assignedCost += unit.getEstimatedCost();
+      }
+    }
+    assertEquals(300L, assignedCost);
+  }
+
+  @Test
+  public void runtimeUnsafeInputsRemainSerialRegardlessOfRequestedWorkersOrGrouping() {
+    ScanParallelPlanner.Input[] inputs = {
+      input(1, true, false, false, false, false, false),
+      input(8, true, true, false, false, false, false),
+      input(8, true, false, true, false, false, false),
+      input(8, true, false, false, true, false, false),
+      input(8, false, false, false, false, false, false)
+    };
+    ScanParallelPlan.FallbackReason[] reasons = {
+      ScanParallelPlan.FallbackReason.DOP_NOT_GREATER_THAN_ONE,
+      ScanParallelPlan.FallbackReason.SPILLED_DEVICE_ENTRIES,
+      ScanParallelPlan.FallbackReason.GLOBAL_LIMIT_OR_OFFSET,
+      ScanParallelPlan.FallbackReason.ORDERING_NOT_PROVEN,
+      ScanParallelPlan.FallbackReason.PARALLEL_SCAN_NOT_ALLOWED
+    };
+    for (int index = 0; index < inputs.length; index++) {
+      // Supplying a valid fine-grained grouping must not bypass an earlier input-safety rejection.
+      RuntimeScanLayout layout =
+          planner.planRuntimeLayout(inputs[index], runtimeFineTimePartitionGrouping(), 4, 99);
+      assertEquals(ScanParallelPlan.Mode.SERIAL, layout.getLanePlan().getMode());
+      assertEquals(reasons[index], layout.getLanePlan().getFallbackReason());
+      assertEquals(1, layout.getLaneCount());
+      assertEquals(1, layout.getInitialWorkers());
+      assertEquals(
+          runtimeTopologySignature(planner.plan(inputs[index])),
+          runtimeTopologySignature(layout.getLanePlan()));
+      assertRuntimeWorkCoverage(layout.getLanePlan(), runtimeDevices(), runtimePartitions());
+    }
+  }
+
+  @Test
+  public void runtimeInvalidGroupingFallsBackToCompleteOriginalInput() {
+    DynamicScanGrouping missingDevice =
+        new DynamicScanGrouping(
+            ScanParallelPlan.Mode.DEVICE,
+            Collections.singletonList(runtimeDevices().subList(0, 7)),
+            Collections.singletonList(runtimePartitions()),
+            Collections.singletonList(7L),
+            Collections.singletonList(DynamicCostSource.EQUAL_WORK));
+    RuntimeScanLayout layout =
+        planner.planRuntimeLayout(
+            input(8, true, false, false, false, false, false), missingDevice, 4, 4);
+
+    assertEquals(ScanParallelPlan.Mode.SERIAL, layout.getLanePlan().getMode());
+    assertEquals(
+        ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_COVERAGE_MISMATCH,
+        layout.getLanePlan().getFallbackReason());
+    assertEquals(1, layout.getLaneCount());
+    assertEquals(1, layout.getInitialWorkers());
+    assertRuntimeWorkCoverage(layout.getLanePlan(), runtimeDevices(), runtimePartitions());
+  }
+
+  @Test
+  public void runtimeEmptyInputStaysSerialWithoutInventingWork() {
+    ScanParallelPlanner.Input input =
+        new ScanParallelPlanner.Input(
+            Collections.emptyList(),
+            runtimePartitions(),
+            8,
+            true,
+            false,
+            false,
+            false,
+            false,
+            true);
+    RuntimeScanLayout layout = planner.planRuntimeLayout(input, null, 4, 4);
+
+    assertEquals(ScanParallelPlan.Mode.SERIAL, layout.getLanePlan().getMode());
+    assertEquals(
+        ScanParallelPlan.FallbackReason.EMPTY_INPUT, layout.getLanePlan().getFallbackReason());
+    assertEquals(1, layout.getLaneCount());
+    assertEquals(1, layout.getInitialWorkers());
+    assertTrue(layout.getLanePlan().getWorkUnits().isEmpty());
+    assertTrue(layout.getLanePlan().getBuckets().get(0).getWorkUnits().isEmpty());
+  }
+
+  @Test
+  public void runtimeLayoutRejectsNonpositiveLaneAndWorkerRequests() {
+    int[][] invalidRequests = {{0, 1}, {-1, 1}, {4, 0}, {4, -1}};
+    for (int[] request : invalidRequests) {
+      try {
+        planner.planRuntimeLayout(
+            input(8, true, false, false, false, false, false), null, request[0], request[1]);
+        fail("Expected invalid runtime request to be rejected: " + Arrays.toString(request));
+      } catch (IllegalArgumentException expected) {
+        // Requests are invalid even though the scan itself could otherwise be parallelized.
+      }
+    }
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void runtimeLayoutConstructorRejectsZeroWorkers() {
+    new RuntimeScanLayout(planner.plan(input(4, true, false, false, false, false, false)), 0);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void runtimeLayoutConstructorRejectsMoreWorkersThanLogicalLanes() {
+    ScanParallelPlan plan = planner.plan(input(4, true, false, false, false, false, false));
+    new RuntimeScanLayout(plan, plan.getPipelineCount() + 1);
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void runtimeLayoutConstructorRejectsMissingPlan() {
+    new RuntimeScanLayout(null, 1);
+  }
+
+  private static DynamicScanGrouping runtimeFineTimePartitionGrouping() {
+    List<List<String>> devices = new ArrayList<>();
+    for (String device : runtimeDevices()) {
+      devices.add(Collections.singletonList(device));
+    }
+    List<List<Long>> partitions = new ArrayList<>();
+    for (Long partition : runtimePartitions()) {
+      partitions.add(Collections.singletonList(partition));
+    }
+    List<Long> costs = new ArrayList<>();
+    List<DynamicCostSource> sources = new ArrayList<>();
+    for (int index = 1; index <= devices.size() * partitions.size(); index++) {
+      costs.add((long) index);
+      sources.add(DynamicCostSource.TSFILE_BYTES);
+    }
+    return new DynamicScanGrouping(
+        ScanParallelPlan.Mode.TIME_PARTITION, devices, partitions, costs, sources);
+  }
+
+  private static List<String> runtimeDevices() {
+    return Arrays.asList("d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7");
+  }
+
+  private static List<Long> runtimePartitions() {
+    return Arrays.asList(0L, 1L, 2L);
+  }
+
+  private static List<String> runtimeWorkUnitSignatures(ScanParallelPlan plan) {
+    List<String> signatures = new ArrayList<>();
+    for (ScanParallelPlan.WorkUnit unit : plan.getWorkUnits()) {
+      signatures.add(
+          unit.getSourceId()
+              + "|"
+              + unit.getDevices()
+              + "|"
+              + unit.getTimePartitions()
+              + "|"
+              + unit.getEstimatedCost()
+              + "|"
+              + unit.isEstimateSupported());
+    }
+    return signatures;
+  }
+
+  private static List<String> runtimeTopologySignature(ScanParallelPlan plan) {
+    List<String> signature = new ArrayList<>();
+    signature.add(plan.getMode().name());
+    signature.add(plan.getFallbackReason().name());
+    signature.add(Integer.toString(plan.getInputDop()));
+    signature.add(Integer.toString(plan.getTargetParallelism()));
+    signature.add(plan.getDeviceGroups().toString());
+    signature.add(plan.getTimePartitionGroups().toString());
+    signature.add(plan.getPlanIdentityChecksum());
+    signature.addAll(runtimeWorkUnitSignatures(plan));
+    for (ScanParallelPlan.Bucket bucket : plan.getBuckets()) {
+      List<String> sources = new ArrayList<>();
+      for (ScanParallelPlan.WorkUnit unit : bucket.getWorkUnits()) {
+        sources.add(unit.getSourceId());
+      }
+      signature.add(bucket.getBucketId() + "|" + bucket.getEstimatedCost() + "|" + sources);
+    }
+    return signature;
+  }
+
+  private static void assertRuntimeWorkCoverage(
+      ScanParallelPlan plan, List<String> expectedDevices, List<Long> expectedPartitions) {
+    Map<String, Integer> expected = new HashMap<>();
+    for (String device : expectedDevices) {
+      for (Long partition : expectedPartitions) {
+        expected.put(device + "@" + partition, 1);
+      }
+    }
+    Map<String, Integer> actual = new HashMap<>();
+    Set<String> sources = new HashSet<>();
+    for (ScanParallelPlan.WorkUnit unit : plan.getWorkUnits()) {
+      assertTrue("Duplicate work-unit identity", sources.add(unit.getSourceId()));
+      for (String device : unit.getDevices()) {
+        for (Long partition : unit.getTimePartitions()) {
+          actual.merge(device + "@" + partition, 1, Integer::sum);
+        }
+      }
+    }
+    assertEquals(
+        "Work units must cover the original device/time product exactly once", expected, actual);
+
+    Set<String> assigned = new HashSet<>();
+    for (ScanParallelPlan.Bucket bucket : plan.getBuckets()) {
+      for (ScanParallelPlan.WorkUnit unit : bucket.getWorkUnits()) {
+        assertTrue("Work unit assigned to multiple lanes", assigned.add(unit.getSourceId()));
+      }
+    }
+    assertEquals("Every work unit must have exactly one logical lane", sources, assigned);
   }
 }
