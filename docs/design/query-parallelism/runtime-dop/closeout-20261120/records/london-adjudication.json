@@ -1,0 +1,878 @@
+{
+  "status": "LONDON_FOUR_FROZEN_PAIRS_INDEPENDENTLY_RECOMPUTED",
+  "nativeSummarySha256": "39d1734da9bd65604161219741b0351443279594c8043d0664aa468b5e82d4fe",
+  "p95GateSeconds": 1.83053618375,
+  "backgroundGatePassBySelector": {
+    "joint": 4,
+    "sequential": 3
+  },
+  "completePairs": 4,
+  "qualifiedPairs": 2,
+  "medianJointMinusSequentialForCompletePairs": {
+    "foregroundSeconds": -1.2312436775000002,
+    "backgroundP95Seconds": -0.14916869649999998
+  },
+  "pairs": {
+    "pair-01": {
+      "arms": {
+        "sequential": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start2-off",
+          "actualStartupByNode": {
+            "2": 2,
+            "1": 2
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 86.990203469,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 3.93808509,
+          "lastBackgroundDrainOffsetSeconds": 16.899454218,
+          "gatePass": false,
+          "commonActiveSeconds": 43.60334287,
+          "phaseCoverage": false,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": false,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "278fdad8a3cd869038abee63b642f90d0378e631ccb48eedb8c6be48fcf1d0e6",
+            "profile": "start2-off",
+            "enableSharedPressureFeedback": false,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 516,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 3,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              },
+              "1": {
+                "controllerSamples": 749,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 7,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              }
+            },
+            "sharedResizeRequests": 0,
+            "timingConsistentSharedActions": 0
+          },
+          "nativeReceiptSha256": "8e497cdc5d8bc701da0f464d73fa4cb370534204981e1df6de7a11665d624d17"
+        },
+        "joint": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start8-on",
+          "actualStartupByNode": {
+            "2": 8,
+            "1": 8
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 74.492850479,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 1.498165747,
+          "lastBackgroundDrainOffsetSeconds": 16.849612714,
+          "gatePass": true,
+          "commonActiveSeconds": 49.027275742,
+          "phaseCoverage": true,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": true,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "763c65deb47459e6bea7f494684389b5794cacf27b568cabb8cb4e28b0376b52",
+            "profile": "start8-on",
+            "enableSharedPressureFeedback": true,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 493,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 142,
+                  "outsidePhases|CONTENDED": 4,
+                  "recovery|CONTENDED": 7,
+                  "recovery|RECOVERING": 63,
+                  "outsidePhases|RECOVERING": 214
+                },
+                "sharedPressureResizeRequests": 5,
+                "groupAppliedResizes": 9,
+                "timingConsistentSharedActions": 5,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 25,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2295422986,
+                    "from": 8,
+                    "requested": 7,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 2,
+                    "timingDelayNanos": 597308,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 30,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2796853744,
+                    "from": 7,
+                    "requested": 6,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 3,
+                    "timingDelayNanos": 321609,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 35,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 3298171382,
+                    "from": 6,
+                    "requested": 5,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 4,
+                    "timingDelayNanos": 407119,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 40,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 3799320740,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 362119,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 188,
+                    "reason": "SHARED_PRESSURE_RECOVERY",
+                    "phase": "recovery",
+                    "relativeNanos": 18630747951,
+                    "from": 1,
+                    "requested": 2,
+                    "advicePhase": "RECOVERING",
+                    "adviceWidth": 8,
+                    "timingConsistentEventSequence": 9,
+                    "timingDelayNanos": 402499,
+                    "candidateEvents": 1,
+                    "appliedPhase": "recovery"
+                  }
+                ]
+              },
+              "1": {
+                "controllerSamples": 633,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 142,
+                  "outsidePhases|CONTENDED": 3,
+                  "recovery|CONTENDED": 8,
+                  "recovery|RECOVERING": 62,
+                  "outsidePhases|RECOVERING": 374
+                },
+                "sharedPressureResizeRequests": 2,
+                "groupAppliedResizes": 9,
+                "timingConsistentSharedActions": 2,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 25,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2291354879,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 661507,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 194,
+                    "reason": "SHARED_PRESSURE_RECOVERY",
+                    "phase": "recovery",
+                    "relativeNanos": 19271938902,
+                    "from": 1,
+                    "requested": 2,
+                    "advicePhase": "RECOVERING",
+                    "adviceWidth": 5,
+                    "timingConsistentEventSequence": 9,
+                    "timingDelayNanos": 538799,
+                    "candidateEvents": 1,
+                    "appliedPhase": "recovery"
+                  }
+                ]
+              }
+            },
+            "sharedResizeRequests": 7,
+            "timingConsistentSharedActions": 7
+          },
+          "nativeReceiptSha256": "75f6716016789233181d3fd3d2b470c3137d4d501d247c7239b6eeec63ee2516"
+        }
+      },
+      "bothComplete": true,
+      "bothQualified": false,
+      "jointMinusSequentialForCompletePair": {
+        "foregroundSeconds": -12.497352989999996,
+        "backgroundP95Seconds": -2.4399193429999997
+      }
+    },
+    "pair-02": {
+      "arms": {
+        "joint": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start8-on",
+          "actualStartupByNode": {
+            "2": 8,
+            "1": 8
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 65.074353058,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 1.347958986,
+          "lastBackgroundDrainOffsetSeconds": 16.881864489,
+          "gatePass": true,
+          "commonActiveSeconds": 45.824777062,
+          "phaseCoverage": true,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": true,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "8241d07b218144795512fa2656104e53a696534eaca487e5058152ae04d457ba",
+            "profile": "start8-on",
+            "enableSharedPressureFeedback": true,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 560,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 145,
+                  "outsidePhases|CONTENDED": 4,
+                  "recovery|CONTENDED": 7,
+                  "recovery|RECOVERING": 63,
+                  "outsidePhases|RECOVERING": 284
+                },
+                "sharedPressureResizeRequests": 2,
+                "groupAppliedResizes": 7,
+                "timingConsistentSharedActions": 2,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 22,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 1984383036,
+                    "from": 6,
+                    "requested": 5,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 4,
+                    "timingDelayNanos": 762178,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 27,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2486382890,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 543639,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  }
+                ]
+              },
+              "1": {
+                "controllerSamples": 460,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 142,
+                  "outsidePhases|CONTENDED": 4,
+                  "recovery|CONTENDED": 7,
+                  "recovery|RECOVERING": 63,
+                  "outsidePhases|RECOVERING": 199
+                },
+                "sharedPressureResizeRequests": 2,
+                "groupAppliedResizes": 7,
+                "timingConsistentSharedActions": 2,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 25,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2271329546,
+                    "from": 6,
+                    "requested": 5,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 4,
+                    "timingDelayNanos": 465188,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 30,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2772707851,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 368919,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  }
+                ]
+              }
+            },
+            "sharedResizeRequests": 4,
+            "timingConsistentSharedActions": 4
+          },
+          "nativeReceiptSha256": "c01b530118bad976eb1fe1b9a415a7c272f4e00c178e735f2c9f9ee27d13a179"
+        },
+        "sequential": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start2-off",
+          "actualStartupByNode": {
+            "2": 2,
+            "1": 2
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 58.322374194,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 1.297208017,
+          "lastBackgroundDrainOffsetSeconds": 16.806905266,
+          "gatePass": true,
+          "commonActiveSeconds": 46.188727438,
+          "phaseCoverage": true,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": true,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "8f5935c2ec177c3cb47603d029c12818078857797ac384257ec4ac218adfd755",
+            "profile": "start2-off",
+            "enableSharedPressureFeedback": false,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 492,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 1,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              },
+              "1": {
+                "controllerSamples": 463,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 1,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              }
+            },
+            "sharedResizeRequests": 0,
+            "timingConsistentSharedActions": 0
+          },
+          "nativeReceiptSha256": "c9ad0d9bcf0ed8d4615c9cff05e16f55384e32964721e5a366fa6402963bcc77"
+        }
+      },
+      "bothComplete": true,
+      "bothQualified": true,
+      "jointMinusSequentialForCompletePair": {
+        "foregroundSeconds": 6.751978864000002,
+        "backgroundP95Seconds": 0.05075096900000009
+      }
+    },
+    "pair-03": {
+      "arms": {
+        "joint": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start8-on",
+          "actualStartupByNode": {
+            "2": 8,
+            "1": 8
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 72.812774063,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 1.260227964,
+          "lastBackgroundDrainOffsetSeconds": 16.820703665,
+          "gatePass": true,
+          "commonActiveSeconds": 55.007644123,
+          "phaseCoverage": true,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": true,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "edcdd86749abf67e614ec35ab93ecbddbe5c9b415a992327b708fcea26db966e",
+            "profile": "start8-on",
+            "enableSharedPressureFeedback": true,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 602,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 145,
+                  "outsidePhases|CONTENDED": 3,
+                  "recovery|CONTENDED": 8,
+                  "recovery|RECOVERING": 62,
+                  "outsidePhases|RECOVERING": 327
+                },
+                "sharedPressureResizeRequests": 4,
+                "groupAppliedResizes": 7,
+                "timingConsistentSharedActions": 4,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 22,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2035071411,
+                    "from": 8,
+                    "requested": 7,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 2,
+                    "timingDelayNanos": 796278,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 27,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2537187742,
+                    "from": 7,
+                    "requested": 6,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 3,
+                    "timingDelayNanos": 388659,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 32,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 3038534474,
+                    "from": 6,
+                    "requested": 5,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 4,
+                    "timingDelayNanos": 432069,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 37,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 3539780527,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 512148,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  }
+                ]
+              },
+              "1": {
+                "controllerSamples": 552,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 145,
+                  "outsidePhases|CONTENDED": 3,
+                  "recovery|CONTENDED": 8,
+                  "recovery|RECOVERING": 62,
+                  "outsidePhases|RECOVERING": 292
+                },
+                "sharedPressureResizeRequests": 5,
+                "groupAppliedResizes": 9,
+                "timingConsistentSharedActions": 5,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 22,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2010045726,
+                    "from": 8,
+                    "requested": 7,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 2,
+                    "timingDelayNanos": 837908,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 27,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2512076916,
+                    "from": 7,
+                    "requested": 6,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 3,
+                    "timingDelayNanos": 466469,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 32,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 3013630208,
+                    "from": 6,
+                    "requested": 5,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 4,
+                    "timingDelayNanos": 436689,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 37,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 3515273550,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 594598,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 268,
+                    "reason": "SHARED_PRESSURE_RECOVERY",
+                    "phase": "outsidePhases",
+                    "relativeNanos": 26678522749,
+                    "from": 1,
+                    "requested": 2,
+                    "advicePhase": "RECOVERING",
+                    "adviceWidth": 8,
+                    "timingConsistentEventSequence": 9,
+                    "timingDelayNanos": 9905870,
+                    "candidateEvents": 1,
+                    "appliedPhase": "outsidePhases"
+                  }
+                ]
+              }
+            },
+            "sharedResizeRequests": 9,
+            "timingConsistentSharedActions": 9
+          },
+          "nativeReceiptSha256": "21be0805e368faff4334cb8210586f2589a67e68d41a51bd2d63d8038b0fa25a"
+        },
+        "sequential": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start2-off",
+          "actualStartupByNode": {
+            "2": 2,
+            "1": 2
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 65.928660968,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 1.609316326,
+          "lastBackgroundDrainOffsetSeconds": 16.903593125,
+          "gatePass": true,
+          "commonActiveSeconds": 47.193713405,
+          "phaseCoverage": false,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": false,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "8118468b50b72835d6976e0b9016e94494f853f7d91fb790739917a558601f7d",
+            "profile": "start2-off",
+            "enableSharedPressureFeedback": false,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 506,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 1,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              },
+              "1": {
+                "controllerSamples": 536,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 1,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              }
+            },
+            "sharedResizeRequests": 0,
+            "timingConsistentSharedActions": 0
+          },
+          "nativeReceiptSha256": "33e39cfd609d21cf4448db910a4ab1746cef07c0c79527865c230b1308db59ea"
+        }
+      },
+      "bothComplete": true,
+      "bothQualified": false,
+      "jointMinusSequentialForCompletePair": {
+        "foregroundSeconds": 6.884113095000004,
+        "backgroundP95Seconds": -0.34908836200000004
+      }
+    },
+    "pair-04": {
+      "arms": {
+        "sequential": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start2-off",
+          "actualStartupByNode": {
+            "2": 2,
+            "1": 2
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 71.138739048,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 1.282384548,
+          "lastBackgroundDrainOffsetSeconds": 16.81516476,
+          "gatePass": true,
+          "commonActiveSeconds": 44.493718347,
+          "phaseCoverage": true,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": true,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "b2938faf01f4ae610f9891bae12b9a20cf23ac876b9c1f1d4ca5711a09356b0b",
+            "profile": "start2-off",
+            "enableSharedPressureFeedback": false,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 600,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 3,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              },
+              "1": {
+                "controllerSamples": 448,
+                "suggestions": 0,
+                "wireAdviceByPhase": {},
+                "sharedPressureResizeRequests": 0,
+                "groupAppliedResizes": 1,
+                "timingConsistentSharedActions": 0,
+                "requestTrace": []
+              }
+            },
+            "sharedResizeRequests": 0,
+            "timingConsistentSharedActions": 0
+          },
+          "nativeReceiptSha256": "600b247042e3a6bebf65acd890cf3f2c5b8aebfdf4c6dee2c837903e82fed6a0"
+        },
+        "joint": {
+          "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+          "profile": "start8-on",
+          "actualStartupByNode": {
+            "2": 8,
+            "1": 8
+          },
+          "foregroundRows": 2898043,
+          "foregroundSeconds": 61.924272829,
+          "foregroundSha256": "696f8ee269a19070a7ca882832bbfd09f1be3da0e1e0e170398b098f56a0d920",
+          "backgroundCompleted": 120,
+          "backgroundRejected": 0,
+          "backgroundErrors": 0,
+          "backgroundP95Seconds": 1.60189709,
+          "lastBackgroundDrainOffsetSeconds": 16.883064931,
+          "gatePass": true,
+          "commonActiveSeconds": 46.150711363,
+          "phaseCoverage": true,
+          "twoSourcesObservedAcrossSecondPulse": true,
+          "qualifiedCoverageAndCorrectness": true,
+          "actuation": {
+            "queryForegroundLayoutSha256": "6ca973c4c0cc75982724fb5409d0881745ba89e0bcc51287920ec8193cded21e",
+            "timelineSha256": "f8f1129d3a7b494bec5ed39b0ce8a4254119edab66168ff4fbae8dfc84a2541b",
+            "profile": "start8-on",
+            "enableSharedPressureFeedback": true,
+            "sourceNodes": {
+              "2": {
+                "controllerSamples": 510,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 145,
+                  "outsidePhases|CONTENDED": 4,
+                  "recovery|CONTENDED": 7,
+                  "recovery|RECOVERING": 62,
+                  "outsidePhases|RECOVERING": 239
+                },
+                "sharedPressureResizeRequests": 3,
+                "groupAppliedResizes": 8,
+                "timingConsistentSharedActions": 3,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 25,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2299164185,
+                    "from": 6,
+                    "requested": 5,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 4,
+                    "timingDelayNanos": 455249,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 30,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2820882210,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 393819,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 474,
+                    "reason": "SHARED_PRESSURE_RECOVERY",
+                    "phase": "outsidePhases",
+                    "relativeNanos": 47345424269,
+                    "from": 1,
+                    "requested": 2,
+                    "advicePhase": "RECOVERING",
+                    "adviceWidth": 6,
+                    "timingConsistentEventSequence": 9,
+                    "timingDelayNanos": 719888,
+                    "candidateEvents": 1,
+                    "appliedPhase": "outsidePhases"
+                  }
+                ]
+              },
+              "1": {
+                "controllerSamples": 463,
+                "suggestions": 0,
+                "wireAdviceByPhase": {
+                  "high|CONTENDED": 145,
+                  "outsidePhases|CONTENDED": 4,
+                  "recovery|CONTENDED": 7,
+                  "recovery|RECOVERING": 63,
+                  "outsidePhases|RECOVERING": 204
+                },
+                "sharedPressureResizeRequests": 3,
+                "groupAppliedResizes": 7,
+                "timingConsistentSharedActions": 3,
+                "requestTrace": [
+                  {
+                    "controllerSampleSequence": 25,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2277762945,
+                    "from": 7,
+                    "requested": 6,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 3,
+                    "timingDelayNanos": 442549,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 30,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 2790890485,
+                    "from": 6,
+                    "requested": 5,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 4,
+                    "timingDelayNanos": 555258,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  },
+                  {
+                    "controllerSampleSequence": 35,
+                    "reason": "SHARED_PRESSURE_CONTRACTION",
+                    "phase": "high",
+                    "relativeNanos": 3304609342,
+                    "from": 5,
+                    "requested": 4,
+                    "advicePhase": "CONTENDED",
+                    "adviceWidth": 4,
+                    "timingConsistentEventSequence": 5,
+                    "timingDelayNanos": 338469,
+                    "candidateEvents": 1,
+                    "appliedPhase": "high"
+                  }
+                ]
+              }
+            },
+            "sharedResizeRequests": 6,
+            "timingConsistentSharedActions": 6
+          },
+          "nativeReceiptSha256": "490df61fccdf0b0dcad9403b4386ed83a781248f8eabf8051c2635d6c931bce9"
+        }
+      },
+      "bothComplete": true,
+      "bothQualified": true,
+      "jointMinusSequentialForCompletePair": {
+        "foregroundSeconds": -9.214466219000002,
+        "backgroundP95Seconds": 0.319512542
+      }
+    }
+  },
+  "scope": "One delayed-burst real London workload on two DataNodes sharing one host. Width and feedback differ. Every pair is shown, including failures. A tail-threshold pass is not a production SLO."
+}

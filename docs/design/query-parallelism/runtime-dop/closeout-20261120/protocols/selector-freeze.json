@@ -1,0 +1,125 @@
+{
+  "status": "NON_ALIASED_JOINT_AND_SEQUENTIAL_CONFIGURATIONS_FROZEN_ON_ELECTRICITY_ONLY",
+  "entrySha256": "01fc4ef640fc046291e4e2bf891992b97f46cb267f71a9cd40c085b497a41b76",
+  "trainingPins": [
+    "b237cb78814f1ee1944a4649657c20968aee3bf7c0811d849bef035c45a495ad",
+    "1f9028fdae7eab8409c3b9d79abf581afaa43b4281859c2fb52be7e5259b98ab",
+    "f7986768e057aa55a178deb32d15c1ca81d87f5dcda218c3ea2de4dcbff4b726"
+  ],
+  "matchedTrainingBlocks": 4,
+  "trainingP95Seconds": 6.843839908,
+  "stages": {
+    "firstChooseStartupWithFeedbackOff": {
+      "winner": "start2-off",
+      "eligibleBlocks": {
+        "start2-off": 4,
+        "start8-off": 0
+      },
+      "scores": {
+        "start2-off": {
+          "worstRegret": 1.0,
+          "medianCpu": 1646.965,
+          "worstNormalizedP95": 0.5485062958021489,
+          "blockRegret": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "thenChooseFeedbackAtFixedStartup": {
+      "winner": "start2-off",
+      "eligibleBlocks": {
+        "start2-off": 4,
+        "start2-on": 4
+      },
+      "scores": {
+        "start2-off": {
+          "worstRegret": 1.0,
+          "medianCpu": 1646.965,
+          "worstNormalizedP95": 0.5485062958021489,
+          "blockRegret": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "start2-on": {
+          "worstRegret": 1.0528226338531796,
+          "medianCpu": 1653.67,
+          "worstNormalizedP95": 0.5660062885854402,
+          "blockRegret": [
+            1.0322467160750386,
+            1.0428895536749152,
+            1.0528226338531796,
+            1.0125249897937918
+          ]
+        }
+      }
+    },
+    "jointGridSentinel": {
+      "winner": "start8-on",
+      "eligibleBlocks": {
+        "start2-off": 4,
+        "start2-on": 4,
+        "start8-off": 0,
+        "start8-on": 4
+      },
+      "scores": {
+        "start2-off": {
+          "worstRegret": 1.4660364334654465,
+          "medianCpu": 1646.965,
+          "worstNormalizedP95": 0.5485062958021489,
+          "blockRegret": [
+            1.2813932475515106,
+            1.4660364334654465,
+            1.41708493397961,
+            1.2879769494376583
+          ]
+        },
+        "start2-on": {
+          "worstRegret": 1.528914081767944,
+          "medianCpu": 1653.67,
+          "worstNormalizedP95": 0.5660062885854402,
+          "blockRegret": [
+            1.3227139717857757,
+            1.528914081767944,
+            1.4919390925860723,
+            1.3041088475840041
+          ]
+        },
+        "start8-on": {
+          "worstRegret": 1.0,
+          "medianCpu": 1714.415,
+          "worstNormalizedP95": 0.6882163695112548,
+          "blockRegret": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    }
+  },
+  "candidateRows": {
+    "joint": {
+      "profile": "start8-on",
+      "actualStartupWorkersPerSource": 8,
+      "sharedPressureFeedback": true
+    },
+    "sequential": {
+      "profile": "start2-off",
+      "actualStartupWorkersPerSource": 2,
+      "sharedPressureFeedback": false
+    }
+  },
+  "nextProtocol": [
+    "A new held-out workload or arrival trace plus background-only calibration must be separately frozen before running; the r38 paired trace was already observed and cannot become this holdout.",
+    "Both arms run the same released binary, foreground SQL, complete result oracle, logical layout, and offered-load schedule. Verify actual startup width and configured feedback on both sources, and keep all assigned failures.",
+    "Comparison between two frozen configuration selectors; no claim of learned per-query choice or generalization from training."
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "status": "FOUR_FROZEN_SELECTOR_PAIRS_FINISHED_PENDING_INDEPENDENT_AUDIT",
+  "blocks": {
+    "pair-01": {
+      "sequential": {
+        "role": "01-sequential",
+        "profile": "start2-off",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": false,
+        "gateMet": false,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 86.990203469,
+        "backgroundP95Seconds": 3.93808509,
+        "receiptSha256": "8e497cdc5d8bc701da0f464d73fa4cb370534204981e1df6de7a11665d624d17"
+      },
+      "joint": {
+        "role": "02-joint",
+        "profile": "start8-on",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": true,
+        "gateMet": true,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 74.492850479,
+        "backgroundP95Seconds": 1.498165747,
+        "receiptSha256": "75f6716016789233181d3fd3d2b470c3137d4d501d247c7239b6eeec63ee2516"
+      }
+    },
+    "pair-02": {
+      "joint": {
+        "role": "01-joint",
+        "profile": "start8-on",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": true,
+        "gateMet": true,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 65.074353058,
+        "backgroundP95Seconds": 1.347958986,
+        "receiptSha256": "c01b530118bad976eb1fe1b9a415a7c272f4e00c178e735f2c9f9ee27d13a179"
+      },
+      "sequential": {
+        "role": "02-sequential",
+        "profile": "start2-off",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": true,
+        "gateMet": true,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 58.322374194,
+        "backgroundP95Seconds": 1.297208017,
+        "receiptSha256": "c9ad0d9bcf0ed8d4615c9cff05e16f55384e32964721e5a366fa6402963bcc77"
+      }
+    },
+    "pair-03": {
+      "joint": {
+        "role": "01-joint",
+        "profile": "start8-on",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": true,
+        "gateMet": true,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 72.812774063,
+        "backgroundP95Seconds": 1.260227964,
+        "receiptSha256": "21be0805e368faff4334cb8210586f2589a67e68d41a51bd2d63d8038b0fa25a"
+      },
+      "sequential": {
+        "role": "02-sequential",
+        "profile": "start2-off",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": false,
+        "gateMet": true,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 65.928660968,
+        "backgroundP95Seconds": 1.609316326,
+        "receiptSha256": "33e39cfd609d21cf4448db910a4ab1746cef07c0c79527865c230b1308db59ea"
+      }
+    },
+    "pair-04": {
+      "sequential": {
+        "role": "01-sequential",
+        "profile": "start2-off",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": true,
+        "gateMet": true,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 71.138739048,
+        "backgroundP95Seconds": 1.282384548,
+        "receiptSha256": "600b247042e3a6bebf65acd890cf3f2c5b8aebfdf4c6dee2c837903e82fed6a0"
+      },
+      "joint": {
+        "role": "02-joint",
+        "profile": "start8-on",
+        "status": "VERIFIED_DELAYED_SELECTOR_TRIAL",
+        "qualifiedCoverageAndCorrectness": true,
+        "gateMet": true,
+        "completed": 120,
+        "rejected": 0,
+        "errors": 0,
+        "foregroundSeconds": 61.924272829,
+        "backgroundP95Seconds": 1.60189709,
+        "receiptSha256": "490df61fccdf0b0dcad9403b4386ed83a781248f8eabf8051c2635d6c931bce9"
+      }
+    }
+  },
+  "selectorFreezeSha256": "d8d5e3e952036e568779bbb15805bcb189ab03b8611c5320b838a3f8f5983e5e",
+  "arrivalPlanSha256": "63e60bfd23ab5a8b1cfbc2b0f236bef57a8e270a468ab7b9857d320afef22f9d",
+  "thresholdSha256": "38ae4f28e0c3c84201b13df41de6132553154bc3ac6c36411b0f02999e9c8da6",
+  "preexecutionSha256": "0c978b86965b1839cd3304292577e114ddcf49255875bc10349b08294771886a",
+  "p95GateSeconds": 1.83053618375,
+  "scope": "All assigned cells preserved. Configurations differ in startup and feedback. No verified effect in this native summary."
+}

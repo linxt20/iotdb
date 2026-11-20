@@ -1,0 +1,54 @@
+{
+  "status": "LONDON_DELAYED_SELECTOR_BACKGROUND_ONLY_THRESHOLD_FROZEN",
+  "gateP95Seconds": 1.83053618375,
+  "inputNativeSummarySha256": "dbfe465ced9076e9ee349d95e0dfd37638c80bd6c5db8db636558122369e1a9a",
+  "preregistrationSha256": "338d06eaf6f63001a0ce3f5d6ea8fc72c77e6fce485e3a55a0a9a46305705532",
+  "independentQualificationSha256": "4b60eed1a2f0c0d2c58a2ad51ae1b9a72ae6a6b398f00302527cba99cd541e2e",
+  "perTrial": {
+    "background-01": {
+      "status": "BACKGROUND_ONLY_ALL_OFFERS_DRAINED_ON_TIME",
+      "offered": 120,
+      "completed": 120,
+      "clientRejected": 0,
+      "serverFailed": 0,
+      "p95Seconds": 1.464428947,
+      "lastDrainSecondsSinceOrigin": 16.911855475,
+      "receiptSha256": "442e99f489e1984c73ff1e7781714a8a6f8903b9a5236e11b5f43d54e03a7b81",
+      "qualified": true
+    },
+    "background-02": {
+      "status": "BACKGROUND_ONLY_ALL_OFFERS_DRAINED_ON_TIME",
+      "offered": 120,
+      "completed": 120,
+      "clientRejected": 0,
+      "serverFailed": 0,
+      "p95Seconds": 1.259408408,
+      "lastDrainSecondsSinceOrigin": 16.803487408,
+      "receiptSha256": "29348a39bd7017b69079812ac4fe44b5304bee90926fd4eabe67336602ebec31",
+      "qualified": true
+    },
+    "background-03": {
+      "status": "BACKGROUND_ONLY_ALL_OFFERS_DRAINED_ON_TIME",
+      "offered": 120,
+      "completed": 120,
+      "clientRejected": 0,
+      "serverFailed": 0,
+      "p95Seconds": 1.375754153,
+      "lastDrainSecondsSinceOrigin": 16.841770718,
+      "receiptSha256": "24fa3acf492815204e9a92c31a4b0fcc8938b9e3859543d9ce57c67b8dda739e",
+      "qualified": true
+    },
+    "background-04": {
+      "status": "BACKGROUND_ONLY_ALL_OFFERS_DRAINED_ON_TIME",
+      "offered": 120,
+      "completed": 120,
+      "clientRejected": 0,
+      "serverFailed": 0,
+      "p95Seconds": 1.293360384,
+      "lastDrainSecondsSinceOrigin": 17.001854503,
+      "receiptSha256": "12ac655ef98f4eeffaab9c52d5ed184c47ee986d2fdc8f1fcc5b4e4ac95d9ab4",
+      "qualified": true
+    }
+  },
+  "scope": "Preregistered standalone empirical threshold for the controlled load; no feedback treatment or production SLO."
+}

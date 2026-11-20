@@ -1,0 +1,263 @@
+{
+  "oracleSha256": "766e7e9396105f11cd7b95f86ed01b401fc11788d8136db77c39898ab89b5106",
+  "qualification": {
+    "status": "PARTITION_MAJOR_IDENTICAL_PHYSICAL_FIXTURE_AND_NATIVE_LAYOUT",
+    "path": "/tmp/Dev_0/sxing-iotdb-warm-partition-qualification-20261120-03",
+    "nativeSummarySha256": "94c8e41a95b46fa6ed214da4e973bce670cf66b26b0cb5bf270c8bbc06037680",
+    "flags": {
+      "noWalDrivenFlush": true,
+      "marginAndNaturalWidthGate": true,
+      "exactMatchedPhysicalInventory": true,
+      "matchedPredictedPartitionClassMatrix": true,
+      "samePostGrowthLayout": true,
+      "identicalInputProjection": true
+    },
+    "matchedGatePass": true,
+    "publisherWarningsObserved": false,
+    "arms": {
+      "qa": {
+        "rawDigestCounts": {
+          "04dd02b7d355c9ebb69b3fcc512f58ecb6459c5af160e80f9875a83439002de5": 740740,
+          "bd798f32a8a11c6b73b515a7a2b947eebf074f6448096b4a8c4c0fa502e7313a": 740740
+        },
+        "typedRowsVerified": 1481480,
+        "readBackOfRebalancedSameSourceSnapshots": {
+          "2": [],
+          "1": []
+        },
+        "physical": {
+          "datanode-1": {
+            "addedFiles": 419,
+            "totalBytes": 315630704
+          },
+          "datanode-2": {
+            "addedFiles": 419,
+            "totalBytes": 320619732
+          }
+        },
+        "nodes": {
+          "2": {
+            "estimate": 3,
+            "startup": 3,
+            "action": "KEEP_STATIC",
+            "history": "NO_NEW_FEEDBACK",
+            "joined": 0,
+            "statSha256": "759f55b78ceef41de273bbf41ea6bf441532e8a09e6a10086e6fe452523da4a7"
+          },
+          "1": {
+            "estimate": 3,
+            "startup": 3,
+            "action": "KEEP_STATIC",
+            "history": "NO_NEW_FEEDBACK",
+            "joined": 0,
+            "statSha256": "cfa638d34a64b745d4e1c176ab9adebcbc52e74d092cf1e360e27b9145550aa4"
+          }
+        },
+        "logs": {
+          "datanode-1": {
+            "sha256": "b1e6549f5a1bb347c581d964a5846eb69e9e0368a7bc8913025180534ecde083",
+            "walFlushes": [],
+            "publisherWarnings": []
+          },
+          "datanode-2": {
+            "sha256": "e07f220067c3c496f4b8467d68379703f4565856743a722e201930179f5d2ca2",
+            "walFlushes": [],
+            "publisherWarnings": []
+          }
+        }
+      },
+      "qb": {
+        "rawDigestCounts": {
+          "f2a34eb381c6d6632eefcbe6bf792d5497d805419f94f352df5e7dabb56cfd3a": 740740,
+          "87a00fdf14ed1cfac0dfc8678c78852b87f758dfcb34df5555e2bac2739a98d6": 740740
+        },
+        "typedRowsVerified": 1481480,
+        "readBackOfRebalancedSameSourceSnapshots": {
+          "2": [],
+          "1": []
+        },
+        "physical": {
+          "datanode-1": {
+            "addedFiles": 419,
+            "totalBytes": 315630704
+          },
+          "datanode-2": {
+            "addedFiles": 419,
+            "totalBytes": 320619732
+          }
+        },
+        "nodes": {
+          "2": {
+            "estimate": 3,
+            "startup": 3,
+            "action": "KEEP_STATIC",
+            "history": "NO_NEW_FEEDBACK",
+            "joined": 0,
+            "statSha256": "a7ef121d69071c113408cc693ece2f8cbb19842e9ec26920cfc738f2a9d00e39"
+          },
+          "1": {
+            "estimate": 3,
+            "startup": 3,
+            "action": "KEEP_STATIC",
+            "history": "NO_NEW_FEEDBACK",
+            "joined": 0,
+            "statSha256": "74ad5126d5604251740994da746fee8eb596a85609593554a9684cc5e1ce278b"
+          }
+        },
+        "logs": {
+          "datanode-1": {
+            "sha256": "8ccb04946dbfdbd6b03b1c7f38124bcd1da6737781af65c8002d049d144decaf",
+            "walFlushes": [],
+            "publisherWarnings": []
+          },
+          "datanode-2": {
+            "sha256": "62e95050b27cfcff709d5570477b6cf0a793c5a24cdc482a8ab34532581e0522",
+            "walFlushes": [],
+            "publisherWarnings": []
+          }
+        }
+      }
+    },
+    "scope": "Equal row values and matched inputs are required; no performance claim from this run."
+  },
+  "contrast": {
+    "status": "ACTUAL_WARM_STARTUP_CAUSAL_CONTRAST_VERIFIED",
+    "path": "/tmp/Dev_0/sxing-iotdb-warm-partition-contrast-20261120-03",
+    "nativeSummarySha256": "cadac72cb80745d21938c193b794a18fb6b2bdaf24cb497d3ed7592c624afa9c",
+    "flags": {
+      "noWalDrivenFlush": true,
+      "marginAndNaturalWidthGate": true,
+      "exactMatchedPhysicalInventory": true,
+      "matchedPredictedPartitionClassMatrix": true,
+      "samePostGrowthLayout": true,
+      "identicalInputProjection": true
+    },
+    "matchedGatePass": true,
+    "publisherWarningsObserved": false,
+    "arms": {
+      "control": {
+        "rawDigestCounts": {
+          "077a5751f4e61f5046a6bd212318dba30f0762d974315963a0e981c74a44a0b1": 740740,
+          "a1625eda0a31b425960097361c418f40a2e902e003a5f7172aa0be3263827d08": 740740,
+          "acb2e881a22f8b7dbf4af67dc388b7e00b04073a2933d0c6b762507280003418": 740740,
+          "6eb77d603ebc8cd6a68051374cd7c01049ab5e4ee5e5352782f4062ff0180125": 740740,
+          "0b62d166c79b33b39800485b0da1cc1c93c66827526313a3ac99fe5938cd6510": 740740
+        },
+        "typedRowsVerified": 3703700,
+        "readBackOfRebalancedSameSourceSnapshots": {
+          "2": [],
+          "1": []
+        },
+        "physical": {
+          "datanode-1": {
+            "addedFiles": 419,
+            "totalBytes": 315630704
+          },
+          "datanode-2": {
+            "addedFiles": 419,
+            "totalBytes": 320619732
+          }
+        },
+        "nodes": {
+          "2": {
+            "estimate": 3,
+            "startup": 3,
+            "action": "KEEP_STATIC",
+            "history": "NO_NEW_FEEDBACK",
+            "joined": 0,
+            "statSha256": "9f8e9d4e06e33cc00c80ef2b9ea43e99fb3a1c12c82b36685b78b78e824067da"
+          },
+          "1": {
+            "estimate": 3,
+            "startup": 3,
+            "action": "KEEP_STATIC",
+            "history": "NO_NEW_FEEDBACK",
+            "joined": 0,
+            "statSha256": "a0e05ce2642504177109ce1f64bab72ab8ca8d9f662462d1d65982d9782ff5b8"
+          }
+        },
+        "logs": {
+          "datanode-1": {
+            "sha256": "c806aaee7463323e59a142201d8c9c46d7348fe709577aacba57256b8018b43a",
+            "walFlushes": [],
+            "publisherWarnings": []
+          },
+          "datanode-2": {
+            "sha256": "1568a4db575f0207f9c883520c8ef99b3b8686a5da0a9e9ebc6aba8d340322f5",
+            "walFlushes": [],
+            "publisherWarnings": []
+          }
+        }
+      },
+      "warm": {
+        "rawDigestCounts": {
+          "0fab6f58c59ec737e729aece98e8ba9bc3692620ac8345e6e2b4f20fc8d13a3a": 740740,
+          "0e92a35cae8e12a20cf09c28e78502cc4a9e3e82c1d0ad6a57a15f92f1b10c54": 740740,
+          "3aae802cb541fbb87ec5016b5209d0defe2adb00b7faa524f949209d3501249a": 740740,
+          "95c9abfabbc2488f3fcb5c50c41f5b9e32eeea6164847dd942e83ea0de1f1856": 740740,
+          "8933806dff7091b4fe5b75c751e05f58a089c050bf6ebbf22f0a6ad724a41546": 740740
+        },
+        "typedRowsVerified": 3703700,
+        "readBackOfRebalancedSameSourceSnapshots": {
+          "2": [
+            {
+              "queryId": "20261120_071748_00004_1",
+              "snapshot": "f23a507eaff8ab7d0b94b2e27cac04eb114a6c9155db36dd597f1c5212ef26fe"
+            },
+            {
+              "queryId": "20261120_071757_00006_1",
+              "snapshot": "df3233d7548d88951bb1427917ab62483829c43a0f98564d36395d5d5d9a1f7e"
+            }
+          ],
+          "1": [
+            {
+              "queryId": "20261120_071757_00006_1",
+              "snapshot": "838662b500668b0eb5d21afe4c55581c2515142412e12ccb03c5ca69407b6d32"
+            }
+          ]
+        },
+        "physical": {
+          "datanode-1": {
+            "addedFiles": 419,
+            "totalBytes": 315630704
+          },
+          "datanode-2": {
+            "addedFiles": 419,
+            "totalBytes": 320619732
+          }
+        },
+        "nodes": {
+          "2": {
+            "estimate": 3,
+            "startup": 2,
+            "action": "REBALANCE_NEXT_FRAGMENT",
+            "history": "COST_SKEW",
+            "joined": 2,
+            "statSha256": "75e7e16343ee6afbf592199572e59adbb182c6e7f0144ca16560cf943cb68e5a"
+          },
+          "1": {
+            "estimate": 3,
+            "startup": 2,
+            "action": "REBALANCE_NEXT_FRAGMENT",
+            "history": "COST_SKEW",
+            "joined": 2,
+            "statSha256": "26dea7fab0257d5aadf8b9cae75c853bdbf390ce09ce5e22ccfe0c6707e6348a"
+          }
+        },
+        "logs": {
+          "datanode-1": {
+            "sha256": "6965719d1adfc6f1e64c100fad8e7d8753691e97bec917c32a494ccfa9557deb",
+            "walFlushes": [],
+            "publisherWarnings": []
+          },
+          "datanode-2": {
+            "sha256": "fd9024f75d7d6eb4a0a554160c84ed69a3d770c189cbbe5f291b3599abb0686e",
+            "walFlushes": [],
+            "publisherWarnings": []
+          }
+        }
+      }
+    },
+    "scope": "Equal row values and matched inputs are required; no performance claim from this run."
+  }
+}

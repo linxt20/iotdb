@@ -1,0 +1,834 @@
+{
+  "status": "WARM_EXACT_EXTREMA_AND_PUBLICATION_CANDIDATE_PACKAGED_NOT_SERVICE_VERIFIED",
+  "repository": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/source",
+  "baseCommit": "1959820d4eec2c5f4154ee3c7652b1a9f85caa32",
+  "parentRelease": "/tmp/Dev_0/sxing-iotdb-warm-tie-fix-20261119-01/packaged-02/release.json",
+  "parentReleaseSha256": "36a5b2edd84877d1e4a498fa637a6a8ae7d709f6af9f64ea92ec9a3745a09ee1",
+  "sourceDiffSha256": "2f6446bd2dade66b7e7f9fd8008aed063fd20af22e846f7a8935327ab4ca7f57",
+  "serverJarSha256": "526a18b3bd25b8b99a08338b557b9ee9f124e78f3f416d2358b7e8f191af7cf6",
+  "distributionRoot": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin",
+  "jars": [
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/HdrHistogram-2.1.12.jar",
+      "sha256": "9b47fbae444feaac4b7e04f0ea294569e4bc282bc69d8c2ce2ac3f23577281e2",
+      "bytes": 173763
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/Java-WebSocket-1.5.4.jar",
+      "sha256": "4a7037bd110508daee6b718c7e1c324f3767a3b2827158451528f6b6860c3657",
+      "bytes": 139344
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/LatencyUtils-2.0.3.jar",
+      "sha256": "a32a9ffa06b2f4e01c5360f8f9df7bc5d9454a5d373cd8f361347fa5a57165ec",
+      "bytes": 29779
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/airline-0.9.jar",
+      "sha256": "d0be8281964ba31b02f4a0daa22ad2fcdad3c7f411ff010140187993036463c0",
+      "bytes": 80121
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/antlr4-runtime-4.13.2.jar",
+      "sha256": "dd3e8a13a2d669bf84fb8d834de35ce4875f27157698d206241ec8488aadcaf7",
+      "bytes": 326307
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/asm-9.3.jar",
+      "sha256": "1263369b59e29c943918de11d6d6152e2ec6085ce63e5710516f8c67d368e4bc",
+      "bytes": 122176
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/caffeine-2.9.3.jar",
+      "sha256": "1e0a7bbef1dd791653143f3f05d0e489934bf5481e58a87c9e619cd46b68729b",
+      "bytes": 912143
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/calc-commons-2.0.11-SNAPSHOT.jar",
+      "sha256": "564f2c048524e3d0688c61656cdd8b3bef54f95eb412513efed3b53aaa345768",
+      "bytes": 1709523
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/cglib-3.3.0.jar",
+      "sha256": "9fe0c26d7464140ccdfe019ac687be1fb906122b508ab54beb810db0f09a9212",
+      "bytes": 306864
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/checker-qual-3.33.0.jar",
+      "sha256": "e316255bbfcd9fe50d165314b85abb2b33cb2a66a93c491db648e498a82c2de1",
+      "bytes": 223979
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/common-2.5.1-261023-SNAPSHOT.jar",
+      "sha256": "1acd30f73bb5b09dc8a46b6dc03f0accc60614c20fd665900fdb723e6b85971d",
+      "bytes": 109478
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/commons-cli-1.5.0.jar",
+      "sha256": "bc8bb01fc0fad250385706e20f927ddcff6173f6339b387dc879237752567ac6",
+      "bytes": 58284
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/commons-csv-1.10.0.jar",
+      "sha256": "2d06e6a07a636baf777ad8e659256f2119109dde23551c9b80c5422d424b808c",
+      "bytes": 54749
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/commons-pool2-2.11.1.jar",
+      "sha256": "ea0505ee7515e58b1ac0e686e4d1a5d9f7d808e251a61bc371aa0595b9963f83",
+      "bytes": 145516
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/error_prone_annotations-2.18.0.jar",
+      "sha256": "9e6814cb71816988a4fd1b07a993a8f21bb7058d522c162b1de849e19bea54ae",
+      "bytes": 16017
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/external-api-2.0.11-SNAPSHOT.jar",
+      "sha256": "650972df8beb70dbc7ca99658f6f70136d697b926081940e9cb50e2b86a78ddc",
+      "bytes": 9075
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/external-service-api-2.0.11-SNAPSHOT.jar",
+      "sha256": "5db0a64751f090a28374797d472a6121ad1b5b4d55b28605db4c8a6a598ced74",
+      "bytes": 7780
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/failureaccess-1.0.1.jar",
+      "sha256": "a171ee4c734dd2da837e4b16be9df4661afab72a41adaf31eb84dfdaf936ca26",
+      "bytes": 4617
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/gson-2.13.1.jar",
+      "sha256": "94855942d4992f112946d3de1c334e709237b8126d8130bf07807c018a4a2120",
+      "bytes": 286972
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/guava-32.1.2-jre.jar",
+      "sha256": "bc65dea7cfd9e4dacf8419d8af0e741655857d27885bb35d943d7187fc3a8fce",
+      "bytes": 3041591
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-antlr-2.0.11-SNAPSHOT.jar",
+      "sha256": "37311b508c0fa83a23b908dcb2bbe0ddf050a5a1a8e39190b0696e4767e12e22",
+      "bytes": 580658
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-cli-2.0.11-SNAPSHOT.jar",
+      "sha256": "e950986ef401bf5e0cca384e7aafadc8022929077d517f3e30d59eb59090ea48",
+      "bytes": 515272
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-confignode-2.0.11-SNAPSHOT.jar",
+      "sha256": "ba4fe2b1dcbc03681760e7ca1ac73285dee5a3eb043d0c84065c7b13f28ca934",
+      "bytes": 2241280
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-consensus-2.0.11-SNAPSHOT.jar",
+      "sha256": "516e99bca60f1ef06a0cbac18595d4b035c0325ebabf08e28ad8ebceacd0f9f9",
+      "bytes": 353063
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-jdbc-2.0.11-SNAPSHOT.jar",
+      "sha256": "1776574706d9acb437d098a405886def107127d7c95d59d2d6a7a139561412d3",
+      "bytes": 147590
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-relational-grammar-2.0.11-SNAPSHOT.jar",
+      "sha256": "25eeb347d75a29b8d606f9d26dd019dc2d139ab5e34611cd94db4abf06b89f9a",
+      "bytes": 834148
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-server-2.0.11-SNAPSHOT.jar",
+      "sha256": "526a18b3bd25b8b99a08338b557b9ee9f124e78f3f416d2358b7e8f191af7cf6",
+      "bytes": 12327220
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-session-2.0.11-SNAPSHOT.jar",
+      "sha256": "d9351d2c702c8fb37ac29a332932f51f81a71ad80db590c6da27b2ba2a1ededb",
+      "bytes": 157539
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-subscription-2.0.11-SNAPSHOT.jar",
+      "sha256": "72549e832d7b637262c4048ec625a0d353e9ee6f25aefb6b0222fe633996e9f0",
+      "bytes": 320596
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-2.0.11-SNAPSHOT.jar",
+      "sha256": "dd601c13986f28b1dab4c42cb91a6db5b3937b91091a945af0e442c30e5c8a78",
+      "bytes": 8450473
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-ainode-2.0.11-SNAPSHOT.jar",
+      "sha256": "b87ae3aa77bf681063858c088c9f109d9d9e5fba478281c57d2d9b30871311d8",
+      "bytes": 616798
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-commons-2.0.11-SNAPSHOT.jar",
+      "sha256": "d119b689ec2337560e60e424c53316f536eafa80a5dec9b9816f5bfc20396680",
+      "bytes": 540179
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-confignode-2.0.11-SNAPSHOT.jar",
+      "sha256": "7b905034e6aa9d588431b6a58a4b1b56ebb414de6ce1efa49ae0737339e6ec61",
+      "bytes": 7340114
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/iotdb-thrift-consensus-2.0.11-SNAPSHOT.jar",
+      "sha256": "2f4c702ea3ef3320e407209f1279ef7df12f5150fe89ab2191f7bd70d37b6e64",
+      "bytes": 1043711
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/isession-2.0.11-SNAPSHOT.jar",
+      "sha256": "1d84a67826a99f57642e804f5bb32ec1ab30e28844a063a44ce1d508002d2c53",
+      "bytes": 31656
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/j2objc-annotations-2.8.jar",
+      "sha256": "f02a95fa1a5e95edb3ed859fd0fb7df709d121a35290eff8b74dce2ab7f4d6ed",
+      "bytes": 9301
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jakarta.validation-api-3.0.2.jar",
+      "sha256": "291c25e6910cc6a7ebd96d4c6baebf6d7c37676c5482c2d96146e901b62c1fc9",
+      "bytes": 93298
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jline-3.26.2.jar",
+      "sha256": "c5fc2fc5937a9beb9a31a62fddebe80d54b10dedd01560bbb5a8c45f142173db",
+      "bytes": 1427843
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jna-5.14.0.jar",
+      "sha256": "34ed1e1f27fa896bca50dbc4e99cf3732967cec387a7a0d5e3486c09673fe8c6",
+      "bytes": 1878533
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jna-platform-5.14.0.jar",
+      "sha256": "ae4caceb3840730c2537f9b7fb55a01baba580286b4122951488bcee558c2449",
+      "bytes": 1369287
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/jsr305-3.0.2.jar",
+      "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7",
+      "bytes": 19936
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/libthrift-0.25.0.jar",
+      "sha256": "0d79412164e2f48dcaab541e23a324dac44ea4574c8aa4ea1261c72fc69e73c0",
+      "bytes": 374362
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar",
+      "sha256": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99",
+      "bytes": 2199
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/logback-classic-1.5.34.jar",
+      "sha256": "b65e05076a5c1aadb659b4fe4bc5fee31cb26cd70390292eb03e4a7a24cff10f",
+      "bytes": 286757
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/logback-core-1.5.34.jar",
+      "sha256": "42eda264c0c650c2bec59e66151a88b708a8663dc1b49d788202d53e78b8caae",
+      "bytes": 645490
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/lz4-java-1.11.4.jar",
+      "sha256": "58c8e0b813960d2a248e050c353baea73139b48a2ffc55382d42c69707e17325",
+      "bytes": 899910
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/metrics-core-2.0.11-SNAPSHOT.jar",
+      "sha256": "8a91a2aa00757133c7109e0d40a961baa79f6b1326c3babb6644cefb503f47a3",
+      "bytes": 37339
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/metrics-core-4.2.19.jar",
+      "sha256": "fa967bc2b37c8bff5bc377e60e439504fd9df5d335c7a42b37212403250023df",
+      "bytes": 129647
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/metrics-interface-2.0.11-SNAPSHOT.jar",
+      "sha256": "9d088c3889e2c5a5906f20ac4c2ee75e99d04169e0a0239f2360615354c0d7af",
+      "bytes": 157701
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/micrometer-commons-1.11.4.jar",
+      "sha256": "93c4da01a63f264197ff91cd7bb81cbc43896a5eb0d2a693eb60e0f6756ed08d",
+      "bytes": 47213
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/micrometer-core-1.11.4.jar",
+      "sha256": "52ea36c84748228f4c31358ac9f3431f51674cd436dc5f24fa284b7579588e59",
+      "bytes": 866943
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/micrometer-observation-1.11.4.jar",
+      "sha256": "b456792a32590ab442de8183b29d967523c46f34cc15daf5cd020db8b342722b",
+      "bytes": 70834
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/mqtt-2.0.11-SNAPSHOT-jar-with-dependencies.jar",
+      "sha256": "9d8baf3285d58dc70b3b56c88a2d72832746f0acf5a1f069f45c64d4c63e592d",
+      "bytes": 8227082
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-buffer-4.1.137.Final.jar",
+      "sha256": "f474b14c7734f15e0540394cb6f39d67777b7581a42919e4ac89d253d4efd929",
+      "bytes": 365383
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-4.1.137.Final.jar",
+      "sha256": "9987b6a660b0a6b1f0d791485dae33180b3d1c63687c006fe6d3fd025e9e3798",
+      "bytes": 360116
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-dns-4.1.137.Final.jar",
+      "sha256": "2d9a33ce41bd9f6f607df95039e42518a1fca16f83c9bbfe72beb57df6e2489f",
+      "bytes": 68663
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-http-4.1.137.Final.jar",
+      "sha256": "0535bb5a736472bef5c948d15eb273c4ab9f796656fc7c5d6b982ad92bddbd49",
+      "bytes": 692573
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-http2-4.1.137.Final.jar",
+      "sha256": "576ddcfb51b78e86f145c9a52b60e500b1a1d5a257cafec8aa5416ffba044b49",
+      "bytes": 505543
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-codec-socks-4.1.137.Final.jar",
+      "sha256": "4a6190e08988c058bfeef2b5965e71946439c771abf721c68f4039b4e7b023e8",
+      "bytes": 121963
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-common-4.1.137.Final.jar",
+      "sha256": "d31926b01adcc07af86f5e27b81b6d6c115df17d366e835d1fc3f5a1924e7e52",
+      "bytes": 740314
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-handler-4.1.137.Final.jar",
+      "sha256": "d0e4c6ee4779f59f6ab2fb5d388e4f57147c82270164b37945764bb9bda96a44",
+      "bytes": 588804
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-handler-proxy-4.1.137.Final.jar",
+      "sha256": "843de10c4cef34cbc1a5344090f1b57db532fbebf141559862da675f6b656df4",
+      "bytes": 25841
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-4.1.137.Final.jar",
+      "sha256": "b4cf2aeedd9fc7c8c439bbfe574f63cfe5b83392e88bbc07ca0e8424b7cff955",
+      "bytes": 37907
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-dns-4.1.137.Final.jar",
+      "sha256": "898d63ca62ed68ff46543c5344f969424b417f1e8d082fe2bb0181ba10144194",
+      "bytes": 188777
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-dns-classes-macos-4.1.137.Final.jar",
+      "sha256": "92d0a542954475f563ea58221d864884ba6753c50c1f17985b1045e990bf094c",
+      "bytes": 9213
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-resolver-dns-native-macos-4.1.137.Final-osx-x86_64.jar",
+      "sha256": "bc8a5616ab33f0e640bc6174eea770ccfca8ed0e9891ff3bb3ae638255bc006e",
+      "bytes": 19927
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-4.1.137.Final.jar",
+      "sha256": "6251adc2a2921572382732a2db188d4f4f2251fd6ebb49c5d44bbf33d6bfb1a7",
+      "bytes": 521982
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-classes-epoll-4.1.137.Final.jar",
+      "sha256": "55049554b799dc8e53bf234fffa36e001f7b5b65c32994b9bd59fc6356f1c52f",
+      "bytes": 147751
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-native-epoll-4.1.137.Final-linux-x86_64.jar",
+      "sha256": "185db6053e0e9573d36fa4eb6567b26139afaa4daa7bf5a068e661568304542b",
+      "bytes": 41506
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/netty-transport-native-unix-common-4.1.137.Final.jar",
+      "sha256": "8056e7637f9948f953314894cf995ab664711b66c73c4cd5b593ae84f0b1048c",
+      "bytes": 44328
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/node-commons-2.0.11-SNAPSHOT.jar",
+      "sha256": "1343c42cef12b1940bb261b7ad6754dd79158f98425e09799488285c407381ce",
+      "bytes": 2833893
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/pipe-api-2.0.11-SNAPSHOT.jar",
+      "sha256": "b6877837c45d36df6d790cbd007ecbe55df9f17af13d4214e82798942b793279",
+      "bytes": 39959
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-client-3.3.1.jar",
+      "sha256": "bbec328a5035c9ad3847852e9333a34137bf1902976b137cbedd1076410dfdac",
+      "bytes": 128144
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-common-3.3.1.jar",
+      "sha256": "8485d2051b173d80ccfd39924a597c6b7e256c34008eb2a979aa6641a15e8027",
+      "bytes": 430535
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-grpc-3.3.1.jar",
+      "sha256": "573a4f79a6fdcd84819805da55a1994eaca8c68ff71b911e6706bf51746697ad",
+      "bytes": 184856
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-metrics-api-3.3.1.jar",
+      "sha256": "2f47550e19c251485f8414f62b408719ddffa17d5925a97e38ed407bfb9f3c4b",
+      "bytes": 17057
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-proto-3.3.1.jar",
+      "sha256": "2c98855a2b1e8087b45cae929d59587d75b7f24b6549bf74962c2ab651c85497",
+      "bytes": 1220433
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-server-3.3.1.jar",
+      "sha256": "a635a8c69b5c59089b026992178ecea95ead7d709c5ff4f94834e06eaa0c911d",
+      "bytes": 517844
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-server-api-3.3.1.jar",
+      "sha256": "1ecf852c98ae9c8491c5495d20d259f8a5cb1020948566d869ca4377d6a80203",
+      "bytes": 108739
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/ratis-thirdparty-misc-1.1.0.jar",
+      "sha256": "3940f4ea532737831a5ed3d559977755465438555c34d7242855997833615138",
+      "bytes": 18295716
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactive-streams-1.0.4.jar",
+      "sha256": "f75ca597789b3dac58f61857b9ac2e1034a68fa672db35055a8fb4509e325f28",
+      "bytes": 11640
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactor-core-3.7.19.jar",
+      "sha256": "50390c15320c578784f60ea9d4d3f7a3eff9ba90c6567f38c6cce5c9f1f69faa",
+      "bytes": 1899418
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactor-netty-core-1.2.18.jar",
+      "sha256": "2d1ff55147102d4284c6f9c59c06d4288e3a59b1921da01647fef24869cfefc3",
+      "bytes": 537512
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/reactor-netty-http-1.2.18.jar",
+      "sha256": "5b8409741ebe7fd95ae44519a90115352fb4bf9d32f2af579c89da7003b0db10",
+      "bytes": 623719
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/rest-2.0.11-SNAPSHOT-jar-with-dependencies.jar",
+      "sha256": "817f07b3d3130a33ffcadab1df56b755dccfbef4159f252d3cb58192bc4e9b4a",
+      "bytes": 12504572
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/service-rpc-2.0.11-SNAPSHOT.jar",
+      "sha256": "502e87e9140a58e338ef84ad9b991231aeee09fc87b79b9ec1e7683e3de92522",
+      "bytes": 101528
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/slf4j-api-2.0.9.jar",
+      "sha256": "0818930dc8d7debb403204611691da58e49d42c50b6ffcfdce02dadb7c3c2b6c",
+      "bytes": 64579
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/snappy-java-1.1.10.9.jar",
+      "sha256": "35228628442e4b9797681c7cbd3b26594f6da3379159dbd0cb07094ed3aece0d",
+      "bytes": 2448456
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/trigger-api-2.0.11-SNAPSHOT.jar",
+      "sha256": "a599ae1f5de743dfba56df08ea8b02340c2836197b8f396106addbf13652a46c",
+      "bytes": 14285
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/tsfile-2.5.1-261023-SNAPSHOT.jar",
+      "sha256": "78904b9375fc4617f2ff3d807084a439afb2da820181eac10578d532f9366413",
+      "bytes": 1956648
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/udf-api-2.0.11-SNAPSHOT.jar",
+      "sha256": "1a35e0d5dbc2c6d6346c997f523759ad5c30d46d0cefdc39606b4ec815023bae",
+      "bytes": 85481
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/units-1.7.jar",
+      "sha256": "e6d54d4163b6637418bc4922f202ff427459ce066ea7cf0cfaf61ef69bc130ea",
+      "bytes": 19776
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/xz-1.9.jar",
+      "sha256": "211b306cfc44f8f96df3a0a3ddaf75ba8c5289eed77d60d72f889bb855f535e5",
+      "bytes": 116013
+    },
+    {
+      "path": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/packaged-01/apache-iotdb-2.0.11-SNAPSHOT-all-bin/lib/zstd-jni-1.5.6-3.jar",
+      "sha256": "f72ede1b39258faf81277dc58de30c71cbae4253732558d2ce10b53d8b5763d5",
+      "bytes": 6650280
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "docs/design/query-parallelism/maven-settings.xml",
+      "sha256": "add1493460399a5db8e27aa56857fecd444d1b4f9e3c98f569396cd60ecf2445"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/Electricity_\u5b8c\u6574\u6570\u636e\u6620\u5c04\u4e0e\u9a8c\u6536\u8ba1\u5212_20261118.md",
+      "sha256": "8f117cc5d8edf5d6c309cb25b17b83525998d18455bf2e3e73ad3e64dcf942b7"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/REPRODUCING_RUNTIME_SQL.md",
+      "sha256": "d3119637e786e18018b175961a465a30aaa6ac84f95dc98b3e91af448599f299"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/scenario-plan.json",
+      "sha256": "f55b39c54e2d369c14588e92432d6abc3960d31f2408232aeb4b68d57e82df02"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u5165\u53e3\u4e0e\u6839\u7247\u6bb5\u4f4d\u7f6e\u5339\u914d\u5b9e\u9a8c_20261118.md",
+      "sha256": "286bccdd59bb1edf976f5f92d9701a41da458f818c7e6695a76c5e0154a3e4ef"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u540c\u5e03\u5c40\u56fa\u5b9aworker\u5bf9\u7167_\u8bbe\u8ba1\u4e0e\u5b9e\u73b0\u89c4\u5212_20261117.md",
+      "sha256": "271f8c17d6c24aa874a01cfa036811647d40ba60124366f94104b53b3661cf71"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u56fa\u5b9aworker\u5bf9\u7167\u5b9e\u73b0\u4e0e\u9a8c\u8bc1\u8bb0\u5f55_20261117.md",
+      "sha256": "9279613e4b815db894e650634006917fd75f2b48637815c08a217ddcc5a284e3"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u6700\u7ec8\u7ed3\u679c\u7aef\u672c\u5730\u5e8f\u5217\u5316\u4ea4\u6362\u8bbe\u8ba1_20261118.md",
+      "sha256": "c81869e87c76995e6e4933edb4f69b883839ecd6307ad0f7dfb053753bfef2ab"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u6709\u5e8f\u626b\u63cf\u6876\u5185\u62fc\u63a5\u4f18\u5316\u8bbe\u8ba1\u4e0e\u9a8c\u6536_20261118.md",
+      "sha256": "53aff88c43c5f4bfd6ca5488e286e024eddc1a657c3aa7353dba13816df8c3cf"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u672c\u5730frontier\u4ea4\u6362\u4fee\u590d\u8bbe\u8ba1\u4e0e\u5b9e\u73b0\u89c4\u5212_20261117.md",
+      "sha256": "8f8799bf3db0764a85d421c127f4111349b7d19e35748267bde71a635b9f0bf2"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u771f\u5b9e\u6570\u636e\u5217\u6620\u5c04\u4fee\u590d\u4e0e\u6d4b\u91cf\u9a8c\u6536_20261117.md",
+      "sha256": "ee8ff955802e01b714d4fb13e4f0f67e7a2a5df4d81c9cc30440b90e6acb97f1"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u771f\u5b9e\u6570\u636e\u5217\u6620\u5c04\u56de\u5f52\u4fee\u590d_20261117.md",
+      "sha256": "c26dc36f3175ac51211763552fdf4bded679005b791761e642cc16a409c183c7"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u8fd0\u884c\u4e2dDOP\u4e0e\u6ce2\u52a8\u8d1f\u8f7d\u9884\u68c0\u9a8c\u6536\u8bb0\u5f55_20261118.md",
+      "sha256": "aaf0fac066c8e858bf7f5c4fab0bb36d4f5a11eaf59342aad18ec8abc8488a68"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u8fd0\u884c\u4e2dDOP\u65f6\u95f4\u7ebf\u91c7\u96c6\u8bbe\u8ba1\u4e0e\u9a8c\u6536_20261118.md",
+      "sha256": "0742cb45aaef1acdedc3c908f45b374c600831b36da90f561e4eb0aeafc1f87a"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u9000\u5458\u673a\u5236\u590d\u9a8c\u4e0eR1\u65f6\u5e8f\u8fb9\u754c_20261117.md",
+      "sha256": "0cfb40317debe05f6e4938d681fb7c5987e5a0ea2960db0280b311412559f52f"
+    },
+    {
+      "path": "docs/design/query-parallelism/runtime-dop/\u957f\u67e5\u8be2\u4e0e\u6ce2\u52a8\u8d1f\u8f7d\u5b9e\u9a8c\u8bbe\u8ba1_20261118.md",
+      "sha256": "70ea683e1f15025d4ceb64674e072828db491c2e016ed64ff92f322bbec639af"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/i18n/en/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java",
+      "sha256": "83d8cd5d03a2cf8b2cf7d8c72bd7735302f3124415b96a47464909178909966d"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/i18n/zh/org/apache/iotdb/db/i18n/DataNodeQueryMessages.java",
+      "sha256": "949cd363df13bbbeae78f181152066b2aa3a45d0e57b366ced1591b442b031d1"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/conf/IoTDBConfig.java",
+      "sha256": "5501a369de07db8569c76a41edf75e2874502a342fa3981cec168ae788b8ca58"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/conf/IoTDBDescriptor.java",
+      "sha256": "2ddd4e56c7a79550d38362990780fd9372280470e6593cc28acbda30faf1160f"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/ExchangeClientLease.java",
+      "sha256": "717b823425dd29d9f795e93e38db80b69f2b4d6a5a8fefd10c76aa2c7d7ec99d"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/LocalResultExchange.java",
+      "sha256": "7c4749fd58658c235de11678b6ce34cd296ba89a6bd5b0e88d1d8519544bdb30"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/MPPDataExchangeManager.java",
+      "sha256": "7e282a14896e8400b410ceff93a046c87fd3670ce8a27dec6462be2704c70a40"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/MPPDataExchangeService.java",
+      "sha256": "437a146ff4ae701752530e6e24cdc2606297d13a7ac1b934c58f4c90d832093f"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/MPPDataExchangeServiceMBean.java",
+      "sha256": "3107bda58802abebb6cd1c7b6ed2c9a8c70f0e469b67b9db897c0efbc912b515"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/ResourceAuditManager.java",
+      "sha256": "a66c2a793ff3a7e4dce12e9798020ccacea6e2fcd887601c6680fed453e1131d"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/RuntimeExchangeEndpoint.java",
+      "sha256": "8afd7258fa65c92746920884fc4458621278e0939d4619b3e34e3c8d2dc1e497"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/RuntimeLocalEndpoint.java",
+      "sha256": "ed675912ae5911db583f2049f90ad697fdb9a3feda11f7522d3d9e4b583d01e8"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/RuntimeLocalExchangeLink.java",
+      "sha256": "99cb3f7b489728a55a6599ece10749bef7d5cb0d54d8a0979315a1efaa3a1374"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/RuntimeLocalExchangeRegistry.java",
+      "sha256": "cf7aea067821d80ac719e4ea45781f17cde51385a542860b6f4692171ef26cfb"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/sink/RuntimeLocalSinkChannel.java",
+      "sha256": "3dbdca1e8670c44a9b5d4cc0773e51a7d80e56379c8caf857afc8108366c8582"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/sink/SinkChannel.java",
+      "sha256": "ff36bf847d12d2dd3a5e70075b2e4d2f74bdbb651fa9158ea3e3a99dbaaa13d4"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/source/RuntimeLocalSourceHandle.java",
+      "sha256": "74adaed680e2cfd39084c3d3dc62e350e1f559589e2736ca8784654c1c8ab7d5"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/exchange/source/SourceHandle.java",
+      "sha256": "4060ec397076da718c7ac074204b1efd75e8fa7ed32eb67dcfc6093d95bf43df"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
+      "sha256": "fa36fb0e823756cf1f4cee785d91b15d8696891bb397ee5f60e8e1a3a6c692a3"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopController.java",
+      "sha256": "8bd27038f17bc71e722727d6439d549ee4247f7c13a61c7e45a271e94a7459a9"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopExecutionSnapshot.java",
+      "sha256": "1417763d708448a857ebed90ee335a42e8c0676bcbd8ae5d7fcd162b72d2e0be"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopPolicy.java",
+      "sha256": "6c7babda5256a715d8ce2f6db5397c72d6d79097acf5815f37bdcf674ce2a135"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeFragmentLifecycle.java",
+      "sha256": "eaf9bd0123703826f1a40dbd844294950bb3c87b24a42a74cfe803450b45a3e2"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeResourceSnapshot.java",
+      "sha256": "44b95f47a2e151f6e0dd9c3eab4198ab65f0b27ba2cf30ab69dd46d949b56eef"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeSharedPressureFeedback.java",
+      "sha256": "5b76669d1c2313f4b377f54c245e787b30d3b3240c71dd554470c4a18b34a63b"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverScheduler.java",
+      "sha256": "13a9d9d4a70f035f8841eddce558bad5b1a5dbcf44192c9e734e46d2168fffc5"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/schedule/IDriverScheduler.java",
+      "sha256": "f6cda742aa6b6a780cd219a796da97015445b3c7802204a84e23a1ab0bf780df"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/execution/QueryExecution.java",
+      "sha256": "025a16ed4a58a3d00e990001d800f1fd92fb35acab04fccf29800374ba2401a7"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DataNodeTableOperatorGenerator.java",
+      "sha256": "e7d73562ed1e1994d37449ef35b4073bf07731b1d6ca3723bafb2b509017cebc"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicCostHistoryStore.java",
+      "sha256": "c338d379599e9c6e60b6a6c9ba5c1fa7a245314535f091f6e0b43e3bad1902f2"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicDecisionReceipt.java",
+      "sha256": "b256d8b7b3241158f3dc6c161701a7ba45c84de437b4bc1f7a75af2e307def63"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicParallelPlanningService.java",
+      "sha256": "4f21275546bb7971e50ae821650f267ee154ce35b886e867b1438f194b199075"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicParallelScheduleInput.java",
+      "sha256": "131086d3109a824c2be8bb354f73d89ebb280d0ba3066c9b60633d3924c3aa11"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicParallelScheduler.java",
+      "sha256": "a2b8a9e345fb2edddffb6fbac7784642c145f4ab5538f83409c350bf12a5de00"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicSnapshotAggregator.java",
+      "sha256": "e2f1e199714eb7f96c5a5dbdbf399580b4aa3445716b88e5baa112d3e1ffdd9f"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanContext.java",
+      "sha256": "f0f9d2202b4183cc19aa4b5476baf59a2f8c8fc67ffc7497a194077b1a82b516"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionPlanner.java",
+      "sha256": "19d1e7b7c556920a57cd328639ec4bb03e8b1c81ade94542ef046f8195461b96"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/LocalExecutionResourceRegistry.java",
+      "sha256": "f5e818e76a7f93c2d2b175205b499e88ed267926052309a7b1899e0c968d979b"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/planner/RuntimeScanLayout.java",
+      "sha256": "affa685df714e2edf8d053f407aa73869f05c39ab9d2022f97f130769b988a6b"
+    },
+    {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/statistics/snapshot/DynamicSnapshotRecord.java",
+      "sha256": "43ce392f9af10da181252d3d858e697cad442a5fb749b8d76e5f9c36ba0d791e"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/conf/RuntimeScanParallelismConfigurationTest.java",
+      "sha256": "3cc81ebbe003f48c6e50186d95293e801f3d42564e9d8fc509c43d3c581212af"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/exchange/LocalResultExchangeTest.java",
+      "sha256": "6a41772736fdf06a312f6e24bafd56f1d02f0ade7598d803708509f08fbfeeb7"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/exchange/ResourceAuditManagerTest.java",
+      "sha256": "d525ade9d767ee666eff3b500d82f2bf4ddd9abae2b4ad91a0a136744621adfb"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/exchange/RuntimeLocalEndpointTest.java",
+      "sha256": "e3f21122dc73671c5c6de7a2163f2a477ce5784005ac2c2681e7907f00a9cd2c"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/exchange/RuntimeLocalExchangeLinkTest.java",
+      "sha256": "68bb8c3095b9479213612b0c67dc7a24ccca5524547d7698b22001deefac6197"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeDopControllerTest.java",
+      "sha256": "a0c5b4c55ea029542da4927ad7a886f0a5b35c242ea8c90dbc60b35e4250d975"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/runtime/RuntimeFragmentLifecycleTest.java",
+      "sha256": "431f08df0805704e665de8bc141ec8a00496adf45b3b2b659409f83553d871ba"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/execution/schedule/DriverSchedulerTest.java",
+      "sha256": "fd01c7e509f04f3c6deded58209d1c651397e8c282d6d0853923c1f2b9a81549"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/execution/ResultHandleCleanupTest.java",
+      "sha256": "7ba6eceab918ba17c6980136f5d82554213f7c239ab916c9699379a95d74d0f9"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicParallelPlanningProductionTest.java",
+      "sha256": "20a0d5ae255243bea5b167c36e9789b134a367a49b24909219f3ab9143a5c6c4"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicSnapshotAggregatorTest.java",
+      "sha256": "9bfddb4250137e4921914f7c4196b04431713aad4143b270cc32a8abe4986d22"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/DynamicSnapshotRecordTest.java",
+      "sha256": "14f4fd03b727e9c3a1163c328572fb649a4b36ad8310a82a3be9e876a2c503e3"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/OrderedScanPipelineContractTest.java",
+      "sha256": "eb6b55a3cb79cebb3905053c4991efd0d120b7210a9c133dd816fc42e5be1748"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/RuntimePlannerAdmissionTest.java",
+      "sha256": "57a43349df26e0eb0d833ce0dc8f54e3dc2632f66354832c971a23d315d146ab"
+    },
+    {
+      "path": "iotdb-core/datanode/src/test/java/org/apache/iotdb/db/queryengine/plan/planner/ScanParallelPlannerTest.java",
+      "sha256": "a89f9490257a5694209fe7c86447296c90edd985652313124267e86471fba42e"
+    },
+    {
+      "path": "iotdb-core/node-commons/src/assembly/resources/conf/iotdb-system.properties",
+      "sha256": "944d2443c91e795194aa5d4146ee116c081943d2672d5e7c4de5c916b3e5991f"
+    },
+    {
+      "path": "research/query-intra-parallelism-benchmark/scripts/BlockedSqlBenchmarkDriver.java",
+      "sha256": "32ac377a49c319afa0721a361e69280a9d8574944023e3ac2a99656a17674526"
+    },
+    {
+      "path": "research/query-intra-parallelism-benchmark/scripts/PairedSqlBenchmarkDriver.java",
+      "sha256": "3086a0b4f46fe850001433895d54296434be714ee3c6676dcc7af9f47adb31bd"
+    },
+    {
+      "path": "research/query-intra-parallelism-benchmark/scripts/ServerHistoryBlockedBenchmarkDriver.java",
+      "sha256": "c54b3184f7714c4dc9655f9cc49b98376c397ea3568c78d8c0baa1342cbee10a"
+    },
+    {
+      "path": "research/query-intra-parallelism-benchmark/scripts/SourceFingerprintValidationDriver.java",
+      "sha256": "e3a50507527cd49d70a2568a83584c3b0806302595f48315768b0b74da1e02b3"
+    },
+    {
+      "path": "research/query-intra-parallelism-benchmark/scripts/SqlPlanCaptureDriver.java",
+      "sha256": "fbbfa7034e3dd1757bd9ceccbc25fd8420687268c40cdcc0f64cf6fd8c12dfbf"
+    },
+    {
+      "path": "research/query-intra-parallelism-benchmark/scripts/prepare_electricity.py",
+      "sha256": "8eb61025e7f7d2f514feeb8b30ec69915b27909147f4fc5b7a8feb06091c4e9d"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh",
+      "sha256": "f623ee7f921ab0119b7b0bfef392444babd6f4eaf13240365801596d2d20cc3e"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/FluctuatingBackgroundQueryDriver.java",
+      "sha256": "61754d80f873464734a5db34fd89f3ede00fd261c4d553bfd67fe9569b8adbce"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/OrdinarySqlAcceptanceDriver.java",
+      "sha256": "2f794753f57ff5726c1cd3535b417a4e271d859a54645954e64fac2e3bafddb6"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json",
+      "sha256": "9d48f8f813ea9e1e865e8c1c1ea723cb4d4219711c2ed1d8d92764bba8b040a5"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/file-index.json",
+      "sha256": "654d3aa3ba1a78ec9f193fe84f1658fe1be22c3b8719ea2bc1654ab4f5455312"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json",
+      "sha256": "8dbedbfeb8175b8be861998c29945fb7431398dda29916297015225fd38c3daf"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
+      "sha256": "8bc4a92b86f14e53f6269c557e8904f99c80f0ba0944dfd6c1a1b990e0424350"
+    },
+    {
+      "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json",
+      "sha256": "8802bfefd98b11d30e3f4d06ff885bd9180eb868b8930c34aa90d7b9af57fde7"
+    }
+  ],
+  "testedClassesCompared": 4530,
+  "testedClassesMismatched": 0,
+  "reactorReceipt": "/tmp/Dev_0/sxing-iotdb-warm-tie-publish-fix-20261119-01/verify-full/summary.json",
+  "reactorReceiptSha256": "83a487b6cc0e0762a40c71409737b9dd5c6db2043ea434a0fa5bddca99f52f9d",
+  "preexecutionSha256": "e8c1a036edc36314d1200e0ef52861c62c9f597766b384f63ebf5ad9236c3118",
+  "nativeReplaySha256": "60130c3f08752d5d8b01567cde6cd191bc4b794d33d041632bb4c306a318754d"
+}

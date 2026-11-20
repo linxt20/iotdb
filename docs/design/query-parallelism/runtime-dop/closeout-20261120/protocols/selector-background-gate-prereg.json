@@ -1,0 +1,24 @@
+{
+  "status": "REPEATED_QUALIFICATION_REQUIRED_AND_BACKGROUND_GATE_FROZEN",
+  "target": "/tmp/Dev_0/sxing-iotdb-london-delayed-selector-background-gate-20261119-01",
+  "gateEntrySha256": "24f35da388f98adbd02b036b9633608a2c665ee975709e14b3dada939aacd504",
+  "inputTrialPlanSha256": "d0b7b2080720b092565ffc8586cd5ebfbbe6049e024ea47be3c6a4d31e39a7ac",
+  "parentTrialDriverSha256": "5457e4739c1d7aabee144fc1bdce0d61b10f9d8131241516f7d41475df5f2499",
+  "independentQualificationSha256": "4b60eed1a2f0c0d2c58a2ad51ae1b9a72ae6a6b398f00302527cba99cd541e2e",
+  "maximumInFlightPerClient": 20,
+  "multiplicativeThreshold": 1.25,
+  "minimumTrials": 4,
+  "trialNames": [
+    "background-01",
+    "background-02",
+    "background-03",
+    "background-04"
+  ],
+  "procedure": "Fresh isolated JVMs for each of the four new background-only calibrations with the frozen delayed 8.1s second burst. Recheck actual native background shape. Do not time a foreground during background calibration.",
+  "validity": "Each trial must complete all 120 SQL requests with exact results, no drops or failures, no slip outside the frozen arrival tolerance, and full drain by monotonic origin +26.5 seconds.",
+  "endpoint": "Per-trial nearest-rank p95 from offered timestamp to fully drained result. Freeze gate as 1.25 times the maximum of the four independently recomputed p95s. If any trial fails, do not emit an SLO or run feedback treatment.",
+  "scope": "A reference for the controlled workload only, not a production SLA.",
+  "frozenSelectorArrivalSha256": "63e60bfd23ab5a8b1cfbc2b0f236bef57a8e270a468ab7b9857d320afef22f9d",
+  "frozenSelectorConfigSha256": "d8d5e3e952036e568779bbb15805bcb189ab03b8611c5320b838a3f8f5983e5e",
+  "roleOfPriorQualification": "Anchors the same stopped seed and native query shapes. It is not eligibility or performance evidence for the delayed arrival schedule."
+}

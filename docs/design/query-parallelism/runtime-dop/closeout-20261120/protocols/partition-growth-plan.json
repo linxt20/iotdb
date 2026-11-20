@@ -1,0 +1,103 @@
+{
+  "status": "PARTITION_MAJOR_GROWTH_QUALIFICATION_BEFORE_MATCHED_TRIAL",
+  "candidateBindingSha256": "a9b040db6da143039745ed3870476ac35612043c58d18c4def84b769768744a1",
+  "growthClientSha256": "8211bd0ee41f622a9f312fd5879f90fc50d6bea9f683cf33f52030f7a87c42f4",
+  "sourceManifestSha256": "dfeecbef66a2ccd6c5936682947bfa8755d8e9fa246ea2724906935779e23d53",
+  "originOverlappingFrozenInventorySha256": "4231e1a0159c41abd788c6065f5f63905fc111dbef16b68ccaf87d877759795e",
+  "originalWindowPlanSha256": "180a6fbda34bf779938f9e7ae35258fbad501249c5ca20db54b6001b42ee2712",
+  "originalWindowOracleSha256": "766e7e9396105f11cd7b95f86ed01b401fc11788d8136db77c39898ab89b5106",
+  "exactExpectedRowsPerQuery": 740740,
+  "windowPairs": [
+    [
+      1296692100000,
+      1297268100000
+    ],
+    [
+      1297901700000,
+      1298362500000
+    ],
+    [
+      1298506500000,
+      1298852100000
+    ],
+    [
+      1299716100000,
+      1299946500000
+    ],
+    [
+      1300320900000,
+      1300436100000
+    ],
+    [
+      1300925700000,
+      1300983300000
+    ],
+    [
+      1303949700000,
+      1303964100000
+    ],
+    [
+      1304554500000,
+      1304556300000
+    ]
+  ],
+  "originalRows": 51894720,
+  "excludedOriginalRows": 740740,
+  "newRowsStrictlyOutsideEightWindows": 51153980,
+  "samePartitionShiftMs": 1,
+  "ordinalDelta": 140256,
+  "requiredStaticDop": [
+    2,
+    3
+  ],
+  "minimumGrownBytesExclusive": 268435456,
+  "maximumGrownBytesInclusive": 402653184,
+  "arms": [
+    "IGNORE_MEASURED",
+    "STARTUP_ONLY"
+  ],
+  "fixedInitialOverride": 0,
+  "sharedPressureFeedback": false,
+  "blocks": 1,
+  "perArmSequence": [
+    "seed-prime",
+    "seed-01",
+    "seed-02",
+    "seed-03",
+    "growth",
+    "grown-first"
+  ],
+  "primary": "The very first post-growth query must return the original exact multiset, show equal measured layouts and natural static estimate 3 per source, and match the pre-growth linked semantic history where required. Report all assigned results; do not substitute a later repeated query.",
+  "postGrowthArmEquality": "Normalize physical file paths to data node, region, partition, sequence flag, byte count and TsFile SHA. Timestamp-based file names are separately recorded per trial; do not silently discard any content mismatch. Confirm canonical logical layout with actual native tuple identities independently.",
+  "startupInterpretation": "The control checks the static estimate with measured history ignored. The treatment keeps the successful source history if the same stable direction remains. If real startup numbers do not differ, report a negative outcome. No performance interpretation from a single warm mechanism contrast.",
+  "parentProtocolSha256": "9a1122f1f40cdceec86a709e64f3073fccfded67d8db6788ac922f4476c56aa8",
+  "parentDeterminismPlanSha256": "d7b74525bceef91688acabc83c5ccb7e1baa65a1af15afa433512a48269f432e",
+  "growthOrder": "Physical partition ascending, within each partition device ordinal ascending then timestamp ascending using fixed 4096-row tablets; no tablet spans physical partitions. Call blocking FLUSH once per written physical partition.",
+  "automaticTimedFlush": [
+    "enable_timed_flush_seq_memtable=false",
+    "enable_timed_flush_unseq_memtable=false"
+  ],
+  "qualification": {
+    "arms": [
+      "IGNORE_MEASURED",
+      "IGNORE_MEASURED"
+    ],
+    "preGrowthQueries": [
+      "seed-prime"
+    ],
+    "postGrowthQueries": [
+      "grown-first"
+    ],
+    "assert": "1 sequence+1 unsequence per partition 2139–2347, and sequence only for 2348, observed on both real sources and on both clones; exact cross-arm SHA-256, row/plan identity, and both actual startup widths 3."
+  },
+  "previousPilotSummarySha256": "2a1f6d5aecbf67fd9ae203392fbd82aaa91fa0077b9c40d59de46e12311b1ac2",
+  "physicalClassPolicy": "IoTDB DataRegion separates timestamps later than the device last-flush time into sequence. With the +1ms timestamp shift, each populated source gets one sequence and one unsequence file in partitions 2139 through 2347. Partition 2348 begins with the last single nominal time in the dataset and gets sequence only. The fresh qualification must enforce this entire matrix and all strict content/layout matches.",
+  "receiptOrder": "Write each partition line with deterministic field order; compare both canonical schedules and the full typed projection, never hash the order of an unordered Java map.",
+  "previousQualificationSummarySha256": "cef2921c8d9121b4f8227e44a1351c5675edd41414d5a37d7adeeda16ab9b8b4",
+  "previousQualificationProtocolSha256": "8824b1d19af1805c32177546787c6d164513cf339a068d54d0a3d22873e8ab65",
+  "walFixtureIsolation": {
+    "dataNodeProperty": "wal_min_effective_info_ratio=1e-12",
+    "reason": "The second qualification differed only on DataNode 1 partition 2317. In qa, WALNode$DeleteOutdatedFileTask forced an early sequence flush at effective information ratio 0.03, while qb reached the explicit SQL FLUSH. IoTDBDescriptor silently ignores zero. Positive 1e-12 prevents the measured ratio path on this bounded workload, without turning off the WAL or suppressing throttle checks. Any observed WAL-driven close still disqualifies the attempt.",
+    "scope": "Identical only on the isolated DataNodes in both final qualification arms and in any eligible contrast. Same SQL, Java writer, candidate, TsFile fingerprints, logical layout gates and required startup widths."
+  }
+}

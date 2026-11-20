@@ -1,0 +1,75 @@
+{
+  "baseCommit": "1959820d4eec2c5f4154ee3c7652b1a9f85caa32",
+  "londonRuntimeCommit": "5d9d68ac0b2c4a1743f02e5c21510ca646c1c17d",
+  "warmRuntimeCommit": "43163efc4c4df94cb3461ae8f9432c47895080d2",
+  "archive": {
+    "archiveSha256": "02b57442cc74177cd8df742019da60ddaa5390287707066d880fc60b50da817a",
+    "archiveBytes": 934242767,
+    "manifestSha256": "fd96ad821cf806a665f14122b9f2a87b0d9499ad3d198129ff10a1f0f5a4aa7c",
+    "membersVerified": 8688
+  },
+  "manuscriptRevision": "r42",
+  "pdfs": {
+    "thesis": {
+      "pages": 70,
+      "sha256": "dd00dc25ecdf425f2539b7554f999c9e352595b6cb7432020c83a2e2dcfd96cc"
+    },
+    "paper": {
+      "pages": 12,
+      "sha256": "695c72bcea3babd1abb9adc8ef25d070456551904ae334c956d0e5cf74089010"
+    },
+    "paper-scheduling": {
+      "pages": 12,
+      "sha256": "dd95b27ed3924355ff127cc7346c88959aa5e0f1bfe19683ac07a51f953a6b87"
+    }
+  },
+  "tools": {
+    "tools/run_electricity_warm_partition_20261120.py": {
+      "verbatimInArchiveSha256": "7d2edd1d5a1e02c03b107ce9187d50ff15f8a4bdcfcc610a193f3fea0bd2d72b",
+      "publishedSha256": "084c5dd9dce3323e294148077c58050f7e299692f82cbcaa7dd9a58a7e8813b6",
+      "trailingWhitespaceTrimmed": false
+    },
+    "tools/ElectricityWarmPartitionGrowthAppend.java": {
+      "verbatimInArchiveSha256": "8211bd0ee41f622a9f312fd5879f90fc50d6bea9f683cf33f52030f7a87c42f4",
+      "publishedSha256": "2c5fe6692efc73b19df47dbf56226d3168b670b11e8204ff27da1fc11691ce10",
+      "trailingWhitespaceTrimmed": false
+    },
+    "tools/run_london_delayed_selector_holdout_20261120.py": {
+      "verbatimInArchiveSha256": "a7fd43e57b239ab97a21f8145eaabb2087cd4b72951d067ff7e9ee02395e484b",
+      "publishedSha256": "4ef01f768dd4821cd6b5f96705cb0dd87bf917cfaaad38dc7edd8d2a7ef74652",
+      "trailingWhitespaceTrimmed": true
+    },
+    "tools/audit_london_delayed_selector_holdout_20261120.py": {
+      "verbatimInArchiveSha256": "87f663914f0ee64c2d0fc06c2bd6c7777bc68a47a34dfd6d1c8da9cc12351a05",
+      "publishedSha256": "048902f9dbc297a489225947f5e47accbed3aef62b7e1f6ac76c6281e408ac2e",
+      "trailingWhitespaceTrimmed": false
+    },
+    "tools/seal_iotdb_closeout_evidence_20261120.py": {
+      "verbatimInArchiveSha256": "b86aae141cdac7930bca062b271dd03183ea692a7ce70e3c96d51b27ee2b59a0",
+      "publishedSha256": "c20361ffee50e0e15b35f9446102aad045bd4df9302150958e654e90c1d2428d",
+      "trailingWhitespaceTrimmed": false
+    }
+  },
+  "files": {
+    "records/warm-contrast.json": "cadac72cb80745d21938c193b794a18fb6b2bdaf24cb497d3ed7592c624afa9c",
+    "records/warm-qualification.json": "94c8e41a95b46fa6ed214da4e973bce670cf66b26b0cb5bf270c8bbc06037680",
+    "records/warm-adjudication.json": "5002441ea9c323fcfe2181aa63d731d6d45f2d3c1c5f32990b9ef543494dc5d4",
+    "records/warm-candidate-reactor.json": "83a487b6cc0e0762a40c71409737b9dd5c6db2043ea434a0fa5bddca99f52f9d",
+    "records/warm-candidate-release.json": "340f52e9696bb3a2ffb40a60f9e488c0c685e47a16674c7885ba09ef4eaedb62",
+    "records/london-adjudication.json": "a94336373884af51a84782ad20635383df90bc77fc9d6adacb69c6f50e2f7b95",
+    "records/london-native-summary.json": "39d1734da9bd65604161219741b0351443279594c8043d0664aa468b5e82d4fe",
+    "records/london-background-only-gate.json": "38ae4f28e0c3c84201b13df41de6132553154bc3ac6c36411b0f02999e9c8da6",
+    "records/sc01-evidence-archive-receipt.json": "18135f7ad091bcde5a79f0df00047e235531190700e442f205ca2260c0c566e2",
+    "records/local-evidence-archive-receipt.json": "9a6dcc9f9bc34837f1fb0e3d2e3492bbc88a05722d33398625c159ebaf24cc84",
+    "records/github-source-preparation.remote.json": "ce1bb0243d8a0a569136a46bab06fdcc669e12e353bb65f31d6813e9d4197bd9",
+    "protocols/partition-growth-plan.json": "a8e285105e5e47d63909b8936ded6a96d77877fc4a257ff66c2e87f2e90c3bfd",
+    "protocols/new-arrival-selector-prereg.json": "63e60bfd23ab5a8b1cfbc2b0f236bef57a8e270a468ab7b9857d320afef22f9d",
+    "protocols/selector-freeze.json": "d8d5e3e952036e568779bbb15805bcb189ab03b8611c5320b838a3f8f5983e5e",
+    "protocols/selector-background-gate-prereg.json": "338d06eaf6f63001a0ce3f5d6ea8fc72c77e6fce485e3a55a0a9a46305705532",
+    "tools/run_electricity_warm_partition_20261120.py": "084c5dd9dce3323e294148077c58050f7e299692f82cbcaa7dd9a58a7e8813b6",
+    "tools/ElectricityWarmPartitionGrowthAppend.java": "2c5fe6692efc73b19df47dbf56226d3168b670b11e8204ff27da1fc11691ce10",
+    "tools/run_london_delayed_selector_holdout_20261120.py": "4ef01f768dd4821cd6b5f96705cb0dd87bf917cfaaad38dc7edd8d2a7ef74652",
+    "tools/audit_london_delayed_selector_holdout_20261120.py": "048902f9dbc297a489225947f5e47accbed3aef62b7e1f6ac76c6281e408ac2e",
+    "tools/seal_iotdb_closeout_evidence_20261120.py": "c20361ffee50e0e15b35f9446102aad045bd4df9302150958e654e90c1d2428d"
+  }
+}

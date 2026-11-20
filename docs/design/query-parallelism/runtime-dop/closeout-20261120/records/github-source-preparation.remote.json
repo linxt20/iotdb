@@ -1,0 +1,65 @@
+{
+  "baseCommit": "1959820d4eec2c5f4154ee3c7652b1a9f85caa32",
+  "fork": "https://github.com/linxt20/iotdb.git",
+  "branch": "feat/runtime-dop-closeout-20261120",
+  "london": {
+    "commit": "5d9d68ac0b2c4a1743f02e5c21510ca646c1c17d",
+    "filesChangedAgainstBase": 76,
+    "binaryDataNodeSha256": "529ed2ef961eb9d22ca90c394e9629a6e8de7162078d54f399d5c2d52182a40a",
+    "candidateTrackedDiffSha256": "63a2fa9042d395973faf9e8bed958ee82aa7d1591f1c0179b806ce17912c4bff",
+    "licenseHeaderOnly": {
+      "docs/design/query-parallelism/runtime-dop/Electricity_完整数据映射与验收计划_20261118.md": {
+        "executedSha256": "8f117cc5d8edf5d6c309cb25b17b83525998d18455bf2e3e73ad3e64dcf942b7",
+        "committedSha256": "ecbf000dc7613ffba649994103094d11ba2e9d9629847287859c9535023a3b4c"
+      },
+      "docs/design/query-parallelism/runtime-dop/最终结果端本地序列化交换设计_20261118.md": {
+        "executedSha256": "c81869e87c76995e6e4933edb4f69b883839ecd6307ad0f7dfb053753bfef2ab",
+        "committedSha256": "ab300ab8ce4b837c28c0b82e21e33af2e04d5566f03b5ad9f75044a7c253a427"
+      },
+      "docs/design/query-parallelism/runtime-dop/本地frontier交换修复设计与实现规划_20261117.md": {
+        "executedSha256": "8f8799bf3db0764a85d421c127f4111349b7d19e35748267bde71a635b9f0bf2",
+        "committedSha256": "a5f3be45abb3c21d3b0afcf2aff43ecfd23c69d84e5454ae0b913363f4718be8"
+      },
+      "docs/design/query-parallelism/runtime-dop/运行中DOP与波动负载预检验收记录_20261118.md": {
+        "executedSha256": "aaf0fac066c8e858bf7f5c4fab0bb36d4f5a11eaf59342aad18ec8abc8488a68",
+        "committedSha256": "fbbaaf9e1f27e3b89570525acdc18eb685051a404c390d25ef22dee7174e83d8"
+      },
+      "research/query-intra-parallelism-benchmark/scripts/prepare_electricity.py": {
+        "executedSha256": "8eb61025e7f7d2f514feeb8b30ec69915b27909147f4fc5b7a8feb06091c4e9d",
+        "committedSha256": "09c9c023829f315f74dab511b47e6ecd2499f1a61cd86113dff71c7afa5e3207"
+      }
+    }
+  },
+  "warm": {
+    "commit": "43163efc4c4df94cb3461ae8f9432c47895080d2",
+    "filesChangedAgainstBase": 86,
+    "binaryDataNodeSha256": "526a18b3bd25b8b99a08338b557b9ee9f124e78f3f416d2358b7e8f191af7cf6",
+    "candidateTrackedDiffSha256": "2f6446bd2dade66b7e7f9fd8008aed063fd20af22e846f7a8935327ab4ca7f57",
+    "licenseHeaderOnly": {
+      "docs/design/query-parallelism/runtime-dop/Electricity_完整数据映射与验收计划_20261118.md": {
+        "executedSha256": "8f117cc5d8edf5d6c309cb25b17b83525998d18455bf2e3e73ad3e64dcf942b7",
+        "committedSha256": "ecbf000dc7613ffba649994103094d11ba2e9d9629847287859c9535023a3b4c"
+      },
+      "docs/design/query-parallelism/runtime-dop/最终结果端本地序列化交换设计_20261118.md": {
+        "executedSha256": "c81869e87c76995e6e4933edb4f69b883839ecd6307ad0f7dfb053753bfef2ab",
+        "committedSha256": "ab300ab8ce4b837c28c0b82e21e33af2e04d5566f03b5ad9f75044a7c253a427"
+      },
+      "docs/design/query-parallelism/runtime-dop/本地frontier交换修复设计与实现规划_20261117.md": {
+        "executedSha256": "8f8799bf3db0764a85d421c127f4111349b7d19e35748267bde71a635b9f0bf2",
+        "committedSha256": "a5f3be45abb3c21d3b0afcf2aff43ecfd23c69d84e5454ae0b913363f4718be8"
+      },
+      "docs/design/query-parallelism/runtime-dop/运行中DOP与波动负载预检验收记录_20261118.md": {
+        "executedSha256": "aaf0fac066c8e858bf7f5c4fab0bb36d4f5a11eaf59342aad18ec8abc8488a68",
+        "committedSha256": "fbbaaf9e1f27e3b89570525acdc18eb685051a404c390d25ef22dee7174e83d8"
+      },
+      "research/query-intra-parallelism-benchmark/scripts/prepare_electricity.py": {
+        "executedSha256": "8eb61025e7f7d2f514feeb8b30ec69915b27909147f4fc5b7a8feb06091c4e9d",
+        "committedSha256": "09c9c023829f315f74dab511b47e6ecd2499f1a61cd86113dff71c7afa5e3207"
+      }
+    }
+  },
+  "warmReleaseSha256": "340f52e9696bb3a2ffb40a60f9e488c0c685e47a16674c7885ba09ef4eaedb62",
+  "londonPreexecutionSha256": "0c978b86965b1839cd3304292577e114ddcf49255875bc10349b08294771886a",
+  "originRefProofSha256": "d9ac74a284b9b1f01bd464b8426c77a519e4e262011fd5ab5a3b8b93b41ff910",
+  "scope": "Both commits preserve the released runtime and test source bytes. Where needed only, the listed non-runtime files add an ASF comment header; the archive preserves original bytes."
+}
