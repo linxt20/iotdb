@@ -36,6 +36,9 @@ public final class RuntimeDopPolicy {
   }
 
   public enum Reason {
+    SHARED_PRESSURE_CONTRACTION,
+    SHARED_PRESSURE_HOLD,
+    SHARED_PRESSURE_RECOVERY,
     INVALID_INPUT,
     TERMINAL,
     FIRST_SAMPLE,
@@ -223,6 +226,10 @@ public final class RuntimeDopPolicy {
   }
 
   public Result evaluate(Input input, State previous) {
+    return evaluate(input, previous, null);
+  }
+
+  Result evaluate(Input input, State previous, RuntimeSharedPressureFeedback.Advice advice) {
     State state = previous == null ? State.empty() : previous;
     if (!validInput(input)) {
       return keep(input, Reason.INVALID_INPUT, clearPressure(state), null);
@@ -303,12 +310,42 @@ public final class RuntimeDopPolicy {
       return keep(input, Reason.COOLDOWN, idle, delta);
     }
 
+    boolean contended =
+        advice != null && advice.phase() == RuntimeSharedPressureFeedback.Phase.CONTENDED;
+    if (contended && input.currentWorkers() > advice.width()) {
+      return shrinkTo(input, advice.width(), Reason.SHARED_PRESSURE_CONTRACTION);
+    }
+    if (advice != null
+        && advice.phase() == RuntimeSharedPressureFeedback.Phase.RECOVERING
+        && delta > 0
+        && input.backpressuredLaneCount() == 0
+        && input.readyLaneCount() > 0
+        && input.totalWork().coverage() == Coverage.VALID
+        && input.totalWork().value() - input.completedWork().value() > config.nearEofWorkUnits()) {
+      long goal =
+          Math.min(
+              Math.min(advice.width(), input.maxResourceWorkers()), input.unfinishedLaneCount());
+      if (goal > input.currentWorkers()) {
+        int target = (int) Math.min(goal, (long) input.currentWorkers() + config.maxStep());
+        return result(
+            input,
+            Action.GROW,
+            target,
+            Reason.SHARED_PRESSURE_RECOVERY,
+            baseline(input, input.nowNanos()),
+            delta);
+      }
+    }
+
     Action pressure = Action.KEEP;
     Reason actionReason = Reason.NO_PRESSURE;
     if (input.readyLaneCount() > 0 && input.backpressuredLaneCount() > 0) {
       return keep(input, Reason.MIXED_PRESSURE, idle, delta);
     }
     if (input.readyLaneCount() >= input.currentWorkers()) {
+      if (contended) {
+        return keep(input, Reason.SHARED_PRESSURE_HOLD, idle, delta);
+      }
       if (delta == 0) {
         return keep(input, Reason.NO_PROGRESS, idle, delta);
       }

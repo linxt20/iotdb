@@ -456,9 +456,9 @@ public class QueryExecution implements IQueryExecution {
     }
   }
 
-  private void cleanUpResultHandle() {
-    if (resultHandle instanceof SourceHandle) {
-      TFragmentInstanceId fragment = resultHandle.getLocalFragmentInstanceId();
+  private void cleanUpResultHandle(ISourceHandle cleanedHandle) {
+    if (cleanedHandle instanceof SourceHandle) {
+      TFragmentInstanceId fragment = cleanedHandle.getLocalFragmentInstanceId();
       MPPDataExchangeService.getInstance()
           .getMPPDataExchangeManager()
           .deRegisterFragmentInstanceFromMemoryPool(
@@ -493,12 +493,25 @@ public class QueryExecution implements IQueryExecution {
     // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
     // waiting it to be finished.
     if (resultHandle != null && resultHandleCleanUp.compareAndSet(false, true)) {
-      if (t != null) {
-        resultHandle.abort(t);
-      } else {
-        resultHandle.close();
-      }
-      cleanUpResultHandle();
+      ISourceHandle cleanedHandle = resultHandle;
+      ListenableFuture<Void> resultCleanup =
+          closeResultHandle(cleanedHandle, t, () -> cleanUpResultHandle(cleanedHandle));
+      FragmentInstanceId resultId = context.getResultNodeContext().getVirtualFragmentInstanceId();
+      org.apache.iotdb.db.queryengine.execution.exchange.ResourceAuditManager.getInstance()
+          .trackFuture(resultId.getQueryId().getId(), resultId.getFullId(), resultCleanup);
+      resultCleanup.addListener(
+          () -> {
+            try {
+              com.google.common.util.concurrent.Futures.getDone(resultCleanup);
+            } catch (Throwable failure) {
+              LOGGER.error(
+                  org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                      .LOG_FAILED_TO_CLEAN_UP_QUERY_RESULT_EXCHANGE_FOR_ARG_046B0EDF,
+                  context.getQueryId(),
+                  failure);
+            }
+          },
+          com.google.common.util.concurrent.MoreExecutors.directExecutor());
     }
     context.releaseExternalTsFileQueryResources();
     if (context.isDeviceEntrySpilled()) {
@@ -785,7 +798,7 @@ public class QueryExecution implements IQueryExecution {
                     context.needSetHighestPriority())
             : MPPDataExchangeService.getInstance()
                 .getMPPDataExchangeManager()
-                .createSourceHandle(
+                .createResultSourceHandle(
                     context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                     context.getResultNodeContext().getVirtualResultNodeId().getId(),
                     0,
@@ -943,5 +956,43 @@ public class QueryExecution implements IQueryExecution {
 
   public ScheduledExecutorService getScheduledExecutor() {
     return planner.getScheduledExecutorService();
+  }
+
+  static ListenableFuture<Void> closeResultHandle(
+      ISourceHandle handle, Throwable cause, Runnable onClosed) {
+    SettableFuture<Void> result = SettableFuture.create();
+    ListenableFuture<Void> endpoint;
+    try {
+      if (handle
+          instanceof org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) {
+        org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint owned =
+            (org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) handle;
+        endpoint =
+            cause == null ? owned.requestCoordinatedClose() : owned.requestCoordinatedAbort(cause);
+      } else {
+        if (cause == null) handle.close();
+        else handle.abort(cause);
+        endpoint = com.google.common.util.concurrent.Futures.immediateVoidFuture();
+      }
+    } catch (Throwable failure) {
+      result.setException(failure);
+      return com.google.common.util.concurrent.Futures.nonCancellationPropagating(result);
+    }
+    endpoint.addListener(
+        () -> {
+          try {
+            com.google.common.util.concurrent.Futures.getDone(endpoint);
+            onClosed.run();
+            result.set(null);
+          } catch (Throwable failure) {
+            Throwable actual =
+                failure instanceof ExecutionException && failure.getCause() != null
+                    ? failure.getCause()
+                    : failure;
+            result.setException(actual);
+          }
+        },
+        com.google.common.util.concurrent.MoreExecutors.directExecutor());
+    return com.google.common.util.concurrent.Futures.nonCancellationPropagating(result);
   }
 }

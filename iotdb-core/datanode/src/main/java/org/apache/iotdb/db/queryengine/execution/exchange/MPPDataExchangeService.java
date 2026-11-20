@@ -157,6 +157,16 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
   }
 
   @Override
+  public String readRuntimeControl(String windowId, String queryId, String fragmentInstanceId) {
+    return new com.google.gson.GsonBuilder()
+        .serializeNulls()
+        .create()
+        .toJson(
+            ResourceAuditManager.getInstance()
+                .readRuntimeControl(windowId, queryId, fragmentInstanceId));
+  }
+
+  @Override
   public void closeResourceAuditWindow(String windowId) {
     ResourceAuditManager.getInstance().closeWindow(windowId);
   }

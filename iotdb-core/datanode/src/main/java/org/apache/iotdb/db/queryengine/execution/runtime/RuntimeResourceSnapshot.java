@@ -20,9 +20,7 @@ package org.apache.iotdb.db.queryengine.execution.runtime;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue;
 import org.apache.iotdb.db.queryengine.execution.exchange.SharedTsBlockQueue.MemoryReservationKey;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
-import org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
-import org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle;
 import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.db.queryengine.execution.memory.MemorySide;
 
@@ -102,7 +100,8 @@ public record RuntimeResourceSnapshot(
       Integer consumerCount,
       Integer responsePinCount,
       Integer pendingCreditReturnCount,
-      String endpointCloseState) {}
+      String endpointCloseState,
+      String transportMode) {}
 
   /** Missing accounts have null bytes. A present, registered zero-byte account has bytes=0. */
   public record Account(
@@ -298,24 +297,17 @@ public record RuntimeResourceSnapshot(
         Long payload = null;
         Integer tasks = null, consumers = null, pins = null, returning = null;
         String endpointClose = null;
-        if (endpoint != null) {
-          if (registration.identity instanceof SourceHandle) {
-            SourceHandle source = (SourceHandle) registration.identity;
-            payload = source.getRuntimeBufferedPayloadBytes();
-            tasks = source.getRuntimeInFlightTaskCount();
-            consumers = source.getRuntimeConsumerCount();
-            pins = source.getRuntimeResponsePinCount();
-            returning = source.getRuntimePendingCreditReturnCount();
-            endpointClose = closeState(source.getCoordinatedCloseFuture());
-          } else {
-            SinkChannel sink = (SinkChannel) registration.identity;
-            payload = sink.getRuntimeBufferedPayloadBytes();
-            tasks = sink.getRuntimeInFlightTaskCount();
-            consumers = sink.getRuntimeConsumerCount();
-            pins = sink.getRuntimeResponsePinCount();
-            returning = sink.getRuntimePendingCreditReturnCount();
-            endpointClose = closeState(sink.getCoordinatedCloseFuture());
-          }
+        if (registration.identity
+            instanceof org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) {
+          org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint view =
+              (org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint)
+                  registration.identity;
+          payload = view.getRuntimeBufferedPayloadBytes();
+          tasks = view.getRuntimeInFlightTaskCount();
+          consumers = view.getRuntimeConsumerCount();
+          pins = view.getRuntimeResponsePinCount();
+          returning = view.getRuntimePendingCreditReturnCount();
+          endpointClose = closeState(view.getCoordinatedCloseFuture());
         }
         resourceViews.add(
             new Resource(
@@ -342,7 +334,14 @@ public record RuntimeResourceSnapshot(
                 consumers,
                 pins,
                 returning,
-                endpointClose));
+                endpointClose,
+                registration.identity
+                        instanceof
+                        org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint
+                    ? ((org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint)
+                            registration.identity)
+                        .getTransportMode()
+                    : queue != null ? "LOCAL_QUEUE" : null));
         if (registration.actualKey != null) {
           accounts.computeIfAbsent(
               registration.actualKey, key -> readAccount(pool, poolToken, key, previouslyObserved));
@@ -405,19 +404,19 @@ public record RuntimeResourceSnapshot(
     RuntimeEndpointFrontier endpoint = endpointFrontierOf(identity);
     if (endpoint != null) {
       MemorySide expectedSide =
-          identity instanceof SourceHandle ? MemorySide.INPUT : MemorySide.OUTPUT;
+          identity
+                  instanceof org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle
+              ? MemorySide.INPUT
+              : MemorySide.OUTPUT;
       if (!endpoint.reservation().getMemoryReservationKey().equals(actualKey)
           || endpoint.reservation().getMemorySide() != expectedSide) {
         throw new IllegalArgumentException("Mapping disagrees with the endpoint owner");
       }
+      org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint view =
+          (org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) identity;
       org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId fragment =
-          identity instanceof SourceHandle
-              ? ((SourceHandle) identity).getLocalFragmentInstanceId()
-              : ((SinkChannel) identity).getLocalFragmentInstanceId();
-      String node =
-          identity instanceof SourceHandle
-              ? ((SourceHandle) identity).getLocalPlanNodeId()
-              : ((SinkChannel) identity).getLocalPlanNodeId();
+          view.getLocalFragmentInstanceId();
+      String node = view.getLocalPlanNodeId();
       MemoryReservationKey logical =
           new MemoryReservationKey(
               fragment.getQueryId(),
@@ -449,8 +448,11 @@ public record RuntimeResourceSnapshot(
   }
 
   public static RuntimeEndpointFrontier endpointFrontierOf(Object identity) {
-    if (identity instanceof SourceHandle) return ((SourceHandle) identity).getRuntimeFrontier();
-    if (identity instanceof SinkChannel) return ((SinkChannel) identity).getRuntimeFrontier();
+    if (identity
+        instanceof org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) {
+      return ((org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) identity)
+          .getRuntimeFrontier();
+    }
     return null;
   }
 

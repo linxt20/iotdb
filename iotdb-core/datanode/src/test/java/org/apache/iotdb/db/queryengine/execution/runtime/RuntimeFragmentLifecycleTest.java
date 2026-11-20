@@ -582,11 +582,46 @@ public class RuntimeFragmentLifecycleTest {
               .get(RuntimeDopExecutionSnapshot.Outcome.APPLIED)
               .longValue());
       assertSame(frozen, f.owner.freezeControlEvidence());
+      java.util.Map<String, Object> live = f.owner.snapshotLiveControlEvidence();
+      assertEquals(true, live.get("frozen"));
+      RuntimeDopController.TraceSnapshot trace =
+          (RuntimeDopController.TraceSnapshot) live.get("controller");
+      assertEquals(2, trace.totalEvents());
+      assertTrue(trace.samplingStopped());
+      assertNotNull(trace.events().get(1).input());
+      assertNull(field(f.owner, "controller"));
       verify(target, never()).resize(anyString(), anyInt());
       verify(target, never()).fail(any());
     } finally {
       controller.close();
     }
+  }
+
+  @Test
+  public void liveSchedulerPressureWorksWithoutAnAdaptiveController() throws Exception {
+    Fixture f = new Fixture();
+    org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler scheduler =
+        mock(org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.class);
+    var own =
+        new org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.RunnableTaskCounts(
+            1, 0, 0);
+    var other =
+        new org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.RunnableTaskCounts(
+            2, 1, 0);
+    var sample =
+        new org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.RuntimePressure(
+            10, 20, 8, true, true, 4, own, other);
+    when(scheduler.observeRuntimePressure(f.context.getId().getQueryId()))
+        .thenReturn(java.util.Optional.of(sample));
+    setField(f.owner, "scheduler", scheduler);
+    assertFalse(f.owner.snapshotLiveControlEvidence().containsKey("schedulerPressure"));
+    f.owner.registerControlGroup("fixed", 1, 1);
+    java.util.Map<String, Object> live = f.owner.snapshotLiveControlEvidence();
+    assertNull(live.get("controller"));
+    assertSame(sample, live.get("schedulerPressure"));
+    f.owner.freezeControlEvidence();
+    assertFalse(f.owner.snapshotLiveControlEvidence().containsKey("schedulerPressure"));
+    verify(scheduler).observeRuntimePressure(f.context.getId().getQueryId());
   }
 
   @Test
@@ -609,6 +644,10 @@ public class RuntimeFragmentLifecycleTest {
     try {
       java.util.concurrent.Future<?> sample = executor.submit(controller::sampleOnce);
       assertTrue(entered.await(5, TimeUnit.SECONDS));
+      java.util.Map<String, Object> live = f.owner.snapshotLiveControlEvidence();
+      assertEquals(false, live.get("frozen"));
+      assertFalse(((RuntimeDopController.TraceSnapshot) live.get("controller")).samplingStopped());
+      assertFalse(controller.getStoppedFuture().isDone());
       f.owner.registerOriginalDriver(f.factory, f.driver);
       f.quiesced.set(null);
       f.closed.set(null);
@@ -631,6 +670,51 @@ public class RuntimeFragmentLifecycleTest {
       controller.close();
       executor.shutdownNow();
     }
+  }
+
+  @Test
+  public void liveReadDoesNotSealPendingOrFutureMembershipSettlements() throws Exception {
+    Fixture f = new Fixture();
+    f.owner.registerControlGroup("g", 4, 2);
+    SettableFuture<RuntimeFragmentLifecycle.ResizeResult> pending = SettableFuture.create();
+    f.owner.observeResizeResult("g", 3, pending);
+    java.util.Map<String, Object> first = f.owner.snapshotLiveControlEvidence();
+    assertEquals(false, first.get("frozen"));
+    assertEquals(false, field(f.owner, "controlSettlementsSealed"));
+    assertNull(field(f.owner, "frozenControlEvidence"));
+    pending.set(
+        new RuntimeFragmentLifecycle.ResizeResult(
+            "g", 3, 3, RuntimeFragmentLifecycle.ResizeStatus.APPLIED));
+    f.owner.observeResizeResult(
+        "g",
+        2,
+        Futures.immediateFuture(
+            new RuntimeFragmentLifecycle.ResizeResult(
+                "g", 2, 2, RuntimeFragmentLifecycle.ResizeStatus.APPLIED)));
+    java.util.Map<?, ?> groups =
+        (java.util.Map<?, ?>) f.owner.snapshotLiveControlEvidence().get("groups");
+    RuntimeDopExecutionSnapshot.GroupSnapshot group =
+        (RuntimeDopExecutionSnapshot.GroupSnapshot) groups.get("g");
+    assertEquals(2, group.events().size());
+    assertEquals(2, group.lastObservedWorkers());
+    assertNotNull(group.events().get(0).observedAtNanos());
+    com.google.gson.JsonObject json =
+        com.google.gson.JsonParser.parseString(
+                new com.google.gson.GsonBuilder()
+                    .serializeNulls()
+                    .create()
+                    .toJson(f.owner.snapshotLiveControlEvidence()))
+            .getAsJsonObject();
+    assertEquals("NO_CONTROLLER", json.get("status").getAsString());
+    assertTrue(json.get("controller").isJsonNull());
+    com.google.gson.JsonArray events =
+        json.getAsJsonObject("groups").getAsJsonObject("g").getAsJsonArray("events");
+    assertEquals(2, events.size());
+    assertFalse(events.get(0).getAsJsonObject().get("observedAtNanos").isJsonNull());
+    assertEquals("APPLIED", events.get(1).getAsJsonObject().get("outcome").getAsString());
+    assertTrue(group.events().get(1).observedAtNanos() >= group.events().get(0).observedAtNanos());
+    assertThrows(UnsupportedOperationException.class, () -> first.clear());
+    assertEquals(false, field(f.owner, "controlSettlementsSealed"));
   }
 
   private static Object field(Object owner, String name) throws Exception {

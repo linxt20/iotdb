@@ -46,6 +46,11 @@ public final class RuntimeDopController implements AutoCloseable {
   public interface Target {
     Map<String, RuntimeDopPolicy.Input> sampleControlInputs(long nowNanos, long sequence);
 
+    default org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.ControlPressure
+        sampleSharedPressure() {
+      return null;
+    }
+
     ListenableFuture<?> resize(String groupId, int targetWorkers) throws Exception;
 
     void fail(Throwable failure);
@@ -53,6 +58,8 @@ public final class RuntimeDopController implements AutoCloseable {
 
   private final Target owner;
   private final RuntimeDopPolicy policy;
+  private final RuntimeSharedPressureFeedback pressureFeedback =
+      new RuntimeSharedPressureFeedback();
   private final Map<String, RuntimeDopPolicy.State> states = new LinkedHashMap<>();
   private final ArrayDeque<Event> events = new ArrayDeque<>();
   private final SettableFuture<Void> stopped = SettableFuture.create();
@@ -63,6 +70,7 @@ public final class RuntimeDopController implements AutoCloseable {
   private boolean closed;
   private int sampling;
   private long sequence;
+  private long recordedEventCount;
 
   public RuntimeDopController(Target owner) {
     this(
@@ -100,10 +108,12 @@ public final class RuntimeDopController implements AutoCloseable {
       sampling++;
     }
     try {
-      long now = Math.max(0, ticker.getAsLong() - originNanos);
+      long nowAbsolute = ticker.getAsLong();
+      long now = Math.max(0, nowAbsolute - originNanos);
       boolean actuated = false;
-      for (Map.Entry<String, RuntimeDopPolicy.Input> entry :
-          owner.sampleControlInputs(now, ++sequence).entrySet()) {
+      Map<String, RuntimeDopPolicy.Input> inputs = owner.sampleControlInputs(now, ++sequence);
+      var shared = inputs.size() == 1 ? owner.sampleSharedPressure() : null;
+      for (Map.Entry<String, RuntimeDopPolicy.Input> entry : inputs.entrySet()) {
         RuntimeDopPolicy.Input input = entry.getValue();
         if (actuated) {
           input =
@@ -124,14 +134,18 @@ public final class RuntimeDopController implements AutoCloseable {
                   true,
                   input.terminal());
         }
+        var advice =
+            pressureFeedback.observe(
+                shared, shared == null ? nowAbsolute : ticker.getAsLong(), input.currentWorkers());
         RuntimeDopPolicy.Result result =
             policy.evaluate(
-                input, states.getOrDefault(entry.getKey(), RuntimeDopPolicy.State.empty()));
+                input, states.getOrDefault(entry.getKey(), RuntimeDopPolicy.State.empty()), advice);
         states.put(entry.getKey(), result.nextState());
         RuntimeDopPolicy.Decision decision = result.decision();
         synchronized (lock) {
           if (closed) return;
           if (events.size() == 128) events.removeFirst();
+          recordedEventCount++;
           events.addLast(
               new Event(
                   entry.getKey(),
@@ -142,7 +156,9 @@ public final class RuntimeDopController implements AutoCloseable {
                   decision.action(),
                   decision.reason(),
                   entry.getValue().completedWork(),
-                  entry.getValue().totalWork()));
+                  entry.getValue().totalWork(),
+                  input,
+                  advice));
         }
         if (decision.action() != RuntimeDopPolicy.Action.KEEP) {
           actuated = true;
@@ -186,6 +202,27 @@ public final class RuntimeDopController implements AutoCloseable {
     }
   }
 
+  /** A read never samples, closes, drains, or resizes the controller. */
+  public TraceSnapshot snapshotTrace() {
+    synchronized (lock) {
+      return new TraceSnapshot(
+          originNanos, recordedEventCount, closed && sampling == 0, List.copyOf(events));
+    }
+  }
+
+  /** Counts events, not sample ticks: several groups can share one sample sequence. */
+  public record TraceSnapshot(
+      long originNanos, long totalEvents, boolean samplingStopped, List<Event> events) {
+    public TraceSnapshot {
+      events = List.copyOf(events);
+      if (totalEvents < events.size() || events.size() > 128) throw new IllegalArgumentException();
+    }
+
+    public long firstRetainedEventOrdinal() {
+      return totalEvents - events.size() + 1;
+    }
+  }
+
   public ListenableFuture<Void> getStoppedFuture() {
     return Futures.nonCancellationPropagating(stopped);
   }
@@ -212,5 +249,55 @@ public final class RuntimeDopController implements AutoCloseable {
       RuntimeDopPolicy.Action action,
       RuntimeDopPolicy.Reason reason,
       RuntimeDopPolicy.MetricValue completedWork,
-      RuntimeDopPolicy.MetricValue totalWork) {}
+      RuntimeDopPolicy.MetricValue totalWork,
+      RuntimeDopPolicy.Input input,
+      RuntimeSharedPressureFeedback.Advice sharedPressureAdvice) {
+    public Event(
+        String groupId,
+        long sampleNanos,
+        long sampleSequence,
+        int observedWorkers,
+        int requestedWorkers,
+        RuntimeDopPolicy.Action action,
+        RuntimeDopPolicy.Reason reason,
+        RuntimeDopPolicy.MetricValue completedWork,
+        RuntimeDopPolicy.MetricValue totalWork,
+        RuntimeDopPolicy.Input input) {
+      this(
+          groupId,
+          sampleNanos,
+          sampleSequence,
+          observedWorkers,
+          requestedWorkers,
+          action,
+          reason,
+          completedWork,
+          totalWork,
+          input,
+          null);
+    }
+
+    public Event(
+        String groupId,
+        long sampleNanos,
+        long sampleSequence,
+        int observedWorkers,
+        int requestedWorkers,
+        RuntimeDopPolicy.Action action,
+        RuntimeDopPolicy.Reason reason,
+        RuntimeDopPolicy.MetricValue completedWork,
+        RuntimeDopPolicy.MetricValue totalWork) {
+      this(
+          groupId,
+          sampleNanos,
+          sampleSequence,
+          observedWorkers,
+          requestedWorkers,
+          action,
+          reason,
+          completedWork,
+          totalWork,
+          null);
+    }
+  }
 }

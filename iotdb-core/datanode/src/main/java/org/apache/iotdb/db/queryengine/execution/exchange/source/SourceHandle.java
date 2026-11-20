@@ -77,7 +77,9 @@ import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.S
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.GET_DATA_BLOCK_NUM_CALLER;
 import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.ON_ACKNOWLEDGE_DATA_BLOCK_NUM_CALLER;
 
-public class SourceHandle implements ISourceHandle {
+public class SourceHandle
+    implements ISourceHandle,
+        org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SourceHandle.class);
 
@@ -132,6 +134,12 @@ public class SourceHandle implements ISourceHandle {
   private Throwable endpointFailure;
   private Throwable terminalActionFailure;
   private final RuntimeEndpointFrontier frontier;
+  private final org.apache.iotdb.db.queryengine.execution.exchange.LocalResultExchange
+      localResultExchange;
+  private boolean localNativeSettlementPending;
+  private boolean localNativeSettlementClaimed;
+  private boolean localNativeCancellationKnown;
+
   private InputLease frontierInput;
   private int inFlightConsumers;
   private int pendingCreditReturns;
@@ -248,7 +256,40 @@ public class SourceHandle implements ISourceHandle {
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager,
       RuntimeEndpointFrontier frontier) {
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        localFragmentInstanceId,
+        localPlanNodeId,
+        indexOfUpstreamSinkHandle,
+        localMemoryManager,
+        executorService,
+        serde,
+        sourceHandleListener,
+        isHighestPriority,
+        mppDataExchangeServiceClientManager,
+        frontier,
+        null);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SourceHandle(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
+      int indexOfUpstreamSinkHandle,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SourceHandleListener sourceHandleListener,
+      boolean isHighestPriority,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager,
+      RuntimeEndpointFrontier frontier,
+      org.apache.iotdb.db.queryengine.execution.exchange.LocalResultExchange localResultExchange) {
     this.frontier = frontier;
+    this.localResultExchange = localResultExchange;
     this.remoteEndpoint =
         Validate.notNull(
             remoteEndpoint,
@@ -291,6 +332,25 @@ public class SourceHandle implements ISourceHandle {
     this.mppDataExchangeServiceClientManager = mppDataExchangeServiceClientManager;
     this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
     this.threadName = createFullIdFrom(localFragmentInstanceId, localPlanNodeId);
+    if (localResultExchange != null) {
+      if (frontier != null)
+        throw new IllegalArgumentException(
+            org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                .EXCEPTION_LOCAL_RESULT_CONSUMER_RETAINS_ITS_NATIVE_INPUT_ACCOUNT_7EC1BD48);
+      if (!org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode(remoteEndpoint))
+        throw new IllegalArgumentException(
+            org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                .EXCEPTION_LOCAL_RESULT_EXCHANGE_MUST_REMAIN_IN_THE_SAME_DATANODE_5CA2F875);
+      org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink.Edge edge =
+          localResultExchange.getEdge();
+      if (!edge.consumer().equals(FragmentInstanceId.fromThrift(localFragmentInstanceId))
+          || !edge.producer().equals(FragmentInstanceId.fromThrift(remoteFragmentInstanceId))
+          || edge.channel() != indexOfUpstreamSinkHandle
+          || !edge.consumerPlanNode().equals(localPlanNodeId))
+        throw new IllegalArgumentException(
+            org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                .EXCEPTION_LOCAL_RESULT_EXCHANGE_BELONGS_TO_ANOTHER_EDGE_5EF70208);
+    }
     if (frontier == null) {
       localMemoryManager
           .getQueryPool()
@@ -319,7 +379,10 @@ public class SourceHandle implements ISourceHandle {
         return serde.deserialize(tsBlock);
       } finally {
         DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
-            SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+            localResultExchange == null
+                ? SOURCE_HANDLE_DESERIALIZE_TSBLOCK_REMOTE
+                : DataExchangeCostMetricSet.SOURCE_HANDLE_DESERIALIZE_TSBLOCK_LOCAL,
+            System.nanoTime() - startTime);
       }
     } else {
       return null;
@@ -375,7 +438,10 @@ public class SourceHandle implements ISourceHandle {
       return tsBlock;
     } finally {
       DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
-          SOURCE_HANDLE_GET_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+          localResultExchange == null
+              ? SOURCE_HANDLE_GET_TSBLOCK_REMOTE
+              : DataExchangeCostMetricSet.SOURCE_HANDLE_GET_TSBLOCK_LOCAL,
+          System.nanoTime() - startTime);
     }
   }
 
@@ -506,7 +572,7 @@ public class SourceHandle implements ISourceHandle {
 
   /** Buffered payload only; active fetch/decoder/transport ownership is reported separately. */
   public synchronized Long getRuntimeBufferedPayloadBytes() {
-    if (frontier == null) return null;
+    if (frontier == null && localResultExchange == null) return null;
     return sequenceIdToTsBlock.values().stream().mapToLong(ByteBuffer::remaining).sum();
   }
 
@@ -665,8 +731,8 @@ public class SourceHandle implements ISourceHandle {
       int total = -1;
       try {
         for (int attempt = 1; attempt <= MAX_ATTEMPT_TIMES; attempt++) {
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease client =
+              openExchangeClient()) {
             while (true) {
               synchronized (SourceHandle.this) {
                 if (closed || aborted) return;
@@ -679,11 +745,12 @@ public class SourceHandle implements ISourceHandle {
                           indexOfUpstreamSinkHandle)
                       .setOffset(received);
               TGetDataBlockResponse response = client.getDataBlock(request);
-              REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER.recordReceived(
-                  localFragmentInstanceId,
-                  remoteFragmentInstanceId,
-                  indexOfUpstreamSinkHandle,
-                  response.getTsBlocks());
+              if (!client.isLocal())
+                REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER.recordReceived(
+                    localFragmentInstanceId,
+                    remoteFragmentInstanceId,
+                    indexOfUpstreamSinkHandle,
+                    response.getTsBlocks());
               synchronized (SourceHandle.this) {
                 if (closed || aborted) return;
               }
@@ -869,11 +936,25 @@ public class SourceHandle implements ISourceHandle {
       }
     }
     if (first) {
+
       RuntimeFrontierReservation.BlockCredit discarded = abandoned;
       runOutsideMonitor(
           () -> {
             try {
-              if (frontier == null) settleTerminalMemory(pendingMemory);
+              if (localResultExchange != null) {
+                try {
+                  localResultExchange.markConsumerClosed();
+                } catch (Throwable failure) {
+                  recordTerminalActionFailure(failure);
+                }
+              }
+              if (frontier == null && localResultExchange != null) {
+                boolean known = cancelPendingNativeMemory(pendingMemory);
+                synchronized (SourceHandle.this) {
+                  localNativeCancellationKnown = known;
+                  localNativeSettlementPending = true;
+                }
+              } else if (frontier == null) settleTerminalMemory(pendingMemory);
               else {
                 returnInputCredit(discarded);
                 synchronized (SourceHandle.this) {
@@ -920,6 +1001,10 @@ public class SourceHandle implements ISourceHandle {
   }
 
   private void settleTerminalMemory(ListenableFuture<Void> pendingMemory) {
+    if (cancelPendingNativeMemory(pendingMemory)) freeNativeTerminalMemory();
+  }
+
+  private boolean cancelPendingNativeMemory(ListenableFuture<Void> pendingMemory) {
     boolean cancellationKnown = true;
     if (pendingMemory != null) {
       try {
@@ -932,11 +1017,15 @@ public class SourceHandle implements ISourceHandle {
         cancellationKnown = false;
       }
     }
+    return cancellationKnown;
+  }
+
+  private void freeNativeTerminalMemory() {
     long retained;
     synchronized (this) {
       retained = bufferRetainedSizeInBytes;
     }
-    if (cancellationKnown && retained > 0) {
+    if (retained > 0) {
       try {
         localMemoryManager
             .getQueryPool()
@@ -953,6 +1042,29 @@ public class SourceHandle implements ISourceHandle {
         recordTerminalActionFailure(failure);
       }
     }
+  }
+
+  private boolean settleLocalNativeMemoryIfReady() {
+    boolean known;
+    synchronized (this) {
+      if (!localNativeSettlementPending) return false;
+      if (!terminalCleanupFinished || inFlightEndpointTasks != 0 || localNativeSettlementClaimed)
+        return true;
+      localNativeSettlementClaimed = true;
+      known = localNativeCancellationKnown;
+    }
+    runOutsideMonitor(
+        () -> {
+          try {
+            if (known) freeNativeTerminalMemory();
+          } finally {
+            synchronized (SourceHandle.this) {
+              localNativeSettlementPending = false;
+            }
+            advanceCoordinatedClose();
+          }
+        });
+    return true;
   }
 
   private void recordEndpointFailure(Throwable failure) {
@@ -1043,6 +1155,8 @@ public class SourceHandle implements ISourceHandle {
         try {
           if (delegate instanceof FrontierFetchTask) {
             ((FrontierFetchTask) delegate).settledAfterTaskExit();
+          } else if (localResultExchange != null && delegate instanceof GetDataBlocksTask) {
+            ((GetDataBlocksTask) delegate).settledAfterTaskExit();
           }
         } catch (Throwable failure) {
           recordEndpointFailure(failure);
@@ -1146,6 +1260,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   private void advanceCoordinatedClose() {
+    if (settleLocalNativeMemoryIfReady()) return;
     OwnedTask closeEvent = null;
     boolean notify = false;
     Throwable failure = null;
@@ -1268,6 +1383,7 @@ public class SourceHandle implements ISourceHandle {
     private final int startSequenceId;
     private final int endSequenceId;
     private final long reservedBytes;
+    private long deferredFailedBytes;
 
     GetDataBlocksTask(int startSequenceId, int endSequenceId, long reservedBytes) {
       Validate.isTrue(
@@ -1294,7 +1410,7 @@ public class SourceHandle implements ISourceHandle {
     @SuppressWarnings("squid:S3776")
     public void run() {
       try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-        if (LOGGER.isDebugEnabled()) {
+        if (LOGGER.isDebugEnabled() && localResultExchange == null) {
           LOGGER.debug(
               DataNodeQueryMessages.STARTPULLTSBLOCKSFROMREMOTE_ARG_ARG_ARG_ARG,
               remoteFragmentInstanceId,
@@ -1316,8 +1432,8 @@ public class SourceHandle implements ISourceHandle {
 
           long startTime = System.nanoTime();
           boolean transferAttemptRecorded = false;
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease client =
+              openExchangeClient()) {
             TGetDataBlockResponse resp = getDataBlockWithFragments(client, req, fetchProgress);
             if (resp == null) {
               return;
@@ -1350,7 +1466,7 @@ public class SourceHandle implements ISourceHandle {
             List<ByteBuffer> tsBlocks = new ArrayList<>(tsBlockNum);
             tsBlocks.addAll(resp.getTsBlocks());
 
-            if (LOGGER.isDebugEnabled()) {
+            if (LOGGER.isDebugEnabled() && localResultExchange == null) {
               LOGGER.debug(DataNodeQueryMessages.END_PULL_TSBLOCKS_FROM_REMOTE, tsBlockNum);
             }
             DATA_EXCHANGE_COUNT_METRIC_SET.recordDataBlockNum(
@@ -1435,8 +1551,10 @@ public class SourceHandle implements ISourceHandle {
     }
 
     private void recordTransferAttempt(boolean success, String errorCode, Throwable error) {
-      DataNodeUserDataTransferAuditor.record(
-          localEndpoint, remoteEndpoint, localEndpoint, success, errorCode, error);
+      if (localResultExchange == null) {
+        DataNodeUserDataTransferAuditor.record(
+            localEndpoint, remoteEndpoint, localEndpoint, success, errorCode, error);
+      }
     }
 
     private void fail(Throwable t) {
@@ -1444,7 +1562,9 @@ public class SourceHandle implements ISourceHandle {
         if (aborted || closed) {
           return;
         }
-        if (reservedBytes > 0) {
+        if (localResultExchange != null) {
+          deferredFailedBytes = reservedBytes;
+        } else if (reservedBytes > 0) {
           bufferRetainedSizeInBytes -= reservedBytes;
           localMemoryManager
               .getQueryPool()
@@ -1458,8 +1578,29 @@ public class SourceHandle implements ISourceHandle {
       notifyFailure(t);
     }
 
+    private void settledAfterTaskExit() {
+      long bytes;
+      synchronized (SourceHandle.this) {
+        bytes = deferredFailedBytes;
+        deferredFailedBytes = 0;
+        if (terminalCleanupStarted || bytes <= 0) return;
+        bufferRetainedSizeInBytes -= bytes;
+      }
+      try {
+        localMemoryManager
+            .getQueryPool()
+            .free(
+                localFragmentInstanceId.getQueryId(),
+                fullFragmentInstanceId,
+                localPlanNodeId,
+                bytes);
+      } catch (Throwable failure) {
+        recordEndpointFailure(failure);
+      }
+    }
+
     private TGetDataBlockResponse getDataBlockWithFragments(
-        SyncDataNodeMPPDataExchangeServiceClient client,
+        org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease client,
         TGetDataBlockRequest request,
         DataBlockFetchProgress fetchProgress)
         throws TException {
@@ -1474,11 +1615,12 @@ public class SourceHandle implements ISourceHandle {
         fragmentRequest.setStartSequenceId(fetchProgress.nextSequenceId);
         fragmentRequest.setOffset(fetchProgress.offset);
         TGetDataBlockResponse response = client.getDataBlock(fragmentRequest);
-        REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER.recordReceived(
-            localFragmentInstanceId,
-            remoteFragmentInstanceId,
-            indexOfUpstreamSinkHandle,
-            response.getTsBlocks());
+        if (!client.isLocal())
+          REMOTE_SHUFFLE_PAYLOAD_BYTE_TRACKER.recordReceived(
+              localFragmentInstanceId,
+              remoteFragmentInstanceId,
+              indexOfUpstreamSinkHandle,
+              response.getTsBlocks());
         synchronized (SourceHandle.this) {
           if (aborted || closed) {
             fetchProgress.discard();
@@ -1618,8 +1760,8 @@ public class SourceHandle implements ISourceHandle {
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
           long startTime = System.nanoTime();
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease client =
+              openExchangeClient()) {
             client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
             break;
           } catch (Throwable e) {
@@ -1667,8 +1809,8 @@ public class SourceHandle implements ISourceHandle {
             new TCloseSinkChannelEvent(remoteFragmentInstanceId, indexOfUpstreamSinkHandle);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease client =
+              openExchangeClient()) {
             client.onCloseSinkChannelEvent(closeSinkChannelEvent);
             break;
           } catch (Throwable e) {
@@ -1691,5 +1833,20 @@ public class SourceHandle implements ISourceHandle {
         }
       }
     }
+  }
+
+  private org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease
+      openExchangeClient() throws org.apache.iotdb.commons.client.exception.ClientManagerException {
+    return org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease.open(
+        mppDataExchangeServiceClientManager, remoteEndpoint, localResultExchange);
+  }
+
+  public boolean isLocalResultExchange() {
+    return localResultExchange != null;
+  }
+
+  @Override
+  public String getTransportMode() {
+    return localResultExchange == null ? "REMOTE_RPC" : "LOCAL_SERIALIZED_RESULT";
   }
 }

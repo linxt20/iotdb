@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "scope": "Exact portable SQL, parameters, contracts and example bytes. Excludes this index; no executed service conclusion.",
   "sqlBytesRule": "SQL files preserve exact UTF-8 source bytes without added license comments, semicolons or acceptance markers. Repository Apache License applies. Driver adds its separately hashed run marker at execution.",
-  "caseManifestSha256": "6a7df717207b1faa278d6b41fb371bd9109e7a8e9dddb3fafa83237558c4ec7b",
+  "caseManifestSha256": "9d48f8f813ea9e1e865e8c1c1ea723cb4d4219711c2ed1d8d92764bba8b040a5",
   "files": [
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/cancelled-parameters.example.json",
@@ -41,8 +41,8 @@
     },
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/case-manifest.json",
-      "sha256": "6a7df717207b1faa278d6b41fb371bd9109e7a8e9dddb3fafa83237558c4ec7b",
-      "bytes": 62453
+      "sha256": "9d48f8f813ea9e1e865e8c1c1ea723cb4d4219711c2ed1d8d92764bba8b040a5",
+      "bytes": 63002
     },
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/compatibility/checks.json",
@@ -111,13 +111,13 @@
     },
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-candidate.json",
-      "sha256": "02f7690a5c4c46217d8853445d040ef9c21f09c783c9dfb97475c9b18e3fee22",
-      "bytes": 653
+      "sha256": "8dbedbfeb8175b8be861998c29945fb7431398dda29916297015225fd38c3daf",
+      "bytes": 649
     },
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-primary-control.json",
-      "sha256": "27a53caea108d7ff911f10bbf041c24d2e4c5f2737cea66c1a10cde7568651a9",
-      "bytes": 656
+      "sha256": "8bc4a92b86f14e53f6269c557e8904f99c80f0ba0944dfd6c1a1b990e0424350",
+      "bytes": 655
     },
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R3-runtime-constant-candidate.json",
@@ -261,8 +261,8 @@
     },
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json",
-      "sha256": "34f7451621cea7bf7d9bbe0f87e1805ed4009e4becadab19c4367dcdc1a2c856",
-      "bytes": 3045
+      "sha256": "8802bfefd98b11d30e3f4d06ff885bd9180eb868b8930c34aa90d7b9af57fde7",
+      "bytes": 3886
     },
     {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/ordered-parameters.example.json",

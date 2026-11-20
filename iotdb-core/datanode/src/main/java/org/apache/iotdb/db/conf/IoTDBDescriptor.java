@@ -608,6 +608,30 @@ public class IoTDBDescriptor {
                 "enable_runtime_scan_parallelism",
                 Boolean.toString(conf.isEnableRuntimeScanParallelism()))));
 
+    conf.setEnableRuntimeLocalExchange(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_runtime_local_exchange",
+                Boolean.toString(conf.isEnableRuntimeLocalExchange()))));
+    conf.setRuntimeScanFixedWorkers(
+        Integer.parseInt(
+            properties.getProperty(
+                "runtime_scan_parallelism_fixed_workers",
+                Integer.toString(conf.getRuntimeScanFixedWorkers()))));
+    conf.setEnableRuntimeScanSharedPressureFeedback(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_runtime_scan_shared_pressure_feedback",
+                Boolean.toString(conf.isEnableRuntimeScanSharedPressureFeedback()))));
+    conf.setRuntimeScanInitialWorkers(
+        Integer.parseInt(
+            properties.getProperty(
+                "runtime_scan_parallelism_initial_workers",
+                Integer.toString(conf.getRuntimeScanInitialWorkers()))));
+    conf.setRuntimeScanAblationMode(
+        properties.getProperty(
+            "runtime_scan_ablation_mode", conf.getRuntimeScanAblationMode().name()));
+
     conf.setEnableDopEstimation(
         Boolean.parseBoolean(
             properties.getProperty(

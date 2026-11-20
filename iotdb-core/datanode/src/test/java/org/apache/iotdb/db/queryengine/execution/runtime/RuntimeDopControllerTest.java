@@ -44,6 +44,7 @@ import java.util.function.BiFunction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -330,6 +331,201 @@ public class RuntimeDopControllerTest {
         }
       }
     }
+  }
+
+  @Test
+  public void liveTraceReadsDoNotSampleResizeOrStopAndRetainActualPolicyInput() throws Exception {
+    TestTarget owner = new TestTarget();
+    AtomicLong clock = new AtomicLong(1000);
+    try (RuntimeDopController controller = controller(owner, clock, 2)) {
+      assertEquals(0, controller.snapshotTrace().totalEvents());
+      sample(controller, clock);
+      RuntimeDopController.TraceSnapshot trace = controller.snapshotTrace();
+      assertEquals(1, trace.totalEvents());
+      assertEquals(1000, trace.originNanos());
+      assertEquals(1, trace.firstRetainedEventOrdinal());
+      assertFalse(trace.samplingStopped());
+      assertEquals(1, trace.events().get(0).input().activeLeases());
+      assertEquals(8, trace.events().get(0).input().maxResourceWorkers());
+      com.google.gson.JsonObject json =
+          com.google.gson.JsonParser.parseString(
+                  new com.google.gson.GsonBuilder().serializeNulls().create().toJson(trace))
+              .getAsJsonObject();
+      com.google.gson.JsonObject inputJson =
+          json.getAsJsonArray("events").get(0).getAsJsonObject().getAsJsonObject("input");
+      assertEquals(8, inputJson.get("maxResourceWorkers").getAsInt());
+      assertEquals(0, inputJson.get("backpressuredLaneCount").getAsInt());
+      assertEquals(
+          "VALID", inputJson.getAsJsonObject("completedWork").get("coverage").getAsString());
+      assertEquals(1, json.get("totalEvents").getAsLong());
+      for (int i = 0; i < 100; i++) controller.snapshotTrace();
+      assertEquals(1, owner.samples.get());
+      assertTrue(owner.resizes.isEmpty());
+      assertFalse(controller.getStoppedFuture().isDone());
+      sample(controller, clock);
+      assertEquals(1, trace.events().size());
+      assertThrows(UnsupportedOperationException.class, () -> trace.events().clear());
+    }
+  }
+
+  @Test
+  public void liveTraceCountsEveryGroupEventAcrossRingRollover() throws Exception {
+    TestTarget owner = new TestTarget();
+    AtomicLong clock = new AtomicLong(1000);
+    owner.inputs =
+        (now, sequence) ->
+            Map.of(
+                "a", groupInput("a", now, sequence, 2, 1, 0, 0),
+                "b", groupInput("b", now, sequence, 2, 1, 0, 0));
+    try (RuntimeDopController controller = controller(owner, clock, 2)) {
+      for (int i = 0; i < 200; i++) sample(controller, clock);
+      RuntimeDopController.TraceSnapshot trace = controller.snapshotTrace();
+      assertEquals(400, trace.totalEvents());
+      assertEquals(128, trace.events().size());
+      assertEquals(273, trace.firstRetainedEventOrdinal());
+      assertEquals(200, trace.events().get(127).sampleSequence());
+      assertEquals(
+          trace.events().get(126).sampleSequence(), trace.events().get(127).sampleSequence());
+      controller.close();
+      assertTrue(controller.snapshotTrace().samplingStopped());
+      assertEquals(400, controller.snapshotTrace().totalEvents());
+      assertTrue(owner.resizes.isEmpty());
+    }
+  }
+
+  @Test
+  public void sharedPressureUsesDistinctSamplesAndRestoresPriorWidthOnlyAfterDrain() {
+    RuntimeSharedPressureFeedback feedback = new RuntimeSharedPressureFeedback();
+    long ms = 1_000_000L;
+    var high = pressure(250 * ms, 7, 1, 5, 1);
+    assertNull(feedback.observe(high, 251 * ms, 7));
+    assertNull(feedback.observe(high, 450 * ms, 7));
+    var next = pressure(500 * ms, 7, 1, 5, 1);
+    var cap = feedback.observe(next, 501 * ms, 7);
+    assertEquals(RuntimeSharedPressureFeedback.Phase.CONTENDED, cap.phase());
+    assertEquals(4, cap.width());
+    assertEquals(4, feedback.observe(pressure(750 * ms, 4, 2, 0, 1), 751 * ms, 4).width());
+    assertEquals(4, feedback.observe(pressure(1000 * ms, 4, 0, 0, 1), 1001 * ms, 4).width());
+    assertEquals(4, feedback.observe(pressure(1250 * ms, 4, 0, 0, 1), 1251 * ms, 4).width());
+    var recovered = feedback.observe(pressure(1500 * ms, 4, 0, 0, 1), 1501 * ms, 4);
+    assertEquals(RuntimeSharedPressureFeedback.Phase.RECOVERING, recovered.phase());
+    assertEquals(7, recovered.width());
+    assertNull(feedback.observe(pressure(1750 * ms, 7, 0, 0, 1), 1751 * ms, 7));
+  }
+
+  @Test
+  public void staleOrAmbiguousSignalsDoNotConstrainScanWorkers() {
+    RuntimeSharedPressureFeedback feedback = new RuntimeSharedPressureFeedback();
+    long ms = 1_000_000L;
+    assertNull(feedback.observe(pressure(250 * ms, 5, 3, 0, 1), 251 * ms, 5));
+    assertNull(feedback.observe(pressure(500 * ms, 5, 3, 0, 1), 501 * ms, 5));
+    assertNull(feedback.observe(pressure(750 * ms, 5, 3, 4, 2), 751 * ms, 5));
+    assertNull(feedback.observe(pressure(1000 * ms, 7, 1, 4, 1), 1001 * ms, 7));
+    assertNull(feedback.observe(pressure(1000 * ms, 7, 1, 4, 1), 2000 * ms, 7));
+    assertNull(feedback.observe(pressure(2250 * ms, 7, 1, 4, 1), 2251 * ms, 7));
+  }
+
+  @Test
+  public void controllerPolicyRetiresOneAndRestoresOneWithoutChangingLogicalLanes() {
+    RuntimeDopPolicy policy = new RuntimeDopPolicy(new Config(1, 2, 100, 500, 1000, 4));
+    var prior =
+        new Input(
+            "s",
+            100,
+            100,
+            1,
+            8,
+            8,
+            7,
+            7,
+            1,
+            0,
+            8,
+            MetricValue.valid(4),
+            MetricValue.valid(100),
+            false,
+            false);
+    var state = policy.evaluate(prior, null).nextState();
+    var contended =
+        new RuntimeSharedPressureFeedback.Advice(
+            RuntimeSharedPressureFeedback.Phase.CONTENDED, 4, pressure(123, 7, 1, 3, 1).sample());
+    var p =
+        new Input(
+            "s",
+            200,
+            200,
+            2,
+            8,
+            8,
+            7,
+            7,
+            1,
+            0,
+            8,
+            MetricValue.valid(5),
+            MetricValue.valid(100),
+            false,
+            false);
+    var shrink = policy.evaluate(p, state, contended);
+    assertEquals(Reason.SHARED_PRESSURE_CONTRACTION, shrink.decision().reason());
+    assertEquals(6, shrink.decision().targetWorkers());
+    var recovering =
+        new RuntimeSharedPressureFeedback.Advice(
+            RuntimeSharedPressureFeedback.Phase.RECOVERING, 7, pressure(450, 4, 0, 0, 1).sample());
+    var a =
+        new Input(
+            "r",
+            100,
+            100,
+            1,
+            8,
+            6,
+            4,
+            4,
+            2,
+            0,
+            8,
+            MetricValue.valid(20),
+            MetricValue.valid(100),
+            false,
+            false);
+    var b =
+        new Input(
+            "r",
+            1000,
+            1000,
+            2,
+            8,
+            6,
+            4,
+            4,
+            2,
+            0,
+            8,
+            MetricValue.valid(21),
+            MetricValue.valid(100),
+            false,
+            false);
+    var resume = policy.evaluate(b, policy.evaluate(a, null).nextState(), recovering);
+    assertEquals(Reason.SHARED_PRESSURE_RECOVERY, resume.decision().reason());
+    assertEquals(5, resume.decision().targetWorkers());
+    assertEquals(
+        Action.KEEP, policy.evaluate(b, policy.evaluate(a, null).nextState()).decision().action());
+  }
+
+  private static org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.ControlPressure
+      pressure(long nanos, int ownRunning, int foreignRunning, int foreignReady, int fragments) {
+    var own =
+        new org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.RunnableTaskCounts(
+            ownRunning, 1, 0);
+    var other =
+        new org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.RunnableTaskCounts(
+            foreignRunning, foreignReady, 0);
+    var signal =
+        new org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.RuntimePressure(
+            nanos - 10, nanos, 8, true, true, 10, own, other);
+    return new org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler.ControlPressure(
+        signal, fragments);
   }
 
   private static RuntimeDopController controller(

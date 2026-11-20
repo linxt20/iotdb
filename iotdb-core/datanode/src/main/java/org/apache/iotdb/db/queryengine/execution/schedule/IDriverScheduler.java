@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /** The interface of fragment instance scheduling. */
@@ -39,6 +40,34 @@ public interface IDriverScheduler {
 
   default RuntimeMetrics getRuntimeMetrics() {
     return new RuntimeMetrics(0, 0, 0, 0);
+  }
+
+  /** Driver-task states sampled from the scheduler registry; these are not lane or CPU counts. */
+  record RunnableTaskCounts(long running, long runnableReady, long blocked) {}
+
+  /**
+   * Best-effort DataNode observation. Task states can change within the capture interval. Counts
+   * are absent on budget exhaustion; ownQuerySeen is meaningful only when complete.
+   */
+  record RuntimePressure(
+      long captureStartedNanos,
+      long captureFinishedNanos,
+      int configuredQueryThreads,
+      boolean complete,
+      boolean ownQuerySeen,
+      long visitedTasks,
+      RunnableTaskCounts own,
+      RunnableTaskCounts other) {}
+
+  default Optional<RuntimePressure> observeRuntimePressure(QueryId ownQuery) {
+    return Optional.empty();
+  }
+
+  record ControlPressure(RuntimePressure sample, int runtimeWorkerFragments) {}
+
+  /** Opt-in controller read. Implementations may reuse a single node-wide bounded sample. */
+  default Optional<ControlPressure> readControlPressure(QueryId ownQuery) {
+    return Optional.empty();
   }
 
   /**

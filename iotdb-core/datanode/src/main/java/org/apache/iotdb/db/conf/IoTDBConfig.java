@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.i18n.DataNodeMiscMessages;
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.protocol.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
@@ -387,6 +388,86 @@ public class IoTDBConfig implements DefaultEncodingProvider {
 
   /** Allow worker count changes during one table fragment; fixed logical lanes remain unchanged. */
   private boolean enableRuntimeScanParallelism = false;
+
+  // Kept off until ordinary FI and native final-result adapters pass release acceptance.
+  private boolean enableRuntimeLocalExchange = false;
+
+  public boolean isEnableRuntimeLocalExchange() {
+    return enableRuntimeLocalExchange;
+  }
+
+  public void setEnableRuntimeLocalExchange(boolean enabled) {
+    enableRuntimeLocalExchange = enabled;
+  }
+
+  /** Zero keeps adaptive workers; positive values fix workers on the same runtime lane graph. */
+  private int runtimeScanFixedWorkers = 0;
+
+  public int getRuntimeScanFixedWorkers() {
+    return runtimeScanFixedWorkers;
+  }
+
+  public void setRuntimeScanFixedWorkers(int value) {
+    if (value < 0 || value > 1024) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages
+              .EXCEPTION_RUNTIME_SCAN_PARALLELISM_FIXED_WORKERS_MUST_BE_BETWEEN_0_AND_1024_FB1964CD);
+    }
+    runtimeScanFixedWorkers = value;
+  }
+
+  // Experimental feedback is opt-in; the initial width override is an independent control.
+  private boolean enableRuntimeScanSharedPressureFeedback;
+  private int runtimeScanInitialWorkers;
+
+  /** Experimental policy selection. Standard is direct composition without diagnostic overrides. */
+  public enum RuntimeScanAblationMode {
+    STANDARD,
+    STATIC_ONLY,
+    RUNTIME_ONLY
+  }
+
+  private RuntimeScanAblationMode runtimeScanAblationMode = RuntimeScanAblationMode.STANDARD;
+
+  public RuntimeScanAblationMode getRuntimeScanAblationMode() {
+    return runtimeScanAblationMode;
+  }
+
+  public void setRuntimeScanAblationMode(String value) {
+    RuntimeScanAblationMode mode =
+        RuntimeScanAblationMode.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+    if (mode != RuntimeScanAblationMode.STANDARD
+        && (!enableRuntimeScanParallelism
+            || runtimeScanFixedWorkers != 0
+            || (mode == RuntimeScanAblationMode.RUNTIME_ONLY
+                ? runtimeScanInitialWorkers <= 0
+                : runtimeScanInitialWorkers != 0))) {
+      throw new IllegalArgumentException(
+          "runtime_scan_ablation_mode requires runtime scan enabled and fixed override zero; "
+              + "initial override must be positive only for runtime_only: "
+              + value);
+    }
+    runtimeScanAblationMode = mode;
+  }
+
+  public boolean isEnableRuntimeScanSharedPressureFeedback() {
+    return enableRuntimeScanSharedPressureFeedback;
+  }
+
+  public void setEnableRuntimeScanSharedPressureFeedback(boolean enabled) {
+    enableRuntimeScanSharedPressureFeedback = enabled;
+  }
+
+  public int getRuntimeScanInitialWorkers() {
+    return runtimeScanInitialWorkers;
+  }
+
+  public void setRuntimeScanInitialWorkers(int value) {
+    if (value < 0 || value > 1024) {
+      throw new IllegalArgumentException("runtime_scan_parallelism_initial_workers: " + value);
+    }
+    runtimeScanInitialWorkers = value;
+  }
 
   public boolean isEnableRuntimeScanParallelism() {
     return enableRuntimeScanParallelism;

@@ -5061,4 +5061,40 @@ public final class DataNodeQueryMessages {
   public static final String LOG_ARG_VERSION_1_DIRECTION_REJECTED_QUERY_MISMATCH_CONSUMER_QUERY_ID_ARG_PRODUCER_QUERY_ID_ARG_CONSUMER_FRAGMENT_ARG_PRODUCER_FRAGMENT_ARG_CHANNEL_ARG_A367770C = "{} version=1 direction=rejected_query_mismatch consumer_query_id={} producer_query_id={} consumer_fragment={} producer_fragment={} channel={}";
   public static final String LOG_ARG_VERSION_1_DIRECTION_ARG_QUERY_ID_ARG_PRODUCER_FRAGMENT_ARG_CONSUMER_FRAGMENT_ARG_CHANNEL_ARG_PAYLOAD_BYTES_ARG_PAYLOAD_BLOCKS_ARG_A9F2EB1A = "{} version=1 direction={} query_id={} producer_fragment={} consumer_fragment={} channel={} payload_bytes={} payload_blocks={}";
   public static final String EXCEPTION_DRIVER_DOES_NOT_SUPPORT_COOPERATIVE_QUIESCENCE_959AC4F1 = "Driver does not support cooperative quiescence";
+  public static final String EXCEPTION_RUNTIME_SCAN_PARALLELISM_FIXED_WORKERS_MUST_BE_BETWEEN_0_AND_1024_FB1964CD = "runtime_scan_parallelism_fixed_workers must be between 0 and 1024";
+
+  // Runtime local exchange endpoint and ownership contracts.
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_EDGE_HAS_INCONSISTENT_IDENTITIES_AAD9C714 =
+      "Runtime local exchange edge has inconsistent identities";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_ENDPOINT_IS_ALREADY_BOUND_B8068663 =
+      "Runtime local exchange endpoint is already bound";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_ENDPOINTS_REQUIRE_IDENTICAL_ADMITTED_BOUNDS_29FA3C48 =
+      "Runtime local exchange endpoints require identical admitted bounds";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_IS_CLOSED_7FBCB963 =
+      "Runtime local exchange is closed";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_IS_NOT_WRITABLE_E53C002E =
+      "Runtime local exchange is not writable";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_IS_NOT_READABLE_6AF0FD07 =
+      "Runtime local exchange is not readable";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_CREDIT_SETTLEMENT_FAILED_AFA14B18 =
+      "Runtime local exchange credit settlement failed";
+  public static final String EXCEPTION_RUNTIME_LOCAL_INPUT_REQUIRES_TYPED_RECEIVE_OWNERSHIP_425D3F5A =
+      "Runtime local INPUT requires typed receive ownership";
+
+  public static final String EXCEPTION_LOCAL_RESULT_EXCHANGE_BELONGS_TO_ANOTHER_EDGE_5EF70208 =
+      "Local result exchange belongs to another edge";
+  public static final String EXCEPTION_LOCAL_RESULT_PRODUCER_REQUIRES_A_PREPAID_OUTPUT_FRONTIER_85C8209D =
+      "Local result producer requires a prepaid OUTPUT frontier";
+  public static final String EXCEPTION_LOCAL_RESULT_CONSUMER_RETAINS_ITS_NATIVE_INPUT_ACCOUNT_7EC1BD48 =
+      "Local result consumer retains its native INPUT account";
+  public static final String EXCEPTION_LOCAL_RESULT_PRODUCER_IS_NOT_BOUND_F6BDAFD9 =
+      "Local result producer is not bound";
+  public static final String EXCEPTION_LOCAL_RESULT_PRODUCER_IS_ALREADY_BOUND_72894B56 =
+      "Local result producer is already bound";
+  public static final String EXCEPTION_LOCAL_RESULT_PAYLOAD_EXCEEDS_ITS_ADMITTED_BOUND_ABBF3BCD =
+      "Local result payload exceeds its admitted bound";
+  public static final String EXCEPTION_LOCAL_RESULT_EXCHANGE_MUST_REMAIN_IN_THE_SAME_DATANODE_5CA2F875 =
+      "Local result exchange must remain in the same DataNode";
+  public static final String LOG_FAILED_TO_CLEAN_UP_QUERY_RESULT_EXCHANGE_FOR_ARG_046B0EDF =
+      "Failed to clean up query result exchange for {}";
 }

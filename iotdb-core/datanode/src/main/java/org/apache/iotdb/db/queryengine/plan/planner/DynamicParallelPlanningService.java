@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OffsetN
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.conf.IoTDBConfig.RuntimeScanAblationMode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper;
@@ -400,6 +401,10 @@ public final class DynamicParallelPlanningService {
       String estimateStatus,
       Integer estimatedDop,
       int maxLogicalLanes) {
+    RuntimeScanAblationMode mode = context.getRuntimeScanAblationMode();
+    if (mode == RuntimeScanAblationMode.RUNTIME_ONLY) {
+      return selectRuntimeOnlyLayout(input, context, maxLogicalLanes);
+    }
     Selection hint = select(input, context, dopEstimationEnabled, estimateStatus, estimatedDop);
     int initial = estimatedDop == null ? maxLogicalLanes : Math.max(1, estimatedDop);
     if (hint.decision != null
@@ -408,6 +413,17 @@ public final class DynamicParallelPlanningService {
     }
     RuntimeScanLayout layout =
         new ScanParallelPlanner().planRuntimeLayout(input, hint.grouping, maxLogicalLanes, initial);
+    if (mode == RuntimeScanAblationMode.STATIC_ONLY) {
+      // Freeze the planner's source-local prescription, not one global fixed-width override.
+      layout = layout.withFixedWorkers(layout.getInitialWorkers());
+    } else if (context.getRuntimeScanFixedWorkers() > 0) {
+      layout = layout.withFixedWorkers(context.getRuntimeScanFixedWorkers());
+    } else if (context.getRuntimeScanInitialWorkers() > 0) {
+      layout =
+          new RuntimeScanLayout(
+              layout.getLanePlan(),
+              Math.min(context.getRuntimeScanInitialWorkers(), layout.getLaneCount()));
+    }
     Selection actual = new Selection(layout.getLanePlan(), hint.shape, hint.grouping, null);
     actual.contextDop = context.getDegreeOfParallelism();
     actual.previousDop = hint.previousDop;
@@ -416,6 +432,30 @@ public final class DynamicParallelPlanningService {
     actual.estimatedDop = estimatedDop;
     actual.inputs = hint.inputs;
     selections.put(input.getPlanNodeId(), actual);
+    context.registerRuntimeLayout(input.getPlanNodeId(), layout);
+    return layout;
+  }
+
+  private RuntimeScanLayout selectRuntimeOnlyLayout(
+      ScanParallelPlanner.Input input, LocalExecutionPlanContext context, int maxLogicalLanes) {
+    requirePlanningMutable(context);
+    int initial = context.getRuntimeScanInitialWorkers();
+    if (initial <= 0 || context.getRuntimeScanFixedWorkers() != 0) {
+      throw new IllegalStateException("runtime-only scan ablation lacks its calibrated width");
+    }
+    ScanParallelPlan.FallbackReason guard = ScanParallelPlanner.qualificationFailure(input);
+    if (guard == null && staticMaterializationExceedsBudget(input)) {
+      guard = ScanParallelPlan.FallbackReason.DYNAMIC_GROUPING_BUDGET_EXCEEDED;
+    }
+    RuntimeScanLayout layout =
+        guard == null
+            ? new ScanParallelPlanner().planRuntimeLayout(input, null, maxLogicalLanes, initial)
+            : new RuntimeScanLayout(ScanParallelPlanner.serialForDynamicFallback(input, guard), 1);
+    // No shape lookup, historical rejection, estimate, or grouping is consulted or published.
+    Selection selected = new Selection(layout.getLanePlan(), null, null, null);
+    selected.contextDop = context.getDegreeOfParallelism();
+    selected.estimateStatus = "ABLATION_RUNTIME_ONLY_CALIBRATED_WIDTH";
+    selections.put(input.getPlanNodeId(), selected);
     context.registerRuntimeLayout(input.getPlanNodeId(), layout);
     return layout;
   }
@@ -450,10 +490,7 @@ public final class DynamicParallelPlanningService {
         actual.inputs = old.inputs;
       }
       selections.put(sourceId, actual);
-      context.registerRuntimeLayout(
-          sourceId,
-          new RuntimeScanLayout(
-              plan, Math.min(runtime.getInitialWorkers(), plan.getPipelineCount())));
+      context.registerRuntimeLayout(sourceId, runtime.withLanePlan(plan));
     }
     if (!context.getDynamicScanAssignments().isEnabled() || plan.getWorkUnits().isEmpty()) return;
     String id = plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId();

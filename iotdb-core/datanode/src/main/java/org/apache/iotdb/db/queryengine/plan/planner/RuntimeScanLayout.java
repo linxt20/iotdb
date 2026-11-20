@@ -27,8 +27,14 @@ import java.util.Objects;
 public final class RuntimeScanLayout {
   private final ScanParallelPlan lanePlan;
   private final int initialWorkers;
+  private final boolean workerAdjustmentEnabled;
 
   public RuntimeScanLayout(ScanParallelPlan lanePlan, int initialWorkers) {
+    this(lanePlan, initialWorkers, true);
+  }
+
+  private RuntimeScanLayout(
+      ScanParallelPlan lanePlan, int initialWorkers, boolean workerAdjustmentEnabled) {
     this.lanePlan = Objects.requireNonNull(lanePlan);
     if (lanePlan.getPipelineCount() < 1
         || initialWorkers < 1
@@ -37,6 +43,26 @@ public final class RuntimeScanLayout {
           DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
     }
     this.initialWorkers = initialWorkers;
+    this.workerAdjustmentEnabled = workerAdjustmentEnabled;
+  }
+
+  /** Retains the exact lane plan; insufficient work caps the effective fixed width. */
+  public RuntimeScanLayout withFixedWorkers(int requestedWorkers) {
+    if (requestedWorkers < 1) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_RUNTIME_SCAN_LAYOUT);
+    }
+    return new RuntimeScanLayout(lanePlan, Math.min(requestedWorkers, getLaneCount()), false);
+  }
+
+  /** Final weighting may replace lane work, but cannot reset the worker policy. */
+  RuntimeScanLayout withLanePlan(ScanParallelPlan finalPlan) {
+    return new RuntimeScanLayout(
+        finalPlan, Math.min(initialWorkers, finalPlan.getPipelineCount()), workerAdjustmentEnabled);
+  }
+
+  public boolean isWorkerAdjustmentEnabled() {
+    return workerAdjustmentEnabled;
   }
 
   public ScanParallelPlan getLanePlan() {

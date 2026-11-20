@@ -35,7 +35,7 @@ readonly MBEAN_CLASS='org/apache/iotdb/db/queryengine/execution/exchange/MPPData
 usage() {
   printf '%s\n' 'Usage: launch-isolated-nxp.sh --mode prepare|start|stop|status|start-datanodes|stop-datanodes --root ROOT [--distribution-root DIST] [--deployment candidate|control|both] [--port-offset N]'
   printf '%s\n' 'Prepare: --candidate-profile/--control-profile legacy|runtime|fixed-one|fixed-eight|hash-disabled; --java ABS; --datanode-xms/xmx SIZE --confignode-xms/xmx SIZE; --query-thread-count N; --jmx-enabled true|false'
-  printf '%s\n' 'Per-side: --candidate- or --control- followed by runtime-enabled|estimation-enabled|logical-lane-ceiling|property-planning|hash-repartition|ordered-parallel|timepartition-morsel VALUE'
+  printf '%s\n' 'Per-side: --candidate- or --control- followed by runtime-enabled|estimation-enabled|logical-lane-ceiling|property-planning|hash-repartition|ordered-parallel|timepartition-morsel|fixed-workers VALUE'
 }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 need() { [[ -n "${2:-}" ]] || die "Missing value for $1"; }
@@ -58,7 +58,7 @@ while (($#)); do
       need "$1" "${2:-}"
       name="${1#--}"; suffix="${name#*-}"
       case "$suffix" in
-        runtime-enabled|estimation-enabled|logical-lane-ceiling|property-planning|hash-repartition|ordered-parallel|timepartition-morsel) ROLE_OVERRIDES["$name"]="$2";;
+        runtime-enabled|estimation-enabled|logical-lane-ceiling|fixed-workers|property-planning|hash-repartition|ordered-parallel|timepartition-morsel) ROLE_OVERRIDES["$name"]="$2";;
         *) die "Unknown argument: $1";;
       esac
       shift 2 ;;
@@ -90,6 +90,8 @@ for name in "${!ROLE_OVERRIDES[@]}"; do
   value="${ROLE_OVERRIDES[$name]}"
   if [[ "$name" == *-logical-lane-ceiling ]]; then
     [[ "$value" =~ ^[1-9][0-9]*$ ]] && ((value <= 1024)) || die "Invalid logical lane ceiling: $value"
+  elif [[ "$name" == *-fixed-workers ]]; then
+    [[ "$value" =~ ^(0|[1-9][0-9]*)$ ]] && ((value <= 1024)) || die "Invalid fixed worker count: $value"
   else
     [[ "$value" =~ ^(true|false)$ ]] || die "Expected true|false for $name"
   fi
@@ -102,6 +104,7 @@ role_value() {
   local d="$1" key="$2" profile="$CANDIDATE_PROFILE" value=false
   [[ "$d" == control ]] && profile="$CONTROL_PROFILE"
   case "$key" in
+    fixed-workers) value=0;;
     logical-lane-ceiling) case "$profile" in runtime|fixed-eight) value=8;; fixed-one|hash-disabled) value=1;; *) value=4;; esac;;
     runtime-enabled|estimation-enabled) [[ "$profile" == runtime ]] && value=true;;
     property-planning|hash-repartition)
@@ -168,7 +171,7 @@ assert_hash_channel_guard() {
   # repair a multi-source/two-bucket plan can look valid in EXPLAIN yet duplicate one channel and
   # omit the other at execution time. The marker is the private planner method guarded by the
   # unit regression below; this harness is intentionally coupled to that experimental path.
-  unzip -p "$jar" "$TABLE_DISTRIBUTED_PLANNER_CLASS" | LC_ALL=C grep -aqF "$HASH_CHANNEL_GUARD_MARKER" || die "Distribution lacks the multi-source hash channel-index guard: $jar. Rebuild the all-bin distribution from the checked-out source before preparing or starting this harness."
+  unzip -p "$jar" "$TABLE_DISTRIBUTED_PLANNER_CLASS" | LC_ALL=C grep -aF "$HASH_CHANNEL_GUARD_MARKER" >/dev/null || die "Distribution lacks the multi-source hash channel-index guard: $jar. Rebuild the all-bin distribution from the checked-out source before preparing or starting this harness."
 }
 sha256() {
   command -v sha256sum >/dev/null || die 'Need sha256sum to write the isolated runtime manifest'
@@ -210,10 +213,16 @@ assert_datanode_ports_free() {
   done < <(selected)
 }
 assert_runtime_distribution() {
-  local jar="$(server_jar "$DIST")"
+  local jar="$(server_jar "$DIST")" side
+  for side in candidate control; do
+    if (( $(role_value "$side" fixed-workers) > 0 )); then
+      [[ "$(role_value "$side" runtime-enabled)" == true ]] || die 'Fixed workers require runtime-enabled=true'
+      unzip -p "$jar" 'org/apache/iotdb/db/conf/IoTDBConfig.class' | LC_ALL=C grep -aF 'getRuntimeScanFixedWorkers' >/dev/null || die "No fixed-worker runtime control in $jar"
+    fi
+  done
   if [[ "$(role_value candidate runtime-enabled)" == true || "$(role_value control runtime-enabled)" == true ]]; then
-    unzip -p "$jar" "$RUNTIME_CLASS" | LC_ALL=C grep -aqF 'sealConstruction' || die "No runtime lifecycle in $jar"
-    unzip -p "$jar" "$MBEAN_CLASS" | LC_ALL=C grep -aqF 'describeQueryExecutionBySqlHash' || die "No actual ordinary-SQL JMX identity API in $jar"
+    unzip -p "$jar" "$RUNTIME_CLASS" | LC_ALL=C grep -aF 'sealConstruction' >/dev/null || die "No runtime lifecycle in $jar"
+    unzip -p "$jar" "$MBEAN_CLASS" | LC_ALL=C grep -aF 'describeQueryExecutionBySqlHash' >/dev/null || die "No actual ordinary-SQL JMX identity API in $jar"
   fi
 }
 write_manifest() {
@@ -231,7 +240,7 @@ write_manifest() {
     printf 'jmx_enabled=%s\nquery_thread_count=%s\ntime_partition_interval_ms=%s\n' "$JMX_ENABLED" "$QUERY_THREAD_COUNT" "$TIME_PARTITION_INTERVAL_MS"
     printf 'candidate_profile=%s\ncontrol_profile=%s\n' "$CANDIDATE_PROFILE" "$CONTROL_PROFILE"
     for d in candidate control; do
-      for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel; do
+      for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel fixed-workers; do
         field="${key//-/_}"; printf '%s_%s=%q\n' "$d" "$field" "$(role_value "$d" "$key")"
       done
     done
@@ -250,7 +259,7 @@ read_manifest() {
   CANDIDATE_PROFILE="${candidate_profile:-legacy}"; CONTROL_PROFILE="${control_profile:-legacy}"
   local d key field
   for d in candidate control; do
-    for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel; do
+    for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel fixed-workers; do
       field="$d-${key//-/_}"; field="${field//-/_}"
       [[ -z "${!field:-}" ]] || ROLE_OVERRIDES["$d-$key"]="${!field}"
     done
@@ -259,7 +268,7 @@ read_manifest() {
 write_json_manifests() {
   nodes > "$ROOT/topology.nodes.tsv"
   local candidate_values='' control_values='' key
-  for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel; do
+  for key in runtime-enabled estimation-enabled logical-lane-ceiling property-planning hash-repartition ordered-parallel timepartition-morsel fixed-workers; do
     candidate_values+="$(role_value candidate "$key")|"
     control_values+="$(role_value control "$key")|"
   done
@@ -275,10 +284,10 @@ def sha(path):
     return value.hexdigest()
 jar=dist/'lib/iotdb-server-2.0.11-SNAPSHOT.jar'
 jars=[{'path':str(p),'sha256':sha(p),'bytes':p.stat().st_size} for p in sorted((dist/'lib').glob('*.jar'))]
-keys=['runtimeEnabled','estimationEnabled','logicalLaneCeiling','propertyPlanning','hashRepartition','orderedParallel','timepartitionMorsel']
+keys=['runtimeEnabled','estimationEnabled','logicalLaneCeiling','propertyPlanning','hashRepartition','orderedParallel','timepartitionMorsel','fixedWorkers']
 for side,profile,values in [('candidate',cp,cv),('control',rp,rv)]:
     settings=dict(zip(keys,values.rstrip('|').split('|')))
-    settings={k:int(v) if k=='logicalLaneCeiling' else v=='true' for k,v in settings.items()}
+    settings={k:int(v) if k in ('logicalLaneCeiling','fixedWorkers') else v=='true' for k,v in settings.items()}
     data={'schemaVersion':1,'deployment':side,'deploymentRoot':str(root/side),
           'distributionRoot':str(dist),'profile':profile,'runtimeProfile':settings,
           'expectedDataNodeCount':2,'jmxHost':'127.0.0.1','jmxEnabled':jmx=='true',
@@ -368,6 +377,7 @@ degree_of_query_parallelism=$dop
 enable_dop_estimation=$estimation
 enable_dynamic_scan_parallelism=false
 enable_runtime_scan_parallelism=$runtime
+runtime_scan_parallelism_fixed_workers=$(role_value "$d" fixed-workers)
 enable_property_driven_planning=$property
 enable_table_group_by_hash_repartition=$hash
 enable_timepartition_morsel=$tp

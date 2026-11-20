@@ -19,58 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
-import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.EXTREME;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.MAX;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.MIN;
-import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUM;
-import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
-import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
-import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
-import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
-import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
-import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
-import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
-import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.math.LongMath;
-import jakarta.validation.constraints.NotNull;
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.OptionalLong;
-import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.calc.execution.filter.TopKRuntimeFilter;
 import org.apache.iotdb.calc.execution.operator.CommonOperatorContext;
 import org.apache.iotdb.calc.execution.operator.Operator;
@@ -221,6 +169,10 @@ import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.math.LongMath;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -241,6 +193,57 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+
+import jakarta.validation.constraints.NotNull;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.calc.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.calc.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.AVG;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.COUNT;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.EXTREME;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.FIRST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.LAST_BY_AGGREGATION;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.MAX;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.MIN;
+import static org.apache.iotdb.calc.utils.constant.SqlConstant.SUM;
+import static org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
+import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
+import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_EMPTY_COLUMN;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.PLACEHOLDER_STALE_VALUE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class DataNodeTableOperatorGenerator
     extends TableOperatorGenerator<LocalExecutionPlanContext, Metadata>
@@ -1635,8 +1638,12 @@ public class DataNodeTableOperatorGenerator
     String fragmentId = context.getFragmentInstanceId().getFragmentInstanceId();
     int plannerInputDop = context.getDegreeOfParallelism();
     final boolean runtimeScan = context.isRuntimeScan(node.getPlanNodeId().getId());
+    final boolean runtimeOnly =
+        runtimeScan
+            && context.getRuntimeScanAblationMode()
+                == org.apache.iotdb.db.conf.IoTDBConfig.RuntimeScanAblationMode.RUNTIME_ONLY;
     final boolean dopEstimationEnabled =
-        IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation();
+        !runtimeOnly && IoTDBDescriptor.getInstance().getConfig().isEnableDopEstimation();
     final List<Long> deviceCosts =
         estimateDeviceCosts(context.getInstanceContext().getDataRegion(), devices.size());
     Integer estimatedDop = null;
@@ -1917,9 +1924,10 @@ public class DataNodeTableOperatorGenerator
 
   /**
    * Splits a naturally ordered table scan into independent driver-local merge trees and merges the
-   * resulting sorted streams in the root driver. A group contains one single-device source per
-   * device: grouping raw multi-device scans would be incorrect for ORDER BY time because such a
-   * scan emits all of one device before advancing to the next.
+   * resulting sorted streams in the root driver. Each group reuses one multi-device source only
+   * when its concrete device order proves strict prefix concatenation. Time-only ordering and
+   * unproven prefixes retain single-device sources, because a raw multi-device scan emits all of
+   * one device before advancing to the next.
    */
   private Operator constructSingleStreamOrderedFallback(
       DeviceTableScanNode node,
@@ -1981,9 +1989,28 @@ public class DataNodeTableOperatorGenerator
                     sortNode.getPlanNodeId(),
                     emptyId);
               }
+              final DeviceTableScanNode bucketScanNode = node.clone();
+              bucketScanNode.setPlanNodeId(
+                  new PlanNodeId(node.getPlanNodeId().getId() + "-ordered-bucket-" + groupIndex));
+              // The explicit bucket is a new inline assignment, independent of the coordinator's
+              // original data set and its total. Progress must count only this bucket's devices.
+              bucketScanNode.setDeviceEntryDataSetHandle(null);
+              bucketScanNode.setDeviceEntries(bucketDevices);
+              if (bucketDevices.size() == 1
+                  || OrderedParallelScanEligibility.canUseSerialConcatenation(
+                      bucketScanNode, sortNode.getOrderingScheme())) {
+                return new LocalScanPipelineBuilder.PipelineSpec(
+                    compactRuntimeOutput(
+                        subContext,
+                        node.getPlanNodeId().getId(),
+                        constructSerialDeviceTableScan(bucketScanNode, subContext, null)),
+                    sortNode,
+                    sortNode.getPlanNodeId(),
+                    bucketScanNode.getPlanNodeId());
+              }
               final List<Operator> deviceScanOperators = new ArrayList<>(bucketDevices.size());
               for (int deviceIndex = 0; deviceIndex < bucketDevices.size(); deviceIndex++) {
-                final DeviceTableScanNode deviceScanNode = node.clone();
+                final DeviceTableScanNode deviceScanNode = bucketScanNode.clone();
                 deviceScanNode.setPlanNodeId(
                     new PlanNodeId(
                         node.getPlanNodeId().getId()

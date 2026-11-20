@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Tabl
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.spill.DeviceEntryDataSet;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderedParallelScanEligibility;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -445,6 +446,136 @@ public class OrderedScanPipelineContractTest {
   }
 
   @Test(timeout = 20000)
+  public void sortedBucketsUseOneNaturalScanPerLane() throws Exception {
+    for (boolean descendingTag : new boolean[] {false, true}) {
+      for (boolean descendingTime : new boolean[] {false, true}) {
+        assertBucketConstruction(
+            descendingTag
+                ? new String[] {"f", "e", "d", "c", "b", "a"}
+                : new String[] {"a", "b", "c", "d", "e", "f"},
+            descendingTag,
+            descendingTime,
+            new int[] {1, 1, 1});
+      }
+    }
+  }
+
+  @Test(timeout = 20000)
+  public void singletonBucketsAvoidRedundantMerge() throws Exception {
+    assertBucketConstruction(new String[] {"a", "b", "c"}, false, false, new int[] {1, 1, 1});
+  }
+
+  @Test(timeout = 20000)
+  public void equalPrefixesRetainDeviceMergingInEveryBucket() throws Exception {
+    assertBucketConstruction(
+        new String[] {"a", "a", "b", "b", "c", "c"}, false, false, new int[] {2, 2, 2});
+  }
+
+  @Test(timeout = 20000)
+  public void sortedNullBoundariesUseNaturalScans() throws Exception {
+    assertBucketConstruction(
+        new String[] {null, "a", "b", "c", "d", "e"}, false, true, new int[] {1, 1, 1});
+    assertBucketConstruction(
+        new String[] {"e", "d", "c", "b", "a", null}, true, false, new int[] {1, 1, 1});
+  }
+
+  @Test(timeout = 20000)
+  public void coordinatorInlineSubsetKeepsActualDeviceTotals() throws Exception {
+    assertBucketConstruction(
+        new String[] {"a", "b", "c", "d", "e", "f"}, false, false, new int[] {1, 1, 1}, true);
+  }
+
+  private void assertBucketConstruction(
+      String[] tags, boolean descendingTag, boolean descendingTime, int[] expectedLeaves)
+      throws Exception {
+    assertBucketConstruction(tags, descendingTag, descendingTime, expectedLeaves, false);
+  }
+
+  private void assertBucketConstruction(
+      String[] tags,
+      boolean descendingTag,
+      boolean descendingTime,
+      int[] expectedLeaves,
+      boolean inlineCoordinator)
+      throws Exception {
+    leaves.clear();
+    DeviceTableScanNode scan = serialScan(tags, descendingTime);
+    List<DeviceEntry> originalDevices = new ArrayList<>(scan.getDeviceEntries());
+    DeviceEntryDataSet originalDataSet = null;
+    if (inlineCoordinator) {
+      originalDataSet = mock(DeviceEntryDataSet.class);
+      when(originalDataSet.getInlineEntries()).thenReturn(originalDevices);
+      when(originalDataSet.getEntryCount()).thenReturn(originalDevices.size());
+      scan.setCoordinatorDeviceEntryDataSet(originalDataSet);
+    }
+    LocalExecutionPlanContext context =
+        fixture.createLocalExecutionPlanContext(
+            "bucket_scans_" + descendingTag + "_" + descendingTime + "_" + tags.length);
+    context.setDegreeOfParallelism(3);
+    SortOrder tagOrder = descendingTag ? SortOrder.DESC_NULLS_LAST : SortOrder.ASC_NULLS_FIRST;
+    SortOrder timeOrder = descendingTime ? SortOrder.DESC_NULLS_LAST : SortOrder.ASC_NULLS_FIRST;
+    MemoryPool pool =
+        MPPDataExchangeService.getInstance()
+            .getMPPDataExchangeManager()
+            .getLocalMemoryManager()
+            .getQueryPool();
+    long baseline = pool.getRemainingBytes();
+    Operator root = null;
+    try {
+      root =
+          sort(scan, Arrays.asList(TAG, TIME), Arrays.asList(tagOrder, timeOrder), "bucket_shape")
+              .accept(generator, context);
+      context.registerPipelineRoot(root);
+      assertEquals(TableMergeSortOperator.class, root.getClass());
+      assertEquals(3, context.getPipelineNumber());
+      assertEquals(3, context.getExchangeSumNum());
+      assertEquals(3, context.getResourceRegistry().getObjectCount());
+      assertEquals(Arrays.stream(expectedLeaves).sum(), leaves.size());
+      Set<String> covered = new HashSet<>();
+      Set<String> sources = new HashSet<>();
+      int offset = 0;
+      for (int lane = 0; lane < 3; lane++) {
+        PipelineDriverFactory factory = context.getPipelineDriverFactories().get(lane);
+        DataDriverContext driver = (DataDriverContext) factory.getDriverContext();
+        assertEquals(expectedLeaves[lane], driver.getSourceOperators().size());
+        if (expectedLeaves[lane] == 1) {
+          assertTrue(factory.getOperation() instanceof TableScanOperator);
+          assertSame(driver.getSourceOperators().get(0), factory.getOperation());
+        } else {
+          assertEquals(TableMergeSortOperator.class, factory.getOperation().getClass());
+        }
+        for (int j = 0; j < expectedLeaves[lane]; j++) {
+          Leaf leaf = leaves.get(offset++);
+          assertSame(leaf.operator(), driver.getSourceOperators().get(j));
+          assertTrue(sources.add(leaf.parameter().sourceId.getId()));
+          for (DeviceEntry device : leaf.parameter().deviceEntries)
+            assertTrue("device assigned twice", covered.add(String.valueOf(device.getDeviceID())));
+          assertEquals(leaf.parameter().deviceEntries.size(), leaf.parameter().deviceCount);
+        }
+        drainIntoSink(factory.getOperation(), driver.getSink());
+        driver.getSink().setNoMoreTsBlocks();
+      }
+      assertEquals(tags.length, covered.size());
+      List<Row> expected = new ArrayList<>();
+      for (String tag : tags) {
+        expected.add(new Row(1, tag, 70));
+        expected.add(new Row(2, tag, -5));
+        expected.add(new Row(2, tag, -5));
+        expected.add(new Row(4, tag, 30));
+      }
+      expected.sort(independentComparator(true, descendingTime, !descendingTag, descendingTag));
+      assertEquals(expected, drainRows(root));
+      assertEquals(originalDevices, scan.getDeviceEntries());
+      assertSame(originalDataSet, scan.getCoordinatorDeviceEntryDataSet());
+      assertEquals(baseline, pool.getRemainingBytes());
+    } finally {
+      cleanup(context, root);
+    }
+    assertEquals(baseline, pool.getRemainingBytes());
+    for (Leaf leaf : leaves) assertEquals(1, leaf.closeCalls().get());
+  }
+
+  @Test(timeout = 20000)
   public void orderedTimeAscendingMatchesCompleteRows() throws Exception {
     assertCompleteMerge(false, false, true, false);
   }
@@ -572,7 +703,13 @@ public class OrderedScanPipelineContractTest {
       assertTrue(
           context.getResourceRegistry().snapshotEntries().stream()
               .allMatch(entry -> "LOCAL_QUEUE".equals(entry.kind())));
-      assertEquals(6, leaves.size());
+      int[] expectedLeaves =
+          !withTags
+              ? new int[] {2, 2, 2}
+              : descendingTag
+                  ? (nullsFirst ? new int[] {1, 2, 2} : new int[] {2, 1, 2})
+                  : nullsFirst ? new int[] {1, 2, 1} : new int[] {2, 1, 1};
+      assertEquals(Arrays.stream(expectedLeaves).sum(), leaves.size());
       assertEquals(3, context.getInstanceContext().getExchangeEdgeIds().size());
       assertEquals(3, new HashSet<>(context.getInstanceContext().getExchangeEdgeIds()).size());
       assertTrue(((DataDriverContext) context.getDriverContext()).getSourceOperators().isEmpty());
@@ -582,31 +719,46 @@ public class OrderedScanPipelineContractTest {
           context.constructPipelineMemoryEstimator(root, null, sort, -1);
       assertEquals(3, rootEstimate.getChildren().size());
 
+      int leafOffset = 0;
       for (int i = 0; i < 3; i++) {
         PipelineDriverFactory factory = context.getPipelineDriverFactories().get(i);
-        assertEquals(TableMergeSortOperator.class, factory.getOperation().getClass());
+        if (expectedLeaves[i] == 1) {
+          assertTrue(factory.getOperation() instanceof TableScanOperator);
+        } else {
+          assertEquals(TableMergeSortOperator.class, factory.getOperation().getClass());
+        }
         assertEquals(i + 1, factory.getDriverContext().getPipelineId());
         DataDriverContext driver = (DataDriverContext) factory.getDriverContext();
         assertTrue(driver.isInputDriver());
-        assertEquals(2, driver.getSourceOperators().size());
+        assertEquals(expectedLeaves[i], driver.getSourceOperators().size());
+        if (expectedLeaves[i] == 1)
+          assertSame(driver.getSourceOperators().get(0), factory.getOperation());
         assertSame(factory.getOperation(), rootEstimate.getChildren().get(i).getRoot());
         assertTrue(driver.getSink() instanceof LocalSinkChannel);
         SharedTsBlockQueue queue = ((LocalSinkChannel) driver.getSink()).getSharedTsBlockQueue();
         assertTrue(memoryKeys.add(queue.getMemoryReservationKey()));
-        for (int j = 0; j < 2; j++) {
-          Leaf leaf = leaves.get(i * 2 + j);
+        for (int j = 0; j < expectedLeaves[i]; j++) {
+          Leaf leaf = leaves.get(leafOffset++);
           assertSame(leaf.operator(), driver.getSourceOperators().get(j));
-          assertEquals(1, leaf.parameter().deviceEntries.size());
-          assertEquals(originalId + "-ordered-" + i + "-" + j, leaf.parameter().sourceId.getId());
+          assertEquals(expectedLeaves[i] == 1 ? 2 : 1, leaf.parameter().deviceEntries.size());
+          assertEquals(
+              expectedLeaves[i] == 1
+                  ? originalId + "-ordered-bucket-" + i
+                  : originalId + "-ordered-" + i + "-" + j,
+              leaf.parameter().sourceId.getId());
           assertTrue(sourceIds.add(leaf.parameter().sourceId.getId()));
           assertEquals(scan.getScanOrder(), leaf.parameter().scanOrder);
-          assertEquals(originalDevices.get(i * 2 + j), leaf.parameter().deviceEntries.get(0));
+          assertEquals(
+              expectedLeaves[i] == 1
+                  ? originalDevices.subList(i * 2, i * 2 + 2)
+                  : Collections.singletonList(originalDevices.get(i * 2 + j)),
+              leaf.parameter().deviceEntries);
         }
         drainIntoSink(factory.getOperation(), driver.getSink());
         driver.getSink().setNoMoreTsBlocks();
       }
       assertEquals(3, memoryKeys.size());
-      assertEquals(6, sourceIds.size());
+      assertEquals(Arrays.stream(expectedLeaves).sum(), sourceIds.size());
       assertTrue(
           pool.snapshotFragmentReservations(
                       context.getFragmentInstanceId().getQueryId().getId(),

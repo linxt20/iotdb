@@ -42,6 +42,69 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.junit.Assert.*;
 
 public class ResourceAuditManagerTest {
+  @Test
+  public void liveControlReaderRequiresRecordedIdentityAndUnexpiredWindow() throws Exception {
+    AtomicLong clock = new AtomicLong();
+    ResourceAuditManager manager = manager(clock, 4, 8, 8);
+    String window = manager.openWindow(100L, 1024L, 2048L);
+    java.lang.reflect.Field published =
+        org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager.class
+            .getDeclaredField("publishedInstanceContext");
+    published.setAccessible(true);
+    Object previous = published.get(null);
+    FragmentInstanceId fragment =
+        new FragmentInstanceId(
+            new org.apache.iotdb.db.queryengine.common.PlanFragmentId(
+                new org.apache.iotdb.db.queryengine.common.QueryId("live_observation"), 0),
+            "instance");
+    org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext context =
+        Mockito.mock(
+            org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.class);
+    Mockito.when(context.getId()).thenReturn(fragment);
+    org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFragmentLifecycle lifecycle =
+        new org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFragmentLifecycle(
+            context, MoreExecutors.directExecutor());
+    Mockito.when(context.getRuntimeLifecycle()).thenReturn(lifecycle);
+    try {
+      published.set(null, Map.of(fragment, context));
+      Map<?, ?> missing =
+          (Map<?, ?>)
+              manager
+                  .readRuntimeControl(window, "live_observation", fragment.getFullId())
+                  .get("observation");
+      assertEquals("FRAGMENT_NOT_RECORDED", missing.get("status"));
+      manager.beginFragment("live_observation", fragment.getFullId());
+      Map<String, Object> read =
+          manager.readRuntimeControl(window, "live_observation", fragment.getFullId());
+      assertEquals(true, read.get("auditRecordComplete"));
+      Map<?, ?> observation = (Map<?, ?>) read.get("observation");
+      assertEquals(fragment.getFullId(), observation.get("fragmentInstanceId"));
+      assertEquals(false, observation.get("frozen"));
+      assertEquals("NO_RUNTIME_GROUP", observation.get("status"));
+      Map<?, ?> wrongQuery =
+          (Map<?, ?>)
+              manager
+                  .readRuntimeControl(window, "another_query", fragment.getFullId())
+                  .get("observation");
+      assertEquals("FRAGMENT_NOT_RECORDED", wrongQuery.get("status"));
+      published.set(null, Map.of());
+      Map<?, ?> absent =
+          (Map<?, ?>)
+              manager
+                  .readRuntimeControl(window, "live_observation", fragment.getFullId())
+                  .get("observation");
+      assertEquals("CONTEXT_NOT_AVAILABLE", absent.get("status"));
+      clock.set(100L);
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> manager.readRuntimeControl(window, "live_observation", fragment.getFullId()));
+      Mockito.verify(context, Mockito.never()).setRuntimeControlEvidence(Mockito.any());
+    } finally {
+      published.set(null, previous);
+      manager.closeWindow(window);
+    }
+  }
+
   private MemoryPool pool() {
     return new MemoryPool("audit", new MemoryManager(1024L), 512L);
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.runtime;
 
+import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
@@ -73,9 +74,11 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
   private volatile RuntimeDopController controller;
   private int nextPipelineId;
   private volatile boolean constructionSealed;
+  private volatile boolean hasAdjustableGroups;
   private final Object evidenceLock = new Object();
   private final Map<String, ControlGroupEvidence> controlGroups = new LinkedHashMap<>();
   private volatile RuntimeDopExecutionSnapshot frozenControlEvidence;
+  private RuntimeDopController.TraceSnapshot frozenControllerTrace;
   private long controlSequence;
   // Admission and terminal sealing share evidenceLock; a done native future alone does not prove
   // that its evidence listener has executed.
@@ -166,7 +169,7 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
   public void sealConstruction() {
     constructionSealed = true;
     cleanup.sealConstruction();
-    if (schedulingGroup != null && !cleanup.isStopRequested() && !groups.isEmpty()) {
+    if (schedulingGroup != null && !cleanup.isStopRequested() && hasAdjustableGroups) {
       controller = new RuntimeDopController(this);
       controller.start();
       if (cleanup.isStopRequested()) controller.close();
@@ -233,6 +236,7 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
       RuntimeScanGroup laneGroup = new RuntimeScanGroup(lanes, dependencies);
       ExecutionGroup group = new ExecutionGroup(descriptor, laneGroup);
       groups.put(descriptor.getGroupId(), group);
+      hasAdjustableGroups |= descriptor.getLayout().isWorkerAdjustmentEnabled();
       registerControlGroup(descriptor);
       cleanup.registerGroup(laneGroup);
       for (int n = 0; n < descriptor.getLayout().getInitialWorkers(); n++) {
@@ -301,6 +305,10 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
             new ResizeResult(groupId, targetWorkers, observed, ResizeStatus.STOPPED));
       }
       group = Objects.requireNonNull(groups.get(groupId));
+      if (!group.descriptor.getLayout().isWorkerAdjustmentEnabled()) {
+        throw new IllegalStateException(
+            DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
+      }
       if (targetWorkers < 1 || targetWorkers > group.descriptor.getLayout().getLaneCount()) {
         throw new IllegalArgumentException();
       }
@@ -616,7 +624,8 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
             throw new IllegalStateException(
                 "Controller sampling did not stop successfully", failure);
           }
-          controllerEvents = currentController.snapshotEvents();
+          frozenControllerTrace = currentController.snapshotTrace();
+          controllerEvents = frozenControllerTrace.events();
         }
         Map<String, RuntimeDopExecutionSnapshot.GroupSnapshot> groups = new LinkedHashMap<>();
         controlGroups.forEach((id, group) -> groups.put(id, group.snapshot()));
@@ -637,6 +646,54 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
     }
     context.setRuntimeControlEvidence(result);
     return result;
+  }
+
+  /**
+   * Observe existing values without sealing settlements or freezing the lifecycle. The group and
+   * controller copies have separate lock instants bounded by the returned capture timestamps.
+   */
+  public Map<String, Object> snapshotLiveControlEvidence() {
+    long captureStartedNanos = System.nanoTime();
+    Map<String, RuntimeDopExecutionSnapshot.GroupSnapshot> groups = new LinkedHashMap<>();
+    RuntimeDopController current;
+    RuntimeDopController.TraceSnapshot trace;
+    boolean frozen;
+    synchronized (evidenceLock) {
+      frozen = frozenControlEvidence != null;
+      if (frozen) groups.putAll(frozenControlEvidence.getGroups());
+      else controlGroups.forEach((id, group) -> groups.put(id, group.snapshot()));
+      current = controller;
+      trace = frozenControllerTrace;
+    }
+    // Never take the controller lock while holding evidenceLock.
+    if (current != null) trace = current.snapshotTrace();
+    IDriverScheduler currentScheduler = scheduler;
+    IDriverScheduler.RuntimePressure pressure =
+        frozen || groups.isEmpty() || currentScheduler == null
+            ? null
+            : currentScheduler.observeRuntimePressure(context.getId().getQueryId()).orElse(null);
+    Map<String, Object> value = new LinkedHashMap<>();
+    value.put("schemaVersion", 1);
+    value.put("queryId", context.getId().getQueryId().getId());
+    value.put("fragmentInstanceId", context.getId().getFullId());
+    value.put("originalDeadlineMillis", context.getOuterQueryDeadlineMs());
+    value.put("captureStartedNanos", captureStartedNanos);
+    value.put("captureFinishedNanos", System.nanoTime());
+    value.put("frozen", frozen);
+    value.put(
+        "fragmentState",
+        context.getStateMachine() == null
+            ? "UNKNOWN"
+            : Objects.toString(context.getStateMachine().getState(), "UNKNOWN"));
+    value.put("groups", Collections.unmodifiableMap(groups));
+    value.put("controller", trace);
+    if (pressure != null) value.put("schedulerPressure", pressure);
+    value.put(
+        "status",
+        trace != null
+            ? trace.totalEvents() == 0 ? "CREATED_BUT_NO_SAMPLE" : "RECORDED"
+            : groups.isEmpty() ? "NO_RUNTIME_GROUP" : "NO_CONTROLLER");
+    return Collections.unmodifiableMap(value);
   }
 
   /** Keep the lightweight lifecycle sentinel, but detach every settled physical-owner alias. */
@@ -667,10 +724,25 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
     successfulOwnersCleared = true;
   }
 
+  @Override
+  public IDriverScheduler.ControlPressure sampleSharedPressure() {
+    IDriverScheduler current = scheduler;
+    if (current == null
+        || groups.size() != 1
+        || cleanup.isStopRequested()
+        || !org.apache.iotdb.db.conf.IoTDBDescriptor.getInstance()
+            .getConfig()
+            .isEnableRuntimeScanSharedPressureFeedback()) {
+      return null;
+    }
+    return current.readControlPressure(context.getId().getQueryId()).orElse(null);
+  }
+
   public Map<String, RuntimeDopPolicy.Input> sampleControlInputs(long nowNanos, long sequence) {
     Map<String, RuntimeDopPolicy.Input> result = new LinkedHashMap<>();
     for (Map.Entry<String, ExecutionGroup> entry : groups.entrySet()) {
       ExecutionGroup group = entry.getValue();
+      if (!group.descriptor.getLayout().isWorkerAdjustmentEnabled()) continue;
       Set<Integer> fullOutputs = new java.util.HashSet<>();
       for (RuntimeScanGroupDescriptor.Lane lane : group.descriptor.getLanes()) {
         if (!group.descriptor.getReservation().whenWritable(lane.getLaneIndex()).isDone()) {
@@ -961,7 +1033,8 @@ public final class RuntimeFragmentLifecycle implements RuntimeDopController.Targ
       counts.put(outcome, Math.addExact(counts.getOrDefault(outcome, 0L), 1));
       if (events.size() == RuntimeDopExecutionSnapshot.EVENT_LIMIT) events.removeFirst();
       events.addLast(
-          new RuntimeDopExecutionSnapshot.ControlEvent(sequence, requested, observed, outcome));
+          new RuntimeDopExecutionSnapshot.ControlEvent(
+              sequence, requested, observed, outcome, System.nanoTime()));
     }
 
     private RuntimeDopExecutionSnapshot.GroupSnapshot snapshot() {

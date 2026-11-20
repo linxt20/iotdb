@@ -614,6 +614,32 @@ public class FragmentInstanceManager {
     return context != null && context.isCancellationRequested();
   }
 
+  /** A local link must never recreate an endpoint after its owning FI terminated. */
+  public static boolean isFragmentExecutionTerminated(FragmentInstanceId instanceId) {
+    Map<FragmentInstanceId, FragmentInstanceContext> contexts = publishedInstanceContext;
+    if (contexts == null) return false;
+    FragmentInstanceContext context = contexts.get(instanceId);
+    return context != null
+        && (context.isCancellationRequested() || context.getStateMachine().getState().isDone());
+  }
+
+  /** Read the published context map without creating services or invoking statistics freezing. */
+  public static Map<String, Object> snapshotRuntimeControl(String queryId, String fullFragmentId) {
+    Map<FragmentInstanceId, FragmentInstanceContext> contexts = publishedInstanceContext;
+    if (contexts != null) {
+      for (Map.Entry<FragmentInstanceId, FragmentInstanceContext> entry : contexts.entrySet()) {
+        if (entry.getKey().getQueryId().getId().equals(queryId)
+            && entry.getKey().getFullId().equals(fullFragmentId)) {
+          org.apache.iotdb.db.queryengine.execution.runtime.RuntimeFragmentLifecycle lifecycle =
+              entry.getValue().getRuntimeLifecycle();
+          if (lifecycle != null) return lifecycle.snapshotLiveControlEvidence();
+          return java.util.Map.of("status", "NO_RUNTIME_LIFECYCLE");
+        }
+      }
+    }
+    return java.util.Map.of("status", "CONTEXT_NOT_AVAILABLE");
+  }
+
   /** Existing shared-query metadata identity, without starting the manager singleton. */
   public static boolean hasDataNodeQueryContext(QueryId queryId) {
     Map<QueryId, DataNodeQueryContext> contexts = publishedDataNodeQueryContext;

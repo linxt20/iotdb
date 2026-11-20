@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -18,18 +19,17 @@
     under the License.
 
 -->
-
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
-  <mirrors>
-    <mirror>
-      <id>aliyun-central</id>
-      <mirrorOf>central</mirrorOf>
-      <url>https://maven.aliyun.com/repository/public</url>
-    </mirror>
-    <mirror>
-      <id>aliyun-apache-snapshots</id>
-      <mirrorOf>apache snapshots</mirrorOf>
-      <url>https://maven.aliyun.com/repository/apache-snapshots</url>
-    </mirror>
-  </mirrors>
+    <mirrors>
+        <mirror>
+            <id>aliyun-central</id>
+            <mirrorOf>central</mirrorOf>
+            <url>https://maven.aliyun.com/repository/public</url>
+        </mirror>
+        <mirror>
+            <id>aliyun-apache-snapshots</id>
+            <mirrorOf>apache snapshots</mirrorOf>
+            <url>https://maven.aliyun.com/repository/apache-snapshots</url>
+        </mirror>
+    </mirrors>
 </settings>

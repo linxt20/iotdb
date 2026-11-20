@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.analyze.ITableTypeProvider;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.conf.IoTDBConfig.RuntimeScanAblationMode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.i18n.DataNodeQueryMessages;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
@@ -439,7 +440,26 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
           exchange -> {
             ISourceHandle source = exchange.getSourceHandle();
             long cap =
-                source instanceof SourceHandle ? budget.inputCapBytes() : budget.outputCapBytes();
+                source instanceof SourceHandle
+                        || (source
+                                instanceof
+                                org.apache.iotdb.db.queryengine.execution.exchange
+                                    .RuntimeExchangeEndpoint
+                            && ((org.apache.iotdb.db.queryengine.execution.exchange
+                                            .RuntimeExchangeEndpoint)
+                                        source)
+                                    .getRuntimeFrontier()
+                                != null
+                            && ((org.apache.iotdb.db.queryengine.execution.exchange
+                                            .RuntimeExchangeEndpoint)
+                                        source)
+                                    .getRuntimeFrontier()
+                                    .reservation()
+                                    .getMemorySide()
+                                == org.apache.iotdb.db.queryengine.execution.memory.MemorySide
+                                    .INPUT)
+                    ? budget.inputCapBytes()
+                    : budget.outputCapBytes();
             source.setMaxBytesCanReserve(cap);
             resourceRegistry.observePublishedQuota(source, "SOURCE", cap);
           });
@@ -707,6 +727,12 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
   }
 
   private static final class RuntimePlanningState {
+    private final int fixedWorkers =
+        IoTDBDescriptor.getInstance().getConfig().getRuntimeScanFixedWorkers();
+    private final int initialWorkers =
+        IoTDBDescriptor.getInstance().getConfig().getRuntimeScanInitialWorkers();
+    private final RuntimeScanAblationMode ablationMode =
+        IoTDBDescriptor.getInstance().getConfig().getRuntimeScanAblationMode();
     private RuntimeExchangeBudget budget;
     private MemoryPool pool;
     private final Map<String, RuntimeScanLayout> layouts = new LinkedHashMap<>();
@@ -800,6 +826,19 @@ public class LocalExecutionPlanContext implements ITableOperatorGeneratorContext
           DataNodeQueryMessages.EXCEPTION_RUNTIME_SCAN_DESCRIPTOR_STATE);
     }
     return frontier;
+  }
+
+  /** Captured once at root construction and shared with every child context. */
+  public RuntimeScanAblationMode getRuntimeScanAblationMode() {
+    return runtimePlanningState.ablationMode;
+  }
+
+  public int getRuntimeScanInitialWorkers() {
+    return runtimePlanningState.initialWorkers;
+  }
+
+  public int getRuntimeScanFixedWorkers() {
+    return runtimePlanningState.fixedWorkers;
   }
 
   public boolean isRuntimeParallelismEnabled() {

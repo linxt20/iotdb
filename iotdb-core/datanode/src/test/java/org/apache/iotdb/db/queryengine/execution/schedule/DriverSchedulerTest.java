@@ -58,6 +58,68 @@ public class DriverSchedulerTest {
   }
 
   @Test
+  public void testRuntimePressureAttributionKeepsSiblingFragmentsWithTheirQuery() {
+    DriverScheduler scheduler = new DriverScheduler(null, 16, 4);
+    QueryId foreground = new QueryId("foreground");
+    QueryId background = new QueryId("background");
+    registerPressureTask(scheduler, foreground, 0, DriverTaskStatus.RUNNING, true);
+    registerPressureTask(scheduler, foreground, 1, DriverTaskStatus.READY, true);
+    registerPressureTask(scheduler, foreground, 2, DriverTaskStatus.READY, false);
+    registerPressureTask(scheduler, background, 0, DriverTaskStatus.PENDING, false);
+    registerPressureTask(scheduler, background, 1, DriverTaskStatus.BLOCKED, true);
+    registerPressureTask(scheduler, background, 2, DriverTaskStatus.RUNNING, true);
+    registerPressureTask(scheduler, background, 3, DriverTaskStatus.FINISHED, true);
+    DriverTask competing =
+        registerPressureTask(scheduler, background, 4, DriverTaskStatus.READY, true);
+
+    IDriverScheduler.RuntimePressure before = scheduler.observeRuntimePressure(foreground).get();
+    Assert.assertTrue(before.complete());
+    Assert.assertTrue(before.ownQuerySeen());
+    Assert.assertTrue(before.configuredQueryThreads() > 0);
+    Assert.assertTrue(before.captureFinishedNanos() - before.captureStartedNanos() >= 0);
+    Assert.assertEquals(8, before.visitedTasks());
+    Assert.assertEquals(new IDriverScheduler.RunnableTaskCounts(1, 1, 0), before.own());
+    Assert.assertEquals(new IDriverScheduler.RunnableTaskCounts(1, 1, 1), before.other());
+
+    competing.setStatus(DriverTaskStatus.BLOCKED);
+    IDriverScheduler.RuntimePressure later = scheduler.observeRuntimePressure(foreground).get();
+    Assert.assertEquals(before.own(), later.own());
+    Assert.assertEquals(new IDriverScheduler.RunnableTaskCounts(1, 0, 2), later.other());
+    Assert.assertEquals(new IDriverScheduler.RunnableTaskCounts(1, 1, 1), before.other());
+    Assert.assertFalse(
+        scheduler.observeRuntimePressure(new QueryId("missing")).get().ownQuerySeen());
+  }
+
+  @Test
+  public void testRuntimePressureBudgetDoesNotReportPartialCounts() {
+    DriverScheduler scheduler = new DriverScheduler(null, 16, 4);
+    QueryId foreground = new QueryId("foreground");
+    for (int i = 0; i < 4096; i++) {
+      registerPressureTask(scheduler, foreground, i, DriverTaskStatus.READY, true);
+    }
+    IDriverScheduler.RuntimePressure pressure = scheduler.observeRuntimePressure(foreground).get();
+    Assert.assertFalse(pressure.complete());
+    Assert.assertNull(pressure.own());
+    Assert.assertNull(pressure.other());
+    Assert.assertTrue(pressure.visitedTasks() < 4096);
+  }
+
+  private static DriverTask registerPressureTask(
+      DriverScheduler scheduler,
+      QueryId query,
+      int fragment,
+      DriverTaskStatus status,
+      boolean gate) {
+    FragmentInstanceId instance = new FragmentInstanceId(new PlanFragmentId(query, fragment), "0");
+    IDriver driver = Mockito.mock(IDriver.class);
+    Mockito.when(driver.getDriverTaskId()).thenReturn(new DriverTaskId(instance, 0));
+    DriverTask task = new DriverTask(driver, 10000, status, null, 0, false);
+    task.setRunnableGateOpen(gate);
+    scheduler.registerTaskToQueryMap(query, task);
+    return task;
+  }
+
+  @Test
   public void testManagingDriver() throws CpuNotEnoughException, MemoryNotEnoughException {
     IMPPDataExchangeManager mockMPPDataExchangeManager =
         Mockito.mock(IMPPDataExchangeManager.class);

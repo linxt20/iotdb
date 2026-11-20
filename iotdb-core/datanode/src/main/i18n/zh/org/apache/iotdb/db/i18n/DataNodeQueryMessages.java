@@ -5760,4 +5760,40 @@ public final class DataNodeQueryMessages {
   public static final String LOG_ARG_VERSION_1_DIRECTION_REJECTED_QUERY_MISMATCH_CONSUMER_QUERY_ID_ARG_PRODUCER_QUERY_ID_ARG_CONSUMER_FRAGMENT_ARG_PRODUCER_FRAGMENT_ARG_CHANNEL_ARG_A367770C = "{} version=1 direction=rejected_query_mismatch consumer_query_id={} producer_query_id={} consumer_fragment={} producer_fragment={} channel={}";
   public static final String LOG_ARG_VERSION_1_DIRECTION_ARG_QUERY_ID_ARG_PRODUCER_FRAGMENT_ARG_CONSUMER_FRAGMENT_ARG_CHANNEL_ARG_PAYLOAD_BYTES_ARG_PAYLOAD_BLOCKS_ARG_A9F2EB1A = "{} version=1 direction={} query_id={} producer_fragment={} consumer_fragment={} channel={} payload_bytes={} payload_blocks={}";
   public static final String EXCEPTION_DRIVER_DOES_NOT_SUPPORT_COOPERATIVE_QUIESCENCE_959AC4F1 = "Driver 不支持协作静止";
+  public static final String EXCEPTION_RUNTIME_SCAN_PARALLELISM_FIXED_WORKERS_MUST_BE_BETWEEN_0_AND_1024_FB1964CD = "runtime_scan_parallelism_fixed_workers 必须介于 0 和 1024 之间";
+
+  // Runtime local exchange endpoint and ownership contracts.
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_EDGE_HAS_INCONSISTENT_IDENTITIES_AAD9C714 =
+      "Runtime 本地交换边的身份不一致";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_ENDPOINT_IS_ALREADY_BOUND_B8068663 =
+      "Runtime 本地交换端点已经绑定";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_ENDPOINTS_REQUIRE_IDENTICAL_ADMITTED_BOUNDS_29FA3C48 =
+      "Runtime 本地交换端点需要一致的准入边界";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_IS_CLOSED_7FBCB963 =
+      "Runtime 本地交换已关闭";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_IS_NOT_WRITABLE_E53C002E =
+      "Runtime 本地交换暂不可写";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_IS_NOT_READABLE_6AF0FD07 =
+      "Runtime 本地交换暂不可读";
+  public static final String EXCEPTION_RUNTIME_LOCAL_EXCHANGE_CREDIT_SETTLEMENT_FAILED_AFA14B18 =
+      "Runtime 本地交换信用结清失败";
+  public static final String EXCEPTION_RUNTIME_LOCAL_INPUT_REQUIRES_TYPED_RECEIVE_OWNERSHIP_425D3F5A =
+      "Runtime 本地 INPUT 需要 typed receive 的所有权";
+
+  public static final String EXCEPTION_LOCAL_RESULT_EXCHANGE_BELONGS_TO_ANOTHER_EDGE_5EF70208 =
+      "本地结果交换属于另一条边";
+  public static final String EXCEPTION_LOCAL_RESULT_PRODUCER_REQUIRES_A_PREPAID_OUTPUT_FRONTIER_85C8209D =
+      "本地结果生产者需要预付 OUTPUT frontier";
+  public static final String EXCEPTION_LOCAL_RESULT_CONSUMER_RETAINS_ITS_NATIVE_INPUT_ACCOUNT_7EC1BD48 =
+      "本地结果消费者保留原生 INPUT 账户";
+  public static final String EXCEPTION_LOCAL_RESULT_PRODUCER_IS_NOT_BOUND_F6BDAFD9 =
+      "本地结果生产者尚未绑定";
+  public static final String EXCEPTION_LOCAL_RESULT_PRODUCER_IS_ALREADY_BOUND_72894B56 =
+      "本地结果生产者已经绑定";
+  public static final String EXCEPTION_LOCAL_RESULT_PAYLOAD_EXCEEDS_ITS_ADMITTED_BOUND_ABBF3BCD =
+      "本地结果载荷超过准入边界";
+  public static final String EXCEPTION_LOCAL_RESULT_EXCHANGE_MUST_REMAIN_IN_THE_SAME_DATANODE_5CA2F875 =
+      "本地结果交换必须位于同一 DataNode";
+  public static final String LOG_FAILED_TO_CLEAN_UP_QUERY_RESULT_EXCHANGE_FOR_ARG_046B0EDF =
+      "清理查询 {} 的结果交换失败";
 }

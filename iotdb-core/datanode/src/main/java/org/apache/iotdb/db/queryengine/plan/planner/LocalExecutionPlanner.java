@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.queryengine.common.SqlDialect;
 import org.apache.iotdb.commons.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
@@ -369,14 +370,23 @@ public class LocalExecutionPlanner {
       }
       node = node.getChildren().get(0);
     }
+    // OutputNode is metadata only: TableOperatorGenerator.visitOutput returns its child's
+    // operator unchanged. SQL aliases, duplicates and column ordering are applied by the result
+    // mapping, so the wire contract must describe the physical child's TsBlock instead.
+    while (node instanceof OutputNode) {
+      node = ((OutputNode) node).getChild();
+    }
     List<org.apache.tsfile.enums.TSDataType> schema = new ArrayList<>();
     int booleanColumns = 0;
     for (org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol symbol :
         node.getOutputSymbols()) {
       org.apache.tsfile.read.common.type.Type type =
           context.getTypeProvider().getTableModelType(symbol);
+      // Use the same physical type as the native operator builders. In particular AVG's
+      // partial ROW(sum, count) is an opaque BLOB column on both exchange endpoints.
       org.apache.tsfile.enums.TSDataType dataType =
-          org.apache.tsfile.enums.TSDataType.valueOf(type.getTypeEnum().name());
+          org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager
+              .getTSDataType(type);
       schema.add(dataType);
       if (dataType == org.apache.tsfile.enums.TSDataType.BOOLEAN) booleanColumns++;
     }

@@ -403,6 +403,30 @@ public final class ResourceAuditManager {
     return Collections.unmodifiableList(result);
   }
 
+  /** Observational JMX access shares the existing explicit, bounded audit-window admission. */
+  public Map<String, Object> readRuntimeControl(String id, String query, String fullFragmentId) {
+    Window window = requireWindow(id);
+    boolean present;
+    boolean complete;
+    synchronized (window) {
+      Record record = window.records.get(key(query, fullFragmentId));
+      present = record != null && !window.closed;
+      complete = present && record.began && !record.incomplete && !window.overflow;
+    }
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("windowId", id);
+    result.put("queryId", query);
+    result.put("fragmentInstanceId", fullFragmentId);
+    result.put("auditRecordComplete", complete);
+    result.put(
+        "observation",
+        present
+            ? org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager
+                .snapshotRuntimeControl(query, fullFragmentId)
+            : Map.of("status", "FRAGMENT_NOT_RECORDED"));
+    return Collections.unmodifiableMap(result);
+  }
+
   public Map<String, Object> snapshot(
       String id, String query, String fragment, MemoryPool pool, long operatorsFreeBytes) {
     Window window = requireWindow(id);

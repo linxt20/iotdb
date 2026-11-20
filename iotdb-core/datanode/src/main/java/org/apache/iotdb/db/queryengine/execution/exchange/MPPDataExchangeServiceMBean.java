@@ -45,5 +45,7 @@ public interface MPPDataExchangeServiceMBean {
 
   String readResourceAudit(String windowId, String queryId, String fragmentInstanceId);
 
+  String readRuntimeControl(String windowId, String queryId, String fragmentInstanceId);
+
   void closeResourceAuditWindow(String windowId);
 }

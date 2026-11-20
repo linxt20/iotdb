@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -65,6 +66,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
@@ -303,6 +305,89 @@ public class RuntimePlannerAdmissionTest {
   }
 
   @Test
+  public void fixedWorkersAreCapturedOnceAndSharedWithChildPlanningContexts() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    int original = config.getRuntimeScanFixedWorkers();
+    try {
+      config.setRuntimeScanFixedWorkers(2);
+      try (AdmissionFixture first = new AdmissionFixture("fixed_worker_snapshot_first")) {
+        assertEquals(2, first.context.getRuntimeScanFixedWorkers());
+        config.setRuntimeScanFixedWorkers(4);
+        LocalExecutionPlanContext child = new LocalExecutionPlanContext(first.context);
+        assertEquals(2, child.getRuntimeScanFixedWorkers());
+        try (AdmissionFixture later = new AdmissionFixture("fixed_worker_snapshot_later")) {
+          assertEquals(4, later.context.getRuntimeScanFixedWorkers());
+        }
+        assertEquals(2, first.context.getRuntimeScanFixedWorkers());
+      }
+    } finally {
+      config.setRuntimeScanFixedWorkers(original);
+    }
+  }
+
+  @Test
+  public void fixedWorkersAreAppliedByTheNativeRuntimePlanningService() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    int original = config.getRuntimeScanFixedWorkers();
+    try {
+      config.setRuntimeScanFixedWorkers(3);
+      try (AdmissionFixture fixture = new AdmissionFixture("fixed_worker_native_plan")) {
+        DeviceTableScanNode scan = scan("fixed_worker_raw", 4);
+        scan.setAllowParallelScan(true);
+        fixture.context.initializeRuntimeExchangeBudget(
+            pool("fixed_worker_native_plan", 128L * 1024 * 1024),
+            LocalExecutionPlanner.runtimeExchangeBudget(scan, fixture.context));
+        ScanParallelPlanner.Input input =
+            new ScanParallelPlanner.Input(
+                scan.getDeviceEntries().stream()
+                    .map(device -> String.valueOf(device.getDeviceID()))
+                    .toList(),
+                List.of(0L),
+                null,
+                4,
+                true,
+                false,
+                false,
+                false,
+                false,
+                false,
+                fixture.context.getFragmentInstanceId().getQueryId().getId(),
+                fixture.context.getFragmentInstanceId().getFragmentInstanceId(),
+                scan.getPlanNodeId().getId());
+        RuntimeScanLayout layout =
+            fixture
+                .context
+                .getDynamicParallelPlanningService()
+                .selectRuntimeLayout(input, fixture.context, true, "TEST", 1, 4);
+        assertEquals(4, layout.getLaneCount());
+        assertEquals(3, layout.getInitialWorkers());
+        assertFalse(layout.isWorkerAdjustmentEnabled());
+        fixture
+            .context
+            .getDynamicParallelPlanningService()
+            .registerFinal(layout.getLanePlan(), fixture.context);
+        RuntimeScanLayout finalized = fixture.context.getRuntimeLayout(layout.getLanePlan());
+        assertSame(layout.getLanePlan(), finalized.getLanePlan());
+        assertEquals(3, finalized.getInitialWorkers());
+        assertFalse(finalized.isWorkerAdjustmentEnabled());
+        ScanParallelPlan reweighted =
+            ScanParallelPlan.withTimePartitionGroups(
+                layout.getLanePlan(), List.of(List.of(0L), List.of(1L)));
+        fixture
+            .context
+            .getDynamicParallelPlanningService()
+            .registerFinal(reweighted, fixture.context);
+        RuntimeScanLayout rebuilt = fixture.context.getRuntimeLayout(reweighted);
+        assertSame(reweighted, rebuilt.getLanePlan());
+        assertEquals(3, rebuilt.getInitialWorkers());
+        assertFalse(rebuilt.isWorkerAdjustmentEnabled());
+      }
+    } finally {
+      config.setRuntimeScanFixedWorkers(original);
+    }
+  }
+
+  @Test
   public void ordinaryPaidScanDoesNotNeedHashApproval() {
     try (AdmissionFixture fixture = new AdmissionFixture("admission_ordinary")) {
       DeviceTableScanNode scan = scan("ordinary", 4);
@@ -500,6 +585,190 @@ public class RuntimePlannerAdmissionTest {
       assertTrue(budget.groupPrepaidBudgets().isEmpty());
       assertNoRuntimeStateCreated(fixture.context);
     }
+  }
+
+  @Test
+  public void aggregateRowStateHasTheSameBlobBudgetOnBothEndpoints() {
+    try (AdmissionFixture fixture = new AdmissionFixture("admission_partial_avg_row")) {
+      Symbol avgState = new Symbol("partial_avg");
+      fixture
+          .context
+          .getTypeProvider()
+          .putTableModelType(
+              avgState,
+              RowType.anonymous(
+                  List.of(
+                      TypeFactory.getType(TSDataType.INT64),
+                      TypeFactory.getType(TSDataType.DOUBLE))));
+      ExchangeNode exchange = new ExchangeNode(id("avg_input"));
+      exchange.setOutputSymbols(List.of(avgState));
+      exchange.setUpstream(
+          new TEndPoint("192.0.2.7", 10740),
+          fixture.peer(1, "avg_partial"),
+          id("avg_upstream_sink"));
+      IdentitySinkNode sink = new IdentitySinkNode(id("avg_output"));
+      sink.addChild(exchange);
+      sink.addDownStreamChannelLocation(
+          new DownStreamChannelLocation(
+              new TEndPoint("192.0.2.8", 10740),
+              fixture.peer(2, "avg_final").toThrift(),
+              "avg_downstream_exchange"));
+      LocalExecutionPlanContext.RuntimeExchangeBudget budget =
+          LocalExecutionPlanner.runtimeExchangeBudget(sink, fixture.context);
+      RuntimeExchangeBlockCodec.Bounds input = budget.inputEndpointBounds().get("avg_input");
+      RuntimeExchangeBlockCodec.Bounds output =
+          budget.outputEndpointBounds().get("avg_output").get(0);
+      assertEquals(List.of(TSDataType.BLOB), input.schema());
+      assertEquals(input, output);
+      assertNoRuntimeStateCreated(fixture.context);
+    }
+  }
+
+  @Test
+  public void runtimeAblationSeparatesPlannerPrescriptionFromCalibratedWidth() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    boolean oldRuntime = config.isEnableRuntimeScanParallelism();
+    int oldFixed = config.getRuntimeScanFixedWorkers();
+    int oldInitial = config.getRuntimeScanInitialWorkers();
+    String oldMode = config.getRuntimeScanAblationMode().name();
+    try {
+      config.setEnableRuntimeScanParallelism(true);
+      config.setRuntimeScanFixedWorkers(0);
+      config.setRuntimeScanInitialWorkers(0);
+      config.setRuntimeScanAblationMode("standard");
+      RuntimeScanLayout direct = ablationLayout("direct", 2);
+      config.setRuntimeScanAblationMode("static_only");
+      RuntimeScanLayout stat = ablationLayout("static", 2);
+      config.setRuntimeScanInitialWorkers(3);
+      config.setRuntimeScanAblationMode("runtime_only");
+      RuntimeScanLayout runtime = ablationLayout("runtime", 1);
+      assertEquals(
+          direct.getLanePlan().getWorkUnits().stream()
+              .map(ScanParallelPlan.WorkUnit::getDevices)
+              .toList(),
+          stat.getLanePlan().getWorkUnits().stream()
+              .map(ScanParallelPlan.WorkUnit::getDevices)
+              .toList());
+      assertEquals(4, direct.getLaneCount());
+      assertEquals(4, stat.getLaneCount());
+      assertEquals(4, runtime.getLaneCount());
+      assertEquals(2, direct.getInitialWorkers());
+      assertEquals(2, stat.getInitialWorkers());
+      assertEquals(3, runtime.getInitialWorkers());
+      assertTrue(direct.isWorkerAdjustmentEnabled());
+      assertFalse(stat.isWorkerAdjustmentEnabled());
+      assertTrue(runtime.isWorkerAdjustmentEnabled());
+    } finally {
+      config.setEnableRuntimeScanParallelism(oldRuntime);
+      config.setRuntimeScanFixedWorkers(oldFixed);
+      config.setRuntimeScanInitialWorkers(oldInitial);
+      config.setRuntimeScanAblationMode(oldMode);
+    }
+  }
+
+  private static RuntimeScanLayout ablationLayout(String name, int estimate) {
+    try (AdmissionFixture fixture = new AdmissionFixture("ablation_" + name)) {
+      DeviceTableScanNode scan = scan("ablation_source", 4);
+      scan.setAllowParallelScan(true);
+      fixture.context.initializeRuntimeExchangeBudget(
+          pool("ablation_" + name, 128L * 1024 * 1024),
+          LocalExecutionPlanner.runtimeExchangeBudget(scan, fixture.context));
+      List<String> devices =
+          scan.getDeviceEntries().stream()
+              .map(device -> String.valueOf(device.getDeviceID()))
+              .toList();
+      ScanParallelPlanner.Input input =
+          new ScanParallelPlanner.Input(
+              devices,
+              List.of(0L),
+              null,
+              4,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              fixture.context.getFragmentInstanceId().getQueryId().getId(),
+              fixture.context.getFragmentInstanceId().getFragmentInstanceId(),
+              scan.getPlanNodeId().getId());
+      RuntimeScanLayout layout =
+          fixture
+              .context
+              .getDynamicParallelPlanningService()
+              .selectRuntimeLayout(input, fixture.context, true, "TEST", estimate, 4);
+      fixture
+          .context
+          .getDynamicParallelPlanningService()
+          .registerFinal(layout.getLanePlan(), fixture.context);
+      RuntimeScanLayout finalized = fixture.context.getRuntimeLayout(layout.getLanePlan());
+      assertEquals(layout.getInitialWorkers(), finalized.getInitialWorkers());
+      assertEquals(layout.isWorkerAdjustmentEnabled(), finalized.isWorkerAdjustmentEnabled());
+      return finalized;
+    }
+  }
+
+  @Test
+  public void outputEndpointUsesNativeChildOrderWhenSqlColumnsArePermuted() {
+    try (AdmissionFixture fixture = new AdmissionFixture("admission_output_permutation")) {
+      DeviceTableScanNode source = scan("output_source", 4);
+      OutputNode output =
+          new OutputNode(
+              id("logical_output"),
+              source,
+              List.of("tag1", "time", "s1"),
+              List.of(new Symbol("tag1"), new Symbol("time"), GROUP_KEY));
+      assertOutputEndpointUsesPhysicalChildSchema(fixture, output);
+    }
+  }
+
+  @Test
+  public void outputEndpointDoesNotDuplicateOrDropPhysicalColumnsForSqlAliases() {
+    try (AdmissionFixture fixture = new AdmissionFixture("admission_output_aliases")) {
+      OutputNode output =
+          new OutputNode(
+              id("logical_aliases"),
+              scan("alias_source", 4),
+              List.of("tag_first", "tag_again"),
+              List.of(new Symbol("tag1"), new Symbol("tag1")));
+      assertOutputEndpointUsesPhysicalChildSchema(fixture, output);
+    }
+  }
+
+  @Test
+  public void outputEndpointUnwrapsEveryMetadataOnlyOutputNode() {
+    try (AdmissionFixture fixture = new AdmissionFixture("admission_nested_output")) {
+      OutputNode inner =
+          new OutputNode(
+              id("inner_output"),
+              scan("nested_source", 4),
+              List.of("s1", "tag1", "time"),
+              List.of(GROUP_KEY, new Symbol("tag1"), new Symbol("time")));
+      OutputNode outer =
+          new OutputNode(
+              id("outer_output"),
+              inner,
+              List.of("time", "s1"),
+              List.of(new Symbol("time"), GROUP_KEY));
+      assertOutputEndpointUsesPhysicalChildSchema(fixture, outer);
+    }
+  }
+
+  private static void assertOutputEndpointUsesPhysicalChildSchema(
+      AdmissionFixture fixture, OutputNode output) {
+    IdentitySinkNode sink = new IdentitySinkNode(id("result_sink"));
+    sink.addChild(output);
+    sink.addDownStreamChannelLocation(
+        new DownStreamChannelLocation(
+            new TEndPoint("192.0.2.7", 10740),
+            fixture.peer(2, "result_receiver").toThrift(),
+            "result_exchange"));
+    LocalExecutionPlanContext.RuntimeExchangeBudget budget =
+        LocalExecutionPlanner.runtimeExchangeBudget(sink, fixture.context);
+    assertEquals(
+        List.of(TSDataType.TIMESTAMP, TSDataType.STRING, TSDataType.INT32),
+        budget.outputEndpointBounds().get("result_sink").get(0).schema());
+    assertNoRuntimeStateCreated(fixture.context);
   }
 
   @Test

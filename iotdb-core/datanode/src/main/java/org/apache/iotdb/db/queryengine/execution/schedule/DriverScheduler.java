@@ -19,28 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.MoreExecutors;
-import io.airlift.units.Duration;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.OptionalInt;
-import java.util.Set;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 import org.apache.iotdb.calc.exception.MemoryNotEnoughException;
 import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.calc.execution.schedule.queue.IndexedBlockingReserveQueue;
@@ -75,8 +53,33 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.storageengine.rescon.quotas.ThrottleQuotaLimit;
 import org.apache.iotdb.db.storageengine.rescon.quotas.ThrottleQuotaLimit.AdmissionTicket;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
+import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /** The manager of fragment instances scheduling. */
 public class DriverScheduler implements IDriverScheduler, IService {
@@ -108,6 +111,12 @@ public class DriverScheduler implements IDriverScheduler, IService {
 
   private static final int QUERY_MAX_CAPACITY = config.getMaxAllowedConcurrentQueries();
   private static final int WORKER_THREAD_NUM = memoryConfig.getQueryThreadCount();
+  // Cap the audit walk (query entries, FI entries and tasks). It is not used by the policy timer.
+  private static final int RUNTIME_PRESSURE_WALK_BUDGET = 4096;
+  private static final long CONTROL_PRESSURE_INTERVAL_NANOS =
+      java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(250);
+  private final Object pressureSampleLock = new Object();
+  private PressureFrame lastControlPressure;
   private static final int TASK_MAX_CAPACITY = QUERY_MAX_CAPACITY * config.getDegreeOfParallelism();
   private static final long QUERY_TIMEOUT_MS = config.getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
@@ -1367,6 +1376,124 @@ public class DriverScheduler implements IDriverScheduler, IService {
     }
     return new IDriverScheduler.RuntimeMetrics(
         active, readyQueue.size(), blockedTasks.size(), completedDriverTaskCount.get());
+  }
+
+  private record PerQueryPressure(RunnableTaskCounts tasks, int runtimeWorkerFragments) {}
+
+  private record PressureFrame(
+      long started,
+      long finished,
+      boolean complete,
+      int visitedTasks,
+      RunnableTaskCounts totals,
+      Map<QueryId, PerQueryPressure> byQuery) {
+    ControlPressure forQuery(QueryId query, int configuredThreads) {
+      PerQueryPressure own = byQuery.get(query);
+      RunnableTaskCounts ownTasks =
+          own == null && complete
+              ? new RunnableTaskCounts(0, 0, 0)
+              : own == null ? null : own.tasks();
+      RunnableTaskCounts other =
+          complete
+              ? new RunnableTaskCounts(
+                  totals.running() - ownTasks.running(),
+                  totals.runnableReady() - ownTasks.runnableReady(),
+                  totals.blocked() - ownTasks.blocked())
+              : null;
+      return new ControlPressure(
+          new RuntimePressure(
+              started,
+              finished,
+              configuredThreads,
+              complete,
+              own != null,
+              visitedTasks,
+              ownTasks,
+              other),
+          own == null ? 0 : own.runtimeWorkerFragments());
+    }
+  }
+
+  @Override
+  public Optional<RuntimePressure> observeRuntimePressure(QueryId ownQuery) {
+    Objects.requireNonNull(ownQuery);
+    return Optional.of(capturePressureFrame().forQuery(ownQuery, WORKER_THREAD_NUM).sample());
+  }
+
+  @Override
+  public Optional<ControlPressure> readControlPressure(QueryId ownQuery) {
+    Objects.requireNonNull(ownQuery);
+    synchronized (pressureSampleLock) {
+      if (lastControlPressure == null
+          || System.nanoTime() - lastControlPressure.finished()
+              >= CONTROL_PRESSURE_INTERVAL_NANOS) {
+        lastControlPressure = capturePressureFrame();
+      }
+      return Optional.of(lastControlPressure.forQuery(ownQuery, WORKER_THREAD_NUM));
+    }
+  }
+
+  private PressureFrame capturePressureFrame() {
+    long started = System.nanoTime();
+    int remaining = RUNTIME_PRESSURE_WALK_BUDGET;
+    int visitedTasks = 0;
+    long running = 0, ready = 0, blocked = 0;
+    boolean complete = true;
+    Map<QueryId, PerQueryPressure> countsByQuery = new HashMap<>();
+    // No task/registration locks under task-set monitors. Volatile status and gate reads are
+    // best effort within the bounded sample; they do not represent an atomic cluster state.
+    scan:
+    for (Map.Entry<QueryId, Map<FragmentInstanceId, Set<DriverTask>>> query : queryMap.entrySet()) {
+      if (--remaining < 0) {
+        complete = false;
+        break;
+      }
+      long qr = 0, qReady = 0, qb = 0;
+      int runtimeFragments = 0;
+      for (Set<DriverTask> tasks : query.getValue().values()) {
+        if (--remaining < 0) {
+          complete = false;
+          break scan;
+        }
+        boolean runtime = false;
+        synchronized (tasks) {
+          for (DriverTask task : tasks) {
+            if (--remaining < 0) {
+              complete = false;
+              break scan;
+            }
+            visitedTasks++;
+            DriverTaskStatus status = task.getStatus();
+            if (status == DriverTaskStatus.RUNNING) {
+              qr++;
+            } else if (status == DriverTaskStatus.READY && task.isRunnableGateOpen()) {
+              qReady++;
+            } else if (status == DriverTaskStatus.BLOCKED) {
+              qb++;
+            }
+            runtime |=
+                (status == DriverTaskStatus.READY
+                        || status == DriverTaskStatus.RUNNING
+                        || status == DriverTaskStatus.BLOCKED)
+                    && task.getDriver() instanceof RuntimeScanWorker;
+          }
+        }
+        if (runtime) runtimeFragments++;
+      }
+      running += qr;
+      ready += qReady;
+      blocked += qb;
+      countsByQuery.put(
+          query.getKey(),
+          new PerQueryPressure(new RunnableTaskCounts(qr, qReady, qb), runtimeFragments));
+    }
+    return new PressureFrame(
+        started,
+        System.nanoTime(),
+        complete,
+        visitedTasks,
+        new RunnableTaskCounts(running, ready, blocked),
+        complete ? Map.copyOf(countsByQuery) : Map.of());
   }
 
   public long getReadyQueueTaskCount() {

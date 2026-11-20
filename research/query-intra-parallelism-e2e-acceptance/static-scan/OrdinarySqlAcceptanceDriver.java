@@ -544,6 +544,163 @@ public final class OrdinarySqlAcceptanceDriver {
     }
   }
 
+  /** Optional client-side collection of existing control and settled-membership evidence. */
+  private static final class RuntimeTimeline implements AutoCloseable {
+    final List<Audit> audits;
+    final Path output;
+    final BufferedWriter polls;
+    final BufferedWriter stream;
+    final Map<String, Long> totals = new LinkedHashMap<>();
+    final Map<String, Map<Long, String>> seen = new LinkedHashMap<>();
+    final Map<String, Long> origins = new LinkedHashMap<>();
+    final Map<String, String> layouts = new LinkedHashMap<>();
+    final Set<String> managedFragments = new HashSet<>();
+    final Set<String> frozenFragments = new HashSet<>();
+    final Set<String> stoppedControllers = new HashSet<>();
+    final JsonArray gaps = new JsonArray();
+    long pollCount;
+
+    RuntimeTimeline(List<Audit> audits, Path output) throws Exception {
+      this.audits = audits;
+      this.output = output;
+      polls = log(output.resolve("runtime-live-timeline.jsonl"));
+      BufferedWriter events = null;
+      try { events = log(output.resolve("runtime-live-event-stream.jsonl")); }
+      catch (Exception | Error failed) {
+        try { polls.close(); } catch (Exception closeFailure) { failed.addSuppressed(closeFailure); }
+        throw failed;
+      }
+      stream = events;
+    }
+
+    void capture(JsonObject roster, JsonObject fi, String phase) throws Exception {
+      String query = text(roster, "queryId"), fragment = text(fi, "fragmentInstanceId");
+      int node = fi.get("dataNodeId").getAsInt();
+      Audit selected = null;
+      for (Audit audit : audits) if (audit.node.id() == node) {
+        require(selected == null, "Duplicate DataNode in runtime timeline audit");
+        selected = audit;
+      }
+      require(selected != null, "Runtime timeline has no actual owning DataNode");
+      long before = System.nanoTime();
+      JsonObject response = JsonParser.parseString((String) selected.call("readRuntimeControl",
+          new Object[] {selected.window, query, fragment},
+          "java.lang.String", "java.lang.String", "java.lang.String")).getAsJsonObject();
+      long after = System.nanoTime();
+      line(polls, Map.of("phase", phase, "at", Instant.now().toString(),
+          "clientBeforeNanos", before, "clientAfterNanos", after,
+          "dataNodeId", node, "response", response));
+      pollCount++;
+      require(query.equals(text(response, "queryId"))
+          && fragment.equals(text(response, "fragmentInstanceId"))
+          && selected.window.equals(text(response, "windowId")),
+          "Runtime timeline outer identity mismatch");
+      JsonObject value = response.getAsJsonObject("observation");
+      String status = text(value, "status");
+      if (Set.of("FRAGMENT_NOT_RECORDED", "CONTEXT_NOT_AVAILABLE", "NO_RUNTIME_LIFECYCLE")
+          .contains(status)) {
+        if (managedFragments.contains(fragment) && phase.equals("AFTER_RESOURCE_SETTLEMENT")) {
+          gaps.add(MapToJson(Map.of("fragmentInstanceId", fragment, "reason", status)));
+        }
+        return;
+      }
+      require(query.equals(text(value, "queryId"))
+          && fragment.equals(text(value, "fragmentInstanceId")),
+          "Runtime timeline live identity mismatch");
+      JsonObject groups = value.getAsJsonObject("groups");
+      if (groups.size() > 0) {
+        managedFragments.add(fragment);
+        require(flag(response, "auditRecordComplete", false),
+            "Managed runtime timeline lacks complete audit registration");
+        if (flag(value, "frozen", false)) frozenFragments.add(fragment);
+      }
+      for (Map.Entry<String, JsonElement> entry : groups.entrySet()) {
+        JsonObject group = entry.getValue().getAsJsonObject();
+        String key = fragment + "/membership/" + entry.getKey();
+        require(entry.getKey().equals(text(group, "groupId")), "Runtime group identity mismatch");
+        String layout = text(group, "lanePlanIdentityChecksum");
+        require(!layout.isEmpty() && !text(group, "sourcePlanNodeId").isEmpty()
+            && group.getAsJsonObject("laneIdentities").size()
+                == group.get("logicalLaneCount").getAsInt(), "Missing real runtime lane identity");
+        String prior = layouts.putIfAbsent(key, layout);
+        require(prior == null || prior.equals(layout), "Live runtime logical layout changed");
+        long total = 0;
+        for (Map.Entry<String, JsonElement> count : group.getAsJsonObject("outcomeCounts").entrySet()) {
+          total = Math.addExact(total, count.getValue().getAsLong());
+        }
+        collect(key, total, group.getAsJsonArray("events"), true, before, after);
+      }
+      JsonElement controllerElement = value.get("controller");
+      if (controllerElement != null && !controllerElement.isJsonNull()) {
+        JsonObject controller = controllerElement.getAsJsonObject();
+        String key = fragment + "/controller";
+        long origin = controller.get("originNanos").getAsLong();
+        Long prior = origins.putIfAbsent(key, origin);
+        require(prior == null || prior.longValue() == origin, "Controller clock origin changed");
+        if (flag(controller, "samplingStopped", false)) stoppedControllers.add(key);
+        collect(key, controller.get("totalEvents").getAsLong(),
+            controller.getAsJsonArray("events"), false, before, after);
+      }
+    }
+
+    private void collect(String key, long total, JsonArray tail, boolean membership,
+        long before, long after) throws Exception {
+      long previousTotal = totals.getOrDefault(key, 0L);
+      require(total >= previousTotal && total >= tail.size() && tail.size() <= 128,
+          "Runtime timeline counters or bounded tail are invalid");
+      long first = total - tail.size() + 1;
+      if (total > previousTotal && first > previousTotal + 1) {
+        gaps.add(MapToJson(Map.of("trace", key, "missingFirstOrdinal", previousTotal + 1,
+            "missingLastOrdinal", first - 1)));
+      }
+      Map<Long, String> identities = seen.computeIfAbsent(key, ignored -> new LinkedHashMap<>());
+      for (int index = 0; index < tail.size(); index++) {
+        long ordinal = first + index;
+        JsonObject event = tail.get(index).getAsJsonObject();
+        require(!membership || event.has("observedAtNanos")
+                && !event.get("observedAtNanos").isJsonNull(),
+            "Actual membership event has no settlement timestamp");
+        require(membership || event.has("input") && !event.get("input").isJsonNull(),
+            "Controller event has no actual evaluated input");
+        String encoded = ROW.toJson(event);
+        String fingerprint = sha(encoded.getBytes(StandardCharsets.UTF_8));
+        String prior = identities.putIfAbsent(ordinal, fingerprint);
+        require(prior == null || prior.equals(fingerprint), "A published runtime event changed");
+        if (prior == null) line(stream, Map.of("trace", key, "ordinal", ordinal,
+            "clientBeforeNanos", before, "clientAfterNanos", after, "event", event));
+      }
+      totals.put(key, total);
+    }
+
+    void finish(JsonObject roster, int minimumGroups) throws Exception {
+      for (JsonElement fi : roster.getAsJsonArray("fragmentInstances"))
+        capture(roster, fi.getAsJsonObject(), "AFTER_RESOURCE_SETTLEMENT");
+      boolean contiguous = gaps.size() == 0;
+      for (Map.Entry<String, Long> entry : totals.entrySet()) {
+        contiguous &= seen.getOrDefault(entry.getKey(), Map.of()).size() == entry.getValue();
+      }
+      boolean stopped = stoppedControllers.containsAll(origins.keySet());
+      boolean frozen = frozenFragments.containsAll(managedFragments);
+      boolean complete = contiguous && stopped && frozen && layouts.size() >= minimumGroups;
+      JsonObject summary = MapToJson(Map.of("status", complete
+          ? "PASS_COMPLETE_RUNTIME_EVENT_TIMELINE" : "INCOMPLETE_RUNTIME_EVENT_TIMELINE",
+          "polls", pollCount, "totalEventsByTrace", totals, "gaps", gaps,
+          "layoutIdentityByGroup", layouts, "managedFragments", managedFragments,
+          "frozenFragments", frozenFragments, "controllersStopped", stopped,
+          "scope", "Existing evaluated policy inputs and actual settlement events. Capture windows are not atomic cross-group snapshots; clocks are local to the recorded processes.")).getAsJsonObject();
+      write(output.resolve("runtime-live-timeline-summary.json"), summary);
+      require(complete, "Runtime timeline omitted events, final freeze, stop, or required groups");
+    }
+
+    @Override
+    public void close() throws Exception {
+      Throwable failed = null;
+      try { polls.close(); } catch (Exception | Error error) { failed = error; }
+      try { stream.close(); } catch (Exception | Error error) { failed = mergeFailure(failed, error); }
+      if (failed != null) rethrow(failed);
+    }
+  }
+
   private static final class Probe implements AutoCloseable {
     final List<Audit> audits;
     final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients;
@@ -552,6 +709,8 @@ public final class OrdinarySqlAcceptanceDriver {
     final BufferedWriter rosterLog;
     final BufferedWriter statisticsLog;
     final BufferedWriter controlLog;
+    final RuntimeTimeline timeline;
+    final boolean timelineOnly;
     final Map<String, String> layouts = new LinkedHashMap<>();
     final Map<String, java.util.TreeMap<Long, JsonObject>> events = new LinkedHashMap<>();
     final Map<String, JsonObject> groups = new LinkedHashMap<>();
@@ -565,7 +724,11 @@ public final class OrdinarySqlAcceptanceDriver {
 
     Probe(List<Audit> audits,
         IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clients,
-        String sqlHash, int period, Path output) throws Exception {
+        String sqlHash, int period, Path output, boolean captureTimeline, boolean timelineOnly)
+        throws Exception {
+      require(!timelineOnly || captureTimeline, "Timeline-only polling requires live timeline capture");
+      this.timelineOnly = timelineOnly;
+      this.timeline = captureTimeline ? new RuntimeTimeline(audits, output) : null;
       this.audits = audits;
       this.clients = clients;
       this.sqlHash = sqlHash;
@@ -581,6 +744,8 @@ public final class OrdinarySqlAcceptanceDriver {
           try { writer.close(); }
           catch (Exception | Error closeFailure) { mergeFailure(failure, closeFailure); }
         }
+        if (timeline != null) try { timeline.close(); }
+        catch (Exception cleanup) { failure.addSuppressed(cleanup); }
         throw failure;
       }
       rosterLog = rosters;
@@ -623,6 +788,8 @@ public final class OrdinarySqlAcceptanceDriver {
             for (JsonElement element : captured.getAsJsonArray("fragmentInstances")) {
               if (stopping) break;
               JsonObject fi = element.getAsJsonObject();
+              if (timeline != null) timeline.capture(captured, fi, "LIVE");
+              if (timelineOnly) continue;
               try {
                 TFetchFragmentInstanceStatisticsResp response = fetch(clients, captured, fi);
                 line(statisticsLog, Map.of("at", Instant.now().toString(),
@@ -1978,7 +2145,8 @@ public final class OrdinarySqlAcceptanceDriver {
       write(output.resolve("sql-binding.json"), Map.of(
           "sqlFile", sqlFile.toString(), "inputSqlSha256", sha(originalBytes),
           "runMarker", runMarker, "executedSqlSha256", sqlHash, "expectedOutcome", expected.name()));
-      probe = new Probe(audits, clients, sqlHash, pollMs, output);
+      probe = new Probe(audits, clients, sqlHash, pollMs, output,
+          flag(params, "captureRuntimeTimeline", false), flag(params, "runtimeTimelineOnly", false));
       probe.thread.start();
       if (expected == ExpectedOutcome.CANCELLED) {
         cancel = new CancelAction(params, deployment, probe);
@@ -2023,6 +2191,10 @@ public final class OrdinarySqlAcceptanceDriver {
         catch (Exception | Error terminalFailure) { primary = mergeFailure(primary, terminalFailure); }
         try { auditReceipts = resources(params, roster, audits, baseline, output); }
         catch (Exception | Error resourceFailure) { primary = mergeFailure(primary, resourceFailure); }
+        if (probe.timeline != null) {
+          try { probe.timeline.finish(roster, integer(params, "minimumRuntimeTimelineGroups", 1)); }
+          catch (Exception | Error timelineFailure) { primary = mergeFailure(primary, timelineFailure); }
+        }
         try {
           write(output.resolve("runtime-actions-observed.json"), probe.observedActions(false, false));
           actions = probe.observedActions(flag(params, "requireGrowShrink", false),
@@ -2064,7 +2236,12 @@ public final class OrdinarySqlAcceptanceDriver {
                 "Expected server SQL termination was not exercised with its exact error code");
             require(sqlFailure.getSuppressed().length == 0,
                 "Expected SQL error was accompanied by additional client/close/evidence failures");
-            require(nonSuccess, "Negative case has no actually unsuccessful terminal FI");
+            // Query cancellation closes result endpoints before the terminator's one-second
+            // grace period elapses. A source FI may finish during that close propagation.
+            // CANCELLED therefore proves the exact live KILL acknowledgment and server SQL
+            // error below, while retaining every frozen terminal and resource requirement.
+            if (expected != ExpectedOutcome.CANCELLED) require(nonSuccess,
+                "Deadline/exception case has no actually unsuccessful terminal FI");
             require(probe.groups.values().stream().anyMatch(group ->
                 flag(group, "layoutIdentitySupported", false)
                     && integer(group, "initialActivatedWorkers", 0) > 0),
@@ -2092,6 +2269,8 @@ public final class OrdinarySqlAcceptanceDriver {
           long terminalStateCount = java.util.stream.StreamSupport.stream(
               snapshots.spliterator(), false).filter(value ->
                   flag(value.getAsJsonObject(), "terminalStateObserved", false)).count();
+          proof.addProperty("runtimeTimelineCaptured", probe.timeline != null);
+          proof.addProperty("liveLegacyStatisticsPolling", !probe.timelineOnly);
           proof.addProperty("statisticsPolicy", statisticsPolicy.name());
           proof.addProperty("frozenStatisticsVerifiedFragments", snapshots.size() - unretainedCount);
           proof.addProperty("unretainedControlStatisticsFragments", unretainedCount);
@@ -2107,6 +2286,10 @@ public final class OrdinarySqlAcceptanceDriver {
               : expected == ExpectedOutcome.SUCCESS
                   ? "FULL_RESULT_AND_REAL_TERMINAL_PROOF_CAPTURED"
                   : "EXPECTED_QUERY_TERMINATION_AND_REAL_CLEANUP_PROOF_CAPTURED");
+          proof.addProperty("nonSuccessFiObserved", nonSuccess);
+          proof.addProperty("terminalStatePolicy", expected == ExpectedOutcome.CANCELLED
+              ? "ALL_FI_TERMINAL_EXACT_LIVE_KILL_ACK_AND_715"
+              : "ORIGINAL_SUCCESS_OR_NON_SUCCESS_TERMINAL_REQUIREMENT");
           proof.addProperty("expectedOutcome", expected.name());
           proof.addProperty("queryId", text(roster, "queryId"));
           proof.addProperty("sqlSha256", sqlHash);
@@ -2146,6 +2329,8 @@ public final class OrdinarySqlAcceptanceDriver {
       }
       if (probe != null) {
         try { probe.controlLog.close(); }
+        catch (Exception | Error failure) { primary = mergeFailure(primary, failure); }
+        if (probe.timeline != null) try { probe.timeline.close(); }
         catch (Exception | Error failure) { primary = mergeFailure(primary, failure); }
       }
       JsonArray closed = new JsonArray();

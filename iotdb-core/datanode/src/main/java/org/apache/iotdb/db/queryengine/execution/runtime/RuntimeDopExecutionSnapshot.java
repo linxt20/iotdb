@@ -44,7 +44,16 @@ public final class RuntimeDopExecutionSnapshot {
   }
 
   public record ControlEvent(
-      long sequence, int requestedWorkers, int observedWorkers, Outcome outcome) {
+      long sequence,
+      int requestedWorkers,
+      int observedWorkers,
+      Outcome outcome,
+      Long observedAtNanos) {
+    /** Existing fixture/terminal constructors make no timestamp claim. */
+    public ControlEvent(long sequence, int requestedWorkers, int observedWorkers, Outcome outcome) {
+      this(sequence, requestedWorkers, observedWorkers, outcome, null);
+    }
+
     public ControlEvent {
       Objects.requireNonNull(outcome);
       if (sequence < 0 || requestedWorkers < 0 || observedWorkers < 0) {

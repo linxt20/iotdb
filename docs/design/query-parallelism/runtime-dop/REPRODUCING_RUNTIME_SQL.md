@@ -183,7 +183,7 @@ PYCP
   "$IOTDB_RUNTIME_CLI/sources/StaticScanAcceptanceDriver.java" \
   > "$IOTDB_RUNTIME_CLI/javac.stdout" 2> "$IOTDB_RUNTIME_CLI/javac.stderr"
 export IOTDB_RUNTIME_CP="$IOTDB_RUNTIME_CLI/classes:$IOTDB_RUNTIME_LIB_CP"
-"$IOTDB_RUNTIME_JAVA" "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/sql-errors.classload.log" \
+"$IOTDB_RUNTIME_JAVA" --add-opens=java.base/java.lang=ALL-UNNAMED "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/sql-errors.classload.log" \
   -cp "$IOTDB_RUNTIME_CP" StaticScanAcceptanceDriver --self-test-sql-errors \
   > "$IOTDB_RUNTIME_CLI/sql-errors.json" 2> "$IOTDB_RUNTIME_CLI/sql-errors.stderr"
 python3 - <<'PYERRORS'
@@ -204,6 +204,10 @@ find "$IOTDB_RUNTIME_CLI/sources" "$IOTDB_RUNTIME_CLI/classes" -type f -exec sha
 ~~~
 
 离线自测通过只证明实际发行 JDBC 的错误包装与来源识别合同。它模拟 RPC 返回状态，不建立真实 SQL、取消、截止时间或资源验收结论。
+
+JDK 17 下验收客户端需要 `--add-opens=java.base/java.lang=ALL-UNNAMED`，使实际 CGLIB 客户端工厂可以调用 ClassLoader.defineClass。上文及后续客户端命令均显式携带该参数。
+
+极短 LIMIT 查询可能在 25ms 轮询间隔内完成并移除 coordinator roster。R3 主场景使用 5ms 只读轮询及 fetchSize=1；它们用于提高观测覆盖，不能充当性能采样配置。目标主机仍须捕获实际 roster；未捕获时保留失败，不推断节点、FI 或资源结算。
 
 源码 SHA、实际 javac 加载来源、classes SHA 和 classpath 必须随运行保存。运行回执还记录驱动 CodeSource 与 Java 身份。同名类若来自多个外部 JAR，应当核对字节一致并保存实际选中的来源，不能补入旧 JAR 使编译勉强通过。
 
@@ -318,7 +322,7 @@ for source in sorted((matrix / "params").glob("*.json")):
     (target / (source.name + ".sha256")).write_text(hashlib.sha256(encoded.encode()).hexdigest() + "\n")
 PYBIND
 for side in candidate control; do
-  "$IOTDB_RUNTIME_JAVA" "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/load-$side.classload.log" \
+  "$IOTDB_RUNTIME_JAVA" --add-opens=java.base/java.lang=ALL-UNNAMED "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/load-$side.classload.log" \
     -cp "$IOTDB_RUNTIME_CP" StaticScanAcceptanceDriver \
     --mode load-runtime-fixture --params "$IOTDB_RUNTIME_RUN/params/load-$side.json" \
     > "$IOTDB_RUNTIME_RUN/load-$side.stdout" 2> "$IOTDB_RUNTIME_RUN/load-$side.stderr"
@@ -362,7 +366,7 @@ test -s "$IOTDB_RUNTIME_RUN/physical-tsfiles.tsv"
 ~~~bash
 for item in R7-grouped R2-primary R3-primary R1-primary R7-filter-project; do
   for side in candidate control; do
-    "$IOTDB_RUNTIME_JAVA" "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/$item-$side.classload.log" \
+    "$IOTDB_RUNTIME_JAVA" --add-opens=java.base/java.lang=ALL-UNNAMED "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/$item-$side.classload.log" \
       -cp "$IOTDB_RUNTIME_CP" StaticScanAcceptanceDriver \
       --mode ordinary-sql --params "$IOTDB_RUNTIME_RUN/params/$item-$side.json" \
       > "$IOTDB_RUNTIME_RUN/$item-$side.stdout" 2> "$IOTDB_RUNTIME_RUN/$item-$side.stderr"
@@ -403,7 +407,7 @@ R2 的 time-only 扩展覆盖跨设备时间键。两侧必须完整输出 4096 
 
 ~~~bash
 for side in candidate control; do
-  "$IOTDB_RUNTIME_JAVA" "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/R2-time-only-$side.classload.log" \
+  "$IOTDB_RUNTIME_JAVA" --add-opens=java.base/java.lang=ALL-UNNAMED "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/R2-time-only-$side.classload.log" \
     -cp "$IOTDB_RUNTIME_CP" StaticScanAcceptanceDriver \
     --mode ordinary-sql --params "$IOTDB_RUNTIME_RUN/params/R2-time-only-$side.json" \
     > "$IOTDB_RUNTIME_RUN/R2-time-only-$side.stdout" 2> "$IOTDB_RUNTIME_RUN/R2-time-only-$side.stderr"
@@ -421,7 +425,7 @@ raw-high-output 与 trig-backup 只检查高输出兼容性和背压。每个变
 ~~~bash
 for variant in raw-high-output trig-backup; do
   for side in candidate control; do
-    "$IOTDB_RUNTIME_JAVA" "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/R1-$variant-$side.classload.log" \
+    "$IOTDB_RUNTIME_JAVA" --add-opens=java.base/java.lang=ALL-UNNAMED "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/R1-$variant-$side.classload.log" \
       -cp "$IOTDB_RUNTIME_CP" StaticScanAcceptanceDriver \
       --mode ordinary-sql --params "$IOTDB_RUNTIME_RUN/params/R1-$variant-$side.json" \
       > "$IOTDB_RUNTIME_RUN/R1-$variant-$side.stdout" 2> "$IOTDB_RUNTIME_RUN/R1-$variant-$side.stderr"
@@ -445,7 +449,7 @@ R3 的 runtime-constant 扩展投影 INT64 常量 1，保留读取 s1 的 SIN/CO
 
 ~~~bash
 for side in candidate control; do
-  "$IOTDB_RUNTIME_JAVA" "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/R3-runtime-constant-$side.classload.log" \
+  "$IOTDB_RUNTIME_JAVA" --add-opens=java.base/java.lang=ALL-UNNAMED "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/R3-runtime-constant-$side.classload.log" \
     -cp "$IOTDB_RUNTIME_CP" StaticScanAcceptanceDriver \
     --mode ordinary-sql --params "$IOTDB_RUNTIME_RUN/params/R3-runtime-constant-$side.json" \
     > "$IOTDB_RUNTIME_RUN/R3-runtime-constant-$side.stdout" \
@@ -504,7 +508,7 @@ R4、R5、R6 分别运行候选参数。只有预期服务错误码、真实 run
 
 ~~~bash
 for item in R4-primary R5-primary R6-primary; do
-  "$IOTDB_RUNTIME_JAVA" "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/$item-candidate.classload.log" \
+  "$IOTDB_RUNTIME_JAVA" --add-opens=java.base/java.lang=ALL-UNNAMED "-Xlog:class+load=info:file=$IOTDB_RUNTIME_CLI/$item-candidate.classload.log" \
     -cp "$IOTDB_RUNTIME_CP" StaticScanAcceptanceDriver \
     --mode ordinary-sql --params "$IOTDB_RUNTIME_RUN/params/$item-candidate.json" \
     > "$IOTDB_RUNTIME_RUN/$item-candidate.stdout" 2> "$IOTDB_RUNTIME_RUN/$item-candidate.stderr"

@@ -1,0 +1,48 @@
+{
+  "status": "PLANNED_NOT_EXECUTED",
+  "date": "2026-11-18",
+  "remoteRoot": "/root/rivermind-data/iotdb-paper-experiments-20261117",
+  "source": {
+    "branch": "feat/paper-experiments-20261117",
+    "head": "1959820d4eec2c5f4154ee3c7652b1a9f85caa32",
+    "dirty": true,
+    "runtimeSourceDirectory": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/runtime",
+    "sha256": {
+      "RuntimeDopPolicy.java": "98ed8540a75fccdecb835154be413a2571b35987477803926a534076271b59fa",
+      "RuntimeDopController.java": "4c070142098122618595ff936f53d890760cb22c9ff5f5c3aa3c2e80f458e9eb",
+      "RuntimeFragmentLifecycle.java": "551f36bbb54ac10d020eb63f5b54ffe0de04bcfb69e2e3d5a882cefc2f97b7fd",
+      "RuntimeScanGroup.java": "de69106e68cf39c8b23a49cdf3ceaa4a100bbf056641d7f58d9e116c82d3898f"
+    }
+  },
+  "primaryScenario": "A long-running foreground query while independent background query arrivals rise and fall",
+  "targetIdleFastestConfigSeconds": [90, 180],
+  "primaryTrajectories": ["stable-low", "stable-high", "low-high-low", "high-low"],
+  "diagnosticTrajectories": ["short-pulse", "slow-consumer"],
+  "mechanismConfigurations": ["same-layout-fixed-1", "same-layout-fixed-2", "same-layout-fixed-4", "same-layout-fixed-8", "same-layout-adaptive"],
+  "pilot": {"queries": 1, "trajectories": 2, "configurations": 3, "repeats": 3, "foregroundExecutions": 18},
+  "formal": {"queries": 2, "trajectories": 4, "configurations": 5, "warmups": 5, "measuredBlocks": 15, "foregroundExecutions": 800},
+  "verifiedCodeFacts": {
+    "resourceCapInput": "logical lane count",
+    "directCpuUtilizationInput": false,
+    "growthAdmissionChecks": ["shared user CPU quota", "incremental worker memory"],
+    "shrinkBranches": ["capacity contraction if input contracts", "unfinished lane contraction", "sustained output backpressure"],
+    "controllerEventCapacityPerFragment": 128,
+    "nominalSamplingMilliseconds": 100
+  },
+  "requiredBeforeTiming": [
+    "final release and service acceptance",
+    "long-query independent calibration and frozen evaluation workload",
+    "shared resource competition and actual pressure timestamps",
+    "complete cross-run semantic layout equivalence",
+    "complete typed result oracle",
+    "live input and applied worker timeline capture feasibility and overhead"
+  ],
+  "implementationGapsToValidate": [
+    "external CPU contention may not cause an explicit resource-cap contraction",
+    "final controller snapshot retains only a bounded tail, full live collection not yet established",
+    "coarse device-completion progress can delay growth during long devices",
+    "independent joint selector remains unimplemented"
+  ],
+  "manuscriptStatus": "r10 remains frozen; this is a supplemental plan for the next evidence-based manuscript revision",
+  "performanceClaim": null
+}

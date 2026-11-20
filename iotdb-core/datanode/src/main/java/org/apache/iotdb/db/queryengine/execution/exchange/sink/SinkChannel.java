@@ -19,24 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.exchange.sink;
 
-import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
-import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
-import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
-import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
-import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
-import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
@@ -60,6 +42,10 @@ import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TApplicationException;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.external.commons.lang3.Validate;
@@ -69,7 +55,25 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SinkChannel implements ISinkChannel {
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
+import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
+import static org.apache.iotdb.db.queryengine.common.FragmentInstanceId.createFullId;
+import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SEND_NEW_DATA_BLOCK_EVENT_TASK_CALLER;
+import static org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_REMOTE;
+import static org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet.SEND_NEW_DATA_BLOCK_NUM_CALLER;
+
+public class SinkChannel
+    implements ISinkChannel,
+        org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint {
 
   private static class TsBlockInfo {
     private TsBlock tsBlock;
@@ -144,6 +148,8 @@ public class SinkChannel implements ISinkChannel {
   private Throwable endpointFailure;
   private Throwable terminalActionFailure;
   private final RuntimeEndpointFrontier frontier;
+  private final org.apache.iotdb.db.queryengine.execution.exchange.LocalResultExchange
+      localResultExchange;
   private int pendingResponsePins;
   private int pendingCreditReturns;
 
@@ -267,7 +273,40 @@ public class SinkChannel implements ISinkChannel {
       IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
           mppDataExchangeServiceClientManager,
       RuntimeEndpointFrontier frontier) {
+    this(
+        remoteEndpoint,
+        remoteFragmentInstanceId,
+        remotePlanNodeId,
+        localPlanNodeId,
+        localFragmentInstanceId,
+        localMemoryManager,
+        executorService,
+        serde,
+        sinkListener,
+        isHighestPriority,
+        mppDataExchangeServiceClientManager,
+        frontier,
+        null);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public SinkChannel(
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remotePlanNodeId,
+      String localPlanNodeId,
+      TFragmentInstanceId localFragmentInstanceId,
+      LocalMemoryManager localMemoryManager,
+      ExecutorService executorService,
+      TsBlockSerde serde,
+      SinkListener sinkListener,
+      boolean isHighestPriority,
+      IClientManager<TEndPoint, SyncDataNodeMPPDataExchangeServiceClient>
+          mppDataExchangeServiceClientManager,
+      RuntimeEndpointFrontier frontier,
+      org.apache.iotdb.db.queryengine.execution.exchange.LocalResultExchange localResultExchange) {
     this.frontier = frontier;
+    this.localResultExchange = localResultExchange;
     this.remoteEndpoint =
         Validate.notNull(
             remoteEndpoint,
@@ -314,6 +353,23 @@ public class SinkChannel implements ISinkChannel {
             localFragmentInstanceId.instanceId);
     this.bufferRetainedSizeInBytes = 0;
     this.currentTsBlockSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    if (localResultExchange != null) {
+      if (!org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode(remoteEndpoint))
+        throw new IllegalArgumentException(
+            org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                .EXCEPTION_LOCAL_RESULT_EXCHANGE_MUST_REMAIN_IN_THE_SAME_DATANODE_5CA2F875);
+      org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink.Edge edge =
+          localResultExchange.getEdge();
+      if (!edge.consumer().equals(FragmentInstanceId.fromThrift(remoteFragmentInstanceId))
+          || !edge.consumerPlanNode().equals(remotePlanNodeId))
+        throw new IllegalArgumentException(
+            org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                .EXCEPTION_LOCAL_RESULT_EXCHANGE_BELONGS_TO_ANOTHER_EDGE_5EF70208);
+      if (frontier == null)
+        throw new IllegalArgumentException(
+            org.apache.iotdb.db.i18n.DataNodeQueryMessages
+                .EXCEPTION_LOCAL_RESULT_PRODUCER_REQUIRES_A_PREPAID_OUTPUT_FRONTIER_85C8209D);
+    }
     if (frontier == null) {
       localMemoryManager
           .getQueryPool()
@@ -327,6 +383,9 @@ public class SinkChannel implements ISinkChannel {
           localMemoryManager.getQueryPool(), localFragmentInstanceId, MemorySide.OUTPUT, this);
       currentTsBlockSize = 0;
     }
+
+    if (localResultExchange != null)
+      localResultExchange.bindProducer(frontier, localFragmentInstanceId);
   }
 
   @Override
@@ -395,7 +454,10 @@ public class SinkChannel implements ISinkChannel {
       submitSendNewDataBlockEventTask(startSequenceId, ImmutableList.of(sizeInBytes));
     } finally {
       DATA_EXCHANGE_COST_METRIC_SET.recordDataExchangeCost(
-          SINK_HANDLE_SEND_TSBLOCK_REMOTE, System.nanoTime() - startTime);
+          localResultExchange == null
+              ? SINK_HANDLE_SEND_TSBLOCK_REMOTE
+              : DataExchangeCostMetricSet.SINK_HANDLE_SEND_TSBLOCK_LOCAL,
+          System.nanoTime() - startTime);
     }
   }
 
@@ -1160,8 +1222,8 @@ public class SinkChannel implements ISinkChannel {
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
           long startTime = System.nanoTime();
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease client =
+              openExchangeClient()) {
             client.onNewDataBlockEvent(newDataBlockEvent);
             break;
           } catch (Exception e) {
@@ -1212,8 +1274,8 @@ public class SinkChannel implements ISinkChannel {
                 nextSequenceId - 1);
         while (attempt < MAX_ATTEMPT_TIMES) {
           attempt += 1;
-          try (SyncDataNodeMPPDataExchangeServiceClient client =
-              mppDataExchangeServiceClientManager.borrowClient(remoteEndpoint)) {
+          try (org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease client =
+              openExchangeClient()) {
             client.onEndOfDataBlockEvent(endOfDataBlockEvent);
             break;
           } catch (Exception e) {
@@ -1242,6 +1304,26 @@ public class SinkChannel implements ISinkChannel {
       }
     }
   }
+
   // endregion
 
+  private org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease
+      openExchangeClient() throws org.apache.iotdb.commons.client.exception.ClientManagerException {
+    return org.apache.iotdb.db.queryengine.execution.exchange.ExchangeClientLease.open(
+        mppDataExchangeServiceClientManager, remoteEndpoint, localResultExchange);
+  }
+
+  public boolean isLocalResultExchange() {
+    return localResultExchange != null;
+  }
+
+  @Override
+  public String getTransportMode() {
+    return localResultExchange == null ? "REMOTE_RPC" : "LOCAL_SERIALIZED_RESULT";
+  }
+
+  public org.apache.iotdb.db.queryengine.execution.exchange.LocalResultExchange
+      getLocalResultExchange() {
+    return localResultExchange;
+  }
 }

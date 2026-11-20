@@ -7,7 +7,7 @@
     },
     {
       "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/execution/fragment/FragmentInstanceManager.java",
-      "sha256": "124fe771db7bd9044b894c8840e372e1ed46314be2a910cc6a87a56c52efe2dc"
+      "sha256": "c39aef30b5a55932838ecd2295284eedd060687d7072a2ded826fb5558fe705e"
     },
     {
       "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/protocol/thrift/impl/DataNodeInternalRPCServiceImpl.java",
@@ -32,10 +32,20 @@
     "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/R7-grouped-control.json",
     "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/params/load-control.json"
   ],
-  "driverSha256": "2dcb4c56ad9810d417d4d4b02cd6c8025a65713288be20fa7efeaa3102112471",
+  "driverSha256": "c429ae0e6b4d8a81cfa7818d7f259915aea05ca8ade8952aa25acec686e4fc33",
   "statisticsPolicyValues": {
     "candidate": "REQUIRE_FROZEN",
     "fixedOneControl": "ALLOW_UNRETAINED_CONTROL"
   },
-  "scope": "Explicit observation capability contract, not executed service results."
+  "scope": "Explicit observation capability contract, not executed service results.",
+  "cancellationTerminalPolicy": {
+    "rule": "CANCELLED requires exact live targeted KILL acknowledgment, real source activity, exact SQL code 715, every FI frozen terminal and actual resource/pool settlement; it does not require a non-FINISHED FI.",
+    "reason": "Existing one-second termination grace permits graceful FI completion while result close propagates; deadline and exception still require at least one non-success FI.",
+    "source": {
+      "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/scheduler/SimpleQueryTerminator.java",
+      "sha256": "58f120c0196a590181846bf21aee23cb774585581eaf346d559d49ab24b95e3b"
+    },
+    "productionCancellationChanged": false,
+    "negativeMutation": "Omitting real KILL but fabricating acknowledgment is rejected because SQL did not return exact 715."
+  }
 }

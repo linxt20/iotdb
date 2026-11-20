@@ -114,6 +114,10 @@ public final class LocalExecutionResourceRegistry {
         else if (endpoint instanceof ISink) ((ISink) endpoint).abort();
         else if (endpoint instanceof SharedTsBlockQueue)
           ((SharedTsBlockQueue) endpoint).abort(primary);
+        else if (endpoint
+            instanceof org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink)
+          ((org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink) endpoint)
+              .requestClose(primary);
       } catch (Throwable failure) {
         if (failure != primary) primary.addSuppressed(failure);
       }
@@ -164,19 +168,13 @@ public final class LocalExecutionResourceRegistry {
     for (Object endpoint : endpoints) {
       try {
         if (endpoint
-            instanceof org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) {
-          org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle source =
-              (org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) endpoint;
+            instanceof org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) {
+          org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint transport =
+              (org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) endpoint;
           pending.add(
               abort
-                  ? source.requestCoordinatedAbort(abortCause)
-                  : source.requestCoordinatedClose());
-        } else if (endpoint
-            instanceof org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) {
-          org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel sink =
-              (org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) endpoint;
-          pending.add(
-              abort ? sink.requestCoordinatedAbort(abortCause) : sink.requestCoordinatedClose());
+                  ? transport.requestCoordinatedAbort(abortCause)
+                  : transport.requestCoordinatedClose());
         } else if (endpoint instanceof ISourceHandle) {
           if (abort) ((ISourceHandle) endpoint).abort(abortCause);
           else ((ISourceHandle) endpoint).close();
@@ -186,7 +184,15 @@ public final class LocalExecutionResourceRegistry {
         } else if (endpoint instanceof SharedTsBlockQueue) {
           if (abort) ((SharedTsBlockQueue) endpoint).abort(abortCause);
           else ((SharedTsBlockQueue) endpoint).close();
+        } else if (endpoint
+            instanceof
+            org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink) {
+          pending.add(
+              ((org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink)
+                      endpoint)
+                  .requestClose(abort ? abortCause : null));
         }
+
       } catch (Throwable failure) {
         pending.add(com.google.common.util.concurrent.Futures.immediateFailedFuture(failure));
       }
@@ -325,6 +331,15 @@ public final class LocalExecutionResourceRegistry {
                 ? remote.getActualAccountKey()
                 : actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
       }
+      if (channel
+          instanceof
+          org.apache.iotdb.db.queryengine.execution.exchange.sink.RuntimeLocalSinkChannel) {
+        org.apache.iotdb.db.queryengine.execution.exchange.sink.RuntimeLocalSinkChannel local =
+            (org.apache.iotdb.db.queryengine.execution.exchange.sink.RuntimeLocalSinkChannel)
+                channel;
+        actualKey = local.getActualAccountKey();
+        register(local.getLink(), "RUNTIME_LOCAL_LINK", actualKey);
+      }
       register(channel, "SINK_CHANNEL", actualKey);
     }
   }
@@ -362,6 +377,12 @@ public final class LocalExecutionResourceRegistry {
               ? remote.getActualAccountKey()
               : actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
     }
+    if (sourceHandle
+        instanceof org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) {
+      org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint view =
+          (org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) sourceHandle;
+      if (view.getRuntimeFrontier() != null) memoryKey = view.getActualAccountKey();
+    }
     register(sourceHandle, "SOURCE_HANDLE", memoryKey);
   }
 
@@ -389,6 +410,14 @@ public final class LocalExecutionResourceRegistry {
           remote.isRuntimeFrontierMode()
               ? remote.getActualAccountKey()
               : actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
+    }
+    if (sink
+        instanceof
+        org.apache.iotdb.db.queryengine.execution.exchange.sink.RuntimeLocalSinkChannel) {
+      org.apache.iotdb.db.queryengine.execution.exchange.sink.RuntimeLocalSinkChannel local =
+          (org.apache.iotdb.db.queryengine.execution.exchange.sink.RuntimeLocalSinkChannel) sink;
+      key = local.getActualAccountKey();
+      register(local.getLink(), "RUNTIME_LOCAL_LINK", key);
     }
     register(sink, "SINK", key);
   }
@@ -464,23 +493,12 @@ public final class LocalExecutionResourceRegistry {
     SharedTsBlockQueue.MemoryReservationKey actualKey =
         queue == null ? memoryAccountKey : queue.getActualAccountKey();
     if (identity
-        instanceof org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) {
-      org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle remote =
-          (org.apache.iotdb.db.queryengine.execution.exchange.source.SourceHandle) identity;
-      if (remote.isRuntimeFrontierMode()) {
-        queueKey =
-            actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
-        actualKey = remote.getActualAccountKey();
-        physicalMemoryKey = actualKey;
-      }
-    } else if (identity
-        instanceof org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) {
-      org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel remote =
-          (org.apache.iotdb.db.queryengine.execution.exchange.sink.SinkChannel) identity;
-      if (remote.isRuntimeFrontierMode()) {
-        queueKey =
-            actualMemoryKey(remote.getLocalFragmentInstanceId(), remote.getLocalPlanNodeId());
-        actualKey = remote.getActualAccountKey();
+        instanceof org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) {
+      org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint view =
+          (org.apache.iotdb.db.queryengine.execution.exchange.RuntimeExchangeEndpoint) identity;
+      if (view.getRuntimeFrontier() != null) {
+        queueKey = actualMemoryKey(view.getLocalFragmentInstanceId(), view.getLocalPlanNodeId());
+        actualKey = view.getActualAccountKey();
         physicalMemoryKey = actualKey;
       }
     }
@@ -488,6 +506,14 @@ public final class LocalExecutionResourceRegistry {
         () -> {
           if (identity instanceof SharedTsBlockQueue)
             return ((SharedTsBlockQueue) identity).isClosed();
+          if (identity
+              instanceof
+              org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink) {
+            org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink link =
+                (org.apache.iotdb.db.queryengine.execution.exchange.RuntimeLocalExchangeLink)
+                    identity;
+            return link.isCloseRequested() && link.getClosedFuture().isDone();
+          }
           if (identity instanceof ISourceHandle) {
             ISourceHandle source = (ISourceHandle) identity;
             return source.isClosed() || source.isAborted();

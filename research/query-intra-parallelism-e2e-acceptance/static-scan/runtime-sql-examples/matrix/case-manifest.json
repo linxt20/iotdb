@@ -143,7 +143,7 @@
   "entryIdentity": {
     "driver": {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/OrdinarySqlAcceptanceDriver.java",
-      "sha256": "2dcb4c56ad9810d417d4d4b02cd6c8025a65713288be20fa7efeaa3102112471"
+      "sha256": "c429ae0e6b4d8a81cfa7818d7f259915aea05ca8ade8952aa25acec686e4fc33"
     },
     "wrapper": {
       "path": "research/query-intra-parallelism-e2e-acceptance/static-scan/StaticScanAcceptanceDriver.java",
@@ -151,7 +151,7 @@
     },
     "launcher": {
       "path": "research/query-intra-parallelism-e2e-acceptance/linux-isolated-cluster/launch-isolated-nxp.sh",
-      "sha256": "31203924ae30fcb45a2c2930e72d1fd84d96929c92efb511eaa5e4616f414a69"
+      "sha256": "f623ee7f921ab0119b7b0bfef392444babd6f4eaf13240365801596d2d20cc3e"
     },
     "comparator": {
       "path": "research/query-intra-parallelism-e2e-acceptance/scripts/run_multisource_hash_groupby_e2e.py",
@@ -799,11 +799,17 @@
       },
       "postconditions": [
         "Exact executed SQL hash/internal queryId and actual FI identities bind all evidence.",
-        "At least one actually unsuccessful terminal FI, positive supported runtime-group activation, and every planned FI's frozen terminal and resource-settlement proof are required.",
-        "Planning rejection/client disconnect/close-only failure cannot pass."
+        "Every planned FI must supply a frozen terminal state and real resource-settlement proof; an FI may be FINISHED during the existing cancellation grace period.",
+        "Positive supported runtime activation, pre-KILL source activity, acknowledged exact live targeted KILL and exact server SQL code 715 are mandatory.",
+        "Planning rejection, absent or fabricated KILL acknowledgment, normal full-result success, client disconnect or close-only failure cannot pass."
       ],
       "specificProof": "Independent ordinary TABLE JDBC KILL QUERY '<actual internal queryId>' acknowledged after positive real FI activity; never Statement.cancel or KILL ALL.",
-      "recommendedRepetitions": 3
+      "recommendedRepetitions": 3,
+      "terminationGraceSource": {
+        "path": "iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/scheduler/SimpleQueryTerminator.java",
+        "sha256": "58f120c0196a590181846bf21aee23cb774585581eaf346d559d49ab24b95e3b",
+        "delayMs": 1000
+      }
     },
     {
       "id": "R5",
@@ -1157,10 +1163,11 @@
   "verdictRule": "Generic CLI capture success is insufficient for case-specific postconditions. Distinguish PASS/FAIL/NOT_EXERCISED/INCOMPLETE. Preparation gives no speedup claim.",
   "sourceFreeze": {
     "rule": "Generate fixture from bound Git source; bind actual target manifest SHA after checking geometry and every stable oracle.",
-    "portablePayloadSha256": "b4842c1eb239b78835ed867aa8845438abd9df77e9288d6f8060c86cc9c8d260",
+    "portablePayloadSha256": "d00fccca2e9fcecb641023dd2bf89d1be650616288e4419824273c0f9fae92cc",
     "portablePayloadScope": "All matrix files excluding case-manifest.json and file-index.json; repository-relative path, SHA256 and byte size.",
     "portablePayloadHashRecipe": "SHA256 UTF-8 JSON list sorted by repository-relative path; each object path/sha256/bytes; json.dumps(ensure_ascii=False,sort_keys=True,separators=(\",\",\":\")); no final newline.",
     "serviceTarget": "Bind a final frozen distribution/CLI/deployment and parameter/SQL identities on the reproduction host. These portable files encode the final native constant schema, exact deadline cause and late native CAST acceptance parameters; service outcomes and build/test evidence remain separately archived."
   },
-  "statisticsObservabilityContract": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json"
+  "statisticsObservabilityContract": "research/query-intra-parallelism-e2e-acceptance/static-scan/runtime-sql-examples/matrix/statistics-observability.json",
+  "updatedAtUtc": "2026-11-17T18:35:58.057963+00:00"
 }

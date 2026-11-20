@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -385,6 +386,39 @@ public class ScanParallelPlannerTest {
       assertRuntimeWorkCoverage(oneWorker.getLanePlan(), runtimeDevices(), runtimePartitions());
       assertRuntimeWorkCoverage(fourWorkers.getLanePlan(), runtimeDevices(), runtimePartitions());
     }
+  }
+
+  @Test
+  public void fixedWorkerControlRetainsExactLanePlanForEveryScanMode() {
+    ScanParallelPlanner.Input[] inputs = {
+      input(8, true, false, false, false, false, false),
+      input(8, true, false, false, false, true, false),
+      input(8, false, false, false, true, false, true)
+    };
+    for (ScanParallelPlanner.Input input : inputs) {
+      RuntimeScanLayout adaptive = planner.planRuntimeLayout(input, null, 4, 1);
+      assertTrue(adaptive.isWorkerAdjustmentEnabled());
+      for (int workers : new int[] {1, 2, 4, 16}) {
+        RuntimeScanLayout fixed = adaptive.withFixedWorkers(workers);
+        org.junit.Assert.assertSame(adaptive.getLanePlan(), fixed.getLanePlan());
+        assertEquals(4, fixed.getLaneCount());
+        assertEquals(Math.min(workers, 4), fixed.getInitialWorkers());
+        assertFalse(fixed.isWorkerAdjustmentEnabled());
+        assertRuntimeWorkCoverage(fixed.getLanePlan(), runtimeDevices(), runtimePartitions());
+      }
+      assertTrue(adaptive.isWorkerAdjustmentEnabled());
+      assertEquals(1, adaptive.getInitialWorkers());
+    }
+  }
+
+  @Test
+  public void fixedWorkerControlRejectsNonpositiveRequests() {
+    RuntimeScanLayout adaptive =
+        planner.planRuntimeLayout(input(8, true, false, false, false, false, false), null, 4, 1);
+    org.junit.Assert.assertThrows(
+        IllegalArgumentException.class, () -> adaptive.withFixedWorkers(0));
+    org.junit.Assert.assertThrows(
+        IllegalArgumentException.class, () -> adaptive.withFixedWorkers(-1));
   }
 
   @Test
