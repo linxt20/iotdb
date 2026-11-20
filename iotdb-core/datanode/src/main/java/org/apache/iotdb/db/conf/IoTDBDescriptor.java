@@ -631,6 +631,9 @@ public class IoTDBDescriptor {
     conf.setRuntimeScanAblationMode(
         properties.getProperty(
             "runtime_scan_ablation_mode", conf.getRuntimeScanAblationMode().name()));
+    conf.setRuntimeScanHistoryMode(
+        properties.getProperty(
+            "runtime_scan_history_mode", conf.getRuntimeScanHistoryMode().name()));
 
     conf.setEnableDopEstimation(
         Boolean.parseBoolean(

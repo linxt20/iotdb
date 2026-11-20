@@ -666,6 +666,93 @@ public class RuntimePlannerAdmissionTest {
     }
   }
 
+  @Test
+  public void minimumRuntimeAdmissionRejectionRemainsSerialAndKeepsItsReceipt() {
+    var config = IoTDBDescriptor.getInstance().getConfig();
+    boolean oldRuntime = config.isEnableRuntimeScanParallelism();
+    boolean oldHistory = config.isEnableDynamicScanParallelism();
+    int oldFixed = config.getRuntimeScanFixedWorkers();
+    int oldInitial = config.getRuntimeScanInitialWorkers();
+    String oldMode = config.getRuntimeScanAblationMode().name();
+    try {
+      config.setEnableRuntimeScanParallelism(true);
+      config.setEnableDynamicScanParallelism(true);
+      config.setRuntimeScanFixedWorkers(0);
+      config.setRuntimeScanInitialWorkers(0);
+      config.setRuntimeScanAblationMode("standard");
+      String region = "runtime_minimum_rejection_region";
+      try (AdmissionFixture first = new AdmissionFixture("runtime_minimum_first")) {
+        RuntimeScanLayout layout = historyLayout(first, region);
+        var pending = first.context.getDynamicScanAssignments().receipts().iterator().next();
+        assertEquals(4, layout.getLaneCount());
+        assertEquals(1, layout.getInitialWorkers());
+        assertTrue(layout.isWorkerAdjustmentEnabled());
+        assertEquals(1, pending.getTargetDop());
+        assertEquals(1, DynamicDecisionTrace.fromReceipt(pending).getTargetDop());
+        assertEquals(4, DynamicDecisionTrace.fromReceipt(pending).getActualBucketCount());
+        assertEquals(
+            DynamicParallelScheduleDecision.Action.KEEP_STATIC, pending.getDecision().getAction());
+        assertTrue(pending.getCheckSequence() > 0);
+        var rejected = pending.finish("ADMISSION_REJECTED", "INSUFFICIENT_OPERATOR_MEMORY");
+        assertEquals(1, rejected.getTargetDop());
+        assertTrue(DynamicParallelPlanningService.historyStore().publishAdmission(rejected));
+      }
+      try (AdmissionFixture next = new AdmissionFixture("runtime_minimum_next")) {
+        RuntimeScanLayout fallback = historyLayout(next, region);
+        var receipt = next.context.getDynamicScanAssignments().receipts().iterator().next();
+        assertEquals(ScanParallelPlan.Mode.SERIAL, fallback.getLanePlan().getMode());
+        assertEquals(1, fallback.getLaneCount());
+        assertEquals(1, fallback.getInitialWorkers());
+        assertFalse(fallback.isWorkerAdjustmentEnabled());
+        assertEquals(
+            DynamicParallelScheduleDecision.Action.SERIAL_FALLBACK,
+            receipt.getDecision().getAction());
+        assertEquals(
+            DynamicParallelDecisionReason.MINIMUM_DOP_REJECTED, receipt.getDecision().getReason());
+        assertEquals(1, receipt.getPreviousDop());
+        assertEquals(1, receipt.getTargetDop());
+        assertEquals("ADMISSION_REJECTED", receipt.getCanonicalReason());
+      }
+    } finally {
+      config.setEnableRuntimeScanParallelism(oldRuntime);
+      config.setEnableDynamicScanParallelism(oldHistory);
+      config.setRuntimeScanFixedWorkers(oldFixed);
+      config.setRuntimeScanInitialWorkers(oldInitial);
+      config.setRuntimeScanAblationMode(oldMode);
+    }
+  }
+
+  private static RuntimeScanLayout historyLayout(AdmissionFixture fixture, String region) {
+    LocalExecutionPlanContext context = fixture.context;
+    Mockito.when(context.getInstanceContext().getDataRegion().getDataRegionIdString())
+        .thenReturn(region);
+    DeviceTableScanNode scan = scan("runtime_history_source", 8);
+    scan.setAllowParallelScan(true);
+    context.initializeRuntimeExchangeBudget(
+        pool(context.getFragmentInstanceId().getQueryId().getId(), 128L * 1024 * 1024),
+        LocalExecutionPlanner.runtimeExchangeBudget(scan, context));
+    DynamicParallelPlanningService service = context.getDynamicParallelPlanningService();
+    service.prepare(scan, context);
+    ScanParallelPlanner.Input input =
+        new ScanParallelPlanner.Input(
+            scan.getDeviceEntries().stream().map(e -> String.valueOf(e.getDeviceID())).toList(),
+            List.of(0L),
+            null,
+            4,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            context.getFragmentInstanceId().getQueryId().getId(),
+            context.getFragmentInstanceId().getFragmentInstanceId(),
+            scan.getPlanNodeId().getId());
+    RuntimeScanLayout chosen = service.selectRuntimeLayout(input, context, true, "TEST", 1, 4);
+    service.registerFinal(chosen.getLanePlan(), context);
+    return context.getRuntimeLayout(chosen.getLanePlan());
+  }
+
   private static RuntimeScanLayout ablationLayout(String name, int estimate) {
     try (AdmissionFixture fixture = new AdmissionFixture("ablation_" + name)) {
       DeviceTableScanNode scan = scan("ablation_source", 4);

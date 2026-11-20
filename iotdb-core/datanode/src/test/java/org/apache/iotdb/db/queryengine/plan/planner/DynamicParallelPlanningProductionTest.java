@@ -1319,7 +1319,7 @@ public class DynamicParallelPlanningProductionTest {
   }
 
   @Test
-  public void runtimeEstimatedWorkersDoNotChangeColdLogicalLayoutOrPublishLegacyDecision() {
+  public void runtimeEstimatedWorkersKeepColdLogicalLayoutAndPublishEffectiveAdmissionWidth() {
     DeviceTableScanNode node = fixtures.initDeviceTableScanNode(8);
     node.setAllowParallelScan(true);
     LocalExecutionPlanContext c = context("runtime_fixed_topology", 4);
@@ -1338,11 +1338,111 @@ public class DynamicParallelPlanningProductionTest {
     assertEquals(4, one.getLaneCount());
     assertEquals(
         one.getLanePlan().getPlanIdentityChecksum(), four.getLanePlan().getPlanIdentityChecksum());
-    assertNull(service.selections().iterator().next().getDecision());
+    var selected = service.selections().iterator().next().getDecision();
+    assertEquals(DynamicParallelScheduleDecision.Action.KEEP_STATIC, selected.getAction());
     service.registerFinal(four.getLanePlan(), c);
     assertEquals(1, c.getDynamicScanAssignments().sourcePlans().size());
-    assertTrue(c.getDynamicScanAssignments().receipts().isEmpty());
+    assertEquals(1, c.getDynamicScanAssignments().receipts().size());
+    var receipt = c.getDynamicScanAssignments().receipts().iterator().next();
+    assertSame(selected, receipt.getDecision());
+    assertTrue(receipt.getCheckSequence() > 0);
+    assertEquals(4, receipt.getTargetDop());
+    assertTrue(receipt.getInputs().isEmpty());
     assertSame(four.getLanePlan(), c.getRuntimeLayout(four.getLanePlan()).getLanePlan());
+  }
+
+  @Test
+  public void warmStartupTreatmentUsesHistoryWithoutChangingTheControlLaneLayout() {
+    var conf = IoTDBDescriptor.getInstance().getConfig();
+    boolean runtime = conf.isEnableRuntimeScanParallelism();
+    String mode = conf.getRuntimeScanHistoryMode().name();
+    try {
+      conf.setEnableRuntimeScanParallelism(true);
+      conf.setRuntimeScanHistoryMode("STARTUP_ONLY");
+      LocalExecutionPlanContext treated = context("warm_startup_matched_history", 4);
+      conf.setRuntimeScanHistoryMode("IGNORE_MEASURED");
+      LocalExecutionPlanContext control = context("warm_startup_matched_history", 4);
+      DeviceTableScanNode node = fixtures.initDeviceTableScanNode(8);
+      node.setAllowParallelScan(true);
+      initializeRuntimeBudget(treated, node, 4);
+      initializeRuntimeBudget(control, node, 4);
+      DynamicSnapshotHistoryStore history = new DynamicSnapshotHistoryStore();
+      String endpoint = DynamicParallelPlanningService.localEndpoint();
+      DynamicParallelPlanningService warm = new DynamicParallelPlanningService(history, endpoint);
+      DynamicParallelPlanningService ignored = new DynamicParallelPlanningService(history, endpoint);
+      warm.prepare(node, treated);
+      DynamicQueryShape shape =
+          warm.shapeFor(node.getPlanNodeId().getId(), ScanParallelPlan.Mode.DEVICE, treated);
+      publish(history, shape, node, "startup_only_prior_a", List.of(), false);
+      publish(history, shape, node, "startup_only_prior_b", List.of(), false);
+      ignored.prepare(node, control);
+      warm.prepare(node, treated);
+      ScanParallelPlanner.Input in = input(node, "matched-timing", 4, List.of(), false);
+      // Evaluate the control first: it must not consume the warm arm's timing observations.
+      RuntimeScanLayout bypass =
+          ignored.selectRuntimeLayout(in, control, true, "ESTIMATED_FROM_TSFILE_BYTES", 2, 4);
+      RuntimeScanLayout use =
+          warm.selectRuntimeLayout(in, treated, true, "ESTIMATED_FROM_TSFILE_BYTES", 2, 4);
+      assertEquals(2, bypass.getInitialWorkers());
+      assertEquals(4, use.getInitialWorkers());
+      assertEquals(4, use.getLaneCount());
+      assertEquals(
+          bypass.getLanePlan().getPlanIdentityChecksum(),
+          use.getLanePlan().getPlanIdentityChecksum());
+      List<ScanParallelPlan.Bucket> baseline = bypass.getLanePlan().getBuckets();
+      List<ScanParallelPlan.Bucket> treatment = use.getLanePlan().getBuckets();
+      assertEquals(baseline.size(), treatment.size());
+      for (int i = 0; i < baseline.size(); i++) {
+        ScanParallelPlan.Bucket left = baseline.get(i);
+        ScanParallelPlan.Bucket right = treatment.get(i);
+        assertEquals(left.getBucketId(), right.getBucketId());
+        assertEquals(left.getWorkUnits().size(), right.getWorkUnits().size());
+        for (int j = 0; j < left.getWorkUnits().size(); j++) {
+          ScanParallelPlan.WorkUnit a = left.getWorkUnits().get(j);
+          ScanParallelPlan.WorkUnit b = right.getWorkUnits().get(j);
+          assertEquals(a.getSourceId(), b.getSourceId());
+          assertEquals(a.getDevices(), b.getDevices());
+          assertEquals(a.getTimePartitions(), b.getTimePartitions());
+        }
+      }
+      ignored.registerFinal(bypass.getLanePlan(), control);
+      warm.registerFinal(use.getLanePlan(), treated);
+      var controlReceipt = control.getDynamicScanAssignments().receipts().iterator().next();
+      var treatedReceipt = treated.getDynamicScanAssignments().receipts().iterator().next();
+      assertEquals(DynamicParallelScheduleDecision.Action.KEEP_STATIC,
+          controlReceipt.getDecision().getAction());
+      assertEquals(DynamicParallelScheduleDecision.Action.REBALANCE_NEXT_FRAGMENT,
+          treatedReceipt.getDecision().getAction());
+      assertTrue(controlReceipt.getInputs().isEmpty());
+      assertEquals(2, treatedReceipt.getInputs().size());
+      assertEquals(2, history.history(shape, endpoint).size());
+
+      assertTrue(history.publishAdmission(
+          treatedReceipt.finish("ADMISSION_REJECTED", "INSUFFICIENT_OPERATOR_MEMORY")));
+      for (String nextMode : List.of("STARTUP_ONLY", "IGNORE_MEASURED")) {
+        conf.setRuntimeScanHistoryMode(nextMode);
+        LocalExecutionPlanContext next = context("warm_startup_matched_history", 4);
+        initializeRuntimeBudget(next, node, 4);
+        DynamicParallelPlanningService service =
+            new DynamicParallelPlanningService(history, endpoint);
+        service.prepare(node, next);
+        RuntimeScanLayout backoff =
+            service.selectRuntimeLayout(in, next, true, "ESTIMATED_FROM_TSFILE_BYTES", 2, 4);
+        assertEquals(3, backoff.getInitialWorkers());
+        assertEquals(use.getLanePlan().getPlanIdentityChecksum(),
+            backoff.getLanePlan().getPlanIdentityChecksum());
+        service.registerFinal(backoff.getLanePlan(), next);
+        var receipt = next.getDynamicScanAssignments().receipts().iterator().next();
+        assertEquals(DynamicParallelScheduleDecision.Action.REDUCE_DOP,
+            receipt.getDecision().getAction());
+        assertEquals(DynamicParallelDecisionReason.ADMISSION_REJECTED,
+            receipt.getDecision().getReason());
+        assertTrue(receipt.getInputs().isEmpty());
+      }
+    } finally {
+      conf.setRuntimeScanHistoryMode(mode);
+      conf.setEnableRuntimeScanParallelism(runtime);
+    }
   }
 
   @Test
@@ -1373,7 +1473,12 @@ public class DynamicParallelPlanningProductionTest {
     assertEquals(1, actual.getInitialWorkers());
     assertEquals(4, actual.getLaneCount());
     assertSame(finalPlan, service.selections().iterator().next().getPlan());
-    assertNull(service.selections().iterator().next().getDecision());
+    assertEquals(1, c.getDynamicScanAssignments().receipts().size());
+    var receipt = c.getDynamicScanAssignments().receipts().iterator().next();
+    assertSame(service.selections().iterator().next().getDecision(), receipt.getDecision());
+    assertEquals(1, receipt.getTargetDop());
+    assertEquals(4, DynamicDecisionTrace.fromReceipt(receipt).getActualBucketCount());
+    assertSame(finalPlan, receipt.getSource().getPlan());
     assertEquals(
         finalPlan.getPlanIdentityChecksum(),
         c.getDynamicScanAssignments()
@@ -1382,7 +1487,8 @@ public class DynamicParallelPlanningProductionTest {
             .next()
             .getPlan()
             .getPlanIdentityChecksum());
-    assertTrue(c.getDynamicScanAssignments().receipts().isEmpty());
+    assertEquals(
+        finalPlan.getPlanIdentityChecksum(), receipt.getSource().getPlanIdentityChecksum());
   }
 
   @Test

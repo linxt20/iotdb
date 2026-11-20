@@ -251,7 +251,7 @@ public final class DynamicSnapshotRecord {
             || !payload.fragmentId.equals(receipt.getFragmentId())
             || !payload.endpoint.equals(receipt.getEndpoint())
             || !"ADMISSION_ACCEPTED".equals(receipt.getAdmissionStatus())
-            || receipt.getDecision().getTargetDop() != source.getPlan().getTargetParallelism()
+            || !receipt.hasCompatiblePlanTarget()
             || !source
                 .getPlanIdentityChecksum()
                 .equals(receipt.getSource().getPlanIdentityChecksum())
@@ -275,13 +275,19 @@ public final class DynamicSnapshotRecord {
         DynamicSourcePlan source = payload.plans.get(trace.getSourcePlanNodeId());
         org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionReceipt receipt =
             payload.receipts.get(trace.getSourcePlanNodeId());
+        // A runtime receipt binds its admitted startup width. Without that separate evidence,
+        // a legacy trace must still report the logical target of the source plan.
+        int expectedTargetDop =
+            receipt != null
+                ? receipt.getTargetDop()
+                : source == null ? -1 : source.getPlan().getTargetParallelism();
         if (!org.apache.iotdb.db.queryengine.plan.planner.DynamicDecisionTrace.verifies(trace)
             || source == null
             || !traced.add(trace.getSourcePlanNodeId())
             || !payload.queryId.equals(trace.getQueryId())
             || !payload.fragmentId.equals(trace.getFragmentId())
             || !payload.endpoint.equals(trace.getEndpoint())
-            || trace.getTargetDop() != source.getPlan().getTargetParallelism()
+            || trace.getTargetDop() != expectedTargetDop
             || trace.getActualBucketCount() != source.getPlan().getBuckets().size()
             || trace.getWorkUnitCount() != source.getPlan().getWorkUnits().size()
             || !source.getPlanIdentityChecksum().equals(trace.getSourcePlanChecksum())

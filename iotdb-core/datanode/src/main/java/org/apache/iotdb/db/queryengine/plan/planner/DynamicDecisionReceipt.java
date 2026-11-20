@@ -35,6 +35,7 @@ public final class DynamicDecisionReceipt {
   private final Integer estimatedDop;
   private final java.util.List<DynamicFeedbackIdentity> inputs;
   private final AdmissionMemoryAccount.Snapshot admissionMemory;
+  private final Integer runtimeInitialWorkers;
 
   public DynamicDecisionReceipt(
       DynamicSourcePlan source,
@@ -143,6 +144,7 @@ public final class DynamicDecisionReceipt {
         status,
         reason,
         inputs,
+        null,
         null);
   }
 
@@ -160,7 +162,8 @@ public final class DynamicDecisionReceipt {
       String status,
       String reason,
       java.util.List<DynamicFeedbackIdentity> inputs,
-      AdmissionMemoryAccount.Snapshot admissionMemory) {
+      AdmissionMemoryAccount.Snapshot admissionMemory,
+      Integer runtimeInitialWorkers) {
     this.source = Objects.requireNonNull(source);
     this.decision = Objects.requireNonNull(decision);
     ScanParallelPlan.SourceKey key = source.getPlan().getWorkUnits().get(0).getSourceKey();
@@ -176,6 +179,7 @@ public final class DynamicDecisionReceipt {
     this.estimatedDop = estimatedDop;
     this.inputs = java.util.Collections.unmodifiableList(new java.util.ArrayList<>(inputs));
     this.admissionMemory = admissionMemory;
+    this.runtimeInitialWorkers = runtimeInitialWorkers;
     admissionStatus = status;
     admissionReason = reason;
   }
@@ -208,7 +212,8 @@ public final class DynamicDecisionReceipt {
         status,
         reason,
         inputs,
-        memory);
+        memory,
+        runtimeInitialWorkers);
   }
 
   public DynamicDecisionReceipt withInputs(java.util.List<DynamicFeedbackIdentity> values) {
@@ -228,7 +233,34 @@ public final class DynamicDecisionReceipt {
         estimatedDop,
         admissionStatus,
         admissionReason,
-        values);
+        values,
+        admissionMemory,
+        runtimeInitialWorkers);
+  }
+
+  DynamicDecisionReceipt withRuntimeInitialWorkers(int workers) {
+    if (!"ADMISSION_PENDING".equals(admissionStatus)
+        || workers < 1
+        || workers > source.getPlan().getPipelineCount()) {
+      throw new IllegalArgumentException(
+          DataNodeQueryMessages.EXCEPTION_INVALID_DYNAMIC_SNAPSHOT_RECORD_F2BC0753);
+    }
+    return new DynamicDecisionReceipt(
+        source,
+        decision,
+        endpoint,
+        checkSequence,
+        contextDop,
+        inputDop,
+        previousDop,
+        dopEstimationEnabled,
+        estimateStatus,
+        estimatedDop,
+        admissionStatus,
+        admissionReason,
+        inputs,
+        admissionMemory,
+        workers);
   }
 
   public java.util.List<DynamicFeedbackIdentity> getInputs() {
@@ -366,7 +398,24 @@ public final class DynamicDecisionReceipt {
   }
 
   public int getTargetDop() {
-    return source.getPlan().getTargetParallelism();
+    // Runtime admission starts this many workers; logical capacity remains in the source plan.
+    return runtimeInitialWorkers == null
+        ? source.getPlan().getTargetParallelism()
+        : runtimeInitialWorkers;
+  }
+
+  public boolean hasCompatiblePlanTarget() {
+    int policyTarget = decision.getTargetDop();
+    if (runtimeInitialWorkers == null) {
+      // A static source uses the policy target as its logical layout width.
+      return policyTarget == source.getPlan().getTargetParallelism();
+    }
+    // Runtime can keep more logical lanes than the policy asks it to start. A later
+    // startup override can also differ from the policy recommendation.
+    return policyTarget >= 1
+        && policyTarget <= inputDop
+        && runtimeInitialWorkers >= 1
+        && runtimeInitialWorkers <= source.getPlan().getPipelineCount();
   }
 
   public boolean isDopEstimationEnabled() {

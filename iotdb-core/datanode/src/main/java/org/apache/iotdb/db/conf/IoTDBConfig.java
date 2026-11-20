@@ -450,6 +450,36 @@ public class IoTDBConfig implements DefaultEncodingProvider {
     runtimeScanAblationMode = mode;
   }
 
+  /** Experimental history treatment for otherwise identical runtime scan layouts. */
+  public enum RuntimeScanHistoryMode {
+    STANDARD,
+    STARTUP_ONLY,
+    IGNORE_MEASURED
+  }
+
+  private RuntimeScanHistoryMode runtimeScanHistoryMode = RuntimeScanHistoryMode.STANDARD;
+
+  public RuntimeScanHistoryMode getRuntimeScanHistoryMode() {
+    return runtimeScanHistoryMode;
+  }
+
+  public void setRuntimeScanHistoryMode(String value) {
+    RuntimeScanHistoryMode mode =
+        RuntimeScanHistoryMode.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+    if (mode != RuntimeScanHistoryMode.STANDARD
+        && (!enableRuntimeScanParallelism
+            || !enableDynamicScanParallelism
+            || runtimeScanAblationMode != RuntimeScanAblationMode.STANDARD
+            || runtimeScanFixedWorkers != 0
+            || runtimeScanInitialWorkers != 0)) {
+      throw new IllegalArgumentException(
+          "runtime_scan_history_mode requires runtime scan and history enabled, standard "
+              + "ablation mode, and no worker overrides: "
+              + value);
+    }
+    runtimeScanHistoryMode = mode;
+  }
+
   public boolean isEnableRuntimeScanSharedPressureFeedback() {
     return enableRuntimeScanSharedPressureFeedback;
   }

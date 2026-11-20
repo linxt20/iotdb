@@ -227,6 +227,113 @@ public class DynamicSnapshotRecordTest {
   }
 
   @Test
+  public void runtimeStartupReceiptPublishesAndIsReusedIndependentlyOfLogicalBuckets() {
+    String query = "runtime_startup";
+    String endpoint = DynamicSnapshotHistoryStoreTest.ENDPOINT;
+    DynamicSourcePlan source = DynamicSnapshotHistoryStoreTest.source(query, "s", "all");
+    DynamicDecisionReceipt planned =
+        new DynamicDecisionReceipt(
+            source,
+            new DynamicParallelScheduleDecision(
+                DynamicParallelScheduleDecision.Action.KEEP_STATIC,
+                4,
+                DynamicParallelDecisionReason.NO_NEW_FEEDBACK),
+            endpoint,
+            1,
+            8,
+            4,
+            4,
+            false);
+    DynamicDecisionReceipt admitted =
+        planned.withRuntimeInitialWorkers(2).finish("ADMISSION_ACCEPTED", "CHECK_DISABLED");
+    TFetchFragmentInstanceStatisticsResp response = DynamicSnapshotHistoryStoreTest.response(query);
+    TDynamicDecisionTrace trace = DynamicDecisionTrace.fromReceipt(admitted);
+    assertEquals(2, trace.getTargetDop());
+    assertEquals(4, trace.getActualBucketCount());
+    response.setDynamicDecisions(List.of(trace));
+    DynamicSnapshotRecord record =
+        DynamicSnapshotRecord.validate(
+            DynamicSnapshotRecord.capture(
+                query, "0.i", endpoint, response, List.of(source), List.of(admitted)));
+    DynamicSnapshotHistoryStore history = new DynamicSnapshotHistoryStore();
+    assertTrue(history.publish(record));
+    DynamicCostHistoryStore costs = new DynamicCostHistoryStore(history);
+    DynamicCostHistoryStore.Estimate retrieved =
+        costs.estimate(source.getShape(), endpoint, source.getGrouping());
+    assertEquals(1, retrieved.getInputs().size());
+    assertEquals(Integer.valueOf(2), retrieved.getPreviousDop());
+    DynamicSourcePlan other = DynamicSnapshotHistoryStoreTest.source(query, "s", "other");
+    assertTrue(costs.estimate(other.getShape(), endpoint, other.getGrouping()).getInputs().isEmpty());
+
+    // A trace that reports a narrower startup without its receipt must fail closed.
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            DynamicSnapshotRecord.validate(
+                DynamicSnapshotRecord.capture(query, "0.i", endpoint, response, List.of(source))));
+
+    DynamicDecisionReceipt wrongWidth =
+        planned.withRuntimeInitialWorkers(3).finish("ADMISSION_ACCEPTED", "CHECK_DISABLED");
+    TDynamicDecisionTrace validOtherTrace = DynamicDecisionTrace.fromReceipt(wrongWidth);
+    assertTrue(DynamicDecisionTrace.verifies(validOtherTrace));
+    response.setDynamicDecisions(List.of(validOtherTrace));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            DynamicSnapshotRecord.validate(
+                DynamicSnapshotRecord.capture(
+                    query, "0.i", endpoint, response, List.of(source), List.of(admitted))));
+  }
+
+  @Test
+  public void rebalancedRuntimePublishesWithoutChangingItsLogicalBucketCount() {
+    String query = "runtime_rebalanced";
+    String endpoint = DynamicSnapshotHistoryStoreTest.ENDPOINT;
+    DynamicSourcePlan source = DynamicSnapshotHistoryStoreTest.source(query, "s", "all");
+    DynamicDecisionReceipt planned =
+        new DynamicDecisionReceipt(
+            source,
+            new DynamicParallelScheduleDecision(
+                DynamicParallelScheduleDecision.Action.REBALANCE_NEXT_FRAGMENT,
+                2,
+                DynamicParallelDecisionReason.COST_SKEW),
+            endpoint,
+            1,
+            4,
+            4,
+            2,
+            true);
+    // The legacy path remains strict: a 2-wide policy target cannot sign a static 4-wide plan.
+    DynamicDecisionReceipt legacy = planned.finish("ADMISSION_ACCEPTED", "CHECK_DISABLED");
+    TFetchFragmentInstanceStatisticsResp response = DynamicSnapshotHistoryStoreTest.response(query);
+    response.setDynamicDecisions(List.of(DynamicDecisionTrace.fromReceipt(legacy)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            DynamicSnapshotRecord.validate(
+                DynamicSnapshotRecord.capture(
+                    query, "0.i", endpoint, response, List.of(source), List.of(legacy))));
+
+    DynamicDecisionReceipt runtime =
+        planned.withRuntimeInitialWorkers(2).finish("ADMISSION_ACCEPTED", "CHECK_DISABLED");
+    TDynamicDecisionTrace trace = DynamicDecisionTrace.fromReceipt(runtime);
+    assertEquals(2, trace.getTargetDop());
+    assertEquals(4, trace.getActualBucketCount());
+    response.setDynamicDecisions(List.of(trace));
+    DynamicSnapshotRecord record =
+        DynamicSnapshotRecord.validate(
+            DynamicSnapshotRecord.capture(
+                query, "0.i", endpoint, response, List.of(source), List.of(runtime)));
+    DynamicSnapshotHistoryStore history = new DynamicSnapshotHistoryStore();
+    assertTrue(history.publish(record));
+    assertEquals(
+        Integer.valueOf(2),
+        new DynamicCostHistoryStore(history)
+            .estimate(source.getShape(), endpoint, source.getGrouping())
+            .getPreviousDop());
+  }
+
+  @Test
   public void feedbackDropKeepsCMetricsReadableButCannotBecomeECostHistory() {
     TFetchFragmentInstanceStatisticsResp response =
         DynamicSnapshotHistoryStoreTest.response("drop");

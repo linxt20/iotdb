@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.Project
 import org.apache.iotdb.commons.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.conf.IoTDBConfig.RuntimeScanAblationMode;
+import org.apache.iotdb.db.conf.IoTDBConfig.RuntimeScanHistoryMode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.SymbolMapper;
@@ -277,6 +278,17 @@ public final class DynamicParallelPlanningService {
       boolean dopEstimationEnabled,
       String estimateStatus,
       Integer estimatedDop) {
+    return select(input, context, dopEstimationEnabled, estimateStatus, estimatedDop,
+        RuntimeScanHistoryMode.STANDARD);
+  }
+
+  private Selection select(
+      ScanParallelPlanner.Input input,
+      LocalExecutionPlanContext context,
+      boolean dopEstimationEnabled,
+      String estimateStatus,
+      Integer estimatedDop,
+      RuntimeScanHistoryMode historyMode) {
     requirePlanningMutable(context);
     ScanParallelPlanner planner = new ScanParallelPlanner();
     ScanParallelPlan staticPlan;
@@ -331,7 +343,9 @@ public final class DynamicParallelPlanningService {
                 ? new DynamicCostHistoryStore(history)
                     .estimateFromEntries(
                         shape,
-                        feedback.getOrDefault(shape.getChecksum(), Collections.emptyList()),
+                        historyMode == RuntimeScanHistoryMode.IGNORE_MEASURED
+                            ? Collections.emptyList()
+                            : feedback.getOrDefault(shape.getChecksum(), Collections.emptyList()),
                         grouping)
                 : new DynamicCostHistoryStore.Estimate(
                     grouping,
@@ -373,7 +387,8 @@ public final class DynamicParallelPlanningService {
                 guard == null || guard == ScanParallelPlan.FallbackReason.NONE
                     ? ScanParallelPlan.FallbackReason.PLAN_ERROR
                     : guard);
-      else if (decision.getAction() != DynamicParallelScheduleDecision.Action.KEEP_STATIC) {
+      else if (historyMode == RuntimeScanHistoryMode.STANDARD
+          && decision.getAction() != DynamicParallelScheduleDecision.Action.KEEP_STATIC) {
         selectedGrouping = estimate.getGrouping();
         selected = planner.planWithGrouping(input, selectedGrouping, decision.getTargetDop());
         if (selected.getMode() == ScanParallelPlan.Mode.SERIAL) selectedGrouping = null;
@@ -405,26 +420,41 @@ public final class DynamicParallelPlanningService {
     if (mode == RuntimeScanAblationMode.RUNTIME_ONLY) {
       return selectRuntimeOnlyLayout(input, context, maxLogicalLanes);
     }
-    Selection hint = select(input, context, dopEstimationEnabled, estimateStatus, estimatedDop);
+    // Matched experimental modes keep cold work layout in both arms while retaining
+    // qualification and trusted admission backoff, independent of measured feedback treatment.
+    Selection hint =
+        select(
+            input, context, dopEstimationEnabled, estimateStatus, estimatedDop,
+            context.getRuntimeScanHistoryMode());
     int initial = estimatedDop == null ? maxLogicalLanes : Math.max(1, estimatedDop);
     if (hint.decision != null
         && hint.decision.getAction() != DynamicParallelScheduleDecision.Action.KEEP_STATIC) {
       initial = Math.max(1, hint.decision.getTargetDop());
     }
+    // The historical admission or semantic guard made a serial decision. Rebuilding a
+    // runtime layout from the unguarded input could create workers for a rejected plan.
+    boolean serial = hint.plan.getMode() == ScanParallelPlan.Mode.SERIAL;
     RuntimeScanLayout layout =
-        new ScanParallelPlanner().planRuntimeLayout(input, hint.grouping, maxLogicalLanes, initial);
-    if (mode == RuntimeScanAblationMode.STATIC_ONLY) {
-      // Freeze the planner's source-local prescription, not one global fixed-width override.
-      layout = layout.withFixedWorkers(layout.getInitialWorkers());
-    } else if (context.getRuntimeScanFixedWorkers() > 0) {
-      layout = layout.withFixedWorkers(context.getRuntimeScanFixedWorkers());
-    } else if (context.getRuntimeScanInitialWorkers() > 0) {
-      layout =
-          new RuntimeScanLayout(
-              layout.getLanePlan(),
-              Math.min(context.getRuntimeScanInitialWorkers(), layout.getLaneCount()));
+        serial
+            ? new RuntimeScanLayout(hint.plan, 1).withFixedWorkers(1)
+            : new ScanParallelPlanner()
+                .planRuntimeLayout(input, hint.grouping, maxLogicalLanes, initial);
+    if (!serial) {
+      if (mode == RuntimeScanAblationMode.STATIC_ONLY) {
+        // Freeze the planner's source-local prescription, not one global fixed-width override.
+        layout = layout.withFixedWorkers(layout.getInitialWorkers());
+      } else if (context.getRuntimeScanFixedWorkers() > 0) {
+        layout = layout.withFixedWorkers(context.getRuntimeScanFixedWorkers());
+      } else if (context.getRuntimeScanInitialWorkers() > 0) {
+        layout =
+            new RuntimeScanLayout(
+                layout.getLanePlan(),
+                Math.min(context.getRuntimeScanInitialWorkers(), layout.getLaneCount()));
+      }
     }
-    Selection actual = new Selection(layout.getLanePlan(), hint.shape, hint.grouping, null);
+    Selection actual =
+        new Selection(layout.getLanePlan(), hint.shape, hint.grouping, hint.decision);
+    actual.checkSequence = hint.checkSequence;
     actual.contextDop = context.getDegreeOfParallelism();
     actual.previousDop = hint.previousDop;
     actual.dopEstimationEnabled = dopEstimationEnabled;
@@ -479,7 +509,9 @@ public final class DynamicParallelPlanningService {
     if (runtime != null && !plan.getWorkUnits().isEmpty()) {
       String sourceId = plan.getWorkUnits().get(0).getSourceKey().getPlanNodeId();
       Selection old = selections.get(sourceId);
-      Selection actual = new Selection(plan, old == null ? null : old.shape, null, null);
+      Selection actual =
+          new Selection(
+              plan, old == null ? null : old.shape, null, old == null ? null : old.decision);
       if (old != null) {
         actual.checkSequence = old.checkSequence;
         actual.contextDop = old.contextDop;
@@ -522,22 +554,26 @@ public final class DynamicParallelPlanningService {
       DynamicSourcePlan source =
           new DynamicSourcePlan(shape, plan, isDynamic(plan) ? selection.grouping : null);
       context.getDynamicScanAssignments().registerSource(source);
-      if (selection != null && selection.decision != null)
-        context
-            .getDynamicScanAssignments()
-            .registerReceipt(
-                new DynamicDecisionReceipt(
-                        source,
-                        selection.decision,
-                        endpoint,
-                        selection.checkSequence,
-                        selection.contextDop,
-                        plan.getInputDop(),
-                        selection.previousDop,
-                        selection.dopEstimationEnabled,
-                        selection.estimateStatus,
-                        selection.estimatedDop)
-                    .withInputs(selection.inputs));
+      if (selection != null && selection.decision != null) {
+        DynamicDecisionReceipt receipt =
+            new DynamicDecisionReceipt(
+                    source,
+                    selection.decision,
+                    endpoint,
+                    selection.checkSequence,
+                    selection.contextDop,
+                    plan.getInputDop(),
+                    selection.previousDop,
+                    selection.dopEstimationEnabled,
+                    selection.estimateStatus,
+                    selection.estimatedDop)
+                .withInputs(selection.inputs);
+        RuntimeScanLayout finalLayout = context.getRuntimeLayout(plan);
+        if (finalLayout != null) {
+          receipt = receipt.withRuntimeInitialWorkers(finalLayout.getInitialWorkers());
+        }
+        context.getDynamicScanAssignments().registerReceipt(receipt);
+      }
     }
   }
 

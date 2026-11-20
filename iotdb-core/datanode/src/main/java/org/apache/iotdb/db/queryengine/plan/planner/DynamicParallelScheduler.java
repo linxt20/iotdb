@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelScheduleDecision.Action;
+import org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelScheduleInput.SemanticExtrema;
 
 import java.math.BigInteger;
-import java.util.Map;
 
 /** Pure deterministic policy. Callers serialize state replacement for one bounded history key. */
 public final class DynamicParallelScheduler {
@@ -127,23 +127,9 @@ public final class DynamicParallelScheduler {
         reason = DynamicParallelDecisionReason.RATIO_NOT_EXCEEDED;
         continue;
       }
-      String heavy = null, light = null;
-      long highest = Long.MIN_VALUE, lowest = Long.MAX_VALUE;
-      for (Map.Entry<String, Long> entry : observation.getProjectedCosts().entrySet()) {
-        long cost = entry.getValue();
-        if (cost <= 0) {
-          continue;
-        }
-        if (cost > highest) {
-          highest = cost;
-          heavy = entry.getKey();
-        }
-        if (cost < lowest) {
-          lowest = cost;
-          light = entry.getKey();
-        }
-      }
-      if (heavy == null || light == null || highest == lowest) {
+      SemanticExtrema extrema = observation.getExtrema();
+      String heavy = extrema.heavy(), light = extrema.light();
+      if (heavy == null || light == null) {
         streak = 0;
         a = null;
         b = null;

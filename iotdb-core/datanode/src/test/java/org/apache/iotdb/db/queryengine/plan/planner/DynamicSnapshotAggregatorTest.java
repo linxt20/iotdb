@@ -202,6 +202,70 @@ public class DynamicSnapshotAggregatorTest {
         List.of(4L, 3L, 3L, 4L, 3L, 3L, 4L, 3L, 3L, 4L, 3L, 3L),
         projection.getGrouping().getCosts());
     assertEquals(40, projection.getGrouping().getCosts().stream().mapToLong(Long::longValue).sum());
+    // Remainder allocation distinguishes 4 from 3, but all exact values are 10 / 3.
+    assertNull(projection.toObservation(1).getExtrema().heavy());
+    assertNull(projection.toObservation(1).getExtrema().light());
+  }
+
+  @Test
+  public void exactProjectionPreservesNearButUnequalOrderAcrossSnapshots() {
+    DynamicSnapshotHistoryStore store = new DynamicSnapshotHistoryStore();
+    DynamicSourcePlan source = source("tie0", "s", 5, 2, false);
+    for (int i = 0; i < 2; i++) {
+      String query = "tie" + i;
+      DynamicSourcePlan prior = source(query, "s", 5, 2, false);
+      TFetchFragmentInstanceStatisticsResp response =
+          DynamicSnapshotHistoryStoreTest.bind(
+              query, DynamicSnapshotHistoryStoreTest.response(query), List.of(prior));
+      response.getDriverSnapshots().get(1).setDriverWallNanos(5 + 2 * i);
+      response.getDriverSnapshots().get(2).setDriverWallNanos(3 + i);
+      assertTrue(store.publish(record(query, response, List.of(prior))));
+    }
+    DynamicScanGrouping target =
+        new DynamicScanGroupingBuilder()
+            .build(
+                new ScanParallelPlanner.Input(
+                    source.getShape().getDevices(), List.of(), 5, true, false, false, false, false, false));
+    List<DynamicParallelScheduleInput.Observation> observations =
+        new DynamicCostHistoryStore(store)
+            .estimate(source.getShape(), DynamicSnapshotHistoryStoreTest.ENDPOINT, target)
+            .getObservations();
+    assertEquals(2, observations.size());
+    String expectedHeavy =
+        new DynamicWorkUnitKey(
+                source.getShape().getRegionId(), source.getShape().getSourceSemanticKey(),
+                List.of("d0"), List.of())
+            .canonicalId();
+    String expectedLight =
+        new DynamicWorkUnitKey(
+                source.getShape().getRegionId(), source.getShape().getSourceSemanticKey(),
+                List.of("d3"), List.of())
+            .canonicalId();
+    // The actual light cost is 3 / 2 rather than 5 / 3, a difference of only 1 / 6 ns.
+    for (DynamicParallelScheduleInput.Observation observation : observations) {
+      assertEquals(expectedHeavy, observation.getExtrema().heavy());
+      assertEquals(expectedLight, observation.getExtrema().light());
+    }
+    DynamicParallelScheduler policy = new DynamicParallelScheduler();
+    DynamicParallelScheduler.Result result =
+        policy.decide(
+            new DynamicParallelScheduleInput(
+                3, 2, 5, ScanParallelPlan.FallbackReason.NONE, false, observations),
+            DynamicParallelPolicy.State.empty());
+    assertEquals(DynamicParallelDecisionReason.COST_SKEW, result.getDecision().getReason());
+    assertEquals(2, result.getDecision().getTargetDop());
+    List<DynamicParallelScheduleInput.Observation> integerOnly =
+        observations.stream()
+            .map(o -> new DynamicParallelScheduleInput.Observation(
+                o.getSequence(), o.getProjectedCosts(), o.getBucketCosts()))
+            .toList();
+    DynamicParallelScheduler.Result previousBehavior =
+        policy.decide(
+            new DynamicParallelScheduleInput(
+                3, 2, 5, ScanParallelPlan.FallbackReason.NONE, false, integerOnly),
+            DynamicParallelPolicy.State.empty());
+    assertEquals(DynamicParallelDecisionReason.INSUFFICIENT_FEEDBACK, previousBehavior.getDecision().getReason());
+    assertEquals(3, previousBehavior.getDecision().getTargetDop());
   }
 
   @Test

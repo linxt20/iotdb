@@ -29,12 +29,55 @@ import java.util.TreeMap;
 
 /** Inputs contain only feedback already authenticated by the snapshot/coverage aggregator. */
 public final class DynamicParallelScheduleInput {
+  record SemanticExtrema(String heavy, String light) {
+    static <T extends Comparable<T>> SemanticExtrema select(Map<String, T> costs, T zero) {
+      String heavy = null;
+      String light = null;
+      T max = zero;
+      T min = null;
+      for (Map.Entry<String, T> entry : costs.entrySet()) {
+        T cost = entry.getValue();
+        if (cost.compareTo(zero) <= 0) {
+          continue;
+        }
+        String key = entry.getKey();
+        int high = cost.compareTo(max);
+        if (high > 0 || (high == 0 && key.compareTo(heavy) < 0)) {
+          max = cost;
+          heavy = key;
+        }
+        if (min == null) {
+          min = cost;
+          light = key;
+        } else {
+          int low = cost.compareTo(min);
+          if (low < 0 || (low == 0 && key.compareTo(light) < 0)) {
+            min = cost;
+            light = key;
+          }
+        }
+      }
+      return min == null || max.compareTo(min) == 0
+          ? new SemanticExtrema(null, null)
+          : new SemanticExtrema(heavy, light);
+    }
+  }
+
   public static final class Observation {
     private final long sequence;
     private final Map<String, Long> projectedCosts;
     private final List<Long> bucketCosts;
+    private final SemanticExtrema extrema;
 
     public Observation(long sequence, Map<String, Long> projectedCosts, List<Long> bucketCosts) {
+      this(sequence, projectedCosts, bucketCosts, null);
+    }
+
+    Observation(
+        long sequence,
+        Map<String, Long> projectedCosts,
+        List<Long> bucketCosts,
+        SemanticExtrema exactExtrema) {
       if (sequence <= 0 || projectedCosts == null || bucketCosts == null) {
         throw new IllegalArgumentException(
             DataNodeQueryMessages.EXCEPTION_INVALID_DYNAMIC_PARALLEL_POLICY_INPUT_FAD0AEB0);
@@ -59,6 +102,11 @@ public final class DynamicParallelScheduleInput {
       this.sequence = sequence;
       this.projectedCosts = Collections.unmodifiableMap(copy);
       this.bucketCosts = Collections.unmodifiableList(new ArrayList<>(bucketCosts));
+      extrema = exactExtrema == null ? SemanticExtrema.select(copy, 0L) : exactExtrema;
+    }
+
+    SemanticExtrema getExtrema() {
+      return extrema;
     }
 
     public long getSequence() {

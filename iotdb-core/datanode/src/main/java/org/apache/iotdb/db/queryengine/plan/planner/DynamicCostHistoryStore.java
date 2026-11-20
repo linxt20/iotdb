@@ -127,12 +127,14 @@ public final class DynamicCostHistoryStore {
       DynamicSnapshotAggregator.Projection cost = projection.get();
       if (observations.isEmpty()) {
         latest = cost.getGrouping();
-        previousDop = source.getPlan().getBuckets().size();
+        DynamicDecisionReceipt receipt =
+            entry.getRecord().getDecisionReceipts().get(source.getSourcePlanNodeId());
+        // A receipt records the prior admitted startup target. In a runtime group the number
+        // of logical buckets is its capacity, not evidence of the number requested at startup.
+        previousDop = receipt == null ? source.getPlan().getBuckets().size() : receipt.getTargetDop();
       }
       inputs.add(new DynamicFeedbackIdentity(entry, source));
-      observations.add(
-          new DynamicParallelScheduleInput.Observation(
-              entry.getSequence(), cost.getSemanticCosts(), cost.getBucketCosts()));
+      observations.add(cost.toObservation(entry.getSequence()));
     }
     Collections.reverse(observations);
     Collections.reverse(inputs);

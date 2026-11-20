@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.db.queryengine.plan.planner.DynamicParallelScheduleInput.SemanticExtrema;
 import org.apache.iotdb.db.queryengine.statistics.snapshot.DriverRuntimeSnapshot;
 import org.apache.iotdb.db.queryengine.statistics.snapshot.DynamicSnapshotRecord;
 
@@ -248,11 +249,21 @@ public final class DynamicSnapshotAggregator {
     private final DynamicScanGrouping grouping;
     private final Map<String, Long> semanticCosts;
     private final List<Long> bucketCosts;
+    private final SemanticExtrema extrema;
 
-    Projection(DynamicScanGrouping grouping, Map<String, Long> costs, List<Long> bucketCosts) {
+    Projection(
+        DynamicScanGrouping grouping,
+        Map<String, Long> costs,
+        List<Long> bucketCosts,
+        SemanticExtrema extrema) {
       this.grouping = grouping;
       semanticCosts = Collections.unmodifiableMap(new TreeMap<>(costs));
       this.bucketCosts = Collections.unmodifiableList(new ArrayList<>(bucketCosts));
+      this.extrema = extrema;
+    }
+
+    DynamicParallelScheduleInput.Observation toObservation(long sequence) {
+      return new DynamicParallelScheduleInput.Observation(sequence, semanticCosts, bucketCosts, extrema);
     }
 
     public DynamicScanGrouping getGrouping() {
@@ -266,6 +277,28 @@ public final class DynamicSnapshotAggregator {
     public List<Long> getBucketCosts() {
       return bucketCosts;
     }
+  }
+
+  private static BigInteger coverage(DynamicWorkUnitKey key) {
+    return BigInteger.valueOf(key.getDevices().size())
+        .multiply(BigInteger.valueOf(Math.max(1, key.getTimePartitions().size())));
+  }
+
+  private static BigInteger exactCostScale(List<DynamicBucketRuntime> buckets) {
+    BigInteger scale = BigInteger.ONE;
+    for (DynamicBucketRuntime bucket : buckets) {
+      for (Map.Entry<DynamicWorkUnitKey, Long> old : bucket.getWorkCosts().entrySet()) {
+        BigInteger denominator = coverage(old.getKey());
+        if (old.getValue() == 0 || denominator.signum() == 0) {
+          continue;
+        }
+        // Reduce before finding a common denominator. The source grouping bounds the
+        // number of denominators, and the target grouping bounds the number of totals.
+        BigInteger reduced = denominator.divide(denominator.gcd(BigInteger.valueOf(old.getValue())));
+        scale = scale.divide(scale.gcd(reduced)).multiply(reduced);
+      }
+    }
+    return scale;
   }
 
   public Optional<Projection> project(
@@ -320,7 +353,15 @@ public final class DynamicSnapshotAggregator {
       long[] totals = new long[targets.size()];
       boolean[] estimated = new boolean[targets.size()];
       List<Long> bucketCosts = new ArrayList<>();
-      for (DynamicBucketRuntime bucket : result.getSources().get(source.getSourcePlanNodeId())) {
+      List<DynamicBucketRuntime> buckets = result.getSources().get(source.getSourcePlanNodeId());
+      // Leave integer allocations intact for layout. Use exact costs only for the
+      // semantic extrema: distributing spare nanoseconds can break a true tie.
+      BigInteger scale = exactCostScale(buckets);
+      BigInteger[] exact = scale.equals(BigInteger.ONE) ? null : new BigInteger[targets.size()];
+      if (exact != null) {
+        Arrays.fill(exact, BigInteger.ZERO);
+      }
+      for (DynamicBucketRuntime bucket : buckets) {
         if (!bucket.getWorkCosts().isEmpty()) {
           bucketCosts.add(bucket.getCostNanos());
         }
@@ -346,9 +387,17 @@ public final class DynamicSnapshotAggregator {
             return Optional.empty();
           }
           long[] split = split(old.getValue(), weights);
+          BigInteger unitCost =
+              exact != null && old.getValue() > 0
+                  ? BigInteger.valueOf(old.getValue()).multiply(scale).divide(expected)
+                  : null;
           for (int i = 0; i < targets.size(); i++) {
             totals[i] = Math.addExact(totals[i], split[i]);
-            if (weights.get(i).signum() > 0
+            BigInteger weight = weights.get(i);
+            if (unitCost != null && weight.signum() > 0) {
+              exact[i] = exact[i].add(unitCost.multiply(weight));
+            }
+            if (weight.signum() > 0
                 && (!old.getKey().equals(targets.get(i))
                     || bucket.getCostSource() != DynamicCostSource.MEASURED_BUCKET
                     || bucket.getWorkCosts().size() != 1)) {
@@ -360,13 +409,22 @@ public final class DynamicSnapshotAggregator {
       List<Long> costs = new ArrayList<>();
       List<DynamicCostSource> sources = new ArrayList<>();
       Map<String, Long> semantics = new TreeMap<>();
+      Map<String, BigInteger> exactSemantics = exact == null ? null : new TreeMap<>();
       for (int i = 0; i < targets.size(); i++) {
         costs.add(totals[i]);
         sources.add(
             estimated[i] ? DynamicCostSource.BUCKET_AVERAGE : DynamicCostSource.MEASURED_BUCKET);
-        semantics.put(targets.get(i).canonicalId(), totals[i]);
+        String key = targets.get(i).canonicalId();
+        semantics.put(key, totals[i]);
+        if (exactSemantics != null) {
+          exactSemantics.put(key, exact[i]);
+        }
       }
-      return Optional.of(new Projection(target.withCosts(costs, sources), semantics, bucketCosts));
+      SemanticExtrema extrema =
+          exactSemantics == null
+              ? SemanticExtrema.select(semantics, 0L)
+              : SemanticExtrema.select(exactSemantics, BigInteger.ZERO);
+      return Optional.of(new Projection(target.withCosts(costs, sources), semantics, bucketCosts, extrema));
     } catch (ArithmeticException | IllegalArgumentException e) {
       return Optional.empty();
     }
